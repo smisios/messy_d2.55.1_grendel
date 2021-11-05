@@ -1,0 +1,25 @@
+// -*- kpp -*- kpp mode for emacs
+
+// HONO/NOx = 0.02 fixer
+// based on:
+// -------------------------------------------------------------
+// Elshorbany, Y. F., Steil, B., Brühl, C., and Lelieveld, J.:
+// Impact of HONO on global atmospheric chemistry calculated
+// with an empirical parameterization in the EMAC model,
+// Atmos. Chem. Phys., 12, 9977-10000, doi:10.5194/acp-12-9977-2012, 2012.
+// -------------------------------------------------------------
+// Further changes:
+// Sergey Gromov (2015) : MECCA implementation using equilibrium kinetics,
+//                        sigmodial pressure dependent transition of reaction rate
+//                        to have the fixer only in the BL (below 750 hPa)
+// Rolf Sander / Andrea Pozzer (2016) : written as replacement files for mecca
+// The factor sw_HONO_NOx_fix = 1E-2 is inserted to decrease the
+// stiffness of the equation.
+// The reaction rates assure NOx+HONO mass conservations.
+#REPLACE <>
+<G32fHONO2NOX1> NO   = HONO : {%TrG} 1E-2/(1.+EXP((750.-press/100.)/10.))*0.02;
+<G32fHONO2NOX2> NO2  = HONO : {%TrG} 1E-2/(1.+EXP((750.-press/100.)/10.))*0.02;
+<G32fHONO2NOX3> HONO = NO   : {%TrG} 1E-2/(1.+EXP((750.-press/100.)/10.))*1.00*(c(ind_NO)/(c(ind_NO)+c(ind_NO2)));
+<G32fHONO2NOX4> HONO = NO2  : {%TrG} 1E-2/(1.+EXP((750.-press/100.)/10.))*1.00*(c(ind_NO2)/(c(ind_NO)+c(ind_NO2)));
+#ENDREPLACE
+

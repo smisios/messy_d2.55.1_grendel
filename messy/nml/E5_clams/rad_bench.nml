@@ -1,0 +1,278 @@
+! -*- f90 -*-
+
+&CPL
+!
+!l_quiet = T  ! default: F, switch off log file messages in time loop
+!
+!l_feedback = F  ! default: T, switch off for testing purposes only
+!
+lfubrad = F  ! if T, activate TS(3) = 'solspec', ... in import*nml
+!
+! Frequency of radiation calculation.
+!trigrad = 1,'steps','first',0
+trigrad = 3,'steps','first',0
+!
+rset_solc = F, 1366.04,
+!
+! TRUE for calulating radiation, max. 9 times;
+! first call always provides temperature feedback (!!!)
+!
+l_switch(1) = T,        ! do not change
+l_switch(2) = T,
+l_switch(3) = T,
+l_switch(4) = F,
+l_switch(5) = F,
+l_switch(6) = F,
+l_switch(7) = F,
+l_switch(8) = F,
+l_switch(9) = F,
+!
+!  1: reference (call 1) or instantaneous RF diagnostic
+!  2: adj. RF diagnostic --
+!
+i_rad(1) = 1,
+i_rad(2) = 1,
+i_rad(3) = 1,
+i_rad(4) = 1,
+i_rad(5) = 1,
+i_rad(6) = 1,
+i_rad(7) = 1,
+i_rad(8) = 1,
+i_rad(9) = 1,
+!
+! fixed tropopause (required only for adj. RF diagnostic)
+!tp_fixed = 'import_grid','tp_tp_p_fixed',
+!
+!  1: standard ECHAM5.3 short-wave radiation scheme
+!  2: modified according to ECHAM5.5 and modified DELTA-EDDINGTON
+!
+i_sw(1) = 1,
+i_sw(2) = 1,
+i_sw(3) = 1,
+i_sw(4) = 1,
+i_sw(5) = 1,
+i_sw(6) = 1,
+i_sw(7) = 1,
+i_sw(8) = 1,
+i_sw(9) = 1,
+!
+! 1. call of radiation (always required)
+!
+r_inp(1,1)  = 'ECHAM5', 'qm1',                  ! H2O [mol/mol] or [kg/kg]
+r_inp(2,1)  = '#const', 'CO2=367.E-06',         ! CO2 [mol/mol]   
+r_inp(3,1)  = '#vgrad', 'CH4=1.75E-06',         ! CH4 [mol/mol]   
+r_inp(4,1)  = 'import_grid', 'RADO3_O3',        ! O3  [mol/mol]
+r_inp(5,1)  = '#vgrad', 'N2O=316.E-09',         ! N2O [mol/mol]
+r_inp(6,1)  = '#vgrad', 'CFC11=262.E-12',       ! CFC11 [mol/mol]
+r_inp(7,1)  = '#vgrad', 'CFC12=540.E-12',       ! CFC12 [mol/mol]
+r_inp(8,1)  = 'aeropt_TANRE_STD', 'aot_lw',     ! lw aerosol optical thickness 
+r_inp(9,1)  = 'aeropt_TANRE_STD', 'aot_sw',     ! sw aerosol optical thickness
+r_inp(10,1) = 'aeropt_TANRE_STD', 'gamma_sw',   ! aerosol asymmerty factor
+r_inp(11,1) = 'aeropt_TANRE_STD', 'omega_sw',   ! aerosol single scat. albedo
+r_inp(12,1) = 'cloudopt01', 'sum_cov',          ! cloudcover (nat+pert)
+r_inp(13,1) = 'cloudopt01', 'tau_cld_lw',       ! lw optical depth clouds
+r_inp(14,1) = 'cloudopt01', 'tau_cld_sw',       ! sw optical depth clouds
+r_inp(15,1) = 'cloudopt01', 'gamma_cld_sw',     ! cloud asymmerty factor
+r_inp(16,1) = 'cloudopt01', 'omega_cld_sw',     ! cloud single scattering albedo
+r_inp(17,1) = 'cloudopt01', 'clcv',             ! total cloud cover
+r_inp(18,1) = 'cloudopt01', 'idx_cld',          ! clear/cloudy index
+!
+!
+! 2. call of radiation
+! (empty strings in calls 2 - 9 will be replaced by corresponding entries of
+!  1st call)
+!
+r_inp(1,2)  = '', '',   
+r_inp(2,2)  = '', '',
+r_inp(3,2)  = '', '',           
+r_inp(4,2)  = '', '',          
+r_inp(5,2)  = '', '',          
+r_inp(6,2)  = '', '',           
+r_inp(7,2)  = '', '',             
+r_inp(8,2)  = '', '',          
+r_inp(9,2)  = '', '',          
+r_inp(10,2) = '', '',            
+r_inp(11,2) = '', '',
+r_inp(12,2) = 'cloudopt02', 'sum_cov',          ! cloudcover (nat+pert)
+r_inp(13,2) = 'cloudopt02', 'tau_cld_lw',       ! lw optical depth clouds
+r_inp(14,2) = 'cloudopt02', 'tau_cld_sw',       ! sw optical depth clouds
+r_inp(15,2) = 'cloudopt02', 'gamma_cld_sw',     ! cloud asymmerty factor
+r_inp(16,2) = 'cloudopt02', 'omega_cld_sw',     ! cloud single scattering albedo
+r_inp(17,2) = 'cloudopt02', 'clcv',             ! total cloud cover (2d)
+r_inp(18,2) = 'cloudopt02', 'idx_cld',          ! clear/cloudy index
+!
+! 3. call of radiation
+!
+r_inp(1,3)  = '', '',
+r_inp(2,3)  = '', '',
+r_inp(3,3)  = '', '',
+r_inp(4,3)  = '', '',
+r_inp(5,2)  = '', '',    
+r_inp(6,3)  = '', '',
+r_inp(7,3)  = '', '',
+r_inp(8,3)  = '', '',
+r_inp(9,3)  = '', '',
+r_inp(10,3) = '', '',
+r_inp(11,3) = '', '',
+r_inp(12,3) = 'cloudopt03', 'sum_cov',          ! cloudcover (nat+pert)
+r_inp(13,3) = 'cloudopt03', 'tau_cld_lw',       ! lw optical depth clouds
+r_inp(14,3) = 'cloudopt03', 'tau_cld_sw',       ! sw optical depth clouds
+r_inp(15,3) = 'cloudopt03', 'gamma_cld_sw',     ! cloud asymmerty factor
+r_inp(16,3) = 'cloudopt03', 'omega_cld_sw',     ! cloud single scattering albedo
+r_inp(17,3) = 'cloudopt03', 'clcv',             ! total cloud cover
+r_inp(18,3) = 'cloudopt03', 'idx_cld',          ! clear/cloudy index
+!
+! 4. call
+!
+r_inp(1,4)= '', '',
+r_inp(2,4)= '', '',
+!r_inp(2,4)= '#const','CO2;416.E-6',              !CO2 pert
+r_inp(3,4)= '', '',
+r_inp(4,4)= '', '',
+r_inp(5,4)= '', '',
+r_inp(6,4)= '', '',
+r_inp(7,4)= '', '',
+r_inp(8,4)= '', '',
+r_inp(9,4)= '', '',
+r_inp(10,4)= '', '',
+r_inp(11,4)= '', '',
+r_inp(12,4)= '', '',
+r_inp(13,4)= '', '',
+r_inp(14,4)= '', '',
+r_inp(15,4)= '', '',
+r_inp(16,4)= '', '',
+r_inp(17,4)= '', '',
+r_inp(18,4)= '', '',
+!
+! 5. call
+!
+r_inp(1,5)= '', '',
+r_inp(2,5)= '', '',
+r_inp(3,5)= '', '',
+r_inp(4,5)= '', '',
+r_inp(5,5)= '', '',
+r_inp(6,5)= '', '',
+r_inp(7,5)= '', '',
+r_inp(8,5)= '', '',
+r_inp(9,5)= '', '',
+r_inp(10,5)= '', '',
+r_inp(11,5)= '', '',
+r_inp(12,5)= '', '',
+r_inp(13,5)= '', '',
+r_inp(14,5)= '', '',
+r_inp(15,5)= '', '',
+r_inp(16,5)= '', '',
+r_inp(17,5)= '', '',
+r_inp(18,5)= '', '',
+!
+! 6. call
+!
+r_inp(1,6)= '', '',
+r_inp(2,6)= '', '',
+r_inp(3,6)= '', '',
+r_inp(4,6)= '', '',
+r_inp(5,6)= '', '',
+r_inp(6,6)= '', '',
+r_inp(7,6)= '', '',
+r_inp(8,6)= '', '',
+r_inp(9,6)= '', '',
+r_inp(10,6)= '', '',
+r_inp(11,6)= '', '',
+r_inp(12,6)= '', '',
+r_inp(13,6)= '', '',
+r_inp(14,6)= '', '',
+r_inp(15,6)= '', '',
+r_inp(16,6)= '', '',
+r_inp(17,6)= '', '',
+r_inp(18,6)= '', '',
+!
+! 7. call
+!
+r_inp(1,7)= '', '',
+r_inp(2,7)= '', '',
+r_inp(3,7)= '', '',
+r_inp(4,7)= '', '',
+r_inp(5,7)= '', '',
+r_inp(6,7)= '', '',
+r_inp(7,7)= '', '',
+r_inp(8,7)= '', '',
+r_inp(9,7)= '', '',
+r_inp(10,7)= '', '',
+r_inp(11,7)= '', '',
+r_inp(12,7)= '', '',
+r_inp(13,7)= '', '',
+r_inp(14,7)= '', '',
+r_inp(15,7)= '', '',
+r_inp(16,7)= '', '',
+r_inp(17,7)= '', '',
+r_inp(18,7)= '', '',
+
+!
+! 8. call
+!
+r_inp(1,8)= '', '',
+r_inp(2,8)= '', '',
+r_inp(3,8)= '', '',
+r_inp(4,8)= '', '',
+r_inp(5,8)= '', '',
+r_inp(6,8)= '', '',
+r_inp(7,8)= '', '',
+r_inp(8,8)= '', '',
+r_inp(9,8)= '', '',
+r_inp(10,8)= '', '',
+r_inp(11,8)= '', '',
+r_inp(12,8)= '', '',
+r_inp(13,8)= '', '',
+r_inp(14,8)= '', '',
+r_inp(15,8)= '', '',
+r_inp(16,8)= '', '',
+r_inp(17,8)= '', '',
+r_inp(18,8)= '', '',
+!
+! 9. call
+!
+r_inp(1,9)= '', '',
+r_inp(2,9)= '', '',
+r_inp(3,9)= '', '',
+r_inp(4,9)= '', '',
+r_inp(5,9)= '', '',
+r_inp(6,9)= '', '',
+r_inp(7,9)= '', '',
+r_inp(8,9)= '', '',
+r_inp(9,9)= '', '',
+r_inp(10,9)= '', '',
+r_inp(11,9)= '', '',
+r_inp(12,9)= '', '',
+r_inp(13,9)= '', '',
+r_inp(14,9)= '', '',
+r_inp(15,9)= '', '',
+r_inp(16,9)= '', '',
+r_inp(17,9)= '', '',
+r_inp(18,9)= '', '',
+!
+/
+
+!! ------------------------------
+&CTRL_FUBRAD
+!
+!# FOR SOLAR CYCLE
+solfac = 0.5        ! 0: solar minimum, 1: solar maximum
+!                 !!! this is obsolete, if fubrad_solar in CPL is active
+!
+!! fb_mk_20120116+
+! set the spectral resolution of FUBRAD
+! Possible are 55 (default), 106, and 49 (old version, not recommended as it
+! leads to an inconsistent flux profile and misleading flux diagnostics)
+nbands = 55,    ! 55 (default)
+! fb_mk_20120116-
+/
+
+&CPL_FUBRAD
+!
+!# ! SOLAR CYCLE TIME SERIES; if commented, solfac in CTRL is used instead
+!# (see &CTRL_TS in import.nml)
+!
+!fubrad_solar = 'import_ts', 'solact',     ! F10.7 cm (1 parameter)
+!fubrad_solar = 'import_ts', 'solspec',    ! solar spectrum (50 parameters)
+!
+/

@@ -1,0 +1,236 @@
+{This file was created by xaerchem, DO NOT EDIT!}
+#SETFIX CO2; O2; N2;
+{default values}
+{SETFIX of liquid H2O_a* is done in mecca.spc via xmecca}
+#INLINE F90_GLOBAL
+  ! MECCA info from xmecca:
+  CHARACTER(LEN=*), PUBLIC, PARAMETER :: &
+    timestamp            = 'xaerchem was run on 2020-07-06 at 18:11:08 by joec_pa on machine lx134.pa.op.dlr.de', &
+    batchfile            = 'SC_no-iodine_no-mercury.bat', &
+    gas_spc_file         = 'lrwxrwxrwx 1 joec_pa pa_ac_mf 28 Jul  1 12:02 gas.spc -> ../../../caaba/mecca/gas.spc', &
+    aqueous_spc_file     = 'lrwxrwxrwx 1 joec_pa pa_ac_mf 32 Jul  1 12:02 aqueous.spc -> ../../../caaba/mecca/aqueous.spc', &
+    gas_eqn_file         = 'lrwxrwxrwx 1 joec_pa pa_ac_mf 28 Jul  1 12:02 gas.eqn -> ../../../caaba/mecca/gas.eqn', &
+    aqueous_eqn_file     = 'lrwxrwxrwx 1 joec_pa pa_ac_mf 32 Jul  1 12:02 aqueous.eqn -> ../../../caaba/mecca/aqueous.eqn', &
+    gas_spc_file_sum     = '12686    77', &
+    aqueous_spc_file_sum = '43424    11', &
+    gas_eqn_file_sum     = '30123   312', &
+    aqueous_eqn_file_sum = '55518    60', &
+    rplfile              = '', &
+    wanted               = '(Sc && !I && !Hg)', &
+    diagtracfile         = '', &
+    rxnrates             = 'n', &
+    tag                  = 'n'
+  LOGICAL, PARAMETER :: REQ_MCFCT = .FALSE.
+#ENDINLINE {above lines go to messy_gmxe_aerchem_kpp_global}
+#INLINE F90_GLOBAL
+  ! from xmecca for aerosol:
+  INTEGER, PARAMETER, PUBLIC :: APN = 1
+#ENDINLINE {above lines go to messy_gmxe_aerchem_kpp_global}
+#INLINE F90_UTIL
+! from xmecca:
+SUBROUTINE initialize_indexarrays
+  USE messy_gmxe_aerchem_kpp_global     ! ind_XYZ_a(:) arrays
+  USE messy_gmxe_aerchem_kpp_parameters ! ind_XYZ_a## scalars
+  IMPLICIT NONE
+END SUBROUTINE initialize_indexarrays
+#ENDINLINE {above lines go to messy_gmxe_aerchem_kpp_util}
+#EQUATIONS
+{***** START: gas-phase chemistry from gas.eqn *****}
+{***** END:   gas-phase chemistry from gas.eqn *****}
+{**** START: aerosol chemistry (phase 1) from aqueous.eqn ****}
+{<A1nnn_l> ------------------------ O -------------------------}{@\myhline}
+<A1000_l>  O3_l     + O2m_l         = OH_l + OHm_l                : {%TrAlSc}       1.0*1.5E9 *cv_l;{@1.5E9}{&211}
+{<A2nnn_l> ------------------------ H -------------------------}{@\myhline}
+<A2100_l>  OH_l     + O2m_l         = OHm_l                         : {%TrAlSc}       1.0*1.E10 *cv_l; {@1.0E10}{&213}
+<A2101_l>  OH_l     + OH_l          = H2O2_l                        : {%TrAlSc}       1.0*5.5E9 *cv_l; {@5.5E9}{&144}
+<A2102_l>  HO2_l    + O2m_l         = H2O2_l + OHm_l              : {%TrAlSc}       1.0*k_arr(1.E8, -900.,temp) *cv_l; {@1.0E8}{$-900}{&210}
+<A2103_l>  HO2_l    + OH_l          = H2O_l                         : {%TrAlSc}       1.0*7.1E9 *cv_l; {@7.1E9}{&213}
+<A2104_l>  HO2_l    + HO2_l         = H2O2_l                        : {%TrAlSc}       1.0*k_arr(9.7E5,-2500.,temp) *cv_l; {@9.7E5}{$-2500}{&210}
+<A2105_l>  H2O2_l   + OH_l          = HO2_l                         : {%TrAlSc}       1.0*k_arr(2.7E7,-1684.,temp) *cv_l; {@2.7E7}{$-1684}{&217}
+{<A3nnn_l> ------------------------ N -------------------------}{@\myhline}
+<A3100_l>  NO2m_l   + O3_l          = NO3m_l                        : {%TrAlScN}       1.0*k_arr(5.E5,-6950.,temp) *cv_l; {@5.0E5}{$-6950}{&45}
+<A3101_l>  NO2_l    + NO2_l         = HNO3_l + HONO_l             : {%TrAlScN}       1.0*1.E8 *cv_l; {@1.0E8}{&59}
+<A3102_l>  NO4m_l                     = NO2m_l                        : {%TrAlScN}       1.0*8.E-1; {@8.0E1}{&1257} {1st order}
+<A3200_l>  NO2_l    + HO2_l         = HNO4_l                        : {%TrAlScN}       1.0*1.8E9 *cv_l; {@1.8E9}{&1257}
+<A3201_l>  NO2m_l   + OH_l          = NO2_l  + OHm_l              : {%TrAlScN}       1.0*1.E10 *cv_l; {@1.0E10}{&1245}
+<A3202_l>  NO3_l    + OHm_l         = NO3m_l + OH_l               : {%TrAlScN}       1.0*k_arr(8.2E7,-2700.,temp) *cv_l; {@8.2E7}{$-2700}{&69}
+<A3203_l>  HONO_l   + OH_l          = NO2_l                         : {%TrAlScN}       1.0*1.E10 *cv_l; {@1.0E10}{&1249}
+<A3204_l>  HONO_l + H2O2_l + Hp_l = HNO3_l + Hp_l               : {%TrAlScN}       1.0*k_limited(k_arr(4.6E3,-6800.,temp),c(ind_Hp_l)*cv_l) *cv_l*cv_l; {@4.6E3}{$-6800}{&45} {3rd order}
+{<A4nnn_l> ------------------------ C -------------------------}{@\myhline}
+<A4100_l>  CO3m_l   + O2m_l         = HCO3m_l   + OHm_l           : {%TrAlSc}       1.0*6.5E8 *cv_l; {@6.5E8}{&222}
+<A4101_l>  CO3m_l   + H2O2_l        = HCO3m_l   + HO2_l           : {%TrAlSc}       1.0*4.3E5 *cv_l; {@4.3E5}{&222}
+<A4102_l>  HCOOm_l  + CO3m_l        = 2 HCO3m_l + HO2_l           : {%TrAlSc}       1.0*1.5E5 *cv_l; {@1.5E5}{&222}
+<A4103_l>  HCOOm_l  + OH_l          = OHm_l     + HO2_l + CO2_l : {%TrAlSc}       1.0*k_arr(3.1E9,-1240.,temp) *cv_l; {@3.1E9}{$-1240}{&231}
+<A4104_l>  HCO3m_l  + OH_l          = CO3m_l                        : {%TrAlSc}       1.0*8.5E6 *cv_l; {@8.5E6}{&222}
+<A4105_l>  HCHO_l   + OH_l          = HCOOH_l   + HO2_l           : {%TrAlSc}       1.0*k_arr(7.7E8,-1020.,temp) *cv_l; {@7.7E8}{$-1020}{&231}
+<A4106_l>  HCOOH_l  + OH_l          = HO2_l     + CO2_l           : {%TrAlSc}       1.0*k_arr(1.1E8, -991.,temp) *cv_l; {@1.1E8}{$-991}{&231}
+<A4107_l>  CH3O2_l  + O2m_l         = CH3OOH_l  + OHm_l           : {%TrAlSc}       1.0*5.E7 *cv_l; {@5.0E7}{&46}
+<A4108_l>  CH3O2_l  + HO2_l         = CH3OOH_l                      : {%TrAlSc}       1.0*4.3E5 *cv_l; {@4.3E5}{&46}
+<A4109_l>  CH3OH_l  + OH_l          = HCHO_l    + HO2_l           : {%TrAlSc}       1.0*9.7E8 *cv_l; {@9.7E8}{&144}
+<A4110a_l> CH3OOH_l + OH_l          = CH3O2_l                       : {%TrAlSc}       1.0*k_arr(2.7E7,-1715.,temp) *cv_l; {@2.7E7}{$-1715}{&46}
+<A4110b_l> CH3OOH_l + OH_l          = HCHO_l    + OH_l            : {%TrAlSc}       1.0*k_arr(1.1E7,-1715.,temp) *cv_l; {@1.1E7}{$-1715}{&46}
+{<A5nnn_l> ------------------------ F -------------------------}
+{<A6nnn_l> ------------------------ Cl ------------------------}{@\myhline}
+{<A7nnn_l> ------------------------ Br ------------------------}{@\myhline}
+{<A8nnn_l> ------------------------ I -------------------------}{@\myhline}
+{<A9nnn_l> ------------------------ S -------------------------}{@\myhline}
+<A9100_l>  SO3m_l  + O2_l           = SO5m_l                        : {%TrAlScS}     1.0*1.5E9 *cv_l; {@1.5E9}{&75}
+<A9101_l>  SO3mm_l + O3_l           = SO4mm_l                       : {%TrAlMblScScmS} 1.0*k_arr(1.5E9,-5300.,temp) *cv_l; {@1.5E9}{$-5300}{&744}
+<A9102_l>  SO4m_l  + O2m_l          = SO4mm_l                       : {%TrAlScS}     1.0*3.5E9 *cv_l; {@3.5E9}{&1243}
+<A9103_l>  SO4m_l  + SO3mm_l        = SO3m_l  + SO4mm_l           : {%TrAlScS}     1.0*4.6E8 *cv_l; {@4.6E8}{&75}
+<A9104_l>  SO5m_l  + O2m_l          = HSO5m_l + OHm_l             : {%TrAlScS}     1.0*2.3E8 *cv_l; {@2.3E8}{&955}
+<A9200_l>  SO3mm_l + OH_l           = SO3m_l  + OHm_l             : {%TrAlScS}     1.0*5.5E9 *cv_l; {@5.5E9}{&144}
+<A9201_l>  SO4m_l  + OH_l           = HSO5m_l                       : {%TrAlScS}     1.0*1.E9 *cv_l; {@1.0E9}{&1243}
+<A9202_l>  SO4m_l  + HO2_l          = SO4mm_l + Hp_l              : {%TrAlScS}     1.0*3.5E9 *cv_l; {@3.5E9}{&1243}
+<A9203_l>  SO4m_l  + H2O_l          = SO4mm_l + Hp_l    + OH_l  : {%TrAlScS}     1.0*k_arr(1.1E1,-1110.,temp) *cv_l; {@1.1E1}{$-1110}{&1244}
+<A9204_l>  SO4m_l  + H2O2_l         = SO4mm_l + Hp_l    + HO2_l : {%TrAlScS}     1.0*1.2E7 *cv_l; {@1.2E7}{&86}
+<A9205_l>  HSO3m_l + O2m_l          = SO4mm_l + OH_l              : {%TrAlScS}     1.0*3.E3 *cv_l; {@3.0E3} // D.\ Sedlak, pers.\ comm.\ (1993).
+<A9206_l>  HSO3m_l + O3_l           = SO4mm_l + Hp_l              : {%TrAlMblScScmS} 1.0*k_arr(3.7E5,-5500.,temp) *cv_l; {@3.7E5}{$-5500}{&744}
+<A9207_l>  HSO3m_l + OH_l           = SO3m_l                        : {%TrAlScS}     1.0*4.5E9 *cv_l; {@4.5E9}{&144}
+<A9208_l>  HSO3m_l + HO2_l          = SO4mm_l + OH_l    + Hp_l  : {%TrAlScS}     1.0*3.E3 *cv_l;  {@3.0E3} // D.\ Sedlak, pers.\ comm.\ (1993).
+<A9209_l>  HSO3m_l + H2O2_l         = SO4mm_l + Hp_l              : {%TrAlMblScScmS} 1.0*k_SIV_H2O2(5.2E6,-3650.,C(ind_Hp_l)*cv_l,temp) *cv_l; {@5.2E6}{$-3650}{&43}
+<A9210_l>  HSO3m_l + SO4m_l         = SO3m_l  + SO4mm_l + Hp_l  : {%TrAlScS}     1.0*8.E8 *cv_l; {@8.0E8}{&75}
+<A9212_l>  HSO3m_l + HSO5m_l + Hp_l = 2 HSO4m_l + Hp_l          : {%TrAlScS}     1.0*k_limited(7.1E6_dp,c(ind_Hp_l)*cv_l) *cv_l*cv_l; {@7.1E6}{&85} {3rd order}
+<A9301_l>  SO4m_l  + NO3m_l         = SO4mm_l + NO3_l              : {%TrAlScNS}    1.0*5.E4 *cv_l; {@5.0E4}{&69}
+<A9302_l>  SO4mm_l + NO3_l          = NO3m_l  + SO4m_l             : {%TrAlScNS}    1.0*1.E5 *cv_l; {@1.0E5}{&1633}
+<A9304_l>  HSO3m_l + NO3_l          = SO3m_l  + NO3m_l  + Hp_l   : {%TrAlScNS}    1.0*k_arr(1.4E9,-2000.,temp) *cv_l; {@1.4E9}{$-2000}{&69}
+<A9305_l>  HSO3m_l + HNO4_l         = HSO4m_l + NO3m_l  + Hp_l   : {%TrAlScNS}    1.0*3.1E5 *cv_l; {@3.1E5}{&1257}
+<A9400_l>  SO3mm_l + HCHO_l         = CH2OHSO3m_l + OHm_l         : {%TrAlScS}     1.0*1.4E4 *cv_l; {@1.4E4}{&534} // Product $2.48\E7 \times 5.5\E{-4}$ considering the hydrated form of HCHO.
+<A9401_l>  SO3mm_l + CH3OOH_l + Hp_l = SO4mm_l + Hp_l + CH3OH_l : {%TrAlScS}     1.0*k_limited(k_arr(1.6E7,-3800.,temp),c(ind_Hp_l)*cv_l) *cv_l*cv_l; {@1.6E7}{$-3800}{&175} {3rd order}
+<A9402_l>  HSO3m_l + HCHO_l         = CH2OHSO3m_l                   : {%TrAlScS}     1.0*4.3E-1 *cv_l; {@4.3E-1}{&534} // Product $790 \times 5.5\E{-4}$ considering the hydrated form of HCHO.
+<A9403_l>  HSO3m_l + CH3OOH_l + Hp_l = HSO4m_l + Hp_l + CH3OH_l : {%TrAlScS}     1.0*k_limited(k_arr(1.6E7,-3800.,temp),c(ind_Hp_l)*cv_l) *cv_l*cv_l; {@1.6E7}{$-3800}{&175} {3rd order}
+<A9404_l>  CH2OHSO3m_l + OHm_l      = SO3mm_l + HCHO_l            : {%TrAlScS}     1.0*3.6E3 *cv_l; {@3.6E3}{&935}
+{<A10nnn_l> ----------------------- Hg ------------------------}{@\myhline}
+{<A11nnn_l> ----------------------- Fe ------------------------}{@\myhline}
+{<H1nnn_l> ------------------------ O -------------------------}{@\myhline}
+<H1000f_l> O2       = O2_l              : {%TrAlSc}        k_exf(ind_O2); {&SGN}
+<H1000b_l> O2_l   = O2                  : {%TrAlSc}        k_exb(ind_O2); {&SGN}
+<H1001f_l> O3       = O3_l              : {%TrAlMblScScm}  k_exf(ind_O3); {&SGN}
+<H1001b_l> O3_l   = O3                  : {%TrAlMblScScm}  k_exb(ind_O3); {&SGN}
+{<H2nnn_l> ------------------------ H -------------------------}{@\myhline}
+<H2100f_l> OH       = OH_l              : {%TrAlSc}        k_exf(ind_OH); {&SGN}
+<H2100b_l> OH_l   = OH                  : {%TrAlSc}        k_exb(ind_OH); {&SGN}
+<H2101f_l> HO2      = HO2_l             : {%TrAlSc}        k_exf(ind_HO2); {&SGN}
+<H2101b_l> HO2_l  = HO2                 : {%TrAlSc}        k_exb(ind_HO2); {&SGN}
+<H2102f_l> H2O2     = H2O2_l            : {%TrAlMblScScm}  k_exf(ind_H2O2); {&SGN}
+<H2102b_l> H2O2_l = H2O2                : {%TrAlMblScScm}  k_exb(ind_H2O2); {&SGN}
+{<H3nnn_l> ------------------------ N -------------------------}{@\myhline}
+<H3100f_l> NO       = NO_l              : {%TrAraScN}        k_exf(ind_NO); {&SGN}
+<H3100b_l> NO_l   = NO                  : {%TrAraScN}        k_exb(ind_NO); {&SGN}
+<H3101f_l> NO2      = NO2_l             : {%TrAlScN}       k_exf(ind_NO2); {&SGN}
+<H3101b_l> NO2_l  = NO2                 : {%TrAlScN}       k_exb(ind_NO2); {&SGN}
+<H3102f_l> NO3      = NO3_l             : {%TrAlScN}       k_exf(ind_NO3); {&SGN}
+<H3102b_l> NO3_l  = NO3                 : {%TrAlScN}       k_exb(ind_NO3); {&SGN}
+<H3200f_l> NH3      = NH3_l             : {%TrAlMblScScmN} k_exf(ind_NH3); {&SGN}
+<H3200b_l> NH3_l  = NH3                 : {%TrAlMblScScmN} k_exb(ind_NH3); {&SGN}
+<H3201_l>  N2O5     = HNO3_l + HNO3_l : {%TrAlMblScScmN} k_exf_N2O5*C(ind_H2O_l); {&358, 536}
+<H3202f_l> HONO     = HONO_l            : {%TrAlScN}       k_exf(ind_HONO); {&SGN}
+<H3202b_l> HONO_l = HONO                : {%TrAlScN}       k_exb(ind_HONO); {&SGN}
+<H3203f_l> HNO3     = HNO3_l            : {%TrAlMblScScmN} k_exf(ind_HNO3); {&SGN}
+<H3203b_l> HNO3_l = HNO3                : {%TrAlMblScScmN} k_exb(ind_HNO3); {&SGN}
+<H3204f_l> HNO4     = HNO4_l            : {%TrAlScN}       k_exf(ind_HNO4); {&SGN}
+<H3204b_l> HNO4_l = HNO4                : {%TrAlScN}       k_exb(ind_HNO4); {&SGN}
+{<H4nnn_l> ------------------------ C -------------------------}{@\myhline}
+<H4100f_l> CO2          = CO2_l         : {%TrAlMblScScm}  k_exf(ind_CO2); {&SGN}
+<H4100b_l> CO2_l      = CO2             : {%TrAlMblScScm}  k_exb(ind_CO2); {&SGN}
+<H4101f_l> HCHO         = HCHO_l        : {%TrAlScScm}     k_exf(ind_HCHO); {&SGN}
+<H4101b_l> HCHO_l     = HCHO            : {%TrAlScScm}     k_exb(ind_HCHO); {&SGN}
+<H4102f_l> CH3O2        = CH3O2_l       : {%TrAlSc}        k_exf(ind_CH3O2); {&SGN}
+<H4102b_l> CH3O2_l    = CH3O2           : {%TrAlSc}        k_exb(ind_CH3O2); {&SGN}
+<H4103f_l> HCOOH        = HCOOH_l       : {%TrAlScScm}     k_exf(ind_HCOOH); {&SGN}
+<H4103b_l> HCOOH_l    = HCOOH           : {%TrAlScScm}     k_exb(ind_HCOOH); {&SGN}
+<H4104f_l> CH3OOH       = CH3OOH_l      : {%TrAlScScm}     k_exf(ind_CH3OOH); {&SGN}
+<H4104b_l> CH3OOH_l   = CH3OOH          : {%TrAlScScm}     k_exb(ind_CH3OOH); {&SGN}
+<H4105f_l> CH3OH        = CH3OH_l       : {%TrAraSc}         k_exf(ind_CH3OH); {&SGN}
+<H4105b_l> CH3OH_l    = CH3OH           : {%TrAraSc}         k_exb(ind_CH3OH); {&SGN}
+<H4200f_l> CH3CO2H      = CH3CO2H_l     : {%TrAraScScmC}     k_exf(ind_CH3CO2H); {&SGN}
+<H4200b_l> CH3CO2H_l  = CH3CO2H         : {%TrAraScScmC}     k_exb(ind_CH3CO2H); {&SGN}
+<H4201f_l> CH3CHO       = CH3CHO_l      : {%TrAraScC}        k_exf(ind_CH3CHO); {&SGN}
+<H4201b_l> CH3CHO_l   = CH3CHO          : {%TrAraScC}        k_exb(ind_CH3CHO); {&SGN}
+<H4202f_l> PAN          = PAN_l         : {%TrAraScCN}        k_exf(ind_PAN); {&SGN}
+<H4202b_l> PAN_l      = PAN             : {%TrAraScCN}        k_exb(ind_PAN); {&SGN}
+<H4300f_l> CH3COCH3     = CH3COCH3_l    : {%TrAraScC}        k_exf(ind_CH3COCH3); {&SGN}
+<H4300b_l> CH3COCH3_l = CH3COCH3        : {%TrAraScC}        k_exb(ind_CH3COCH3); {&SGN}
+{<H5nnn_l> ------------------------ F -------------------------}{@\myhline}
+{<H6nnn_l> ------------------------ Cl ------------------------}{@\myhline}
+<H6000f_l> Cl2             = Cl2_l             : {%TrAlMblScCl}    k_exf(ind_Cl2); {&SGN}
+<H6000b_l> Cl2_l         = Cl2                 : {%TrAlMblScCl}    k_exb(ind_Cl2); {&SGN}
+<H6200f_l> HCl             = HCl_l             : {%TrAlMblScScmCl} k_exf(ind_HCl); {&SGN}
+<H6200b_l> HCl_l         = HCl                 : {%TrAlMblScScmCl} k_exb(ind_HCl); {&SGN}
+<H6201f_l> HOCl            = HOCl_l            : {%TrAlMblScCl}    k_exf(ind_HOCl); {&SGN}
+<H6201b_l> HOCl_l        = HOCl                : {%TrAlMblScCl}    k_exb(ind_HOCl); {&SGN}
+{<H7nnn_l> ------------------------ Br ------------------------}{@\myhline}
+<H7000f_l> Br2             = Br2_l             : {%TrAlMblScBr}    k_exf(ind_Br2); {&SGN}
+<H7000b_l> Br2_l         = Br2                 : {%TrAlMblScBr}    k_exb(ind_Br2); {&SGN}
+<H7200f_l> HBr             = HBr_l             : {%TrAlMblScScmBr} k_exf(ind_HBr); {&SGN}
+<H7200b_l> HBr_l         = HBr                 : {%TrAlMblScScmBr} k_exb(ind_HBr); {&SGN}
+<H7201f_l> HOBr            = HOBr_l            : {%TrAlMblScBr}    k_exf(ind_HOBr); {&SGN}
+<H7201b_l> HOBr_l        = HOBr                : {%TrAlMblScBr}    k_exb(ind_HOBr); {&SGN}
+<H7600f_l> BrCl            = BrCl_l            : {%TrAlMblScBrCl}  k_exf(ind_BrCl); {&SGN}
+<H7600b_l> BrCl_l        = BrCl                : {%TrAlMblScBrCl}  k_exb(ind_BrCl); {&SGN}
+{<H8nnn_l> ------------------------ I -------------------------}{@\myhline}
+{<H9nnn_l> ------------------------ S -------------------------}{@\myhline}
+<H9100f_l> SO2             = SO2_l             : {%TrAlMblScScmS} k_exf(ind_SO2); {&SGN}
+<H9100b_l> SO2_l         = SO2                 : {%TrAlMblScScmS} k_exb(ind_SO2); {&SGN}
+<H9200_l>  H2SO4           = H2SO4_l           : {%TrAlMblScScmS} xnom7sulf*k_exf(ind_H2SO4); {&SGN}
+{<H10nnn_l> ----------------------- Hg ------------------------}{@\myhline}
+{<EQ1nnn_l> ------------------------ O -------------------------}{@\myhline}
+{<EQ2nnn_l> ------------------------ H -------------------------}{@\myhline}
+<EQ20f_l> HO2_l              = O2m_l + Hp_l       : {%TrAlSc}         1.0*1.6E-1*f_equil_HO2; {@1.6E-5}{&205}
+<EQ20b_l> O2m_l + Hp_l     = HO2_l                : {%TrAlSc}         1.0*1.E4*cv_l*f_equil_HO2;
+<EQ21f_l> H2O_l              = Hp_l  + OHm_l      : {%TrAlMblScScm}   1.0*f_equil_H2O*k_arr(1.8E-8,-6716.,temp); {@1.0E-16}{$-6716}{&87}
+<EQ21b_l> Hp_l  + OHm_l    = H2O_l                : {%TrAlMblScScm}   1.0*f_equil_H2O*1.E8*cv_l;
+{<EQ3nnn_l> ------------------------ N -------------------------}{@\myhline}
+<EQ30f_l> NH4p_l             = Hp_l   + NH3_l     : {%TrAlMblScScmN}  1.0*f_equil_NH3*k_arr(5.87647E-7,-2391.,temp); {@5.88E-10}{$-2391}{&87}
+<EQ30b_l> NH3_l  + Hp_l    = NH4p_l               : {%TrAlMblScScmN}  1.0*f_equil_NH3*1.E3*cv_l;
+<EQ31f_l> HONO_l             = Hp_l   + NO2m_l    : {%TrAlScN}        1.0*k_arr(5.1E1,-1260.,temp)*f_equil_HONO; {@5.1E-4}{$-1260}{&449}
+<EQ31b_l> Hp_l   + NO2m_l  = HONO_l               : {%TrAlScN}        1.0*1.E5*cv_l*f_equil_HONO;
+<EQ32f_l> HNO3_l             = Hp_l   + NO3m_l    : {%TrAlMblScScmN}  1.0*f_equil_HNO3*k_arr(1.54E-2,8700.,temp); {@15}{$8700}{&450}
+<EQ32b_l> Hp_l   + NO3m_l  = HNO3_l               : {%TrAlMblScScmN}  1.0*f_equil_HNO3*1.E-3*cv_l;
+<EQ33f_l> HNO4_l             = NO4m_l + Hp_l      : {%TrAlScN}        1.0*2.E-1*f_equil_HNO4; {@1.E-5}{&1257}
+<EQ33b_l> NO4m_l + Hp_l    = HNO4_l               : {%TrAlScN}        1.0*2.E4*cv_l*f_equil_HNO4;
+{<EQ4nnn_l> ------------------------ C -------------------------}{@\myhline}
+<EQ40f_l> CO2_l              = Hp_l + HCO3m_l     : {%TrAlMblScScm}  1.0*f_equil_CO2*k_arr(4.3E-4,-913.,temp); {@4.3E-7}{$-913}{&87} // For $pK_a$(\chem{CO_2}), see also \citet{1777}.
+<EQ40b_l> Hp_l + HCO3m_l   = CO2_l                : {%TrAlMblScScm}  1.0*f_equil_CO2*1.E3*cv_l;
+<EQ41f_l> HCOOH_l            = Hp_l + HCOOm_l     : {%TrAlScScm}     1.0*f_equil_HCOOH* 1.8E-4; {@1.8E-4}{&153}
+<EQ41b_l> Hp_l + HCOOm_l   = HCOOH_l              : {%TrAlScScm}     1.0*f_equil_HCOOH* 1.E0*cv_l;
+<EQ42f_l> CH3CO2H_l          = Hp_l + CH3COOm_l   : {%TrAraScScmC}      1.0*f_equil_CH3CO2H*1.754E-5; {@1.754E-5}{&3258} // The p$K_A$ has a minimum near 25~\unit{\degree C}, the temperature dependence is therefore small.
+<EQ42b_l> Hp_l + CH3COOm_l = CH3CO2H_l            : {%TrAraScScmC}      1.0*f_equil_CH3CO2H*1.E0*cv_l;
+{<EQ5nnn_l> ------------------------ F -------------------------}{@\myhline}
+{<EQ6nnn_l> ------------------------ Cl ------------------------}{@\myhline}
+<EQ61f_l> HCl_l              = Hp_l   + Clm_l     : {%TrAlMblScScmCl} 1.0*f_equil_HCl*k_arr(1.7E5,6896.,temp); {@1.7E6}{$6896}{&167}
+<EQ61b_l> Hp_l + Clm_l     = HCl_l                : {%TrAlMblScScmCl} 1.0*f_equil_HCl*1.E-1*cv_l;
+<EQ62f_l> HOCl_l             = Hp_l   + ClOm_l    : {%TrAlScCl}       1.0*3.2E-2*f_equil_HOCl; {@3.2E-8}{&194}
+<EQ62b_l> Hp_l + ClOm_l    = HOCl_l               : {%TrAlScCl}       1.0*1.E6*cv_l*f_equil_HOCl;
+{<EQ7nnn_l> ------------------------ Br ------------------------}{@\myhline}
+<EQ71f_l> HBr_l              = Hp_l     + Brm_l   : {%TrAlMblScScmBr} 1.0*1.E9*f_equil_HBr; {@1.0E9}{&194}
+<EQ71b_l> Hp_l   + Brm_l   = HBr_l                : {%TrAlMblScScmBr} 1.0*1.E0*cv_l*f_equil_HBr;
+<EQ72f_l> HOBr_l             = Hp_l     + BrOm_l  : {%TrAlScBr}       1.0*k_arr(2.3E7,-3091.E0,temp)*f_equil_HOBr; {@2.3E-9}{$-3091}{&626} // For $pK_a$(\chem{HOBr}), see also \citet{1778}.
+<EQ72b_l> Hp_l   + BrOm_l  = HOBr_l               : {%TrAlScBr}       1.0* 1.E16*cv_l*f_equil_HOBr;
+{<EQ8nnn_l> ------------------------ I -------------------------}{@\myhline}
+{<EQ9nnn_l> ------------------------ S -------------------------}{@\myhline}
+<EQ90f_l> SO2_l              = Hp_l    + HSO3m_l  : {%TrAlMblScScmS}  1.0*f_equil_SO2  *k_arr(1.7E1,2090.E0,temp); {@1.7E-2}{$2090}{&87}
+<EQ90b_l> Hp_l   + HSO3m_l = SO2_l                : {%TrAlMblScScmS}  1.0*f_equil_SO2  *1.E3*cv_l;
+<EQ91f_l> HSO3m_l            = Hp_l    + SO3mm_l  : {%TrAlMblScScmS}  1.0*f_equil_HSO3m*k_arr(6.E-2,1120.E0,temp); {@6.0E-8}{$1120}{&87}
+<EQ91b_l> Hp_l   + SO3mm_l = HSO3m_l              : {%TrAlMblScScmS}  1.0*f_equil_HSO3m*1.E6*cv_l;
+<EQ92f_l> HSO4m_l            = Hp_l    + SO4mm_l  : {%TrAlMblScScmS}  1.0*f_equil_HSO4m*k_arr(1.02E-7,2720.E0,temp); {@1.2E-2}{$2720}{&935}
+<EQ92b_l> Hp_l   + SO4mm_l = HSO4m_l              : {%TrAlMblScScmS}  1.0*f_equil_HSO4m*1.E-5 *cv_l;
+<EQ93f_l> H2SO4_l            = Hp_l    + HSO4m_l  : {%TrAlMblScScmS}  1.0*1.E6*f_equil_H2SO4; {@1.0E3}{&935}
+<EQ93b_l> Hp_l   + HSO4m_l = H2SO4_l              : {%TrAlMblScScmS}  1.0*1.E3*cv_l*f_equil_H2SO4;
+{<EQ10nnn_l>------------------------ Hg ------------------------}{@\myhline}
+{<EQ11nnn_l>------------------------ Fe ------------------------}{@\myhline}
+<PH2100_l> H2O2_l + hv = 2 OH_l                    : {%TrAraScJ} 1.0*jx(ip_H2O2) * 2.33;
+{**** END:   aerosol chemistry (phase 1) from aqueous.eqn ****}
+#INLINE F90_GLOBAL
+  ! from xmecca:
+  LOGICAL, PARAMETER :: REQ_HET     = .FALSE.
+  LOGICAL, PARAMETER :: REQ_PHOTRAT = .TRUE.
+  LOGICAL, PARAMETER :: REQ_AEROSOL = .FALSE.
+#ENDINLINE {above lines go to messy_gmxe_aerchem_kpp_global}
+#INLINE F90_GLOBAL
+  ! from xmecca:
+  INTEGER, PARAMETER, PUBLIC :: MAX_MCEXP = 1
+!KPPPP_DIRECTIVE vector variable definition start
+  REAL :: mcexp(MAX_MCEXP) ! dummy Monte-Carlo factor
+!KPPPP_DIRECTIVE vector variable definition end
+#ENDINLINE {above lines go to messy_gmxe_aerchem_kpp_global}

@@ -1,0 +1,253 @@
+!*****************************************************************************
+
+! Time-stamp: <2009-01-12 00:35:07 sander>
+! Author: R. Sander (2008)
+
+! some complex tests of the random number generators
+
+! these tests check if the random number generators are independent of
+! each other
+
+!*****************************************************************************
+
+PROGRAM rnd
+
+  USE messy_main_constants_mem, ONLY: DP
+  USE messy_main_rnd,           ONLY: RND_F90, RND_MTW, RND_LUX, &
+                                      RND_F90_GAUSS, RND_MTW_GAUSS, &
+                                      rnd_init, rnd_number, rnd_finish
+
+  IMPLICIT NONE
+
+  INTEGER          :: i, j, status
+  CHARACTER(LEN=2) :: j_string
+
+  ! first application: "montecarlo"
+  INTEGER, PARAMETER :: SEED_MONTECARLO1 = 87346
+  INTEGER, PARAMETER :: IO_DAT_montecarlo1 = 21, IO_DAT_montecarlo2 = 22
+  INTEGER            :: id_rnd_montecarlo1,      id_rnd_montecarlo2
+  REAL(DP)           :: harvest_montecarlo1(1),  harvest_montecarlo2(749)
+  INTEGER            :: seed_montecarlo2
+
+  ! second application: "attila"
+  INTEGER, PARAMETER :: SEED_ATTILA = 211169
+  INTEGER, PARAMETER :: IO_DAT_attila = 10
+  INTEGER            :: id_rnd_attila
+  REAL(DP)           :: harvest_attila(143)
+
+  ! third application: "other"
+  INTEGER, PARAMETER :: SEED_OTHER = 63096
+  INTEGER, PARAMETER :: IO_DAT_other = 30
+  INTEGER            :: id_rnd_other
+  REAL(DP)           :: harvest_other(25)
+
+  !***************************************************************************
+  WRITE (*,*) ; WRITE (*,*) 'testing nested series for montecarlo:'
+  !***************************************************************************
+
+  ! open random number series for montecarlo1:
+  CALL rnd_init(status, id_rnd_montecarlo1, RND_MTW, SEED_MONTECARLO1)
+  IF (status/=0) STOP
+
+  ! outer loop obtains random numbers as seed for inner loop:
+  DO j = 1, 7
+    ! get one random number for montecarlo:
+    CALL rnd_number(id_rnd_montecarlo1, harvest_montecarlo1(:))
+    seed_montecarlo2 = INT(1E8*harvest_montecarlo1(1))
+    WRITE(j_string,'(I2.2)') j
+    OPEN(unit=IO_DAT_montecarlo2, &
+      file="dat/mtw_montecarlo_"//j_string//".dat", status='unknown')
+    ! open random number series for montecarlo2:
+    CALL rnd_init(status, id_rnd_montecarlo2, RND_MTW, seed_montecarlo2)
+    IF (status/=0) STOP
+    ! get random numbers for montecarlo:
+    CALL rnd_number(id_rnd_montecarlo2, harvest_montecarlo2(:))
+    DO i = 1, SIZE(harvest_montecarlo2)
+      WRITE(IO_DAT_montecarlo2,*) harvest_montecarlo2(i)
+    ENDDO
+    CALL rnd_finish(id_rnd_montecarlo2)
+    CLOSE(IO_DAT_montecarlo2)
+  ENDDO
+  CALL rnd_finish(id_rnd_montecarlo1)
+
+  !***************************************************************************
+  WRITE (*,*) ; WRITE (*,*) 'testing F90 intrinsic:'
+  !***************************************************************************
+
+  ! open random number series for other application:
+  CALL rnd_init(status, id_rnd_other, RND_F90, SEED_other)
+  IF (status/=0) STOP
+  OPEN(unit=IO_DAT_other, file="dat/f90.dat", status='unknown')
+  DO j = 1, 100
+    CALL rnd_number(id_rnd_other, harvest_other(:))
+    DO i = 1, SIZE(harvest_other)
+      WRITE(IO_DAT_other,*) harvest_other(i)
+    ENDDO
+  ENDDO
+  CALL rnd_finish(id_rnd_other)
+  CLOSE(IO_DAT_other)
+
+  ! start with random seed:
+  CALL rnd_init(status, id_rnd_other, RND_F90)
+  IF (status/=0) STOP
+  CALL rnd_finish(id_rnd_other)
+  CALL rnd_init(status, id_rnd_other, RND_F90)
+  IF (status/=0) STOP
+  CALL rnd_finish(id_rnd_other)
+  CALL rnd_init(status, id_rnd_other, RND_F90)
+  IF (status/=0) STOP
+  CALL rnd_finish(id_rnd_other)
+
+  !***************************************************************************
+  WRITE (*,*) ; WRITE (*,*) 'testing attila/lux:'
+  !***************************************************************************
+
+  ! without interruption by other application:
+  CALL rnd_init(status, id_rnd_attila, RND_LUX, SEED_ATTILA)
+  IF (status/=0) STOP
+  OPEN(unit=IO_DAT_attila, file="dat/lux.dat", status='unknown')
+  DO j = 1, 1000
+    CALL rnd_number(id_rnd_attila, harvest_attila(:))
+    WRITE(IO_DAT_attila,*) harvest_attila(1)
+  ENDDO
+  CALL rnd_finish(id_rnd_attila)
+  CLOSE(IO_DAT_attila)
+
+  ! --------------------------------------------------------------------------
+
+  ! with interruption by other application:
+  CALL rnd_init(status, id_rnd_attila, RND_LUX, SEED_ATTILA)
+  IF (status/=0) STOP
+  OPEN(unit=IO_DAT_attila, file="dat/lux2.dat", status='unknown')
+  DO j = 1, 500
+    CALL rnd_number(id_rnd_attila, harvest_attila(:))
+    WRITE(IO_DAT_attila,*) harvest_attila(1)
+  ENDDO
+
+  ! start of interruption by other application
+  CALL rnd_init(status, id_rnd_other, RND_LUX, 34589)
+  IF (status/=0) STOP
+  CALL rnd_number(id_rnd_other, harvest_other(:))
+  CALL rnd_finish(id_rnd_other)
+  ! end of interruption by other application
+
+  DO j = 1, 500
+    CALL rnd_number(id_rnd_attila, harvest_attila(:))
+    WRITE(IO_DAT_attila,*) harvest_attila(1)
+  ENDDO
+  CALL rnd_finish(id_rnd_attila)
+  CLOSE(IO_DAT_attila)
+
+  !***************************************************************************
+  WRITE (*,*) ; WRITE (*,*) 'testing attila/mtw:'
+  !***************************************************************************
+
+  ! without interruption by other application:
+  CALL rnd_init(status, id_rnd_attila, RND_MTW, SEED_ATTILA)
+  IF (status/=0) STOP
+  OPEN(unit=IO_DAT_attila, file="dat/mtw.dat", status='unknown')
+  DO j = 1, 1000
+    CALL rnd_number(id_rnd_attila, harvest_attila(:))
+    WRITE(IO_DAT_attila,*) harvest_attila(1)
+  ENDDO
+  CALL rnd_finish(id_rnd_attila)
+  CLOSE(IO_DAT_attila)
+
+  ! --------------------------------------------------------------------------
+
+  ! repeat this (different output file):
+  CALL rnd_init(status, id_rnd_attila, RND_MTW, SEED_ATTILA)
+  IF (status/=0) STOP
+  OPEN(unit=IO_DAT_attila, file="dat/mtw2.dat", status='unknown')
+  DO j = 1, 1000
+    CALL rnd_number(id_rnd_attila, harvest_attila(:))
+    WRITE(IO_DAT_attila,*) harvest_attila(1)
+  ENDDO
+  CALL rnd_finish(id_rnd_attila)
+  CLOSE(IO_DAT_attila)
+
+  ! --------------------------------------------------------------------------
+
+  ! with interruption by other application:
+  CALL rnd_init(status, id_rnd_attila, RND_MTW, SEED_ATTILA)
+  IF (status/=0) STOP
+  OPEN(unit=IO_DAT_attila, file="dat/mtw3.dat", status='unknown')
+
+  DO j = 1, 500
+    CALL rnd_number(id_rnd_attila, harvest_attila(:))
+    WRITE(IO_DAT_attila,*) harvest_attila(1)
+  ENDDO
+
+  ! start of interruption by other application
+  CALL rnd_init(status, id_rnd_other, RND_MTW, 34589)
+  IF (status/=0) STOP
+  CALL rnd_number(id_rnd_other, harvest_other(:))
+  CALL rnd_finish(id_rnd_other)
+  ! end of interruption by other application
+
+  DO j = 1, 500
+    CALL rnd_number(id_rnd_attila, harvest_attila(:))
+    WRITE(IO_DAT_attila,*) harvest_attila(1)
+  ENDDO
+
+  CALL rnd_finish(id_rnd_attila)
+  CLOSE(IO_DAT_attila)
+
+  !***************************************************************************
+  WRITE (*,*) ; WRITE (*,*) 'testing Gauss normal distribution:'
+  !***************************************************************************
+
+  ! f90:
+  CALL rnd_init(status, id_rnd_other, RND_F90_GAUSS, SEED_other)
+  IF (status/=0) STOP
+  OPEN(unit=IO_DAT_other, file="dat/f90_gauss.dat", status='unknown')
+  DO j = 1, 10000
+    CALL rnd_number(id_rnd_other, harvest_other(:))
+    WRITE(IO_DAT_other,*) harvest_other(1)
+  ENDDO
+  CALL rnd_finish(id_rnd_other)
+  CLOSE(IO_DAT_other)
+
+  ! mtw:
+  CALL rnd_init(status, id_rnd_other, RND_MTW_GAUSS, SEED_other)
+  IF (status/=0) STOP
+  OPEN(unit=IO_DAT_other, file="dat/mtw_gauss.dat", status='unknown')
+  DO j = 1, 10000
+    CALL rnd_number(id_rnd_other, harvest_other(:))
+    WRITE(IO_DAT_other,*) harvest_other(1)
+  ENDDO
+  CALL rnd_finish(id_rnd_other)
+  CLOSE(IO_DAT_other)
+
+  !***************************************************************************
+
+  ! WRITE (*,*) 'produce an error by calling too many number series:'
+  ! CALL rnd_init(status, id_rnd_other, RND_MTW) ; IF (status/=0) STOP
+  ! CALL rnd_init(status, id_rnd_other, RND_MTW) ; IF (status/=0) STOP
+  ! CALL rnd_init(status, id_rnd_other, RND_MTW) ; IF (status/=0) STOP
+  ! CALL rnd_init(status, id_rnd_other, RND_MTW) ; IF (status/=0) STOP
+  ! CALL rnd_init(status, id_rnd_other, RND_MTW) ; IF (status/=0) STOP
+  ! CALL rnd_init(status, id_rnd_other, RND_MTW) ; IF (status/=0) STOP
+  ! CALL rnd_init(status, id_rnd_other, RND_MTW) ; IF (status/=0) STOP
+  ! CALL rnd_init(status, id_rnd_other, RND_MTW) ; IF (status/=0) STOP
+  ! CALL rnd_init(status, id_rnd_other, RND_MTW) ; IF (status/=0) STOP
+  ! CALL rnd_init(status, id_rnd_other, RND_MTW) ; IF (status/=0) STOP
+  ! CALL rnd_init(status, id_rnd_other, RND_MTW) ; IF (status/=0) STOP
+  ! CALL rnd_init(status, id_rnd_other, RND_MTW) ; IF (status/=0) STOP
+  ! CALL rnd_init(status, id_rnd_other, RND_MTW) ; IF (status/=0) STOP
+  ! CALL rnd_init(status, id_rnd_other, RND_MTW) ; IF (status/=0) STOP
+  ! CALL rnd_init(status, id_rnd_other, RND_MTW) ; IF (status/=0) STOP
+  ! CALL rnd_init(status, id_rnd_other, RND_MTW) ; IF (status/=0) STOP
+  ! CALL rnd_init(status, id_rnd_other, RND_MTW) ; IF (status/=0) STOP
+  ! CALL rnd_init(status, id_rnd_other, RND_MTW) ; IF (status/=0) STOP
+  ! CALL rnd_init(status, id_rnd_other, RND_MTW) ; IF (status/=0) STOP
+  ! CALL rnd_init(status, id_rnd_other, RND_MTW) ; IF (status/=0) STOP
+  ! CALL rnd_init(status, id_rnd_other, RND_MTW) ; IF (status/=0) STOP
+  ! CALL rnd_init(status, id_rnd_other, RND_MTW) ; IF (status/=0) STOP
+  ! CALL rnd_init(status, id_rnd_other, RND_MTW) ; IF (status/=0) STOP
+
+  !***************************************************************************
+
+END PROGRAM rnd
+
+!*****************************************************************************

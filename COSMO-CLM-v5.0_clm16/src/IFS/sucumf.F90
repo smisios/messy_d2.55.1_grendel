@@ -1,0 +1,210 @@
+SUBROUTINE SUCUMF(KSMAX,KLEV,PMEAN)
+
+!     THIS ROUTINE DEFINES DISPOSABLE PARAMETERS FOR MASSFLUX SCHEME
+
+!          M.TIEDTKE         E.C.M.W.F.    2/89
+
+!          INTERFACE
+!          ---------
+
+!          THIS ROUTINE IS CALLED FROM *INIPHY*
+
+!          MODIFICATIONS
+!          -------------
+!
+
+USE PARKIND1  ,ONLY : JPIM     ,JPRB
+USE YOMHOOK_IFS   ,ONLY : LHOOK,   DR_HOOK
+
+!USE YOMLUN   , ONLY : NULOUT
+USE YOMDIM   , ONLY : NFLEVG
+USE YOECUMF  , ONLY : ENTRPEN  ,ENTRSCV  ,ENTRMID  ,ENTRORG  ,ENTRDD   ,&
+ & RMFCMAX  ,RMFCMIN  ,RMFDEPS  ,RHCDD   ,RDEPTHS  ,&
+ & RPRCON   ,RTAU     ,RCUCOV   ,RCPECONS ,RTAUMEL ,RHEBC    ,&
+ & LMFPEN   ,LMFSCV   ,LMFMID   ,LMFSMOOTH,LMFWSTAR,LMFTRAC  ,&
+ & LMFDD    ,LMFIT    ,LMFDUDV  ,RMFSOLUV ,RMFSOLTQ ,RMFSOLCT,&
+ & RMFCFL   ,RMFLIC   ,RMFLIA   ,RUVPER   ,&
+ & NJKT1    ,NJKT2    ,NJKT3    ,NJKT4    ,NJKT5 
+USE YOMCST  , ONLY : RG
+!* change to operations
+USE YOEPHY   , ONLY : LEPCLD
+!* change to operations
+!USE YOMSTA  , ONLY : STPRE
+
+!-----------------------------------------------------------------------
+IMPLICIT NONE
+REAL(KIND=JPRB)   , INTENT(IN) :: PMEAN(KLEV)
+INTEGER(KIND=JPIM), INTENT(IN) :: KSMAX, KLEV
+
+!* change to operations
+INTEGER(KIND=JPIM) :: NULOUT=6
+INTEGER(KIND=JPIM) :: JLEV
+REAL(KIND=JPRB) :: ZHOOK_HANDLE
+!-----------------------------------------------------------------------
+IF (LHOOK) CALL DR_HOOK('SUCUMF',0,ZHOOK_HANDLE)
+
+NFLEVG=KLEV
+
+!     1.           SPECIFY PARAMETERS FOR MASSFLUX-SCHEME
+!                  --------------------------------------
+
+!         NOTA:AVERAGE ENTRAINMENT RATES ARE FURTHER SCALED IN
+!              cuentr.F90 BY FUNCTION 4*(qs/qsb)**2
+
+!     ENTRPEN: AVERAGE ENTRAINMENT RATE FOR PENETRATIVE CONVECTION (1/M)
+!     -------
+
+!ENTRPEN=1.2E-4_JPRB
+ENTRPEN=0.8E-4_JPRB
+
+!     ENTRSCV: AVERAGE ENTRAINMENT RATE FOR SHALLOW CONVECTION (1/M)
+!     -------
+
+ENTRSCV=3.0E-4_JPRB
+
+!     ENTRMID: AVERAGE ENTRAINMENT RATE FOR MIDLEVEL CONVECTION (1/M)
+!     -------
+
+!ENTRMID=1.0E-4_JPRB
+ENTRMID=0.8E-4_JPRB
+
+!         NOTA:ORGANIZED ENTRAINMENT RATES ARE MULTIPLIED BY rg in cuascn.F90
+!              AND VERTICALLY SCALED BY FUNCTION  (qs/qsb)**3
+
+!     ENTRORG: ORGANIZED ENTRAINMENT FOR POSITIVELY BUOYANT DEEP CONVECTION 1/(RG M)
+!     -------  
+ENTRORG=2.4E-4_JPRB
+entrorg=0.8e-4_jprb
+
+!     ENTRDD: AVERAGE ENTRAINMENT RATE FOR DOWNDRAFTS
+!     ------
+
+ENTRDD =2.0E-4_JPRB
+
+!     RMFCMAX:   MAXIMUM MASSFLUX VALUE ALLOWED FOR UPDRAFTS ETC
+!     -------
+
+RMFCMAX=1._JPRB
+
+!     RMFCMIN:   MINIMUM MASSFLUX VALUE (FOR SAFETY)
+!     -------
+
+RMFCMIN=1.E-10_JPRB
+
+!     RMFDEPS:   FRACTIONAL MASSFLUX FOR DOWNDRAFTS AT LFS
+!     -------
+
+!RMFDEPS=0.3_JPRB
+RMFDEPS=0.35_JPRB
+
+!     RDEPTHS:   MAXIMUM ALLOWED SHALLOW CLOUD DEPTH (Pa)
+!     -------
+
+RDEPTHS=2.E4_JPRB
+
+!     RPRCON:    COEFFICIENTS FOR DETERMINING CONVERSION FROM CLOUD WATE
+!     ------
+
+RPRCON =1.5E-3_JPRB !!**$$
+!!**$$ RPRCON =1.4E-3_JPRB
+
+!                COEFFICIENTS FOR RAIN EVAPORATION BELOW CLOUD
+!                AND MELTING
+!                ---------------------------------------------
+!     RCPECONS:  KESSLER COEFFICIENT
+!     RCUCOV:    ASSUMED CONVECTIVE CLOUD COVER
+!     RTAUMEL:   MELTING TIME SCALE
+!     RHEBC:     CRITICAL RELATIVE HUMIDITY BELOW CLOUD  FOR EVAPORATION
+
+RCUCOV=0.05_JPRB
+RCPECONS=5.44E-4_JPRB/RG
+RTAUMEL=5._JPRB*3.6E3_JPRB*1.5_JPRB
+RHEBC=0.8_JPRB
+
+!     NEXT VALUE IS RELATIVE SATURATION IN DOWNDRAFRS
+!     BUT IS NO LONGER USED ( FORMULATION IMPLIES SATURATION)
+!     -------------------------------------------------------
+
+RHCDD=1._JPRB
+
+!     SET ADJUSTMENT TIME SCALE FOR CAPE CLOSURE AS A FUNCTION
+!     OF MODEL RESOLUTION
+
+!     Cy32r1 and earlier:
+!     convective adjustment time TAU=RTAU
+!     RTAU IS 20 MINUTES FOR RESOLUTIONS HIGHER THAN TL319
+!     RTAU IS 10 MINUTES FOR RESOLUTIONS HIGHER THAN TL511
+!     RTAU IS 1 HOUR FOR ANY OTHER RESOLUTION
+!     --------------------------------------------------------
+
+RTAU=3600.0_JPRB
+IF (KSMAX > 319) RTAU=1200.0_JPRB
+IF (KSMAX > 511) RTAU=600.0_JPRB
+
+!     after Cy32r1:
+!     CONVECTIVE ADJUSTMENT TIME TAU=Z_cld/W_cld*rtau
+!     WHERE RTAU (unitless) NOW ONLY REPRESENTS THE RESOLUTION DEPENDENT PART
+
+RTAU=1.0_JPRB+264.0_JPRB/REAL(KSMAX)
+RTAU=MIN(3.0_JPRB,RTAU)
+
+!     LOGICAL SWITCHES
+!     ----------------
+
+LMFPEN  =.TRUE.   ! deep convection
+LMFSCV  =.TRUE.   ! shallow convection
+LMFMID  =.TRUE.   ! mid-level convection
+LMFDD   =.TRUE.   ! use downdrafts
+LMFIT   =.FALSE.  ! updraught iteration or not
+LMFDUDV =.TRUE.   ! use convective momentum transport
+!*UPG add to operations
+LMFTRAC =.TRUE.   ! convective chemical tracer transport
+LEPCLD  =.TRUE.   ! produce detrained cloud water/ice
+                  ! to reuse in prognostic cloud scheme
+
+!     RMFCFL:     MASSFLUX MULTIPLE OF CFL STABILITY CRITERIUM
+!     -------
+
+IF( KSMAX>=511 ) THEN
+  RMFCFL=3.0_JPRB
+ELSE
+  RMFCFL=5.0_JPRB
+ENDIF
+RMFLIC=1.0_JPRB   ! use CFL mass flux limit (1) or absolut limit (0)
+RMFLIA=0.0_JPRB   ! value of absolut mass flux limit
+
+
+!     MASSFLUX SOLVERs FOR MOMEMTUM AND TRACERS
+!     0: EXPLICIT 0-1 SEMI-IMPLICIT >=1: IMPLICIT
+!     -------------------------------------------
+
+RMFSOLUV=1.0_JPRB  ! mass flux solver for momentum
+RMFSOLTQ=1.0_JPRB  ! mass flux solver for T and q 
+RMFSOLCT=1.0_JPRB  ! mass flux solver for chemical tracers
+LMFSMOOTH=.FALSE.  ! Smoothing of mass fluxes top/bottom for Tracers
+LMFWSTAR=.FALSE.   ! Grant w* closure for shallow convection
+
+!     UPDRAUGHT VELOCITY PERTURBATION FOR IMPLICIT (M/S)
+!     --------------------------------------------------
+
+RUVPER=0.3_JPRB
+
+NJKT1=2
+NJKT2=2
+NJKT3=NFLEVG-2
+DO JLEV=NFLEVG,2,-1
+! IF(STPRE(JLEV) > 350.E2_JPRB)NJKT1=JLEV
+! IF(STPRE(JLEV) >  60.E2_JPRB)NJKT2=JLEV
+! IF(STPRE(JLEV) > 950.E2_JPRB)NJKT3=JLEV
+! IF(STPRE(JLEV) > 850.E2_JPRB)NJKT4=JLEV
+! IF(STPRE(JLEV) > 500.E2_JPRB)NJKT5=JLEV
+  IF(PMEAN(JLEV)/PMEAN(KLEV)*1013.E2 > 350.E2_JPRB)NJKT1=JLEV
+  IF(PMEAN(JLEV)/PMEAN(KLEV)*1013.E2 >  60.E2_JPRB)NJKT2=JLEV
+  IF(PMEAN(JLEV)/PMEAN(KLEV)*1013.E2 > 950.E2_JPRB)NJKT3=JLEV
+  IF(PMEAN(JLEV)/PMEAN(KLEV)*1013.E2 > 850.E2_JPRB)NJKT4=JLEV
+  IF(PMEAN(JLEV)/PMEAN(KLEV)*1013.E2 > 500.E2_JPRB)NJKT5=JLEV
+ENDDO
+NJKT3=MIN(NFLEVG-2,NJKT3)
+
+IF (LHOOK) CALL DR_HOOK('SUCUMF',1,ZHOOK_HANDLE)
+END SUBROUTINE SUCUMF

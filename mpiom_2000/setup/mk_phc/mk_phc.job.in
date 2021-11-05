@@ -1,0 +1,75 @@
+#! /usr/bin/env bash
+set -e
+. "@abs_builddir@/../setup-common.inc"
+
+assert_vars_are_set DEST GRID ie je ke depths
+
+@MKDIR_P@ mk_phc
+cd mk_phc
+
+$CMD_PREFIX "$CDO" -f ext -p 4b copy "${DEST}/${GRID}_anta" anta.ext4
+
+for code in temp salt ; do
+  for time in an ; do
+    lev1=33
+    if [ "$time" == mon ]; then
+      input="phc.${code}mon.98.p.ext4"
+      test -f "$input" && rm -f "$input"
+      cp "${POOL}/setup/phc/$input" .
+      chmod 644 "$input"
+
+      if [ $code == temp ]; then
+        input1=phc.saltmon.98.p.ext4
+        test -f "$input1" && rm -f "$input1"
+        cp "${POOL}/setup/phc/$input1" .
+        chmod 644 "$input1"
+      fi
+
+      lday=12
+    fi
+
+    if [ $time == an ]; then
+      input="phc.${code}00.98.p.ext4"
+      test -f "$input" && rm -f "$input"
+      cp "${POOL}/setup/phc/$input" .
+      chmod 644 "$input"
+      if [ $code == temp ]; then
+        input1=phc.salt00.98.p.ext4
+        test -f "$input1" && rm -f "$input1"
+        cp "${POOL}/setup/phc/$input1" .
+        chmod 644 "$input1"
+      fi
+      lday=1
+    fi
+
+    output1="PHC_$code.$time.${GRID}_$lev1.ext"
+    output2="PHC_$code.$time.${GRID}_$ke.ext"
+
+    $CMD_PREFIX "@abs_builddir@/forcing_phc" <<EOF
+&gridparams
+idepth_lvls=${lev1}
+me=${ie}
+ne=${je}
+ke=${ke}
+lday=${lday}
+code=${code}
+periodic_bound=${periodic_bound} /
+${depths} /
+$output1
+$output2
+$input
+$input1
+EOF
+
+  done
+done
+
+$CMD_PREFIX "$CDO" -f ext -p 8b copy "PHC_salt.an.${GRID}_${ke}.ext" \
+  "${GRID}L${ke}_INISAL_PHC"
+$CMD_PREFIX "$CDO" -f ext -p 8b selrec,1,1 "${GRID}L${ke}_INISAL_PHC" \
+  "${GRID}L${ke}_SURSAL_PHC"
+$CMD_PREFIX "$CDO" -f ext -p 8b copy "PHC_temp.an.${GRID}_${ke}.ext" \
+  "${GRID}L${ke}_INITEM_PHC"
+
+
+cd ..

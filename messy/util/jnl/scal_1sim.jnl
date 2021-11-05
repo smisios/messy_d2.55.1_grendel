@@ -1,0 +1,31 @@
+\CANCEL MODE VERIFY
+CANCEL REGION/ALL
+CANCEL VARIABLE/ALL
+!CANCEL VIEWPORT
+
+define symbol qtimerfile = $1
+
+set data "($qtimerfile)"
+
+!!$define symbol t1 = "02-Jan-2001 00:00:00"
+!!$define symbol t2 = "06-Jan-2001 00:00:00"
+
+! DELTA-SIMTIME [days]
+let TT = T[gt=WALL_ACC]/1440
+!!$let dTT = (TT[t=($t2)] - TT[t=($t1)])
+
+!!$! CPU-s / day
+!!$let USAGE = \
+!!$    (WALL_ACC[t="06-Jan-2001 00:00:00"]-WALL_ACC[t="02-Jan-2001 00:00:00"]) \
+!!$    / dTT
+
+!  op_pj_20141028+
+define symbol lmax = `dt[l=@ngd]` 
+let dTT = (TT[l=($lmax)] - TT[l=3])
+let USAGE = \
+    (WALL_ACC[l=($lmax)]-WALL_ACC[l=3]) / dTT
+!  op_pj_20141028-
+
+list/nohead USAGE[i=1]
+
+exit/command_file

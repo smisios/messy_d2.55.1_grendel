@@ -1,0 +1,193 @@
+# 1 "../../messy/bmil/messy_main_decomp_bi.f90"
+
+! **************************************************************************
+MODULE messy_main_decomp_bi
+! **************************************************************************
+! Author: Andreas Baumgaertner,  MPI-C, UCL, 2010
+! TO DO:
+! - move DC_xx from main_channel_bi to here
+! - can we make ECHAM gp etc instead of total e5?
+! - move indx0 from main_mpi_bi to here?
+! - several dc variables rather than struct? array not possible...
+! - move structs to core
+
+
+  USE mo_decomposition, ONLY: decomp_e5 => pe_decomposed
+
+  USE messy_main_mpi_bi, ONLY: p_nprocs
+  USE messy_main_blather_bi, ONLY: error_bi
+
+! SMCL
+  USE messy_main_decomp
+
+  IMPLICIT NONE
+
+  PRIVATE
+
+! -------------------------------------------------------------------
+! DECOMPOSITION TYPES
+! -------------------------------------------------------------------
+
+! -------------------------------------------------------------------
+! DC_C1  -- CESM1 GRIDPOINT DECOMPOSITION
+  TYPE decomp_c1
+     INTEGER          :: nlon      ! global number of longitudes = nlon
+     INTEGER          :: nlat      ! global number of latitudes  = nlat
+     INTEGER          :: nglat     ! number of latitudes  on PE
+     INTEGER          :: nglon     ! number of longitudes on PE
+!INTEGER          :: glats     ! start value of latitudes
+!INTEGER          :: glate     ! end value of latitudes
+!INTEGER          :: glons     ! start value of longitudes
+!INTEGER          :: glone     ! end value of longitudes
+     INTEGER ,POINTER :: glat(:)   ! global latitude index N->S   ! dummy
+     INTEGER ,POINTER :: glon(:)   ! offset to global longitude   ! dummy
+!INTEGER          :: nprocb    ! #of PEs for dimension that counts longitudes
+!INTEGER          :: nproca    ! #of PEs for dimension that counts latitudes
+     INTEGER          :: pe        ! PE id
+!INTEGER          :: set_b  = 1   ! PE id in direction of longitudes
+!INTEGER          :: set_a  = 1   ! PE id in direction of latitudes
+!INTEGER ,POINTER :: mapmesh(:,:) ! indirection array mapping from a
+! logical 2-d mesh to the processor index
+! numbers
+! Irregular grid
+     INTEGER          :: ngpblks      ! number of rows
+     INTEGER          :: nproma       ! number of columns
+     INTEGER,POINTER  :: kproma(:)    ! number of columns in this row
+     LOGICAL          :: lreg=.TRUE.  ! flag for regular grid
+  END TYPE decomp_c1
+  PUBLIC :: decomp_c1
+! -------------------------------------------------------------------
+
+! -------------------------------------------------------------------
+! DC_GP  -- 1 GRIDPOINT
+!TYPE decomp_gp
+!END TYPE decomp_gp
+! -------------------------------------------------------------------
+
+! -------------------------------------------------------------------
+! DUMMY FOR FURTHER DECOMPOSITION
+  TYPE decomp_nn
+     INTEGER         :: scales
+     INTEGER         :: merx
+  END TYPE decomp_nn
+  PUBLIC :: decomp_nn
+! -------------------------------------------------------------------
+
+! -------------------------------------------------------------------
+! DUMMY FOR FURTHER DECOMPOSITION
+  TYPE decomp_cosmo
+     INTEGER         :: NOT
+     INTEGER         :: REQUIRED
+  END TYPE decomp_cosmo
+  PUBLIC :: decomp_cosmo
+! -------------------------------------------------------------------
+
+! -------------------------------------------------------------------
+! TYPE FOR ALL DECOMPOSITIONS
+! -------------------------------------------------------------------
+  TYPE decomp
+     LOGICAL                   :: lreg = .TRUE.
+     INTEGER                   :: pe     ! PE id
+
+     TYPE (decomp_e5)          :: e5     ! 1 (gp etc.)
+     TYPE (decomp_e5), POINTER :: e5g(:) ! global
+
+# 96
+
+# 100
+
+     TYPE (decomp_nn) :: nn ! Clever and new
+  END TYPE decomp
+  PUBLIC :: decomp
+
+  TYPE(decomp), PUBLIC, SAVE :: dc
+! -------------------------------------------------------------------
+
+
+! CALLED FROM initialize.f90 in 1, NOT messy_main_control_bi
+  PUBLIC :: main_decomp_setup
+
+!PRIVATE :: decompose_e5
+!PRIVATE :: decompose_cg
+
+CONTAINS
+
+! -------------------------------------------------------------------
+  SUBROUTINE main_decomp_setup
+
+!    USE messy_main_mpi_bi,     ONLY: p_parallel_io, p_io, p_bcast
+# 123
+
+# 126
+
+
+    IMPLICIT NONE
+
+! LOCAL
+    CHARACTER(LEN=*), PARAMETER :: substr = 'main_decomp_setup'
+
+# 145
+
+
+
+    ALLOCATE(dc%e5g(p_nprocs))
+    CALL decompose_e5(dc%e5, dc%e5g)
+
+    NPY = dc%e5%nproca
+    NPX = dc%e5%nprocb
+    dc%pe = dc%e5%pe
+
+# 157
+
+# 168
+
+! TAKE NLAT & NLON FROM ECHAM
+    NLAT = dc%e5%nlat
+    NLON = dc%e5%nlon
+
+# 177
+
+
+# 183
+
+
+  END SUBROUTINE main_decomp_setup
+! -------------------------------------------------------------------
+
+! -------------------------------------------------------------------
+! PRIVATE SUBROUTINES
+! -------------------------------------------------------------------
+
+
+! -------------------------------------------------------------------
+  SUBROUTINE decompose_e5(dcl, dcg)
+
+    USE mo_decomposition, ONLY: decomp_e5 => pe_decomposed      &
+                              , dcg_e5 => global_decomposition  &
+                              , dcl_e5 => local_decomposition
+    IMPLICIT NONE
+
+    TYPE(decomp_e5), INTENT(INOUT)               :: dcl
+    TYPE(decomp_e5), DIMENSION(:), INTENT(INOUT) :: dcg
+
+! echam5/src/init_decomposition.f90, normally called from initialize.f90
+    CALL init_decomposition
+
+! copy local ECHAM decomposition
+    dc%e5 = dcl_e5
+! copy global ECHAM decomposition
+    dcg = dcg_e5
+
+  END SUBROUTINE decompose_e5
+! -------------------------------------------------------------------
+
+
+# 257
+
+
+# 343
+
+
+! **************************************************************************
+END MODULE messy_main_decomp_bi
+! **************************************************************************

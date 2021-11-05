@@ -1,0 +1,174 @@
+! -*- f90 -*-
+
+&CPL
+L_GP       = T  ! EMISSIONS FOR GRIDPOINT TRACERS
+L_LG       = F  ! EMISSIONS FOR LAGRANGIAN TRACERS
+l_lg_tend  = F  ! LAGRANGIAN TRACER TENDENCY AS CHANNEL OBJECT ?
+! ### SYNTAX:
+!     (SPECIFIERS MUST BE UPPERCASE !)
+! ###         GP=    Gridpoint  Emission Method (0,1,2) (SURFACE ONLY)
+!                    0: no emission; only channel object (DEFAULT)
+!                    1: 2D (SURFACE EM.) -> lowest layer
+!                       3D (VOLUME  EM.) -> emission ON
+!                       Nx2D (MULTI LEVEL EM.) -> internally converted to 3D
+!                    SURFACE EMISSIONS ONLY:
+!                    2: lower boundary condition for flux
+!
+! ###         LG=    Lagrangian Emission Method (0,1,2,3,4)
+!                    0: no emission; only channel object (DEFAULT)
+!                    1: 2D (SURFACE EM.)       -> into CELLs in lowest layer
+!                       3D (VOLUME  EM.)       -> emission ON
+!                       Nx2D (MULTI LEVEL EM.) -> internally converted to 3D
+!                    SURFACE EMISSIONS ONLY:
+!                    2: into lowest CELLs within boundary layer
+!                    3: into all CELLs in boundary layer (vertical gradient)
+!                    4: into all CELLs in boundary layer (no vertical gradient)
+!
+!NOTEs:  (1) Surface emission fluxes (2D) must be in  molecules m-2 s-1.
+!        (2) Volume emissions (3D)        must be in  molecules m-3 s-1.
+!        (3) Multi level emissions (Nx2D) must be in  molecules m-2 s-1.
+!        (4) For volume emissions (3D), the corresponding channel object 
+!            must be in the GP_3D_MID representation
+!        (5) The trigger for multi level emissions (Nx2D) is the presence
+!            of the channel object attribute heights
+!
+! EMISSION: 'TRACER[_SUBNAME][,scaling];...', CHANNEL NAME, CHANNEL OBJECT, 
+!           EMISSION METHOD
+!
+! LOWER BOUNDARY CONDITIONS (SEE tnudge.nml)
+!
+! ###########################################
+! DIRECT EMISSIONS
+! ###########################################
+!
+! CH4_fx
+!
+! EMIS_IN(190) = 'CH4_fx', 'import_grid', 'Mfx_an_CH4', 'GP=2', ! anth.
+! EMIS_IN(191) = 'CH4_fx', 'import_grid', 'Mfx_oc_CH4', 'GP=2', ! ocean
+! EMIS_IN(192) = 'CH4_fx', 'import_grid', 'Mfx_te_CH4', 'GP=2', ! termites
+! EMIS_IN(193) = 'CH4_fx', 'import_grid', 'Mfx_wl_CH4', 'GP=2', ! wetlands
+! EMIS_IN(194) = 'CH4_fx', 'import_grid', 'Mfx_wa_CH4', 'GP=2', ! wildanimals
+! EMIS_IN(195) = 'CH4_fx', 'import_grid', 'BB_CH4',     'GP=2', ! bb
+!
+! CH4_fx + Isotopologues
+!
+! EMIS_IN(190) = 'CH4_fx;CH4_12C,0.99086;CH4_13C,0.00914;CH4_D0,0.99940;CH4_D1,0.00060', 'import_grid', 'Mfx_an_CH4', 'GP=2', ! anth.
+! EMIS_IN(191) = 'CH4_fx;CH4_12C,0.99244;CH4_13C,0.00756;CH4_D0,0.99942;CH4_D1,0.00058', 'import_grid', 'Mfx_oc_CH4', 'GP=2', ! ocean
+! EMIS_IN(192) = 'CH4_fx;CH4_12C,0.99244;CH4_13C,0.00756;CH4_D0,0.99942;CH4_D1,0.00058', 'import_grid', 'Mfx_te_CH4', 'GP=2', ! termites
+! EMIS_IN(193) = 'CH4_fx;CH4_12C,0.99244;CH4_13C,0.00756;CH4_D0,0.99942;CH4_D1,0.00058', 'import_grid', 'Mfx_wl_CH4', 'GP=2', ! wetlands
+! EMIS_IN(194) = 'CH4_fx;CH4_12C,0.99244;CH4_13C,0.00756;CH4_D0,0.99942;CH4_D1,0.00058', 'import_grid', 'Mfx_wa_CH4', 'GP=2', ! wildanimals
+! EMIS_IN(195) = 'CH4_fx;CH4_12C,0.99125;CH4_13C,0.00875;CH4_D0,0.99939;CH4_D1,0.00061', 'import_grid', 'BB_CH4',     'GP=2', ! bb
+!
+! CH4_fx + Isotopologues (only C)
+!
+! EMIS_IN(190) = 'CH4_fx;CH4_12C,0.99086;CH4_13C,0.00914', 'import_grid', 'Mfx_an_CH4', 'GP=2', ! anth.
+! EMIS_IN(191) = 'CH4_fx;CH4_12C,0.99244;CH4_13C,0.00756', 'import_grid', 'Mfx_oc_CH4', 'GP=2', ! ocean
+! EMIS_IN(192) = 'CH4_fx;CH4_12C,0.99244;CH4_13C,0.00756', 'import_grid', 'Mfx_te_CH4', 'GP=2', ! termites
+! EMIS_IN(193) = 'CH4_fx;CH4_12C,0.99244;CH4_13C,0.00756', 'import_grid', 'Mfx_wl_CH4', 'GP=2', ! wetlands
+! EMIS_IN(194) = 'CH4_fx;CH4_12C,0.99244;CH4_13C,0.00756', 'import_grid', 'Mfx_wa_CH4', 'GP=2', ! wildanimals
+! EMIS_IN(195) = 'CH4_fx;CH4_12C,0.99125;CH4_13C,0.00875', 'import_grid', 'BB_CH4',     'GP=2', ! bb
+!
+! CH4_fx + Isotopologues (only H)
+!
+! EMIS_IN(190) = 'CH4_fx;CH4_D0,0.99940;CH4_D1,0.00060', 'import_grid', 'Mfx_an_CH4', 'GP=2', ! anth.
+! EMIS_IN(191) = 'CH4_fx;CH4_D0,0.99942;CH4_D1,0.00058', 'import_grid', 'Mfx_oc_CH4', 'GP=2', ! ocean
+! EMIS_IN(192) = 'CH4_fx;CH4_D0,0.99942;CH4_D1,0.00058', 'import_grid', 'Mfx_te_CH4', 'GP=2', ! termites
+! EMIS_IN(193) = 'CH4_fx;CH4_D0,0.99942;CH4_D1,0.00058', 'import_grid', 'Mfx_wl_CH4', 'GP=2', ! wetlands
+! EMIS_IN(194) = 'CH4_fx;CH4_D0,0.99942;CH4_D1,0.00058', 'import_grid', 'Mfx_wa_CH4', 'GP=2', ! wildanimals
+! EMIS_IN(195) = 'CH4_fx;CH4_D0,0.99939;CH4_D1,0.00061', 'import_grid', 'BB_CH4',     'GP=2', ! bb
+!
+! EMISSION CLASSES
+!
+! EMIS_IN(190) = 'CH4_fx;CH4_fx_e01_a01', 'import_grid', 'Mfx_an_CH4', 'GP=2', ! anth.
+! EMIS_IN(191) = 'CH4_fx;CH4_fx_e02_a01', 'import_grid', 'Mfx_oc_CH4', 'GP=2', ! ocean
+! EMIS_IN(192) = 'CH4_fx;CH4_fx_e03_a01', 'import_grid', 'Mfx_te_CH4', 'GP=2', ! termites
+! EMIS_IN(193) = 'CH4_fx;CH4_fx_e04_a01', 'import_grid', 'Mfx_wl_CH4', 'GP=2', ! wetlands
+! EMIS_IN(194) = 'CH4_fx;CH4_fx_e05_a01', 'import_grid', 'Mfx_wa_CH4', 'GP=2', ! wildanimals
+! EMIS_IN(195) = 'CH4_fx;CH4_fx_e06_a01', 'import_grid', 'BB_CH4',     'GP=2', ! bb
+! EMIS_IN(196) = 'CH4_fx;CH4_fx_e07_a01', 'import_grid', 'ANTHNT_CH4', 'GP=2', ! anth.no traf
+! EMIS_IN(197) = 'CH4_fx;CH4_fx_e08_a01', 'import_grid', 'AWB_CH4',    'GP=2', ! awb
+! EMIS_IN(198) = 'CH4_fx;CH4_fx_e09_a01', 'import_grid', 'SHIP_CH4',   'GP=2', ! ship
+! EMIS_IN(199) = 'CH4_fx;CH4_fx_e10_a01', 'import_grid', 'ROAD_CH4',   'GP=2', ! road
+!
+! CH4_fx + Emissions + Isotopologues
+!
+! EMIS_IN(190) = 'CH4_fx;CH4_fx_e01_a01;CH4_12C,0.99086;CH4_13C,0.00914;CH4_D0,0.99940;CH4_D1,0.00060', 'import_grid', 'Mfx_an_CH4', 'GP=2', ! anth.
+! EMIS_IN(191) = 'CH4_fx;CH4_fx_e02_a01;CH4_12C,0.99244;CH4_13C,0.00756;CH4_D0,0.99942;CH4_D1,0.00058', 'import_grid', 'Mfx_oc_CH4', 'GP=2', ! ocean
+! EMIS_IN(192) = 'CH4_fx;CH4_fx_e03_a01;CH4_12C,0.99244;CH4_13C,0.00756;CH4_D0,0.99942;CH4_D1,0.00058', 'import_grid', 'Mfx_te_CH4', 'GP=2', ! termites
+! EMIS_IN(193) = 'CH4_fx;CH4_fx_e04_a01;CH4_12C,0.99244;CH4_13C,0.00756;CH4_D0,0.99942;CH4_D1,0.00058', 'import_grid', 'Mfx_wl_CH4', 'GP=2', ! wetlands
+! EMIS_IN(194) = 'CH4_fx;CH4_fx_e05_a01;CH4_12C,0.99244;CH4_13C,0.00756;CH4_D0,0.99942;CH4_D1,0.00058', 'import_grid', 'Mfx_wa_CH4', 'GP=2', ! wildanimals
+! EMIS_IN(195) = 'CH4_fx;CH4_fx_e06_a01;CH4_12C,0.99125;CH4_13C,0.00875;CH4_D0,0.99939;CH4_D1,0.00061', 'import_grid', 'BB_CH4',     'GP=2', ! bb
+!
+! ! EMISSION CLASSES OF Peter Zimmermann
+! !
+! ! various emissions
+! !
+! EMIS_IN(190) = 'CH4_fx;CH4_fx_e01_a01', 'import_grid', 'ani', 'GP=2', ! anth.
+! EMIS_IN(191) = 'CH4_fx;CH4_fx_e02_a01', 'import_grid', 'bog', 'GP=2', ! anth.
+! EMIS_IN(192) = 'CH4_fx;CH4_fx_e03_a01', 'import_grid', 'coa', 'GP=2', ! anth.
+! EMIS_IN(193) = 'CH4_fx;CH4_fx_e04_a01', 'import_grid', 'gas', 'GP=2', ! anth.
+! EMIS_IN(194) = 'CH4_fx;CH4_fx_e05_a01', 'import_grid', 'lan', 'GP=2', ! anth.
+! EMIS_IN(195) = 'CH4_fx;CH4_fx_e06_a01', 'import_grid', 'oil', 'GP=2', ! anth.
+! EMIS_IN(196) = 'CH4_fx;CH4_fx_e07_a01', 'import_grid', 'ric', 'GP=2', ! anth.
+! EMIS_IN(197) = 'CH4_fx;CH4_fx_e08_a01', 'import_grid', 'soi', 'GP=2', ! anth.
+! EMIS_IN(198) = 'CH4_fx;CH4_fx_e09_a01', 'import_grid', 'swa', 'GP=2', ! anth.
+! EMIS_IN(199) = 'CH4_fx;CH4_fx_e10_a01', 'import_grid', 'ter', 'GP=2', ! anth.
+! !
+! ! biomass burning
+! !
+! ! NH
+! EMIS_IN(200) = 'CH4_fx;CH4_fx_e11_a01', 'import_grid', 'NH_10_0045',     'GP=2', ! bb
+! EMIS_IN(201) = 'CH4_fx;CH4_fx_e12_a01', 'import_grid', 'NH_10_0300',     'GP=2', ! bb
+! EMIS_IN(202) = 'CH4_fx;CH4_fx_e13_a01', 'import_grid', 'NH_10_0750',     'GP=2', ! bb
+! EMIS_IN(203) = 'CH4_fx;CH4_fx_e14_a01', 'import_grid', 'NH_10_1500',     'GP=2', ! bb
+! EMIS_IN(204) = 'CH4_fx;CH4_fx_e15_a01', 'import_grid', 'NH_20_2500',     'GP=2', ! bb
+! EMIS_IN(205) = 'CH4_fx;CH4_fx_e16_a01', 'import_grid', 'NH_40_5500',     'GP=2', ! bb
+! ! SH
+! EMIS_IN(206) = 'CH4_fx;CH4_fx_e17_a01', 'import_grid', 'SH_20_0045',     'GP=2', ! bb
+! EMIS_IN(207) = 'CH4_fx;CH4_fx_e18_a01', 'import_grid', 'SH_20_0300',     'GP=2', ! bb
+! EMIS_IN(208) = 'CH4_fx;CH4_fx_e19_a01', 'import_grid', 'SH_20_0750',     'GP=2', ! bb
+! EMIS_IN(209) = 'CH4_fx;CH4_fx_e20_a01', 'import_grid', 'SH_40_1500',     'GP=2', ! bb
+! ! TR
+! EMIS_IN(210) = 'CH4_fx;CH4_fx_e21_a01', 'import_grid', 'TR_20_0045',     'GP=2', ! bb
+! EMIS_IN(211) = 'CH4_fx;CH4_fx_e22_a01', 'import_grid', 'TR_40_0030',     'GP=2', ! bb
+! EMIS_IN(212) = 'CH4_fx;CH4_fx_e23_a01', 'import_grid', 'TR_40_0750',     'GP=2', ! bb
+! ! BF
+! EMIS_IN(213) = 'CH4_fx;CH4_fx_e24_a01', 'import_grid', 'BF',     'GP=2', ! biofuel
+!
+!
+! EMISSION CLASSES OF Peter Zimmermann WITHOUT emission and age classes
+!
+! various emissions
+!
+EMIS_IN(190) = 'CH4_fx', 'import_grid', 'ani_CH4', 'GP=2', ! anth.
+EMIS_IN(191) = 'CH4_fx', 'import_grid', 'bog_CH4', 'GP=2', ! anth.
+EMIS_IN(192) = 'CH4_fx', 'import_grid', 'coa_CH4', 'GP=2', ! anth.
+EMIS_IN(193) = 'CH4_fx', 'import_grid', 'gas_CH4', 'GP=2', ! anth.
+EMIS_IN(194) = 'CH4_fx', 'import_grid', 'lan_CH4', 'GP=2', ! anth.
+EMIS_IN(195) = 'CH4_fx', 'import_grid', 'oil_CH4', 'GP=2', ! anth.
+EMIS_IN(196) = 'CH4_fx', 'import_grid', 'ric_CH4', 'GP=2', ! anth.
+EMIS_IN(197) = 'CH4_fx', 'import_grid', 'soi_CH4', 'GP=2', ! anth.
+EMIS_IN(198) = 'CH4_fx', 'import_grid', 'swa_CH4', 'GP=2', ! anth.
+EMIS_IN(199) = 'CH4_fx', 'import_grid', 'ter_CH4', 'GP=2', ! anth.
+!
+! biomass burning
+!
+! NH
+EMIS_IN(200) = 'CH4_fx', 'import_grid', 'NH_10_0045_CH4',     'GP=2', ! bb
+EMIS_IN(201) = 'CH4_fx', 'import_grid', 'NH_10_0300_CH4',     'GP=2', ! bb
+EMIS_IN(202) = 'CH4_fx', 'import_grid', 'NH_10_0750_CH4',     'GP=2', ! bb
+EMIS_IN(203) = 'CH4_fx', 'import_grid', 'NH_10_1500_CH4',     'GP=2', ! bb
+EMIS_IN(204) = 'CH4_fx', 'import_grid', 'NH_20_2500_CH4',     'GP=2', ! bb
+EMIS_IN(205) = 'CH4_fx', 'import_grid', 'NH_40_5500_CH4',     'GP=2', ! bb
+! SH
+EMIS_IN(206) = 'CH4_fx', 'import_grid', 'SH_20_0045_CH4',     'GP=2', ! bb
+EMIS_IN(207) = 'CH4_fx', 'import_grid', 'SH_20_0300_CH4',     'GP=2', ! bb
+EMIS_IN(208) = 'CH4_fx', 'import_grid', 'SH_20_0750_CH4',     'GP=2', ! bb
+EMIS_IN(209) = 'CH4_fx', 'import_grid', 'SH_40_1500_CH4',     'GP=2', ! bb
+! TR
+EMIS_IN(210) = 'CH4_fx', 'import_grid', 'TR_20_0045_CH4',     'GP=2', ! bb
+EMIS_IN(211) = 'CH4_fx', 'import_grid', 'TR_40_0300_CH4',     'GP=2', ! bb
+EMIS_IN(212) = 'CH4_fx', 'import_grid', 'TR_40_0750_CH4',     'GP=2', ! bb
+! BF
+EMIS_IN(213) = 'CH4_fx', 'import_grid', 'BF_CH4',     'GP=2', ! biofuel
+/

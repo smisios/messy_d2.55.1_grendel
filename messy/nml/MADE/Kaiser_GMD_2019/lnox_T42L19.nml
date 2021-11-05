@@ -1,0 +1,98 @@
+! -*- f90 -*-
+&CTRL
+!# LNOX can be operated in two different modes:
+!# 1) l_mode_scal = .TRUE. is used to estimate the parameterisation, base model,
+!#                         convection parameterisation and model resolution
+!#                         dpendent scaling factor r_scall_ff
+!#                         Notes:
+!#                         - r_scal_ff should be 1.0 in this mode
+!#                         - "chemistry" is not required in this mode
+!#                         - all paramterisations can be run simultaneously
+!# 2) l_mode_scal = .FALSE. (default) is used for production simulations;
+!#                         the flash frequency and L-NOx production is scaled
+!#                         with r_scal_ff
+!#                         Notes:
+!#                         - usually for simulations with "chemistry"
+!#                         - all paramterisations can be run simultaneously, but
+!#                           only one (to be selected, see below) determines
+!#                           the L-NOx source
+!
+l_mode_scal = .FALSE.
+!
+!# select parameterisation for the calculation of the flash frequency:
+i_ffcalc     = 1,    !# 1: Price & Rind
+                     !# 2: Grewe
+                     !# 3: Allen & Pickering (massflux)
+                     !# 4: Allen & Pickering (convective precipitation)
+                     !# 5: Dahl (COSMO only)
+                     !# 9: diagnostically all parameterisations
+! NOTES:
+!      - results with different flash frequency calculations
+!        (both with rescaling according to Price & Rind, and C-shape
+!        parameterization according to Pickering) for one year
+!        (r_scal_ff = 1.0):
+!        r_noxpf  Res:      Price & Rind          Grewe
+!        15.6     T21/L19      1.239              1.017        Tg N / year
+!        15.6     T42/L19      1.514              0.964        Tg N / year
+!      - the horizontal distribution looks more uniform with
+!        Grewe parameterization
+!
+!# select: 1: CG only, 2: CG + IC (preferable!)
+!
+i_iccg       = 2,    ! 1: CG only, 2: CG + IC
+!
+!# select vertical shape of NOx emission profile
+!# 1: constant
+!# 2: C-shape according to Pickeri (preferable!)
+!
+i_shape      = 2,
+!
+!# Scaling factor for flash-frequency:
+!# Note: The global annual mean (1995-2005) of LIS OTD is 46.6 flashes/s
+!
+!r_scal_ff(1) = 2.136,  ! i_ffcalc=i_scal=1 (P&R), T42L90MA, Tiedtke
+!r_scal_ff(2) = 1.06067 ! i_ffcalc=i_scal=2 (Grewe), T21, Tiedtke
+!r_scal_ff(2) = 0.76684 ! i_ffcalc=i_scal=2 (Grewe), T31L19, Tiedtke
+!r_scal_ff(2) = 0.4984  ! i_ffcalc=i_scal=2 (Grewe), T31L39DLR, Tiedtke
+!r_scal_ff(2) = 0.360,  ! Grewe, ECHAM5 cloud module (Sundqvist), T42L19 (free), Tiedtke
+!r_scal_ff(2) = 0.290,  ! Grewe, ECHAM5 cloud module (Tompkins), T42L19 (free), Tiedtke
+!r_scal_ff(2) = 0.523,  ! Grewe, Lohmann cloud module, T42L19 (nudge), Tiedtke
+r_scal_ff(1) = 6.0      ! P&R, T42L19 MADE3, nudged, Tiedtke+Nordeng
+!
+!# Average NOx production per CG flash [kgN/flash]
+!# Note: P&R: 6.7E26 molec/flash -> ~ 15.6 kgN/flash
+!
+r_noxpf(1)   = 15.6, ! average NOx production per CG flash [kgN/flash]
+                     ! P&R: 6.7E26 molec/flash -> ~ 15.6 kgN/flash
+!r_noxpf(2)   = 10.4, ! results in approx. 3.5 Tg(N)/yr (Grewe, T42L19 (free), ECHAM5 cloud module (Sundqvist))
+!r_noxpf(2)   = 10.2, ! results in approx. 3.5 Tg(N)/yr (Grewe, T42L19 (free), ECHAM5 cloud module (Tompkins))
+!r_noxpf(2)   = 12.0, ! results in approx. 3.5 Tg(N)/yr (Grewe, T42L19 (nudge), Lohmann cloud module (Sundqvist))
+!r_noxpf(1)   = 9.00, ! results in approx. 3.5 Tg(N)/yr (P&R, T42L19 (nudge), Lohmann cloud module (Sundqvist))
+!
+!# NOx production efficiency ratio (IC/CG)
+!
+r_eff(1)     = 0.1,
+/
+
+&CPL
+!#  coupling parameterisation to NO tracer emission
+!
+!i_ff_cpl    = 1       ! 1: Price & Rind
+                      ! 2: Grewe
+                      ! 3: Allen & Pickering (Massflux)
+                      ! 4: Allen & Pickering (convective precipitation)
+                      ! WARNING: is only selectable in case of i_ffcalc = 9
+                      !          otherwise forced to be equal to i_ffcalc
+!
+!# input channel objects
+!
+c_top       = 'convect','cu_top',
+c_bot       = 'convect','cu_bot',
+c_massfu    = 'convect','massfu',
+c_precflx   = 'convect','cv_precflx',
+!
+!# skip Lagrangian calculation? (default: F)
+!
+l_skip_lg = T,
+!
+/

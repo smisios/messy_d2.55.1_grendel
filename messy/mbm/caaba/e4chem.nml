@@ -1,0 +1,36 @@
+! -*- f90 -*-
+!*****************************************************************************
+! control namelist 
+!*****************************************************************************
+
+&CTRL
+NSTCHPH = 1     ! number of ECHAM steps per Chemistry step, 
+                ! not fully implemented yet
+l_fastscav = F  ! not tested, use easy scav in submodel SCAV instead
+l_Brparam = F   ! not tested, Br parameterisation: Ozone depletion by bromine is
+                ! proportional to photolysis of Cl2O2
+/
+
+!*****************************************************************************
+! coupling namelist 
+!*****************************************************************************
+
+&CPL
+! NOTE: If photolysis reactions are considered FASTCHEM requires a submodel that
+!       calculates photolysis rate coeff., e.g., JVAL. 
+! Choose a channel that contains J-values for photolysis reactions:
+photrat_channel_gp  = 'jval_gp'
+
+Tropop_Channel = 'tropop' ! channel containing tropopause index
+Tropop_Index   = 'tp_i'   ! tropopause index channel object
+
+! only if l_fastscav = T :
+lcover  = 'cloud', 'aclc',        ! large scale: cloud cover
+ratep   = 'cloud', 'rain_form',   ! liquid precipitation formation rate
+prec    = 'cloud', 'rainflux_no', ! liquid precipitation
+cvprec  = 'convect', 'cv_precnew',! freshly formed precipitation
+/
+
+
+
+!*****************************************************************************

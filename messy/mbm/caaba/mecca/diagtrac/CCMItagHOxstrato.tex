@@ -1,0 +1,749 @@
+% ---------------------------------------------------------------------------
+% Explanations:
+%
+% HOWTO:
+%  (1) create mecca.eqn with mim1-CCMI2-base-01.rpl,
+%      but with zero diagnostic tracers (edit CCMI2-base-01.bat)
+%  (2) run prodloss on mecca.eqn
+%      -> from diag.log -> check hand-coded CCMI2-base-01-raw.tex
+%         according to log-file of prodloss
+%  (3) append CCMI2-base-01-raw.tex to this file
+%      (CCMI2-base-01.tex = output from prodloss)
+%  (4) re-create mecca.eqn with mim1-CCMI2-base-01.rpl AND
+%      diagtracfile = CCMI2-base-01 # (.tex; this file)
+%
+% - The submodel O3ORIG needs effective ozone production and loss terms.
+%   These are LossO3 and ProdO3, as produced by prodloss with mecca.eqn
+%   (the latter with (!) replacements).
+%
+% - For diagnostical purpose individual production and loss terms are defined:
+%       Troposphere: ProdHO2    Ozone production via NO+HO2
+%                    ProdMeO2   Ozone production via NO+CH3O2
+%                    ProdRO2    Ozone production via NO+RO2
+%                    LossOH     Ozone loss via O3+OH
+%                    LossHO2    Ozone loss via O3+HO2
+%                    LossO1D    Ozone loss via H2O+O1D
+%                               (see Ozone definition below)
+%                               = OH Production!
+%
+%       Stratosphere: LossO3x  x=O, N, H, Cl, Br loss processes
+%                     via Ox, NOx, HOx, ClOx, and BrOx ozone desctruction.
+%
+% - ProdRO2 has been adapted to fit the ozone definition below.
+%
+% - Production terms for BrOx from emitted species according to their
+%   lifetime (VSLS=s and others =l) dignosed.
+%
+% - rpl file mim1-CCMI-base-01.rpl considered
+% ----------------------------------------------------------------------------
+%
+ % Automatically generated Prod and loss terms for the family defined below
+ % Used program: prodloss.f90 (V. Grewe)
+ % Input: equationfile mecca.eqn
+ % Family: O3 =
+ %                     1.0      x O3
+ %                +    1.0      x O3P
+ %                +    1.0      x O1D
+ %                +    1.0      x ClO
+ %                +    1.0      x HOCl
+ %                +    2.0      x Cl2O2
+ %                +    1.0      x OClO
+ %                +    1.0      x NO2
+ %                +    1.0      x HNO3
+ %                +    2.0      x NO3
+ %                +    3.0      x N2O5
+ %                +    1.0      x HNO4
+ %                +    1.0      x PAN
+ %                +    1.0      x NACA
+ %                +    1.0      x MPAN
+ %                +    1.0      x IC3H7NO3
+ %                +    1.0      x LC4H9NO3
+ %                +    1.0      x ISON
+ %                +    2.0      x ClNO3
+ %                +    1.0      x BrO
+ %                +    1.0      x HOBr
+ %                +    2.0      x BrNO3
+ %                +    1.0      x SO2
+ %                +    1.0      x CH3SO2
+ %                +    1.0      x DMSO
+ %                +    2.0      x SO3
+ %                +    2.0      x H2SO4
+ %                +    2.0      x CH3SO3
+ %                +    2.0      x CH3SO3H
+ <G1002a>        &    2.0      LossO3 & O3 + O1D = 2 O2 :
+ <G1003>         &    2.0      LossO3 & O3 + O3P = 2 O2 :
+%<G1004>         &    1.0      ProdO3 & O2 + Op = O2p + O3P :
+%<G1101>         &    2.0      ProdO3 & O2p + em = 2 O3P :
+ <G2101>         &    1.0      LossO3 & H + O3 = OH + O2 :
+ <G2102>         &    1.0      LossO3 & H2 + O1D = H + OH :
+ <G2103>         &    1.0      LossO3 & OH + O3P = H + O2 :
+ <G2104>         &    1.0      LossO3 & OH + O3 = HO2 + O2 :
+ <G2106>         &    1.0      LossO3 & HO2 + O3P = OH + O2 :
+ <G2107>         &    1.0      LossO3 & HO2 + O3 = OH + 2 O2 :
+ <G2108c>        &    1.0      ProdO3 & HO2 + H = O3P + H2O :
+ <G2111>         &    1.0      LossO3 & H2O + O1D = 2 OH :
+%<G2113>         &    1.0      LossO3 & H2 + O3P = H + OH :
+%<G2114a>        &    1.0      ProdO3 & OH + OH = H2O + O3P :
+%<G2116>         &    1.0      LossO3 & H2O2 + O3P = OH + HO2 :
+%<G3001>         &    1.0      ProdO3 & NOp + em = 0.15 N + 0.85 N2D + O3P :
+ <G3100>         &    1.0      ProdO3 & N + O2 = NO + O3P :
+ <G3102a>        &    1.0      LossO3 & N2O + O1D = 2 NO :
+ <G3102b>        &    1.0      LossO3 & N2O + O1D = N2 + O2 :
+ <G3104>         &    1.0      ProdO3 & NO + N = O3P + N2 :
+ <G3105>         &    2.0      LossO3 & NO2 + O3P = NO + O2 :
+%<G3111>         &    1.0      ProdO3 & N2D + NO = N2 + O3P :
+%<G3112>         &    1.0      ProdO3 & N2D + O2 = NO + O3P :
+%<G3114>         &    1.0      LossO3 & N2D + O3 = NO + O2 :
+%<G3119>         &    1.0      LossO3 & N2p + O3P = NOp + N2D :
+%<G3120a>        &    1.0      ProdO3 & Np + O2 = NOp + O3P :
+%<G3121>         &    1.0      LossO3 & Np + O3P = Op + N :
+%<G3122>         &    1.0      ProdO3 & O2p + N = NOp + O3P :
+ <G3201>         &    1.0      ProdO3 & NO + HO2 = NO2 + OH :
+ <G3204>         &    1.0      LossO3 & NO3 + HO2 = NO2 + OH + O2 :
+ <G3205>         &    1.0      ProdO3 & HONO + OH = NO2 + H2O :
+ <G3206>         &    1.0      ProdO3 & HNO3 + OH = H2O + NO3 :
+ <G3210>         &    1.0      LossO3 & NH2 + O3 = NH2O + O2 :
+ <G3215>         &    1.0      LossO3 & NH2 + NO2 = N2O + H2O :
+ <G3216>         &    1.0      LossO3 & NH2 + NO2 = NH2O + NO :
+ <G3217>         &    1.0      LossO3 & NH2O + O3 = NH2 + O2 :
+ <G3221>         &    1.0      LossO3 & HNO + NO2 = HONO + NO :
+%<G3226>         &    1.0      LossO3 & NO2 + H = NO + OH :
+ <G4100>         &    1.0      LossO3 & CH4 + O1D = .75 CH3O2 + .75 OH + .25 HCHO + .4 H + .05 H2 :
+ <G4104>         &    1.0      ProdO3 & CH3O2 + NO = HCHO + NO2 + HO2 :
+ <G4105>         &    1.0      LossO3 & CH3O2 + NO3 = HCHO + HO2 + NO2 :
+ <G4109>         &    1.0      LossO3 & HCHO + NO3 = HNO3 + CO + HO2 :
+%<G4112>         &    1.0      LossO3 & CO + O3P = CO2 :
+%<G4113>         &    1.0      LossO3 & CH4 + O3P = CO + 2 OH + H2O :
+ <G4201>         &    1.0      LossO3 & C2H4 + O3 = HCHO + .63 CO + .13 HO2 + 0.23125 HCOOH + 0.13875 HCHO + 0.13875 H2O2 + .13 OH :
+ <G4204>         &    1.0      ProdO3 & C2H5O2 + NO = CH3CHO + HO2 + NO2 :
+ <G4205>         &    1.0      LossO3 & C2H5O2 + NO3 = CH3CHO + HO2 + NO2 :
+ <G4209>         &    1.0      LossO3 & CH3CHO + NO3 = CH3CO3 + HNO3 :
+ <G4211b>        &    1.0      ProdO3 & CH3CO3 + HO2 = CH3CO2H + O3 :
+ <G4212>         &    1.0      ProdO3 & CH3CO3 + NO = CH3O2 + CO2 + NO2 :
+ <G4214>         &    1.0      LossO3 & CH3CO3 + NO3 = CH3O2 + NO2 + CO2 :
+ <G4301>         &    1.0      LossO3 & C3H6 + O3 = .57 HCHO + .47 CH3CHO + .33 OH + .26 HO2 + .07 CH3O2 + .06 C2H5O2 + .23 CH3CO3 + .04 MGLYOX + .06 CH4 + .31 CO + .22 HCOOH + .03 CH3OH :
+ <G4303>         &    1.0      LossO3 & C3H6 + NO3 = LC4H9NO3 :
+ <G4305>         &    1.0      ProdO3 & IC3H7O2 + NO = .96 CH3COCH3 + .96 HO2 + .96 NO2 + .04 IC3H7NO3 :
+ <G4309>         &    1.0      ProdO3 & LHOC3H6O2 + NO = .98 CH3CHO + .98 HCHO + .98 HO2 + .98 NO2 + .02 LC4H9NO3 :
+ <G4313>         &    1.0      ProdO3 & CH3COCH2O2 + NO = CH3CO3 + HCHO + NO2 :
+ <G4403>         &    1.0      ProdO3 & LC4H9O2 + NO = .84 NO2 + .56 MEK + .56 HO2 + .28 C2H5O2 + .28 CH3CHO + .16 LC4H9NO3 :
+ <G4405>         &    1.0      LossO3 & MVK + O3 = .45 HCOOH + .9 MGLYOX + .1 CH3CO3 + .19 OH + .22 CO + .32 HO2 :
+ <G4408>         &    1.0      ProdO3 & MVKO2 + NO = NO2 + .25 CH3CO3 + .25 ACETOL + .75 HCHO + .25 CO + .75 HO2 + .5 MGLYOX :
+ <G4415>         &    1.0      ProdO3 & LMEKO2 + NO = .985 CH3CHO + .985 CH3CO3 + .985 NO2 + .015 LC4H9NO3 :
+ <G4500>         &    1.0      LossO3 & C5H8 + O3 = .28 HCOOH + .65 MVK + .1 MVKO2 + .1 CH3CO3 + .14 CO + .58 HCHO + .09 H2O2 + .08 CH3O2 + .25 OH + .25 HO2 :
+ <G4502>         &    1.0      LossO3 & C5H8 + NO3 = ISON :
+ <G4504>         &    1.0      ProdO3 & ISO2 + NO = .956 NO2 + .956 MVK + .956 HCHO + .956 HO2 + .044 ISON :
+ <G6101>         &    2.0      LossO3 & ClO + O3P = Cl + O2 :
+ <G6102a>        &    2.0      LossO3 & ClO + ClO = Cl2 + O2 :
+ <G6102b>        &    2.0      LossO3 & ClO + ClO = 2 Cl + O2 :
+ <G6102c>        &    1.0      LossO3 & ClO + ClO = Cl + OClO :
+ <G6201b>        &    1.0      ProdO3 & Cl + HO2 = ClO + OH :
+ <G6203>         &    1.0      LossO3 & ClO + OH = .94 Cl + .94 HO2 + .06 HCl + .06 O2 :
+ <G6403>         &    1.0      LossO3 & ClO + CH3O2 = HO2 + Cl + HCHO :
+ <G6405>         &    1.0      LossO3 & CH3Cl + O1D = OH + Cl :
+ <G6407>         &    1.0      LossO3 & CH3CCl3 + O1D = 2 LCARBON + OH + 3 Cl :
+ <G7101>         &    2.0      LossO3 & BrO + O3P = Br + O2 :
+ <G7102a>        &    2.0      LossO3 & BrO + BrO = 2 Br + O2 :
+ <G7102b>        &    2.0      LossO3 & BrO + BrO = Br2 + O2 :
+ <G7203>         &    1.0      LossO3 & HOBr + O3P = OH + BrO :
+ <G7204>         &    1.0      ProdO3 & Br2 + OH = HOBr + Br :
+ <G7402b>        &    1.0      LossO3 & BrO + CH3O2 = Br + HCHO + HO2 :
+ <G7603a>        &    1.0      LossO3 & BrO + ClO = Br + OClO :
+ <G7603b>        &    2.0      LossO3 & BrO + ClO = Br + Cl + O2 :
+ <G7603c>        &    2.0      LossO3 & BrO + ClO = BrCl + O2 :
+%<G8100>         &    1.0      LossO3 & I + O3 = IO + O2 :
+%<G8300>         &    1.0      LossO3 & I + NO2 = INO2 :
+%<G8301>         &    1.0      LossO3 & I + NO3 = IO + NO2 :
+%<G8302>         &    1.0      ProdO3 & IO + NO = I + NO2 :
+%<G8303>         &    1.0      LossO3 & IO + NO2 = INO3 :
+%<G8304>         &    1.0      ProdO3 & OIO + NO = NO2 + IO :
+%<G8305>         &    1.0      ProdO3 & INO2 = I + NO2 :
+%<G8306>         &    1.0      ProdO3 & INO3 = IO + NO2 :
+%<G8307>         &    2.0      LossO3 & I2 + NO3 = I + INO3 :
+%<G8308>         &    1.0      LossO3 & IO + NO3 = OIO + NO2 :
+%<G8402>         &    1.0      LossO3 & CH3I + NO3 = HNO3 + HCHO + IO :
+%<G8600>         &    0.45     LossO3 & IO + ClO = .2 ICl + .25 Cl + .55 OClO + .8 I + .45 O2 :
+%<G8700>         &    1.0      LossO3 & I + BrO = IO + Br :
+%<G8701>         &    1.0      LossO3 & IO + BrO = Br + .8 OIO + .2 I + .2 O2 :
+%<G9200>         &    1.0      LossO3 & SO2 + OH = H2SO4 + HO2 :
+ <G9200a>        &    1.0      ProdO3 & SO2 + OH = SO3 + HO2 :
+ <G9400a>        &    1.0      ProdO3 & DMS + OH = CH3SO2 + HCHO :
+ <G9400b>        &    1.0      ProdO3 & DMS + OH = DMSO + HO2 :
+%<G9401>         &    1.0      LossO3 & DMS + NO3 = CH3SO2 + HNO3 + HCHO :
+ <G9402>         &    0.40     ProdO3 & DMSO + OH = .6 SO2 + HCHO + .6 CH3O2 + .4 HO2 + .4 CH3SO3H :
+%<G9403>         &    1.0      ProdO3 & CH3SO2 = SO2 + CH3O2 :
+%<G9404>         &    1.0      LossO3 & CH3SO2 + O3 = CH3SO3 :
+ <G9600>         &    1.0      ProdO3 & DMS + Cl = CH3SO2 + HCl + HCHO :
+ <G9700>         &    1.0      ProdO3 & DMS + Br = CH3SO2 + HBr + HCHO :
+%<G9701>         &    1.0      LossO3 & DMS + BrO = DMSO + Br :
+%<G10100>        &    1.0      LossO3 & Hg + O3 = HgO + O2 :
+%<G10703>        &    1.0      LossO3 & Hg + BrO = HgO + Br :
+%<G10704>        &    1.0      LossO3 & HgBr + BrO = BrHgOBr :
+%<G10705>        &    1.0      LossO3 & HgCl + BrO = ClHgOBr :
+%<J0001>         &    1.0      LossO3 & O3P = Op + 2 em :
+%<J0002b>        &    1.0      ProdO3 & O2 = Op + O3P + em :
+ <J1000a>        &    2.0      ProdO3 & O2 + hv = O3P + O3P :
+%<J1000b>        &    2.0      ProdO3 & O2 + hv = O3P + O1D :
+%<J1000d>        &    1.0      ProdO3 & O2 + hv = Op + O3P :
+%<J1002>         &    1.0      LossO3 & O3P + hv = Op :
+%<J2100b>        &    1.0      ProdO3 & H2O + hv = H2 + O1D :
+ <J3100>         &    1.0      ProdO3 & N2O + hv = O1D + N2 :
+ <J3102a>        &    1.0      ProdO3 & NO + hv = N + O3P :
+ <J3103b>        &    2.0      LossO3 & NO3 + hv = NO + O2 :
+ <J3202>         &    0.333    ProdO3 & HNO4 + hv = .667 NO2 + .667 HO2 + .333 NO3 + .333 OH :
+ <J4102>         &    1.0      ProdO3 & CO2 + hv = CO + O3P :
+ <J6100>         &    2.0      LossO3 & Cl2O2 + hv = 2 Cl :
+ <J6101>         &    1.0      ProdO3 & OClO + hv = ClO + O3P :
+ <J6201>         &    1.0      LossO3 & HOCl + hv = OH + Cl :
+ <J6300>         &    1.0      ProdO3 & ClNO2 + hv = Cl + NO2 :
+ <J7200>         &    1.0      LossO3 & HOBr + hv = Br + OH :
+ <J7300>         &    1.0      ProdO3 & BrNO2 + hv = Br + NO2 :
+% <J7301>         &    5.9604645E-8  ProdO3 & BrNO3 + hv = .85 Br + .85 NO3 + .15 BrO + .15 NO2 : % op_pj_20170202 zero!
+%<J8100>         &    1.0      ProdO3 & IO + hv = I + O3P :
+%<J8300>         &    1.0      ProdO3 & INO2 + hv = I + NO2 :
+%<J8301>         &    2.0      ProdO3 & INO3 + hv = I + NO3 :
+ <HET200>        &    1.0      LossO3 & N2O5 + H2O = 2 HNO3 :
+ <HET201>        &    3.0      LossO3 & N2O5 = 2 NO3m_cs + 2 Hp_cs :
+ <HET410>        &    1.0      LossO3 & HOCl + HCl = Cl2 + H2O :
+ <HET420>        &    1.0      LossO3 & ClNO3 + HCl = Cl2 + HNO3 :
+ <HET422>        &    2.0      LossO3 & N2O5 + HCl = ClNO2 + HNO3 :
+ <HET510>        &    1.0      LossO3 & HOBr + HBr = Br2 + H2O :
+ <HET540>        &    1.0      LossO3 & ClNO3 + HBr = BrCl + HNO3 :
+ <HET541>        &    1.0      LossO3 & BrNO3 + HCl = BrCl + HNO3 :
+ <HET542>        &    1.0      LossO3 & HOCl + HBr = BrCl + H2O :
+ <HET543>        &    1.0      LossO3 & HOBr + HCl = BrCl + H2O :
+ <G6500dc01>     &    0.17     LossO3 & CHF2Cl + O1D = 0.55 ClO + 0.05 OH + 0.28 O3P + 0.28 CHF2Cl +0.72 LCARBON + 0.17 Cl:
+ <G5300dc01>     &    0.35     LossO3 & CH2FCF3 + O1D = 0.65 O3P + 0.65 CH2FCF3 + 0.24 OH + 0.70 LCARBON:
+ <G5300dc04>     &    0.23     LossO3 & CHF3 + O1D = 0.77 O3P + 0.77 CHF3 + 0.23 LCARBON :
+ <G6500dc05>     &    0.69     LossO3 & CH3CFCl2 + O1D = 0.31 O3P + 0.31 CH3CFCl2 + 0.69 LCARBON + 0.69 Cl:
+ <G6500dc08>     &    0.75     LossO3 & CF2ClCF2Cl + O1D = 0.25 O3P + 0.25 CF2ClCF2Cl + 0.75 LCARBON :
+ <G5300dc06>     &    0.76     LossO3 & CHF2CF3 + O1D = 0.24 O3P + 0.24 CHF2CF3 + 0.6 OH + 1.52 LCARBON :
+ <G5300dc08>     &    0.82     LossO3 & CH3CF3 + O1D = 0.18 O3P + 0.18 CH3CF3 + 0.38 OH + 0.8 LCARBON :
+ <G6500dc11>     &    0.30     LossO3 & CF3CF2Cl + O1D = 0.7 O3P + 0.7 CF3CF2Cl + 0.6 LCARBON :
+ <G5300dc10>     &    0.30     LossO3 & CH2F2 + O1D = 0.7 O3P + 0.7 CH2F2 + 0.3 LCARBON:
+ <G5300dc12>     &    0.66     LossO3 & CH3CHF2 + O1D = 0.34 O1D + 0.34 CH3CHF2 + 0.15 OH + LCARBON :
+ <G9100>         &    2.0      ProdO3 & SO + O2 = SO2 + O3P :
+ <G9102>         &    1.0      ProdO3 & S + O2 = SO + O3P :
+ <G9407>         &    1.0      LossO3 & OCS + O3P = CO + SO :
+% ----------------------------------------------------------------------------
+% %%% attached hand-coded definitions (see HOWTO above)
+% ----------------------------------------------------------------------------
+%
+% %%% -----------------------------------------------------------------------
+% %%% tropospheric O3 budget diagnostic from Joeckel et al., (2006)
+% %%% -----------------------------------------------------------------------
+% - loss terms; educt is one of O1D or O3; Tr label is set
+ <G2104> & LossOH  & OH   + O3 = HO2
+ <G2107> & LossHO2 & HO2  + O3 = OH
+ <G2111> & LossO1D & H2O  + O1D = 2 OH
+%<G3210> &         & NH2  + O3 = NH2O + O2
+%<G3217> &         & NH2O + O3 = NH2 + O2
+%<G4201> &         & C2H4 + O3 = HCHO + .63 CO + .13 HO2 + 0.23125 HCOOH + 0.13875 HCHO + 0.13875 H2O2 + .13 OH
+%<G4301> &         & C3H6 + O3 = .57 HCHO + .47 CH3CHO + .33 OH + .26 HO2 + .07 CH3O2 + .06 C2H5O2 + .23 CH3CO3 + .04 MGLYOX + .06 CH4 + .31 CO + .22 HCOOH + .03 CH3OH
+%<G4405> &         & MVK  + O3 = .45 HCOOH + .9 MGLYOX + .1 CH3CO3 + .19 OH + .22 CO + .32 HO2
+%<G4500> &         & C5H8 + O3 = .28 HCOOH + .65 MVK + .1 MVKO2  + .1 CH3CO3 + .14 CO + .58 HCHO + .09 H2O2 + .08 CH3O2 + .25 OH + .25 HO2
+%
+% - production terms; Tr label is set
+ <G3201>  & ProdHO2  & NO         + HO2 = NO2 + OH
+%<G3205>  &          & HONO       + OH  = NO2 + H2O
+%<G3206>  &          & HNO3       + OH  = H2O + NO3
+ <G4104>  & ProdMeO2 & CH3O2      + NO  = HCHO + NO2 + HO2
+ <G4204>  & ProdRO2  & C2H5O2     + NO  = CH3CHO + HO2 + NO2
+%<G4211b> &          & CH3CO3     + HO2 = CH3CO2H + O3
+ <G4212>  & ProdRO2  & CH3CO3     + NO {+O2} = CH3O2 + NO2
+ <G4305>  & ProdRO2  & IC3H7O2    + NO  = .96 CH3COCH3 + .96 HO2 + .96 NO2 + .04 IC3H7NO3 + .02 LC4H9NO3
+ <G4309>  & ProdRO2  & LHOC3H6O2  + NO  = .98 CH3CHO + .98 HCHO + .98 HO2 + .98 NO2 + .02 LC4H9NO3
+ <G4313>  & ProdRO2  & CH3COCH2O2 + NO  = CH3CO3 + HCHO + NO2
+ <G4403>  & ProdRO2  & LC4H9O2    + NO  = .84 NO2 + .56 MEK + .56 HO2 + .28 C2H5O2 + .84 CH3CHO + .16 LC4H9NO3
+ <G4408>  & ProdRO2  & MVKO2      + NO  = NO2 + .25 CH3CO3 + .25 ACETOL + .75 HCHO + .25 CO + .75 HO2 + .5 MGLYOX
+ <G4415>  & ProdRO2  & LMEKO2     + NO  = .985 CH3CHO + .985 CH3CO3 + .985 NO2 + .015 LC4H9NO3
+ <G4504>  & ProdRO2  & ISO2       + NO  = .956 NO2 + .956 MVK + .956 HCHO + .956 HO2 + .044 ISON
+%<G7204>  &          & Br2        + OH = HOBr + Br
+%<G9200a> &          & SO2        + OH = SO3 + HO2
+%<G9400a> &          & DMS        + OH = CH3SO2 + HCHO
+%<G9400b> &          & DMS        + OH = DMSO + HO2
+%<G9402>  &          & DMSO       + OH = .6 SO2 +  HCHO + .6 CH3O2 + .4 HO2 + .4 CH3SO3H
+%<G9600>  &          & DMS        + Cl = CH3SO2 + HCl + HCHO
+%<G9700>  &          & DMS        + Br = CH3SO2 + HBr + HCHO
+%<J1000a> &          & O2         + hv = O3P + O3P
+%<J3202>  &          & HNO4       + hv = .667 NO2 + .667 HO2 + .333 NO3 + .333 OH
+%<J6101>  &          & OClO       + hv = ClO + O3P
+%<J6300>  &          & ClNO2      + hv = Cl + NO2
+%<J7300>  &          & BrNO2      + hv = Br + NO2
+%<G9100>  &          & SO         + O2 = SO2 + O3P
+%<G9102>  &          & S          + O2 = SO  + O3P
+%
+% in case of further replacements (see above)
+ <G4305a> & ProdRO2       & IC3H7O2   + NO = CH3COCH3 + HO2 + NO2
+ <G4305b> & ProdRO2       & IC3H7O2   + NO = IC3H7NO3
+ <G4309a> & ProdRO2       & LHOC3H6O2 + NO = CH3CHO + HCHO + HO2 + NO2
+ <G4309b> & 0.75 ProdRO2  & LHOC3H6O2 + NO = .75 LC4H9NO3
+ <G4403a> & ProdRO2       & LC4H9O2   + NO = NO2 + .667 MEK + .667 HO2 + .333 C2H5O2 + .333 CH3CHO
+ <G4403b> & ProdRO2       & LC4H9O2   + NO = LC4H9NO3
+ <G4504b> & ProdRO2       & ISO2      + NO = NO2 + MVK + HCHO + HO2
+ <G4504c> & ProdRO2       & ISO2      + NO = ISON
+%
+% %%% -----------------------------------------------------------------------
+% %%% -----------------------------------------------------------------------
+% %%% Ozone prod and loss grouped in families
+% %%% -----------------------------------------------------------------------
+%
+% Loss reactions
+ % O-Group: GHGs + O: O3, H2O, N2O, CH4, CFCs
+ <G1002a>        &   2.0      LossO3O & O3 + O1D = 2 O2 :
+ <G1003>         &   2.0      LossO3O & O3 + O3P = 2 O2 :
+ <G2111>         &   1.0      LossO3O & H2O + O1D = 2 OH :
+ <G3102a>        &   1.0      LossO3O & N2O + O1D = 2 NO :
+ <G3102b>        &   1.0      LossO3O & N2O + O1D = N2 + O2 :
+ <G4100>         &   1.0      LossO3O & CH4 + O1D = .75 CH3O2 + .75 OH + .25 HCHO + .4 H + .05 H2 :
+ <G6500dc01>     &   0.17     LossO3O & CHF2Cl + O1D = 0.55 ClO + 0.05 OH + 0.28 O3P + 0.28 CHF2Cl +0.72 LCARBON + 0.17 Cl:
+ <G5300dc01>     &   0.35     LossO3O & CH2FCF3 + O1D = 0.65 O3P + 0.65 CH2FCF3 + 0.24 OH + 0.70 LCARBON:
+ <G5300dc04>     &   0.23     LossO3O & CHF3 + O1D = 0.77 O3P + 0.77 CHF3 + 0.23 LCARBON :
+ <G6500dc05>     &   0.69     LossO3O & CH3CFCl2 + O1D = 0.31 O3P + 0.31 CH3CFCl2 + 0.69 LCARBON + 0.69 Cl:
+ <G6500dc08>     &   0.75     LossO3O & CF2ClCF2Cl + O1D = 0.25 O3P + 0.25 CF2ClCF2Cl + 0.75 LCARBON :
+ <G5300dc06>     &   0.76     LossO3O & CHF2CF3 + O1D = 0.24 O3P + 0.24 CHF2CF3 + 0.6 OH + 1.52 LCARBON :
+ <G5300dc08>     &   0.82     LossO3O & CH3CF3 + O1D = 0.18 O3P + 0.18 CH3CF3 + 0.38 OH + 0.8 LCARBON :
+ <G6500dc11>     &   0.30     LossO3O & CF3CF2Cl + O1D = 0.7 O3P + 0.7 CF3CF2Cl + 0.6 LCARBON :
+ <G5300dc10>     &   0.30     LossO3O & CH2F2 + O1D = 0.7 O3P + 0.7 CH2F2 + 0.3 LCARBON:
+ <G5300dc12>     &   0.66     LossO3O & CH3CHF2 + O1D = 0.34 O1D + 0.34 CH3CHF2 + 0.15 OH + LCARBON :
+ %
+ % HOx-Group (incl H-H2) ---------------------------------------
+ <G2101>         &   1.0      LossO3H & H + O3 = OH + O2 :
+ <G2102>         &   1.0      LossO3H & H2 + O1D = H + OH :
+ <G2103>         &   1.0      LossO3H & OH + O3P = H + O2 :
+ <G2104>         &   1.0      LossO3H & OH + O3 = HO2 + O2 :
+ <G2106>         &   1.0      LossO3H & HO2 + O3P = OH + O2 :
+ <G2107>         &   1.0      LossO3H & HO2 + O3 = OH + 2 O2 :
+ %
+ % NOx-Group ----------------------------------------------------
+ <G3105>         &    2.0      LossO3N & NO2 + O3P = NO + O2 :
+ <G3204>         &    1.0      LossO3N & NO3 + HO2 = NO2 + OH + O2 :
+ <G3210>         &    1.0      LossO3N & NH2 + O3 = NH2O + O2 :
+ <G3215>         &    1.0      LossO3N & NH2 + NO2 = N2O + H2O :
+ <G3216>         &    1.0      LossO3N & NH2 + NO2 = NH2O + NO :
+ <G3217>         &    1.0      LossO3N & NH2O + O3 = NH2 + O2 :
+ <G3221>         &    1.0      LossO3N & HNO + NO2 = HONO + NO :
+ <J3103b>        &    2.0      LossO3N & NO3 + hv = NO + O2 :
+ <HET200>        &    1.0      LossO3N & N2O5 + H2O = 2 HNO3 :
+ <HET201>        &    3.0      LossO3N & N2O5 = 2 NO3m_cs + 2 Hp_cs :
+ % also in Cl
+ <HET420>        &    0.5      LossO3N & ClNO3 + HCl = Cl2 + HNO3 :
+ <HET422>        &    1.0      LossO3N & N2O5 + HCl = ClNO2 + HNO3 :
+ % also in Cl and Br
+ <HET540>        &    0.333333      LossO3N & ClNO3 + HBr = BrCl + HNO3 :
+ <HET541>        &    0.333333      LossO3N & BrNO3 + HCl = BrCl + HNO3 :
+ %
+ % R-Group ------------------------------------------------------
+ <G4105>         &    1.0      LossO3R & CH3O2 + NO3 = HCHO + HO2 + NO2 :
+ <G4109>         &    1.0      LossO3R & HCHO + NO3 = HNO3 + CO + HO2 :
+ <G4201>         &    1.0      LossO3R & C2H4 + O3 = HCHO + .63 CO + .13 HO2 + 0.23125 HCOOH + 0.13875 HCHO + 0.13875 H2O2 + .13 OH :
+ <G4205>         &    1.0      LossO3R & C2H5O2 + NO3 = CH3CHO + HO2 + NO2 :
+ <G4209>         &    1.0      LossO3R & CH3CHO + NO3 = CH3CO3 + HNO3 :
+ <G4214>         &    1.0      LossO3R & CH3CO3 + NO3 = CH3O2 + NO2 + CO2 :
+ <G4301>         &    1.0      LossO3R & C3H6 + O3 = .57 HCHO + .47 CH3CHO + .33 OH + .26 HO2 + .07 CH3O2 + .06 C2H5O2 + .23 CH3CO3 + .04 MGLYOX + .06 CH4 + .31 CO + .22 HCOOH + .03 CH3OH :
+ <G4303>         &    1.0      LossO3R & C3H6 + NO3 = LC4H9NO3 :
+ <G4405>         &    1.0      LossO3R & MVK + O3 = .45 HCOOH + .9 MGLYOX + .1 CH3CO3 + .19 OH + .22 CO + .32 HO2 :
+ <G4500>         &    1.0      LossO3R & C5H8 + O3 = .28 HCOOH + .65 MVK + .1 MVKO2 + .1 CH3CO3 + .14 CO + .58 HCHO + .09 H2O2 + .08 CH3O2 + .25 OH + .25 HO2 :
+ <G4502>         &    1.0      LossO3R & C5H8 + NO3 = ISON :
+ %
+ % Cl-Group ------------------------------------------------------
+ <G6101>         &    2.0      LossO3Cl & ClO + O3P = Cl + O2 :
+ <G6102a>        &    2.0      LossO3Cl & ClO + ClO = Cl2 + O2 :
+ <G6102b>        &    2.0      LossO3Cl & ClO + ClO = 2 Cl + O2 :
+ <G6102c>        &    1.0      LossO3Cl & ClO + ClO = Cl + OClO :
+ <G6203>         &    1.0      LossO3Cl & ClO + OH = .94 Cl + .94 HO2 + .06 HCl + .06 O2 :
+ <G6403>         &    1.0      LossO3Cl & ClO + CH3O2 = HO2 + Cl + HCHO :
+ <G6405>         &    1.0      LossO3Cl & CH3Cl + O1D = LCARBON + OH + Cl :
+ <G6407>         &    1.0      LossO3Cl & CH3CCl3 + O1D = 2 LCARBON + OH + 3 Cl :
+ % also in Br
+ <G7603a>        &    0.5      LossO3Cl & BrO + ClO = Br + OClO :
+ <G7603b>        &    1.0      LossO3Cl & BrO + ClO = Br + Cl + O2 :
+ <G7603c>        &    1.0      LossO3Cl & BrO + ClO = BrCl + O2 :
+ <J6100>         &    2.0      LossO3Cl & Cl2O2 + hv = 2 Cl :
+ <J6201>         &    1.0      LossO3Cl & HOCl + hv = OH + Cl :
+ <HET410>        &    1.0      LossO3Cl & HOCl + HCl = Cl2 + H2O :
+ % also in N
+ <HET420>        &    0.5      LossO3Cl & ClNO3 + HCl = Cl2 + HNO3 :
+ <HET422>        &    1.0      LossO3Cl & N2O5 + HCl = ClNO2 + HNO3 :
+ % also in Br and N
+ <HET540>        &    0.333333 LossO3Cl & ClNO3 + HBr = BrCl + HNO3 :
+ <HET541>        &    0.333333 LossO3Cl & BrNO3 + HCl = BrCl + HNO3 :
+ % also in Br
+ <HET542>        &    0.5      LossO3Cl & HOCl + HBr = BrCl + H2O :
+ <HET543>        &    0.5      LossO3Cl & HOBr + HCl = BrCl + H2O :
+%
+% Br-Group ------------------------------------------------------
+ <G7101>         &    2.0      LossO3Br & BrO + O3P = Br + O2 :
+ <G7102a>        &    2.0      LossO3Br & BrO + BrO = 2 Br + O2 :
+ <G7102b>        &    2.0      LossO3Br & BrO + BrO = Br2 + O2 :
+ <G7203>         &    1.0      LossO3Br & HOBr + O3P = OH + BrO :
+ <G7402b>        &    1.0      LossO3Br & BrO + CH3O2 = Br + HCHO + HO2 :
+ % also in Cl
+ <G7603a>        &    0.5      LossO3Br & BrO + ClO = Br + OClO :
+ <G7603b>        &    1.0      LossO3Br & BrO + ClO = Br + Cl + O2 :
+ <G7603c>        &    1.0      LossO3Br & BrO + ClO = BrCl + O2 :
+ %
+ <J7200>         &    1.0      LossO3Br & HOBr + hv = Br + OH :
+ <HET510>        &    1.0      LossO3Br & HOBr + HBr = Br2 + H2O :
+ % also in Cl and in N
+ <HET540>        &    0.333333 LossO3Br & ClNO3 + HBr = BrCl + HNO3 :
+ <HET541>        &    0.333333 LossO3Br & BrNO3 + HCl = BrCl + HNO3 :
+ <HET542>        &    0.5      LossO3Br & HOCl + HBr = BrCl + H2O :
+ <HET543>        &    0.5      LossO3Br & HOBr + HCl = BrCl + H2O :
+ %
+ % S-Group ------------------------------------------------------
+ <G9407>         &  1.0  LossO3Su & OCS + O3P = CO + SO :
+% %%% -----------------------------------------------------------------------
+% %%% -----------------------------------------------------------------------
+% %%% budget analysis for short-lived halogens (VSLS)
+% %%% L=long-lived S=short-lived
+% %%% -----------------------------------------------------------------------
+%
+% Cl
+ <G6404>       &  4.0  ProdLCl & CCl4 + O1D = ClO + 3 Cl :
+ <G6405>       &  1.0  ProdLCl & CH3Cl + O1D = OH + Cl :
+ <G6406>       &  1.0  ProdLCl & CH3Cl + OH  = H2O + Cl :
+ <G6407>       &  3.0  ProdLCl & CH3CCl3 + O1D = OH + 3 Cl :
+ <G6408>       &  3.0  ProdLCl & CH3CCl3 + OH  = H2O + 3 Cl :
+ <G6500>       &  2.0  ProdLCl & CF2Cl2 + O1D = ClO + Cl :
+ <G6501>       &  3.0  ProdLCl & CFCl3 + O1D = ClO + 2 Cl :
+ <G6500dc01>   &  0.72 ProdLCl & :
+ <J6500dc01>   &  1.0  ProdLCl & :
+ <G6500dc04>   &  2.4  ProdLCl & :
+ <J6500dc02>   &  3.0  ProdLCl & :
+ <J6400dc01>   &  2.0  ProdLCl & :
+ <J6500dc03>   &  2.0  ProdLCl & :
+ <J6500dc04>   &  2.0  ProdLCl & :
+ <J6400dc02>   &  3.0  ProdLCl & :
+ <J6500dc05>   &  1.0  ProdLCl & :
+%
+% Br
+ <G7403>        &  1.0  ProdLBr & CH3Br + OH = H2O + Br :
+ <G7407>        &  3.0  ProdSBr & CHBr3 + OH = H2O + 3 Br :
+ <G7408>        &  2.0  ProdSBr & CH2Br2 + OH = H2O + 2 Br :
+%
+%------------ also Cl-Production ----
+ <G7605>        &  1.0  ProdSBr + 2.0 ProdSCl & CHCl2Br + OH = H2O + Br + 2 Cl:
+ <G7606>        &  2.0  ProdSBr + 1.0 ProdSCl & CHClBr2 + OH = H2O + 2 Br + Cl :
+ <G7607>        &  1.0  ProdSBr + 1.0 ProdSCl & CH2ClBr + OH = H2O + Br + Cl :
+%------------                    ----
+%
+% Photolysis
+%
+% Cl
+ <J6400>        &  1.0  ProdLCl & CH3Cl + hv = Cl + CH3O2 :
+ <J6401>        &  4.0  ProdLCl & CCl4  + hv = 4 Cl  :
+ <J6402>        &  3.0  ProdLCl & CH3CCl3 + hv = 3 Cl :
+ <J6500>        &  3.0  ProdLCl & CFCl3 + hv = 3 Cl :
+ <J6501>        &  2.0  ProdLCl & CF2Cl2 + hv = 2 Cl :
+%
+% Br
+ <J7400>        &  1.0  ProdLBr & CH3Br + hv = Br + CH3O2 :
+ <J7401>        &  2.0  ProdSBr & CH2Br2 + hv = 2 Br :
+ <J7402>        &  3.0  ProdSBr & CHBr3 + hv = 3 Br :
+ <J7500>        &  1.0  ProdLBr & CF3Br + hv = Br :
+%
+% Cl + Br
+ <J7601>        &  1.0  ProdLBr + 1.0 ProdLCl & CF2ClBr + hv = Br + Cl :
+ <J7602>        &  1.0  ProdSBr + 1.0 ProdSCl & CH2ClBr + hv = Br + Cl :
+ <J7603>        &  1.0  ProdSBr + 2.0 ProdSCl & CHCl2Br + hv = Br + 2 Cl :
+ <J7604>        &  2.0  ProdSBr + 1.0 ProdSCl & CHClBr2 + hv = 2 Br + Cl :
+%
+% I J8401 I-Production?
+%
+% %%% -----------------------------------------------------------------------
+% %%% -----------------------------------------------------------------------
+% %%% additional diagnostics for TAGGING submodel
+% %%% (required in addition to O3 budget diagnostics)
+% %%% o3prodHO2=ProdHO2;   o3prodRO2=ProdRO2+ProdMeO2
+% %%% -----------------------------------------------------------------------
+%
+% <G1002>  & o3lossXO & O3   + O1D      = 2 O2       %ok LossO3
+% <G1003>  & o3lossXO & O3   + O3P      = 2 O2       %ok LossO3
+% <G2101>  & o3lossXO & H    + O3       = OH
+% <G2102>  & o3lossXO & H2   + O1D      = H + OH
+% <G2103>  & o3lossOH & OH  + O3P     = H
+ %%%  No ozone loss if HO2 reacts with NO
+% <G2104>  & o3lossXO & OH   + O3       = HO2
+% <G2106>  & o3lossXO & HO2  + O3P      = OH
+%% % And this one too?
+% <G2107>  & o3lossXO & HO2  + O3       = OH
+% <G2111>  & o3lossXO & H2O  + O1D      = 2 OH
+% <G3102a> & o3lossXO & N2O  + O1D      = 2 NO
+% <G3103>  & o3lossNO & NO   + O3       = NO2 + O2
+%%% Whether there is a loss depends on the subsequent reaction G3105
+%% %      should that then be double counted?
+% <G3105>  & o3lossNO & NO2  + O3P      = NO + O2
+% <G4201>  & o3lossRO & C2H4 + O3       = HCHO + .22 HO2 + .12 OH + .23 CO + .54 HCOOH + .1 H2
+% <G4301>  & o3lossRO & C3H6 + O3       = .57 HCHO + .47 CH3CHO + .33 OH + .26 HO2 + .07 CH3O2 + .06 EtO2 + .23 PA + .04 CH3COCHO + .06 CH4 + .31 CO + .22 HCOOH + .03 CH3OH
+% <G4405>  & o3lossRO & MVK   + O3      = .45 HCOOH + .9 CH3COCHO + .1 PA + .19 OH + .22 CO + .32 HO2
+% <G4500>  & o3lossRO & ISOP  + O3      = .28 HCOOH + .65 MVK + .1 MVKO2  + .1 PA + .14 CO + .58 HCHO + .09 H2O2 + .08 CH3O2 + .25 OH + .25 HO2
+% <G6100>  & o3lossXO & Cl + O3         = ClO
+% <G6101>  & o3lossXO & ClO + O3P       = Cl
+% (#G6404>  & o3lossXO & CCl4    + O1D   = ClO + 3 Cl {+...>
+% <G6405>  & o3lossXO & CH3Cl   + O1D   = OH + Cl {+...>
+% <G6407>  & o3lossXO & CH3CCl3 + O1D   = OH + 3 Cl {+...>
+% <G6500>  & o3lossXO & CF2Cl2  + O1D   = ClO + Cl {+...>
+% <G6501>  & o3lossXO & CFCl3   + O1D   = ClO + 2 Cl {+...>
+% <G7100>  & o3lossXO & Br   + O3       = BrO
+% <G7101>  & o3lossXO & BrO  + O3P      = Br + O2
+% <G7203>  & o3lossXO & HOBr + O3P      = OH  + BrO
+% <G9404>  & o3lossXO & CH3SO2 + O3     = CH3SO3
+%% %
+% <G2111>  & ohprod    & H2O  + O1D      = 2 OH
+%% %
+ <G4213>  & panprod   & PA   + NO2     = PAN
+ <G4220>  & panloss   & PAN  + OH      = HCHO + NO2
+ <G4221>  & panloss   & PAN  {+M>      = PA + NO2
+ <G3102a> & noprodN2O & N2O  + O1D     = 2 NO
+%% for OH chemistry ...
+%<J3201>  &  ohprodHNO3    & HNO3 + hv  = !nt used
+%<J2101>  &  ohprodH2O2    & H2O2 + hv  = !nt used
+<G3202>  &  ohlossNO2     & NO2  + OH  =
+<G3205>  &  ohlossNO2     & HONO + OH = NO2 + H2O
+<G3206>  &  ohlossNO2     & HNO3 + OH = H2O + NO3
+
+<G2110>  &  ho2lossHO2    & HO2  + HO2 =
+<G4104>  &  noprodHO2     & CH3O2+ NO  =
+<G4103> &   ho2loss       & CH3O2+ HO2 =
+<G2109>  &  lossho2oh     & HO2  + OH  =
+%<G3201> &  prodho2       & NO   + HO2 =   !fyi
+%<G2111> &  LossO1D       & H2O  + O1D =   !fyi
+
+%seper.0prod-loss
+%***************************************************************
+%%%%%%%%%%%%%%%% prod O3 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+  <J1000a>  & o3prodo2 & O2   + hv       = O3P + O3P
+
+  %NOy + HO2 combination: O3prod_ho2
+ <G3201>        & 1.0   o3prodho2   & NO + HO2 = NO2 + OH :
+ <G3205>        & 1.0   o3prodho2   & HONO + OH = NO2 + H2O :
+ <G3206>        & 1.0   o3prodho2   & HNO3 + OH = H2O + NO3 :
+ <G4305>        & 1.0   o3prodho2   & IC3H7O2 + NO = .96 CH3COCH3 + .96 HO2 + .96 NO2 + .04 IC3H7NO3 :
+ <G4305a>       & 1.0   o3prodho2   & IC3H7O2 + NO = CH3COCH3 + HO2 + NO2 : % op_pj_20141104
+ <G4305b>       & 1.0   o3prodho2   & IC3H7O2 + NO = IC3H7NO3             : % op_pj_20141104
+ <G8302>        & 1.0   o3prodho2   & IO + NO = I + NO2 :
+ <G8304>        & 1.0   o3prodho2   & OIO + NO = NO2 + IO :
+ <J3202>        & 0.333 o3prodho2   & HNO4 + hv = .667 NO2 + .667 HO2 + .333 NO3 + .333 OH :
+ <J3100>        & 1.0   o3prodho2   & N2O + hv = O1D :
+
+%NOy + NMHC combination: O3prod_ro2
+ <G4104>        &  1.0  o3prodro2  & CH3O2 + NO = HCHO + NO2 + HO2 :
+ <G4204>        &  1.0  o3prodro2  & C2H5O2 + NO = CH3CHO + HO2 + NO2 :
+ <G4211b>       &  1.0  o3prodro2  & CH3CO3 + HO2 = CH3CO2H + O3 :
+ <G4212>        &  1.0  o3prodro2  & CH3CO3 + NO = CH3O2 + NO2 :
+ <G4309>        &  1.0  o3prodro2  & LHOC3H6O2 + NO = .98 CH3CHO + .98 HCHO + .98 HO2 + .98 NO2 + .02 LC4H9NO3 :
+ <G4309a>       &  1.0  o3prodro2  & LHOC3H6O2 + NO = CH3CHO + HCHO + HO2 + NO2 % op_pj_20141104
+ <G4309b>       &  0.75 o3prodro2  & LHOC3H6O2 + NO = .75 LC4H9NO3              % op_pj_20141104
+ <G4313>        &  1.0  o3prodro2  & CH3COCH2O2 + NO = NO2 + CH3CO3 + HCHO :
+ <G4403>        &  1.0  o3prodro2  & LC4H9O2 + NO = .84 NO2 + .56 MEK + .56 HO2 + .28 C2H5O2 + .28 CH3CHO + .16 LC4H9NO3 :
+ <G4403a>       &  1.0 o3prodro2 & LC4H9O2 + NO = NO2 + .667 MEK + .667 HO2 + .333 C2H5O2 + .333 CH3CHO : % op_pj_20141104
+ <G4403b>       &  1.0  o3prodro2  & LC4H9O2 + NO = LC4H9NO3                                              : % op_pj_20141104
+ <G4408>        &  1.0  o3prodro2  & MVKO2 + NO = NO2 + .25 CH3CO3 + .25 ACETOL + .75 HCHO + .25 CO + .75 HO2 + .5 MGLYOX :
+ <G4415>        &  1.0  o3prodro2  & LMEKO2 + NO = .985 CH3CHO + .985 CH3CO3 + .985 NO2 + .015 LC4H9NO3 :
+ <G4504>        &  1.0  o3prodro2  & % op_pj_20141104
+ <G4504b>       &  1.0  o3prodro2  & ISO2  + NO        = NO2 + MVK + HCHO + HO2      : % op_pj_20141104
+ <G4504c>       &  1.0  o3prodro2  & ISO2  + NO        = ISON : % op_pj_20141104
+
+
+%*****************************************************************************
+%%%%%%%%%%%%%%%%%%%%Loss O3%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% OH + O3 combination: O3loss_OH
+
+ <G2104>        &  1.0  o3lossoh & OH + O3 = HO2 :
+% <G6203b>       &  1.0  o3lossoh & ClO + OH = HCl :
+
+% HO2 + O3 combination: O3loss_HO2
+
+  <G2107>        &  1.0 o3lossho2  & HO2 + O3 = OH :
+
+
+
+% NOy + O3 combination: O3loss_NO
+ <G3204>        &  1.0  o3lossno  & NO3 + HO2 = NO2 + OH + O2 :
+ <G4105>        &  1.0  o3lossno  & CH3O2 + NO3 = HCHO + HO2 + NO2 :
+ <G4109>        &  1.0  o3lossno  & HCHO + NO3 = HNO3 + CO + HO2 :
+ <G4205>        &  1.0  o3lossno  & C2H5O2 + NO3 = CH3CHO + HO2 + NO2 :
+ <G4209>        &  1.0  o3lossno  & CH3CHO + NO3 = CH3CO3 + HNO3 :
+ <G4214>        &  1.0  o3lossno  & CH3CO3 + NO3 = CH3O2 + NO2 :
+ <G4303>        &  1.0  o3lossno  & C3H6 + NO3 = LC4H9NO3 :
+ <G4502>        &  1.0  o3lossno  & C5H8 + NO3 = ISON :
+ <HET541>       &  1.0  o3lossno  & BrNO3 + HCl = BrCl + HNO3 :
+ <HET540>       &  1.0  o3lossno  & ClNO3 + HBr = BrCl + HNO3 :
+ <HET420>       &  1.0  o3lossno  & ClNO3 + HCl = Cl2 + HNO3 :
+ <HET200>       &  1.0  o3lossno  & N2O5 + H2O = HNO3 + HNO3 :
+
+% NMHC + O3 combination: O3loss_ro
+ <G4405>        &  1.0  o3lossro & MVK + O3 = .45 HCOOH + .9 MGLYOX + .1 CH3CO3 + .19 OH + .22 CO + .32 HO2 :
+ <G4201>        &  1.0  o3lossro & C2H4 + O3 = HCHO + .22 HO2 + .12 OH + .23 CO + .54 HCOOH + .1 H2 :
+ <G6403>        &  1.0  o3lossro & ClO + CH3O2 = HO2 + Cl + HCHO :
+ <G7402b>       &  1.0  o3lossro & BrO + CH3O2 = Br + HCHO + HO2:
+ <G8303>        &  1.0  o3lossro & IO + NO2 = INO3 {+M> :
+ <G8307>        &  2.0  o3lossro & I2 + NO3 = I + INO3 :
+ <G9401>        &  1.0  o3lossro & DMS + NO3 = CH3SO2 + HNO3 + HCHO {-O3>:
+
+% O3 ...: O3loss_xo
+ <G1002a>        &  2.0  o3lossxo & O3 + O1D = 2 O2 :
+ <G2101>        &  1.0  o3lossxo & H + O3 = OH :
+ <G2102>        &  1.0  o3lossxo & H2 + O1D = H + OH :
+ <G2111>        &  1.0  o3lossxo & H2O + O1D = 2 OH :
+ <G3102a>       &  1.0  o3lossxo & N2O + O1D = 2 NO :
+ <G3102b>       &  1.0  o3lossxo & N2O + O1D = N2 + O2 :
+ <G4100>        &  1.0  o3lossxo & CH4 + O1D = .75 CH3O2 + .75 OH + .25 HCHO + .4 H + .05 H2 :
+ <G6405>        &  1.0  o3lossxo & CH3Cl + O1D = OH + Cl {+...> :
+ <G6407>        &  1.0  o3lossxo & CH3CCl3 + O1D = OH + 3 Cl {+...> :
+ <G8100>        &  1.0  o3lossxo & I + O3 = IO + O2 :
+ <G9404>        &  1.0  o3lossxo & CH3SO2 + O3 = CH3SO3 :
+
+%---------------------OH------------------------------------------------------
+%Prod____
+%<G2101>  & LossO3        & H    + O3       = OH
+%<G2102>  & LossO3        & H2   + O1D      = H + OH
+%<G2106>  & LossO3        & HO2  + O3P      = OH
+%<G2107>  & LossHO2       & HO2  + O3       = OH
+%<G2111>  & LossO1D       & H2O  + O1D      = 2 OH
+%<G3201>  & ProdHO2       & NO   + HO2      = NO2   + OH
+%<G3204>  &  1.0  o3lossno  & NO3 + HO2 = NO2 + OH + O2 :
+%<G4100>  &  1.0  o3lossxo & CH4 + O1D = .75 CH3O2 + .75 OH + .25 HCHO + .4 H + .05 H2 :
+%<G4201>  &  1.0  o3lossro & C2H4 + O3 = HCHO + .22 HO2 + .12 OH + .23 CO + .54 HCOOH + .1 H2 :
+%<G4301>  & LossO3        & C3H6    + O3      = .57 HCHO + .47 CH3CHO + .33 OH + .26 HO2 + .07 CH3O2 + .06 C2H5O2 + .23 CH3CO3 + .04 MGLYOX + .06 CH4 + .31 CO + .22 HCOOH + .03 CH3OH
+%<G4405>  & LossO3        & MVK     + O3      = .45 HCOOH + .9 MGLYOX + .1 CH3CO3 + .19 OH + .22 CO + .32 HO2
+%<G4500>  & LossO3        & C5H8  + O3        = .28 HCOOH + .65 MVK + .1 MVKO2  + .1 CH3CO3 + .14 CO + .58 HCHO + .09 H2O2 + .08 CH3O2 + .25 OH + .25 HO2
+%<G6405>  &  1.0  o3lossxo & CH3Cl + O1D = OH + Cl {+...> :
+%<G6407>  & LossO3        & CH3CCl3 + O1D    = OH + 3 Cl {+...>
+%<G7203>  & LossO3        & HOBr + O3P      = OH  + BrO
+%<J3202>  & 0.333 o3prodho2   & HNO4 + hv = .667 NO2 + .667 HO2 + .333 NO3 + .333 OH :
+
+%Loss_____
+
+%<G2104>  & LossOH         & OH   + O3       = HO2
+%<G2104>  &  1.0  o3lossoh & OH + O3 = HO2 :
+%<G6203b> &  1.0  o3lossoh & ClO + OH = HCl :
+%<G3205>  & 1.0   o3prodho2   & HONO + OH = NO2 + H2O :
+%<G3206>  & 1.0   o3prodho2   & HNO3 + OH = H2O + NO3 :
+%<G2109>  &  lossho2oh     & HO2  + OH  =
+
+%---------------------HO2-----------------------------------------------------
+
+%% % op_vg_20100615-
+
+
+
+
+
+ % op_vr_20170509+
+ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% reaction rates for HOx tagging %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+ % reaction rates
+
+ <G2100>         &  1.0 LossG2100 & H + O2 = HO2 :
+ <G2103>         &  1.0 LossG2103 & OH + O3P = H + O2 :
+ <G2104>         &  1.0 LossG2104 & OH + O3 = HO2 + O2 :
+ <G2105>         &  1.0 LossG2105 & OH + H2 = H2O + H :
+ <G2106>         &  1.  LossG2106 & HO2 + O3P = OH + O2 :
+ <G2107>         &  1.  LossG2107 & HO2 + O3 = OH + 2 O2 :
+ <G2109>         &  1.  LossG2109 & HO2 + OH = H2O + O2 :
+ <G2110>         &  1.  LossG2110 & HO2 + HO2 = H2O2 + O2 :
+ <G2111>         &  1.  LossG2111 & H2O + O1D = 2 OH :
+ <G2112>         &  1.  LossG2112 & H2O2 + OH = H2O + HO2 :
+ <G3200>         &  1.  LossG3200 & NO + OH = HONO :
+ <G3201>         &  1.  LossG3201 & NO + HO2 = NO2 + OH :
+ <G3202>         &  1.  LossG3202 & NO2 + OH = HNO3 :
+ <G3203>         &  1.  LossG3203 & NO2 + HO2 = HNO4 :
+ <G3207>         &  1.  LossG3207 & HNO4 = NO2 + HO2 :
+ <G4101>         &  1.  LossG4101 & CH4 + OH = CH3O2 + H2O :
+ <G4110>         &  1.  LossG4110 & CO + OH = H + CO2 :
+ <G6203>         &  1.  LossG6203 & ClO + OH = .94 Cl + .94 HO2 + .06 HCl + .06 O2 :
+ <G6204>         &  1.  LossG6204 & ClO + HO2 = HOCl + O2 :
+ <G7201>         &  1.  LossG7201 & BrO + HO2 = HOBr + O2 :
+
+
+ % photolysis rates
+
+% <J2101>         &  1.  LossJ2101 & H2O2 + hv = 2 OH :
+ <J3200>         &  1.  LossJ3200 & HONO + hv = NO + OH :
+ <J3201>         &  1.  LossJ3201 & HNO3 + hv = NO2 + OH :
+ <J4101b>        &  1.  LossJ4101b & HCHO + hv =  H + CO + HO2 :
+% <J6201>         &  1.  LossJ6201 & HOCl + hv = OH + Cl :
+% <J7200>         &  1.  LossJ7200 & HOBr + hv = Br + OH :
+
+
+ % OH production and loss by NMHC
+
+ <G4107>         &  0.7  OHlossNMHC & CH3OOH + OH = .7 CH3O2 + .3 HCHO + .3 OH + H2O :
+ <G4200>         &  1.  OHlossNMHC & C2H6 + OH = C2H5O2 + H2O :
+ <G4202>         &  1.  OHlossNMHC & C2H4 + OH = .6666667 LHOC3H6O2 :
+ <G4207>         &  0.3  OHlossNMHC & C2H5OOH + OH = .3 C2H5O2 + .7 CH3CHO + .7 OH :
+ <G4208>         &  1.  OHlossNMHC & CH3CHO + OH = CH3CO3 + H2O :
+ <G4210>         &  1.  OHlossNMHC & CH3CO2H + OH = CH3O2 + CO2 + H2O :
+ <G4218>         &  1.  OHlossNMHC & CH3CO3H + OH = CH3CO3 + H2O :
+ <G4219>         &  1.  OHlossNMHC & NACA + OH = NO2 + HCHO + CO :
+ <G4220>         &  1.  OHlossNMHC & PAN + OH = HCHO + CO + NO2 + H2O :
+ <G4300>         &  1.  OHlossNMHC & C3H8 + OH = .82 IC3H7O2 + .18 C2H5O2 + H2O :
+ <G4302>         &  1.  OHlossNMHC & C3H6 + OH = LHOC3H6O2 :
+ <G4307>         &  0.3  OHlossNMHC & IC3H7OOH + OH = .3 IC3H7O2 + .7 CH3COCH3 + .7 OH :
+ <G4310>         &  0.5  OHlossNMHC & LHOC3H6OOH + OH = .5 LHOC3H6O2 + .5 ACETOL + .5 OH + H2O :
+ <G4311>         &  1.  OHlossNMHC & CH3COCH3 + OH = CH3COCH2O2 + H2O :
+ <G4315>         &  0.3  OHlossNMHC & HYPERACET + OH = .3 CH3COCH2O2 + .7 MGLYOX + .7 OH :
+ <G4317>         &  1.  OHlossNMHC & MGLYOX + OH = CH3CO3 + CO :
+ <G4320>         &  1.  OHlossNMHC & IC3H7NO3 + OH = CH3COCH3 + NO2 :
+ <G4400>         &  1.  OHlossNMHC & NC4H10 + OH = LC4H9O2 + H2O :
+ <G4404>         &  0.14999998  OHlossNMHC & LC4H9OOH + OH = .15 LC4H9O2 + .85 MEK + .85 OH + .85 H2O :
+ <G4406>         &  1.  OHlossNMHC & MVK + OH = MVKO2 :
+ <G4412>         &  1.  OHlossNMHC & MVKOOH + OH = MVKO2 :
+ <G4413>         &  1.  OHlossNMHC & MEK + OH = LMEKO2 :
+ <G4416>         &  0.19999999  OHlossNMHC & LMEKOOH + OH = .8 BIACET + .8 OH + .2 LMEKO2 :
+ <G4417>         &  1.  OHlossNMHC & LC4H9NO3 + OH = MEK + NO2 + H2O :
+ <G4418>         &  1.  OHlossNMHC & MPAN + OH = ACETOL + NO2 :
+ <G4501>         &  1.  OHlossNMHC & C5H8 + OH = ISO2 :
+ <G4508>         &  1.  OHlossNMHC & ISON + OH = ACETOL + NACA :
+ <G9400a>        &  1.  OHlossNMHC & DMS + OH = CH3SO2 + HCHO :
+ <G9400b>        &  1.  OHlossNMHC & DMS + OH = DMSO + HO2 :
+ <G9402>         &  1.  OHlossNMHC & DMSO + OH = .6 SO2 + HCHO + .6 CH3O2 + .4 HO2 + .4 CH3SO3H :
+
+
+ % HO2 production and loss by NMHC
+
+ <G4103>         &  1.  HO2lossNMHC & CH3O2 + HO2 = CH3OOH + O2 :
+ <G4203>         &  1.  HO2lossNMHC & C2H5O2 + HO2 = C2H5OOH :
+ <G4211a>        &  1.  HO2lossNMHC & CH3CO3 + HO2 = CH3CO3H :
+ <G4211b>        &  1.  HO2lossNMHC & CH3CO3 + HO2 = CH3CO2H + O3 :
+ <G4304>         &  1.  HO2lossNMHC & IC3H7O2 + HO2 = IC3H7OOH :
+ <G4308>         &  1.  HO2lossNMHC & LHOC3H6O2 + HO2 = LHOC3H6OOH :
+ <G4312>         &  1.  HO2lossNMHC & CH3COCH2O2 + HO2 = HYPERACET :
+ <G4402>         &  1.  HO2lossNMHC & LC4H9O2 + HO2 = LC4H9OOH :
+ <G4407>         &  1.  HO2lossNMHC & MVKO2 + HO2 = MVKOOH :
+ <G4414>         &  1.  HO2lossNMHC & LMEKO2 + HO2 = LMEKOOH :
+ <G4503>         &  1.  HO2lossNMHC & ISO2 + HO2 = ISOOH :
+
+
+ <G4104>         &  1.  HO2prodNMHCNOy & CH3O2 + NO = HCHO + NO2 + HO2 :
+ <G4105>         &  1.  HO2prodNMHCNOy & CH3O2 + NO3 = HCHO + HO2 + NO2 :
+ <G4109>         &  1.  HO2prodNMHCNOy & HCHO + NO3 =  + HNO3 + CO + HO2 :
+ <G4204>         &  1.  HO2prodNMHCNOy & C2H5O2 + NO = CH3CHO + HO2 + NO2 :
+ <G4205>         &  1.  HO2prodNMHCNOy & C2H5O2 + NO3 = CH3CHO + HO2 + NO2 :
+ <G4305>         &  0.96  HO2prodNMHCNOy & IC3H7O2 + NO = .96 CH3COCH3 + .96 HO2 + .96 NO2 + .04 IC3H7NO3 :
+ <G4309>         &  0.98  HO2prodNMHCNOy & LHOC3H6O2 + NO = .98 CH3CHO + .98 HCHO + .98 HO2 + .98 NO2 + .02 LC4H9NO3 :
+ <G4403>         &  0.56  HO2prodNMHCNOy & LC4H9O2 + NO = .84 NO2 + .56 MEK + .56 HO2 + .28 C2H5O2 + .28 CH3CHO + .16 LC4H9NO3 :
+ <G4408>         &  0.75  HO2prodNMHCNOy & MVKO2 + NO = NO2 + .25 CH3CO3 + .25 ACETOL + .75 HCHO + .25 CO + .75 HO2 + .5 MGLYOX :
+ <G4504>         &  0.956  HO2prodNMHCNOy & ISO2 + NO = .956 NO2 + .956 MVK + .956 HCHO + .956 HO2 + .044 ISON :
+
+ <J4101b>        &  1.  HO2prodNMHCphoto & HCHO + hv = H + CO + HO2 :
+ <J4201>         &  1.  HO2prodNMHCphoto & CH3CHO + hv = CH3O2 + HO2 + CO :
+ <J4302>         &  1.  HO2prodNMHCphoto & ACETOL + hv = CH3CO3 + HCHO + HO2 :
+ <J4303>         &  1.  HO2prodNMHCphoto & MGLYOX + hv = CH3CO3 + CO + HO2 :
+ <J4306>         &  1.  HO2prodNMHCphoto & IC3H7NO3 + hv = CH3COCH3 + NO2 + HO2 :
+ <J4401>         &  1.  HO2prodNMHCphoto & MVK + hv = CH3CO3 + HCHO + CO + HO2 :
+ <J4406>         &  0.67  HO2prodNMHCphoto & LC4H9NO3 + hv = NO2 + .67 MEK + .67 HO2 + .33 C2H5O2 + .33 CH3CHO :
+ <J4501>         &  1.  HO2prodNMHCphoto & ISON + hv = MVK + HCHO + NO2 + HO2 :
+
+ <G4102>         &  1.  OHlossHO2prodNMHC & CH3OH + OH = HCHO + HO2 :
+ <G4108>         &  1.  OHlossHO2prodNMHC & HCHO + OH = CO + H2O + HO2 :
+ <G4111>         &  1.  OHlossHO2prodNMHC & HCOOH + OH = CO2 + HO2 + H2O :
+ <G4316>         &  1.  OHlossHO2prodNMHC & ACETOL + OH = MGLYOX + HO2 :
+% %%% -----------------------------------------------------------------------
+% %%% -----------------------------------------------------------------------
+% %%% -----------------------------------------------------------------------

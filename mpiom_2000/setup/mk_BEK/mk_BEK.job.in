@@ -1,0 +1,41 @@
+#!/bin/bash
+set -e
+. "@abs_builddir@/../setup-common.inc"
+
+assert_vars_are_set ie je GRID tp FRMT
+
+@MKDIR_P@ mk_BEK
+cd mk_BEK
+
+# was: cp "../../mk_topo_etopo2v2/${GRID}/${GRID}_topo.new" topo
+cp "${DEST}/${GRID}_topo" topo
+/bin/rm -f anta.ext
+@LN_S@ "${DEST}/${GRID}_anta" anta.ext
+
+$CMD_PREFIX "@abs_builddir@/mk_BEK" <<EOF
+  &gridparams
+  ie = ${ie}
+  je = ${je}
+  bounds_exch_tp = .${tp}.
+  frmt = "${FRMT}"
+  verbose = ${DEBUG+1}${DEBUG-0} /
+EOF
+
+cp BEK "${DEST}/${GRID}_BEK"
+
+cat > "grid_${GRID}"<<EOF
+# define lon/lat grid
+gridtype : lonlat
+# number of lon values
+xsize    : ${ie}
+# number of lat values
+ysize    : ${je}
+# first longitude
+xfirst   : 0
+xinc     : 1
+# first latitude
+yfirst   : 0
+yinc     : 1
+EOF
+
+$CMD_PREFIX "${CDO}" -f nc -g "grid_${GRID}" copy RIBEK.ext RIBEK.nc

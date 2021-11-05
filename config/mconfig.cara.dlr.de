@@ -1,0 +1,213 @@
+# -*- Makefile -*- Time-stamp: <2020-02-05 14:38:47 joec_pa>
+###############################################################################
+##### PLATFORM SPECIFIC SETTINGS (LINUX64) ####################################
+###############################################################################
+ARCH       = LINUX64
+
+###########################################################################
+### DEFAULTS
+###########################################################################
+#### DEFAULT COMPILE MODE
+if test -z "$RUNMODE" ; then
+   RUNMODE=PRODUCTION
+fi
+
+#### SET DEFAULT PROFILING MODE
+if test -z "$PROFILEMODE" ; then
+   PROFILEMODE=NONE
+fi
+
+##### TOOLS
+#AR       = ar
+#ARFLAGS  = cvr
+#NMFLAGS  = 
+
+##### F95 EXTENSIONS
+DEFOPT   = -D
+MODOPT   = -I
+
+  #########################################################################
+  ### DLR Linux Cluster
+  #########################################################################
+
+     #TMPF90=`mpif90 -show | awk '{print $1}'`
+     TMPF90=`mpif90 -show | awk '{print $1}' | awk -F '/' '{print $NF}'`
+     case $TMPF90 in
+          ifort*)
+            COMPILER=INTEL
+            ;;
+          gfortran*)
+            COMPILER=GFORTRAN
+            GCCFULLV=`mpif90 --show | awk '{print $2}' | sed 's|.*GCC/||g;s|/.*$||g'`
+            ;;
+          *)
+            ERRSTR='Error: no openmpi module loaded!'
+            ;;
+     esac
+
+     if ompi_info 2> /dev/null 1>&2 ; then
+        OPENMPIV=`ompi_info -V | head -n 1 | awk '{print $3}' | sed 's|v||g'`
+        case $OPENMPIV in
+           3.1.1|3.1.3)
+             NCVERS=4.4.5
+             YAXTVER=0.8.0
+             zLIBMPICXX=-lmpi_cxx
+             ;;
+           *)
+             NCVERS=undefined_version
+             YAXTVER=undefined_version
+             zLIBMPICXX=
+             ;;
+        esac
+     else
+        NCVERS=4.4.5
+        YAXTVER=0.8.0
+        zLIBMPICXX=-lmpi_cxx
+     fi
+
+     case $COMPILER in
+
+      INTEL)
+         ### ### ...
+         CXX      = g++
+         CC       = mpicc
+         #CFLAGS   = -O -Df2cFortran
+         #F90 = mpif90
+         F90 = `which \mpif90`
+         F90VERS  = `$F90 --version | awk '{if (NR == 1) print}'`
+         ##### F95 EXTENSIONS
+         DEFOPT   = -D
+         MODOPT   = -I
+         ##### F95 COMPILER FLAG TO OBTAIN DOUBLE PRECISION
+         F90R8    = -autodouble
+         ##### F77 OPTIONS
+         FFLAGS   = -fpp -O2 -fp-model strict
+         ##### OpenMP options
+         F90OMP    = -qopenmp -heap-arrays
+         F90OMPLIB = -qopenmp -heap-arrays
+         ##### MPI C++ compiler, flags and libs (for GUESS)
+         MPICXX   = mpicxx
+         LIBCXX   = -lstdc++
+         ###
+         MPIROOT    =
+         MPI_LIB    = 
+         PNETCDFROOT = /sw/DLR/PA/ESM/spack/opt/spack/linux-centos7-zen/gcc-8.2.0/parallel-netcdf-1.12.1-sll2k6jiqjtjt2bbwqwnaxg4fjy4yjlo
+         NETCDFROOT = $EBROOTNETCDFMINFORTRAN
+         #SPEC_NETCDF_INC =
+         #SPEC_NETCDF_LIB =
+         BLASROOT   =
+         BLAS_LIB   =
+         LAPACKROOT =
+         LAPACK_LIB =
+         #SPEC_LABLA_LIB =
+         SPEC_LIB   =
+         YAXTROOT = /sw/DLR/PA/ESM/yaxt/$YAXTVER/impi/2018.4.274/intel/2019a
+
+         case $RUNMODE in
+            DEBUG)
+               F90FLAGS = -g -traceback -debug all -check all -fpp -O0 -fp-model strict -fno-alias -no-ansi-alias -lpthread -save-temps -no-wrap-margin
+# -align all 
+               MPICXXFLAGS = -std=c++98 -g -traceback -O0 -DDEBUG -fp-model strict
+               CFLAGS   = -std=c++98 -g -O0 -traceback -Df2cFortran -fp-model strict 
+               ;;
+            DEBUGOPT)
+               F90FLAGS = -g -traceback -debug all -check all -fpp -O2 -fp-model strict -fno-alias -no-ansi-alias -lpthread -save-temps -no-wrap-margin
+#  -align all
+               MPICXXFLAGS = -std=c++98 -O2 -DNODEBUG -fp-model strict -fp-model source -fp-speculation=off -fno-alias -no-fma -fimf-arch-consistency=true -align -fno-alias -lpthread
+               CFLAGS   = -std=c++98 -O -Df2cFortran -fp-model strict
+               ;;
+            PRODUCTION)
+               F90FLAGS = -g -traceback -fpp -O2 -fp-model strict -fno-alias -no-ansi-alias -lpthread -save-temps -no-wrap-margin
+# -align all
+               MPICXXFLAGS = -std=c++98 -O2 -DNODEBUG -fp-model strict -fp-model source -fp-speculation=off -fno-alias -no-fma -fimf-arch-consistency=true -align -fno-alias -lpthread
+               CFLAGS   = -std=c++98 -O -Df2cFortran -fp-model strict
+               ;;
+            *)
+               ERRSTR='Error: wrong run-time mode selected! To solve ./configure [options] RUNMODE=DEBUG|PRODUCTION'
+               ;;
+         esac
+         ;;
+
+      GFORTRAN)
+         CXX      = g++
+         CC       = mpicc
+         CFLAGS   = -O -Df2cFortran
+         F90      = `which \mpif90`
+         # ... required on CARA@DLR to overwrite environment variable
+         FC       = `which \mpif90`
+         F90VERS  = `$F90 --version | awk '{if (NR == 1) print}'`
+         F90VERSR = `$F90 --version | awk '{if (NR == 1) print $4}'`
+         ##### F95 EXTENSIONS
+         DEFOPT   = -D
+         MODOPT   = -I
+         ##### F95 COMPILER FLAG TO OBTAIN DOUBLE PRECISION
+         F90R8    = -fdefault-real-8
+         ##### F77 OPTIONS
+         # added std=legacy for cmatutils
+         FFLAGS   = -std=legacy -fno-second-underscore -ffree-line-length-none -fno-range-check
+         ##### MPI C++ compiler, flags and libs (for GUESS)
+         MPICXX      = mpicxx -std=c++1y
+         LIBCXX      = -lstdc++ $zLIBMPICXX
+         ##### OpenMP options
+         F90OMP    = -fopenmp
+         F90OMPLIB = -lgomp
+         ###
+         MPIROOT    =
+         MPI_LIB    = 
+         PNETCDFROOT = /sw/DLR/PA/ESM/spack/opt/spack/linux-centos7-zen/gcc-8.2.0/parallel-netcdf-1.12.1-sll2k6jiqjtjt2bbwqwnaxg4fjy4yjlo
+#        NETCDFROOT = /sw/MPI/GCC/$GCCFULLV/OpenMPI/$OPENMPIV/netCDF-Fortran/$NCVERS
+         NETCDFROOT = $EBROOTNETCDFMINFORTRAN
+         SPEC_NETCDF_INC =
+         SPEC_NETCDF_LIB =
+         BLASROOT   =
+         BLAS_LIB   =
+         LAPACKROOT =
+         LAPACK_LIB =
+         #SPEC_LABLA_LIB =
+         # ... required for yaxt:
+         SPEC_LIB   = -lopen-pal
+         YAXTROOT = /sw/DLR/PA/ESM/yaxt/$YAXTVER/openmpi/$OPENMPIV/gfortran/8.2.0
+         #
+         #CDIROOT = /export/opt/PA/prgs/cdi/1.7.0
+         #SPEC_CDI_INC = /export/opt/PA/prgs/cdi/1.7.0/include
+         #SPEC_CDI_LIB = -L/export/opt/PA/prgs/cdi/1.7.0/lib -lcdi -L/export/opt/PA/prgs/libs4cdo/0.0.11.1/lib -lgrib_api -ljasper -lnetcdf -lhdf5 -lsz -lz
+         SPEC_CDI_INC =
+         SPEC_CDI_LIB =
+
+         case $RUNMODE in
+            DEBUG)
+               ### for debugging:
+               F90FLAGS = -cpp -D__linux__ -fno-second-underscore -ffree-line-length-none -fno-range-check -fbacktrace -fbounds-check -g -O0 -Wall
+               # -pedantic
+               # -DNOENDIANCONVERT
+               # -std=f95
+               MPICXXFLAGS = -O0 -DNDEBUG 
+               ;;
+            DEBUGOPT)
+               ### for debugging:
+               F90FLAGS = -cpp -D__linux__ -fno-second-underscore -ffree-line-length-none -fno-range-check -O3 -fbacktrace -fbounds-check -g -Wall
+               MPICXXFLAGS = -O2 -DNDEBUG  -Wuninitialized -fno-common
+               ;;
+            PRODUCTION)
+               ### fast, optimized model run:
+               F90FLAGS = -g -fbacktrace -cpp -D__linux__ -fno-second-underscore -ffree-line-length-none -fno-range-check -O3
+               MPICXXFLAGS = -O2 -DNDEBUG  -Wuninitialized -fno-common
+               ;;
+            *)
+               ERRSTR='Error: wrong run-time mode selected! To solve ./configure [options] RUNMODE=DEBUG|PRODUCTION'
+               ;;
+         esac
+         ;;
+
+      *)
+         ERRSTR='Error: no or wrong compiler suite selected! To solve ./configure [options] COMPILER=LF|INTEL|G95|GFORTRAN'
+         ;;
+
+     esac
+
+     #FCKLIBS    = /export/opt/PA/prgs/fcklibs/14.6.09/netcdf90.flb /export/opt/PA/prgs/forcheck/14.6.09/share/forcheck/MPI.flb
+     FCKLIBS    = /export/opt/PA/prgs/fcklibs/14.6.25/netcdf90.flb /export/opt/PA/prgs/forcheck/14.6.25/share/forcheck/MPI_2.flb
+
+###########################################################################
+###########################################################################
+###########################################################################

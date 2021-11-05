@@ -1,0 +1,80 @@
+#! /bin/tcsh -f
+
+if ( $1 == "" ) then
+  echo "example usage:"
+  echo "  ./xgraphviz C1.spc C.spc both submodel"
+  exit
+endif
+
+# define main species (appear in yellow filled oval):
+set spc1file  = "$1"
+# define secondary species:
+set spc2file  = "$2"
+# define labeltype:
+# eqnid    -> show only eqnid on arrows
+# reactant -> show only the other reactants on arrows
+# both     -> show both eqnid and reactants
+set labeltype = "$3"
+set submodel  = "$4"
+
+set eqnfile  = ../$submodel.eqn
+set basename = $spc1file:r # remove suffix with ":r"
+set dotfile  = $basename.dot
+set pdffile  = ${submodel}_$basename.pdf
+
+echo "// created automatically by xgraphviz, DO NOT EDIT\!" > $dotfile
+echo "creating $pdffile ..."
+
+# create dependencies with awk script:
+# for strange reasons, gawk only works properly if LC_ALL = C
+setenv LC_ALL C
+gawk -f eqn2dot.awk -v spc1file="$spc1file" -v spc2file="$spc2file" -v labeltype="$labeltype" $eqnfile
+
+# create inputfile for graphviz:
+echo "digraph $basename {" >> $dotfile
+echo '  concentrate=true;' >> $dotfile
+echo '  rankdir=LR;'       >> $dotfile
+echo '  size="8,8";'       >> $dotfile
+
+echo '"'$basename'\\nchemistry"'     >> $dotfile
+echo '  [shape=box, fontsize=30,'    >> $dotfile
+echo '  style="filled", color=red];' >> $dotfile
+
+#mz_hr_20130424+
+set dotenhanced = `dot -V |& awk '{if($5>=2.31){print 1}}'`
+if ( $dotenhanced ) then
+  # color gradient along reaction paths
+  # echo 'edge[color="black;0.2:firebrick4;0.2:firebrick;0.2:darkgoldenrod;0.2:darkgoldenrod1;0.2"];' >> $dotfile
+  echo 'edge[fontsize=32,penwidth=3,color="black;0.16:firebrick4;0.16:firebrick;0.2:darkgoldenrod;0.16:darkgoldenrod3;0.16:darkgoldenrod1;0.16"];' >> $dotfile
+endif
+#mz_hr_20130424-
+
+echo 'subgraph species {' >> $dotfile
+echo 'node[shape=oval,'   >> $dotfile
+echo '  color=yellow,'    >> $dotfile
+echo '  style="filled"];' >> $dotfile
+# # for strange reasons, gawk only works properly if LC_ALL = C
+# setenv LC_ALL C
+# grep -E '^ *[A-Za-z0-9_]+' $spc1file \
+#   | sed 's/[^A-Za-z0-9_].*//' \
+#   | sed 's/$/;/' >> $dotfile
+sort node.dot | uniq >> $dotfile
+echo '}' >> $dotfile
+
+sort depend.dot | uniq >> $dotfile
+echo '}'               >> $dotfile
+
+# run graphviz:
+# create pdf:
+dot -Tpdf -o $pdffile $dotfile
+# alternatively, create ps file, then convert to pdf:
+#dot -Tps2 -o tmp_1.ps $dotfile
+#ps2pdf -f tmp_1.ps $pdffile
+# svg output is not satisfying:
+#dot -Tsvg -o tmp_1.svg $dotfile
+
+# cleanup:
+rm node.dot depend.dot
+#rm tmp_*.ps
+
+exit

@@ -1,0 +1,625 @@
+# -*- Makefile -*- Time-stamp: <2019-02-11 14:46:45 joec_pa>
+###############################################################################
+##### PLATFORM SPECIFIC SETTINGS (LINUX64) ####################################
+###############################################################################
+ARCH       = LINUX64
+
+###########################################################################
+### DEFAULTS
+###########################################################################
+#### DEFAULT COMPILE MODE
+if test -z "$RUNMODE" ; then
+   RUNMODE=PRODUCTION
+fi
+
+#### SET DEFAULT PROFILING MODE
+if test -z "$PROFILEMODE" ; then
+   PROFILEMODE=NONE
+fi
+
+##### TOOLS
+#AR       = ar
+#ARFLAGS  = cvr
+#NMFLAGS  = 
+
+##### F95 EXTENSIONS
+DEFOPT   = -D
+MODOPT   = -I
+
+###########################################################################
+##### SYSTEM / HOST SPECIFIC NON-DEFAULTS
+###########################################################################
+HOST=`hostname --long`
+case $HOST in
+
+
+  #########################################################################
+  ### RZG Linux Clusters
+  #########################################################################
+  a*.bc.rzg.mpg.de|c*.bc.rzg.mpg.de)
+     CC       = icc
+     CFLAGS   = -O -static-libcxa -static -Df2cFortran
+     #FFLAGS =
+     F90 = f95i -v 8.0
+     F90R8    = -autodouble
+     F90VERS  = `$F90 --version | awk '{if (NR == 1) print}'`
+     F90FLAGS = -cpp -O0
+     ### fast, but not optimized:
+     #F90FLAGS =
+     ### some checks:
+     #F90FLAGS = -cpp -static -O0 -check all -warn all -g
+     ### all possible checks:
+     #F90FLAGS = -cpp -static -static-libcxa -O0 -std95 -check all -warn all
+
+     MPIROOT    = /afs/ipp-garching.mpg.de/@sys/soft/mpich-1.2.5.2/f95i.80
+     INCLUDE    = -I/afs/ipp-garching.mpg.de/@sys/soft/mpich-1.2.5.2/f95i.80/include/f90base
+     NETCDFROOT = /afs/ipp-garching.mpg.de/home/j/joeckel/extra_space/netcdf/@sys/v3.5.1b11_i
+     BLASROOT   = /afs/ipp-garching.mpg.de/home/j/joeckel/extra_space/ECHAM5/@sys
+     BLAS_LIB   = blas
+     LAPACKROOT = /afs/ipp-garching.mpg.de/home/j/joeckel/extra_space/ECHAM5/@sys
+     LAPACK_LIB = lapack
+     ### only for MPI-1
+     MPI_LIB    = mpichf90nc mpich
+     ;;
+
+  #########################################################################
+  ### HPC System at RZG
+  #########################################################################
+  hydra*.rzg.mpg.de)
+     # SPECIAL SETTINGS FOR PROFILING
+     case $PROFILEMODE in
+        NONE*)
+           # default: no profiling (nothing to do)
+           PREF90 =
+           ;;
+        SCALASCA*)
+           # corresponding module must be loaded
+           PREF90 = scalasca -instrument
+           ;;
+        VAMPIR*)
+           # corresponding module must be loaded
+           PREF90 = vtf90 -vt:mpi -vt:f90
+           ;;
+        *)
+           ERRSTR='Error: unknown profiling mode selected! To solve ./configure [options] PROFILEMODE=SCALASCA|VAMPIR'
+           ;;
+     esac
+
+     COMPILER=INTEL
+     #CXX    =
+     CC     = mpiicc
+     CFLAGS = -O -fp-model strict -Df2cFortran
+     F90    = $PREF90 mpiifort
+     F90VERS  = `$F90 --version | awk '{if (NR == 1) print}'`
+     ##### F95 EXTENSIONS
+     DEFOPT   = -D
+     MODOPT   = -I
+     ##### F95 COMPILER FLAG TO OBTAIN DOUBLE PRECISION
+     F90R8    = -autodouble
+     ##### F77 OPTIONS
+     FFLAGS = -fpp -O2 -fp-model strict
+     ###
+     F90ADDOPT = -xAVX 
+     ###
+     case $RUNMODE in
+        DEBUG)
+           F90FLAGS = -ftrapuv -fpp -g -debug all -check all -traceback -O0 $F90ADDOPT -fp-model strict -fno-alias -no-ansi-alias -lpthread -save-temps
+#-align all
+           ;;
+        PRODUCTION)
+           F90FLAGS = -fpp -g -O2 $F90ADDOPT -fp-model strict -fno-alias -no-ansi-alias -lpthread -save-temps
+# -align all
+           ;;
+        DEBUGOPT)
+           F90FLAGS = -ftrapuv -fpp -g -debug all -check all -traceback -O2 $F90ADDOPT -fp-model strict -fno-alias -no-ansi-alias -lpthread -save-temps
+# -align all 
+           ;;
+        *)
+           ERRSTR='Error: wrong run-time mode selected! To solve ./configure [options] RUNMODE=DEBUG|DEBUGOPT|PRODUCTION'
+           ;;
+     esac
+
+     MPIROOT    = 
+     INCLUDE    =
+     ## netCDF-3:
+     #NETCDFROOT = /u/joeckel/soft/netcdf/3.6.3
+     NETCDFROOT = /hydra/ptmp/mpcdata/software/x86_64-suse-linux/netcdf/v3.6.3_i
+     ## netCDF-4:
+     #NETCDFLIBDIR = 
+     #NETCDFLIBS = 
+     #
+     ## parallel netCDF:
+     #PNETCDFROOT = 
+     #
+# op_pj_20140923: avoid usage of MKL, it gives irreproducible results with
+#                 nudging / nmi
+     #SPEC_LABLA_LIB = -Wl,--start-group $MKLROOT/lib/intel64/libmkl_intel_lp64.a $MKLROOT/lib/intel64/libmkl_intel_thread.a $MKLROOT/lib/intel64/libmkl_core.a -Wl,--end-group -lpthread -lm -openmp
+     #SPEC_LABLA_LIB =
+     BLASROOT   = 
+     BLAS_LIB   =
+     LAPACKROOT =
+     LAPACK_LIB =
+     SPEC_LIB   =
+     #FCKLIBS  =  /u/joeckel/forcheck/v14/netcdf90 /u/joeckel/forcheck/v14/mpi
+     FCKLIBS   =  /u/joeckel/forcheck/v14.6.07/lib/netcdf90 /u/joeckel/forcheck/v14.6.07/lib/mpi
+     #FCKLIBS    =  /afs/ipp/mpc/soft/@sys/forcheck/v14/netcdf90 /afs/ipp/mpc/soft/@sys/forcheck/v14/mpi
+     ;;
+
+  cobra*)
+     ### DEFAULT COMPILER SUITE
+     if test -z "$COMPILER" ; then
+        COMPILER=INTEL
+     fi
+
+     case $COMPILER in
+      INTEL)
+         #CXX    =
+         CC     = mpiicc
+         CFLAGS = -O -fp-model strict -Df2cFortran
+         F90    = $PREF90 mpiifort
+         F90VERS  = `$F90 --version | awk '{if (NR == 1) print}'`
+         ##### F95 EXTENSIONS
+         DEFOPT   = -D
+         MODOPT   = -I
+         ##### F95 COMPILER FLAG TO OBTAIN DOUBLE PRECISION
+         F90R8    = -autodouble
+         ##### F77 OPTIONS
+         FFLAGS = -fpp -O2 -fp-model strict
+         ###
+         F90ADDOPT = -march=core-avx2
+         ###
+         case $RUNMODE in
+            DEBUG)
+               F90FLAGS = -ftrapuv -fpp -g -debug all -check all -traceback -O0 $F90ADDOPT -fp-model strict -fno-alias -no-ansi-alias -lpthread -save-temps
+#-ali    gn all
+               ;;
+            PRODUCTION)
+               F90FLAGS = -fpp -O2 -g $F90ADDOPT -fp-model strict -fno-alias -no-ansi-alias -lpthread -save-temps
+# -al    ign all
+               ;;
+            DEBUGOPT)
+               F90FLAGS = -ftrapuv -fpp -g -debug all -check all -traceback -O2 $F90ADDOPT -fp-model strict -fno-alias -no-ansi-alias -lpthread -save-temps
+# -al    ign all 
+               ;;
+            *)
+               ERRSTR='Error: wrong run-time mode selected! To solve ./configure [options] RUNMODE=DEBUG|DEBUGOPT|PRODUCTION'
+               ;;
+         esac
+
+         MPIROOT    = 
+         INCLUDE    =
+         ## netCDF-4:
+         #NETCDFLIBDIR = 
+         #NETCDFLIBS = 
+         #SPEC_NETCDF_INC = `/afs/rzg/common/soft/netcdf/4.4.1/amd64_sles12/intel/17.0/impi-2017.1/bin/nc-config --fflags | sed 's|-I||g'`
+         #SPEC_NETCDF_LIB = `/afs/rzg/common/soft/netcdf/4.4.1/amd64_sles12/intel/17.0/impi-2017.1/bin/nc-config --flibs`
+         # working only with module load ...
+         SPEC_NETCDF_INC = `${NETCDF_HOME}/bin/nf-config --fflags | sed 's|-I||g'`
+         SPEC_NETCDF_LIB = `${NETCDF_HOME}/bin/nf-config --flibs` -Wl,-rpath,${NETCDF_HOME}/lib
+         #SPEC_NETCDF_INC = -I/afs/rzg/common/soft/netcdf/4.4.1/amd64_sles12/intel/17.0/impi-2017.1/include
+         #SPEC_NETCDF_LIB = -L/afs/rzg/common/soft/netcdf/4.4.1/amd64_sles12/intel/17.0/impi-2017.1/lib -lnetcdff -L/afs/@cell/common/soft/hdf5/1.8.17/@sys/intel/17.0/impi-2017.1/lib -L/afs/rzg/common/soft/netcdf/4.4.1/amd64_sles12/intel/17.0/impi-2017.1/lib -lnetcdf -lnetcdf /lib64/libz.so.1
+         #NETCDFLIBDIR = 
+         #NETCDFLIBS = 
+         #
+         ## parallel netCDF:
+         #PNETCDFROOT = 
+         #
+         #SPEC_LABLA_LIB = -Wl,--start-group $MKLROOT/lib/intel64/libmkl_intel_lp64.a $MKLROOT/lib/intel64/libmkl_intel_thread.a $MKLROOT/lib/intel64/libmkl_core.a -Wl,--end-group -lpthread -lm -openmp
+         #SPEC_LABLA_LIB =
+         BLASROOT   = 
+         BLAS_LIB   =
+         LAPACKROOT =
+         LAPACK_LIB =
+         SPEC_LIB   =
+         #FCKLIBS  =  /u/joeckel/forcheck/v14/netcdf90 /u/joeckel/forcheck/v14/mpi
+         FCKLIBS   =  /u/joeckel/forcheck/v14.6.07/lib/netcdf90 /u/joeckel/forcheck/v14.6.07/lib/mpi
+         #FCKLIBS    =  /afs/ipp/mpc/soft/@sys/forcheck/v14/netcdf90 /afs/ipp/mpc/soft/@sys/forcheck/v14/mpi
+         ;;
+      GFORTRAN)
+         #CXX    =
+         CC     = mpicc
+         CFLAGS   = -O2 -Df2cFortran
+         F90    = mpif90
+         F90VERS  = `$F90 --version | awk '{if (NR == 1) print}'`
+         ##### F95 EXTENSIONS
+         DEFOPT   = -D
+         MODOPT   = -I
+         ##### F95 COMPILER FLAG TO OBTAIN DOUBLE PRECISION
+         F90R8    = -fdefault-real-8
+         ##### F77 OPTIONS
+         FFLAGS = -O2 -Df2cFortran
+         ###
+         F90ADDOPT = -xAVX 
+         ###
+         case $RUNMODE in
+            DEBUG*)
+               ### for debugging:
+               F90FLAGS = -cpp -g -O0 -Wall -fno-second-underscore -ffree-line-length-none -fno-range-check -fbacktrace -fbounds-check -fdump-core
+               # -pedantic
+               # -DNOENDIANCONVERT
+               # -std=f95
+               ;;
+            PRODUCTION*)
+               ### fast, optimized model run:
+               F90FLAGS = -cpp -O3  -fno-second-underscore -ffree-line-length-none -fno-range-check
+               ;;
+            DEBUGOPT*)
+               ### for debugging:
+               F90FLAGS = -cpp -O -fno-second-underscore -ffree-line-length-none -fno-range-check -fbacktrace -fbounds-check -g -Wall -fdump-core
+               ;;
+            *)
+               ERRSTR='Error: wrong run-time mode selected! To solve ./configure [options] RUNMODE=DEBUG|PRODUCTION'
+               ;;
+         esac
+         MPIROOT    = 
+         INCLUDE    =
+         ## netCDF-3:
+         #NETCDFROOT = /u/joeckel/soft/netcdf/3.6.3
+         ## netCDF-4:
+         #NETCDFLIBDIR = 
+         #NETCDFLIBS = 
+         SPEC_NETCDF_INC = `${NETCDF_HOME}/bin/nf-config --fflags | sed 's|-I||g'`
+         SPEC_NETCDF_LIB = `${NETCDF_HOME}/bin/nf-config --flibs` -Wl,-rpath,${NETCDF_HOME}/lib
+         #
+         ## parallel netCDF:
+         #PNETCDFROOT = 
+         #
+# op_    pj_20140923: avoid usage of MKL, it gives irreproducible results with
+#                     nudging / nmi
+         #SPEC_LABLA_LIB = -Wl,--start-group $MKLROOT/lib/intel64/libmkl_intel_lp64.a $MKLROOT/lib/intel64/libmkl_intel_thread.a $MKLROOT/lib/intel64/libmkl_core.a -Wl,--end-group -lpthread -lm -openmp
+         #SPEC_LABLA_LIB =
+         BLASROOT   = 
+         BLAS_LIB   =
+         LAPACKROOT =
+         LAPACK_LIB =
+         SPEC_LIB   =
+         #FCKLIBS  =  /u/joeckel/forcheck/v14/netcdf90 /u/joeckel/forcheck/v14/mpi
+         FCKLIBS   =  /u/joeckel/forcheck/v14.6.07/lib/netcdf90 /u/joeckel/forcheck/v14.6.07/lib/mpi
+         #FCKLIBS    =  /afs/ipp/mpc/soft/@sys/forcheck/v14/netcdf90 /afs/ipp/mpc/soft/@sys/forcheck/v14/mpi
+         ;;
+      esac
+     ;;
+
+  gaia*.rzg.mpg.de)
+     ### DEFAULT COMPILER SUITE
+     if test -z "$COMPILER" ; then
+        COMPILER=INTEL
+     fi
+
+     # netcdf @ GAIA
+     NF_CONFIG = `which nf-config || which nf-fortran-config`
+     SPEC_NETCDF_INC = `$NF_CONFIG --includedir`
+     SPEC_NETCDF_LIB = `$NF_CONFIG --flibs`
+     NETCDF_CFLAGS = `$NF_CONFIG --cflags`
+
+     # mpi @GAIA
+     MPIROOT = $I_MPI_ROOT/intel64
+
+     case $COMPILER in
+       INTEL)
+         #CXX    =
+         CC     = mpiicc
+         CFLAGS = -O -fp-model strict -Df2cFortran
+         F90    = $PREF90 mpiifort
+         F90VERS  = `$F90 --version | awk '{if (NR == 1) print}'`
+         ##### F95 EXTENSIONS
+         DEFOPT   = -D
+         MODOPT   = -I
+         ##### F95 COMPILER FLAG TO OBTAIN DOUBLE PRECISION
+         F90R8    = -autodouble
+         ##### F77 OPTIONS
+         FFLAGS = -fpp -O2 -fp-model strict
+         ###
+         F90ADDOPT = -xHost -fpp -fp-model strict -fno-alias -no-ansi-alias -lpthread -save-temps
+         # -align all
+         # -xCORE-AVX2 -march=core-avx2
+         ###
+         case $RUNMODE in
+            DEBUG)
+               F90FLAGS = $F90ADDOPT -traceback -O0 -g -debug all -check all 
+               # -ftrapuv 
+               ;;
+            PRODUCTION)
+               F90FLAGS = $F90ADDOPT -O2 -traceback
+               ;;
+            DEBUGOPT)
+               F90FLAGS = $F90ADDOPT -O2 -traceback -g -traceback
+               ;;
+            *)
+               ERRSTR='Error: wrong run-time mode selected! To solve ./configure [options] RUNMODE=DEBUG|DEBUGOPT|PRODUCTION'
+               ;;
+         esac
+         INCLUDE =
+         ## netCDF-4: set above
+         #
+         ## parallel netCDF:
+         #PNETCDFROOT =
+         #
+         #SPEC_LABLA_LIB = -Wl,--start-group $MKLROOT/lib/intel64/libmkl_intel_lp64.a $MKLROOT/lib/intel64/libmkl_intel_thread.a $MKLROOT/lib/intel64/libmkl_core.a -Wl,--end-group -lpthread -lm -openmp
+         #SPEC_LABLA_LIB =
+         BLASROOT   =
+         BLAS_LIB   =
+         LAPACKROOT =
+         LAPACK_LIB =
+         SPEC_LIB   =
+         #FCKLIBS  =  /u/joeckel/forcheck/v14/netcdf90 /u/joeckel/forcheck/v14/mpi
+         FCKLIBS   =  /u/joeckel/forcheck/v14.6.07/lib/netcdf90 /u/joeckel/forcheck/v14.6.07/lib/mpi
+         #FCKLIBS    =  /afs/ipp/mpc/soft/@sys/forcheck/v14/netcdf90 /afs/ipp/mpc/soft/@sys/forcheck/v14/mpi
+         ;;
+       GFORTRAN)
+         CXX      = g++
+         CC       = cc
+         CFLAGS   = -O -Df2cFortran $NETCDF_CFLAGS
+       # setting I_MPI_F90 is necessary for impi
+         I_MPI_F90= `which gfortran`
+         F90      = `which \mpif90`
+         F90VERS  = `$F90 --version | awk '{if (NR == 1) print}'`
+         ##### F95 EXTENSIONS
+         DEFOPT   = -D
+         MODOPT   = -I
+         ##### F95 COMPILER FLAG TO OBTAIN DOUBLE PRECISION
+         F90R8    = -fdefault-real-8
+         ##### F77 OPTIONS
+         FFLAGS   = -fno-second-underscore -ffree-line-length-none -fno-range-check -Wno-missing-include-dirs
+        #SPEC_LIB   =
+         BLAS_LIB   =
+         LAPACKROOT =
+         LAPACK_LIB =
+        #SPEC_LABLA_LIB =
+         EMOSROOT   =
+         EMOS_LIB   =
+         SPHEREROOT =
+         SPHERE_LIB =
+         SPEC_LIB   =
+         F90COMOPT  = -mfma -cpp -traditional-cpp -D__linux__ ${FFLAGS}
+         case $RUNMODE in
+            DEBUG)
+               ### for debugging:
+               F90FLAGS = ${F90COMOPT} -O0 -fbacktrace -g -Wall -fdump-core -fcheck=all
+               # -fno-bounds-check
+               # -pedantic
+               # -DNOENDIANCONVERT
+               # -std=f95
+               ;;
+            DEBUGOPT)
+               ### for debugging/checks:
+               F90FLAGS = ${F90COMOPT} -O2 -fbacktrace -g -Wall -fdump-core -fcheck=all -fno-range-check
+               # -fno-bounds-check
+               ;;
+            PRODUCTION)
+               ### fast, optimized model run:
+               F90FLAGS = ${F90COMOPT} -O2 -fno-range-check -fno-bounds-check
+               ;;
+            *)
+               ERRSTR='Error: wrong run-time mode selected! To solve ./configure [options] RUNMODE=DEBUG|DEBUGOPT|PRODUCTION'
+               ;;
+         esac
+         INCLUDE    =
+         ## netCDF-3:
+         #NETCDFROOT = /u/joeckel/soft/netcdf/3.6.3
+         ## netCDF-4: set above
+         #
+         ## parallel netCDF:
+         #PNETCDFROOT = 
+         #
+# op_    pj_20140923: avoid usage of MKL, it gives irreproducible results with
+#                     nudging / nmi
+         #SPEC_LABLA_LIB = -Wl,--start-group $MKLROOT/lib/intel64/libmkl_intel_lp64.a $MKLROOT/lib/intel64/libmkl_intel_thread.a $MKLROOT/lib/intel64/libmkl_core.a -Wl,--end-group -lpthread -lm -openmp
+         #SPEC_LABLA_LIB =
+         BLASROOT   =
+         BLAS_LIB   =
+         LAPACKROOT =
+         LAPACK_LIB =
+         SPEC_LIB   =
+         #FCKLIBS  =  /u/joeckel/forcheck/v14/netcdf90 /u/joeckel/forcheck/v14/mpi
+         FCKLIBS   =  /u/joeckel/forcheck/v14.6.07/lib/netcdf90 /u/joeckel/forcheck/v14.6.07/lib/mpi
+         #FCKLIBS    =  /afs/ipp/mpc/soft/@sys/forcheck/v14/netcdf90 /afs/ipp/mpc/soft/@sys/forcheck/v14/mpi
+         ;;
+       esac
+     ;;
+
+  #########################################################################
+  ### MPIC Linux Cluster
+  #########################################################################
+  dresden*)
+     ### DEFAULT COMPILER SUITE
+     if test -z "$COMPILER" ; then
+        COMPILER=INTEL
+     fi
+
+     case $COMPILER in
+
+      GFORTRAN*)
+         ### ### mpi/1.6.5_gf gfortran/4.6.3
+         CXX      = g++
+         CC       = mpicc
+         CFLAGS   = -O -Df2cFortran 
+         F90      = mpif90 
+         F90VERS  = `$F90 --version | awk '{if (NR == 1) print}'`
+         ##### F95 EXTENSIONS
+         DEFOPT   = -D
+         MODOPT   = -I
+         ##### F95 COMPILER FLAG TO OBTAIN DOUBLE PRECISION
+         F90R8    = -fdefault-real-8
+         ##### F77 OPTIONS
+         FFLAGS   = -fno-second-underscore -ffree-line-length-none -fno-range-check 
+         ###
+         SPEC_NETCDF_INC  = /gpfs/airsat/airfs/software/x86_64-linux/netcdf/v4.3.0_gf/include
+         SPEC_NETCDF_LIB  = -L/gpfs/airsat/airfs/software/x86_64-linux/netcdf/v4.3.0_gf/lib  -lnetcdff 
+
+         case $RUNMODE in
+            DEBUG*)
+               ### for debugging
+               F90FLAGS = -cpp -D__linux__ -ffree-line-length-none -fno-range-check -fbacktrace -fbounds-check -g -O0 -Wall -fdump-core -DOPENMPI  -fno-second-underscore -pedantic -DNOENDIANCONVERT -std=f95 
+               ;;
+            PRODUCTION*)
+               ### fast, optimized model run:
+               F90FLAGS = -cpp -D__linux__ -fno-second-underscore -ffree-line-length-none -fno-range-check
+               ;;
+            *)
+               ERRSTR='Error: wrong run-time mode selected! To solve ./configure [options] RUNMODE=DEBUG|PRODUCTION'
+               ;;
+         esac
+         ;;
+
+      INTEL*)
+         ### INTEL
+         ### ### intel/13.1.3 mpich_v3.0.4_i 
+         CXX      = g++
+         CC       = mpicc
+         CFLAGS   = -O -Df2cFortran
+         F90      = mpiifort 
+         # openmpi -> overwrite previous values
+         #F90      = mpif90
+         #CC       = icc
+         #F90      = mpif90 -fc=ifort
+         F90VERS  = `$F90 --version | awk '{if (NR == 1) print}'`
+         ##### F95 EXTENSIONS
+         DEFOPT   = -D
+         MODOPT   = -I
+         ##### F95 COMPILER FLAG TO OBTAIN DOUBLE PRECISION
+         F90R8    = -autodouble
+         ###
+         SPEC_NETCDF_INC  = /gpfs/airsat/airfs/software/x86_64-linux/netcdf/v4.3.0_i/include
+         SPEC_NETCDF_LIB  =  -L/gpfs/airsat/airfs/software/x86_64-linux/netcdf/v4.3.0_i/lib -lnetcdf -lnetcdff 
+
+         case $RUNMODE in
+            DEBUG*)
+               F90FLAGS = -fpp -O0 -g -debug full -traceback -save-temps
+               ;;
+            PRODUCTION*)
+               F90FLAGS = -fpp -O2 -fp-model strict -align all -fno-alias -lpthread -save-temps
+               ;;
+            *)
+               ERRSTR='Error: wrong run-time mode selected! To solve ./configure [options] RUNMODE=DEBUG|PRODUCTION'
+               ;;
+         esac
+
+     MPIROOT    =
+     MPI_LIB    = 
+     INCLUDE    =
+     PNETCDFROOT = 
+     BLASROOT   = /usr/lib/libblas
+     BLAS_LIB   = blas
+     LAPACKROOT = /usr/lib/lapack
+     LAPACK_LIB = lapack
+
+     esac
+     ;;
+
+  #########################################################################
+  ### MPIC Linux Cluster at RZG
+  #########################################################################
+  mpc*.rzg.mpg.de)
+     ### DEFAULT COMPILER SUITE
+     if test -z "$COMPILER" ; then
+        COMPILER=LF
+     fi
+
+     case $COMPILER in
+
+       LF*)
+         ### LAHEY/FUJITSU
+         ### requires: module load lahey impi
+         CXX      = g++
+         CC       = mpicc
+         CFLAGS   = -O -Df2cFortran
+         F90      = mpilfc
+         F90VERS  = `$F90 --version | awk '{if (NR == 1) print}'`
+         ##### F95 EXTENSIONS
+         DEFOPT   = -D
+         MODOPT   = -I
+         ##### F95 COMPILER FLAG TO OBTAIN DOUBLE PRECISION
+         #F90R8    = --dbl
+         F90R8    = -CcdRR8
+         ##### F77 OPTIONS
+         #FFLAGS   =
+         ###
+         #NETCDFROOT = /afs/ipp/home/j/joeckel/extra_space/@sys/netcdf/v3.6.2
+         NETCDFROOT = /mpcdata/software/x86_64-suse-linux/netcdf/v3.6.2_lf
+
+         case $RUNMODE in
+            DEBUG*)
+               ### some checks:
+               ### with nudging
+               F90FLAGS = -DLF --chk a,e,s --ap -g --trap -O0 -Cpp
+               ### without nudging
+               #F90FLAGS = -DLF --f95 --chk a,e,s,u --ap -g --trap -O0 -Cpp
+               ### all possible checks:
+               #F90FLAGS = -DLF --f95 --chkglobal --ap -g --trap --verbose -Cpp
+               ;;
+            PRODUCTION*)
+               ### fast, optimized model run:
+               F90FLAGS = -DLF --ap -O3 -Cpp
+               ### fast, but not optimized:
+               #F90FLAGS = -DLF --ap -O0 -Cpp
+               ;;
+            *)
+               ERRSTR='Error: wrong run-time mode selected! To solve ./configure [options] RUNMODE=DEBUG|PRODUCTION'
+               ;;
+         esac
+         ;;
+
+       INTEL*)
+         ### INTEL
+         ### requires: module load intel impi
+         CXX      = g++
+         CC       = mpiicc
+         CFLAGS   = -O -Df2cFortran
+         F90 = mpiifort
+         F90VERS  = `$F90 --version | awk '{if (NR == 1) print}'`
+         ##### F95 EXTENSIONS
+         DEFOPT   = -D
+         MODOPT   = -I
+         ##### F95 COMPILER FLAG TO OBTAIN DOUBLE PRECISION
+         F90R8    = -autodouble
+         ##### F77 OPTIONS
+         #FFLAGS=
+         ###
+         ## v10.1
+         #NETCDFROOT = /afs/ipp/home/j/joeckel/extra_space/@sys/netcdf/v3.6.3_i10.1
+         #NETCDFROOT = /mpcdata/software/x86_64-suse-linux/netcdf/v3.6.2_i
+         ## v11.1
+         NETCDFROOT = /mpcdata/software/x86_64-suse-linux/netcdf/v3.6.2_i
+         #NETCDFROOT = /afs/rzg/common/soft/netcdf/4.2.1.1/amd64_sles11/intel/12.1/serial
+
+         case $RUNMODE in
+            DEBUG*)
+               F90FLAGS = -cpp -g -debug full -traceback -O1 -D__INTEL_v11 -save-temps
+               ;;
+            PRODUCTION*)
+               F90FLAGS = -cpp -O2 -save-temps
+               ;;
+            *)
+               ERRSTR='Error: wrong run-time mode selected! To solve ./configure [options] RUNMODE=DEBUG|PRODUCTION'
+               ;;
+         esac
+         ;;
+
+       *)
+         ERRSTR='Error: no or wrong compiler suite selected! To solve ./configure [options] COMPILER=LF|INTEL'
+         ;;
+
+     esac
+
+     MPIROOT    =
+     MPI_LIB    = 
+     INCLUDE    =
+     #PNETCDFROOT = /afs/ipp/home/j/joeckel/extra_space/@sys/pnetcdf/v1.2.0pre1
+     BLASROOT   = /usr/lib64
+     BLAS_LIB   = blas
+     LAPACKROOT = /usr/lib64
+     LAPACK_LIB = lapack
+     #EMOSROOT   = /afs/ipp/home/j/joeckel/extra_space/@sys/emos/v0263
+     #EMOS_LIB   = emosR64
+     #SPHEREROOT = /afs/ipp/home/j/joeckel/extra_space/@sys/sphere/v3.1
+     #SPHERE_LIB = sphere
+     #FCKLIBS    =  /afs/ipp/home/j/joeckel/extra_space/@sys/forcheck/v14/netcdf90 /afs/ipp/home/j/joeckel/extra_space/@sys/forcheck/v14/mpi
+     FCKLIBS    =  /afs/ipp/mpc/soft/@sys/forcheck/v14/netcdf90 /afs/ipp/mpc/soft/@sys/forcheck/v14/mpi
+     ;;
+
+esac
+
+###########################################################################
+###########################################################################
+###########################################################################

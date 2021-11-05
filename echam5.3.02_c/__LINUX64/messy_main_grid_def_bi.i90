@@ -1,0 +1,655 @@
+# 1 "../../messy/bmil/messy_main_grid_def_bi.f90"
+# 1 "../../messy/bmil/messy_main_ppd_bi.inc" 1 
+! -*- f90 -*-
+# 11
+
+
+! ----------------------------------------------------------------------
+! SETTINGS FOR VARIOUS BASEMODELS
+! ----------------------------------------------------------------------
+! SO FAR FOR ALL MESSy BASEMODES
+
+
+
+
+! ORDER: h,v,[n],h (TRRANK=3)  OR h,v,h,[n] (TRRANK=4)
+
+
+
+
+! ORDER: h,h,[n],v (TRRANK=3)  OR h,h,v,[n] (TRRANK=4)
+# 29
+
+
+# 33
+
+
+
+
+! ----------------------------------------------------------------------
+! GENERIC SETTINGS
+! ----------------------------------------------------------------------
+
+! ----------------------------------------------------------------------
+! ORDER: h,v,[n],h OR h,v,h,[n]
+
+! ----------------------------------------------------------------------
+
+! op_pj_20170228: macros required for TTRANK=3 (messy_main_tracer)
+
+
+
+
+
+
+
+
+
+
+
+
+
+! classical RI to pass one `jrow` to SMCL:
+
+
+
+
+
+! only ONEMIS, BIOBURN, GMXE, VEG:
+
+
+
+
+
+
+! op_pj_20170228: macros required for TTRANK=4 (messy_main_tracer)
+# 97
+
+!
+! ----------------------------------------------------------------------
+
+! ----------------------------------------------------------------------
+
+! ----------------------------------------------------------------------
+! ORDER: h,h,[n],v OR h,h,v,[n]
+# 160
+
+! ----------------------------------------------------------------------
+# 2 "../../messy/bmil/messy_main_grid_def_bi.f90" 2 
+
+!*****************************************************************************
+MODULE messy_main_grid_def_bi
+!*****************************************************************************
+!
+!*****************************************************************************
+!
+!*****************************************************************************
+!
+
+# 1 "../../messy/bmil/messy_main_grid_def_echam5.inc" 1 
+! -*- f90 -*-
+! - GRID CONTROL
+  USE mo_gaussgrid,     ONLY: gl_gmu                      &  ! REAL(:)
+                            , gl_gw, gridarea             &  ! REAL(:)
+                            , philon, philat              &  ! REAL(:)
+                            , coslon, sinlon              &  ! REAL(:)
+                            , gl_twomu, gl_sqcst             ! REAL(:)
+
+  USE mo_geoloc,        ONLY: gboxarea_2d                 &  ! REAL(:,:)
+                            , philat_2d, philon_2d        &  ! REAL(:,:)
+                            , sqcst_2d                    &  ! REAL(:,:)
+                            , ilat, ilon                  &  ! INTEGER(:,:)
+                            , twomu_2d                       ! REAL(:,:)
+
+  USE mo_hyb,           ONLY: ceta                        &  ! REAL(:)
+                            , cetah                          ! REAL(:)
+
+! - DECOMPOSITION -> nproma, npromz, ngpblks, nllev, nllevp1, lnsp, nlm, snsp
+  USE messy_main_mpi_bi,    ONLY: p_pe, dcl
+
+! -----------------------------------------------------------------
+! - FOR USE OUTSIDE 'LOCAL LOOP'
+
+! MESSy
+  USE messy_main_grid_def_mem_bi
+  USE messy_main_grid_def,      ONLY: submodstr
+  USE messy_main_constants_mem, ONLY: dp, DTR
+
+
+  IMPLICIT NONE
+  PUBLIC
+  SAVE
+
+! 1-dimensional (vertical) fields
+  REAL(dp), DIMENSION(:), POINTER :: hyam => NULL()
+  REAL(dp), DIMENSION(:), POINTER :: hybm => NULL()
+
+  REAL(dp), DIMENSION(:,:), POINTER :: &
+    decomp_gp_jp => NULL(), &
+    decomp_gp_jr => NULL(), &
+    decomp_gp_pe => NULL(), &
+    coslon_2d    => NULL(), &
+    sinlon_2d    => NULL(), &
+    coslat_2d    => NULL(), &
+    sinlat_2d    => NULL()
+
+! 3-dimensional fields
+  REAL(dp), DIMENSION(:,:,:), POINTER :: &
+    grmass     => NULL(), &
+    grmassdry  => NULL(), &
+    grvol      => NULL()
+
+  REAL(dp), POINTER, DIMENSION(:,:,:) :: altitudei_msl => NULL()
+  REAL(dp), POINTER, DIMENSION(:,:,:) :: altitude_msl  => NULL()
+  REAL(dp), POINTER, DIMENSION(:,:,:) :: altitudei_gnd => NULL()
+  REAL(dp), POINTER, DIMENSION(:,:,:) :: altitude_gnd  => NULL()
+  REAL(dp), POINTER, DIMENSION(:,:,:) :: deltaz        => NULL()
+
+! SUBROUTINES
+!PUBLIC :: main_grid_def_initialize
+!PUBLIC :: main_grid_def_init_memory
+!PUBLIC :: main_grid_def_read_restart
+!PUBLIC :: main_grid_def_global_start
+!PUBLIC :: main_grid_def_local_start
+!PUBLIC :: main_grid_def_radiation
+!PUBLIC :: main_grid_def_free_memory
+
+CONTAINS
+
+!***************************************************************************
+  SUBROUTINE main_grid_def_initialize
+
+    IMPLICIT NONE
+
+    nllev   = dcl%nllev
+    nllevp1 = dcl%nllevp1
+    nlm     = dcl%nlm
+    lnsp    = dcl%lnsp
+    snsp    = dcl%snsp
+    nproma  = dcl%nproma
+    npromz  = dcl%npromz
+    ngpblks = dcl%ngpblks
+    nglon   = dcl%nglon
+    nglat   = dcl%nglat
+
+  END SUBROUTINE main_grid_def_initialize
+!***************************************************************************
+
+!***************************************************************************
+  SUBROUTINE main_grid_def_init_memory
+
+    USE messy_main_channel_error_bi, ONLY: channel_halt
+    USE messy_main_channel,          ONLY: new_channel, new_channel_object   &
+                                         , new_channel_object_reference      &
+                                         , new_attribute                     &
+                                         , set_channel_object_inst
+    USE messy_main_channel_repr,     ONLY: get_representation_id
+
+    IMPLICIT NONE
+    INTRINSIC :: SIN, COS
+
+! LOCAL
+    CHARACTER(LEN=*), PARAMETER :: substr = 'main_grid_def_init_memory'
+    INTEGER :: status
+    INTEGER :: reprid
+    INTEGER :: jp, jr
+
+! create new channel
+    CALL new_channel (status, submodstr, lrestreq=.TRUE.)
+    CALL channel_halt(substr, status)
+
+! ########################################################################
+! ---------------------------- GP_1D_LEV ---------------------------------
+! ########################################################################
+! ------------------------------------------------------------------------
+    CALL get_representation_id(status, 'GP_1D_LEV', reprid)
+    CALL channel_halt(substr, status)
+
+    CALL new_channel_object(status, submodstr,  'dhyam', &
+         p1=hyam, reprid=reprid, lstatic=.TRUE.)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, submodstr, 'dhyam', 'long_name' &
+         , c='hybrid A coefficient at layer midpoints')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, submodstr, 'dhyam', 'units', c='Pa')
+    CALL channel_halt(substr, status)
+    hyam(:) = (vct(1:nvclev-1) + vct(2:nvclev))/2
+! ------------------------------------------------------------------------
+    CALL new_channel_object(status, submodstr,  'dhybm', &
+         p1=hybm, reprid=reprid, lstatic=.TRUE.)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, submodstr, 'dhybm', 'long_name' &
+            , c='hybrid B coefficient at layer midpoints')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, submodstr, 'dhybm', 'units', c='Pa')
+    CALL channel_halt(substr, status)
+    hybm(:) = (vct(nvclev+1:2*nvclev-1) + vct(nvclev+2:2*nvclev))/2
+! ------------------------------------------------------------------------
+
+! ########################################################################
+! ---------------------------- GP_2D_HORIZONTAL --------------------------
+! ########################################################################
+    CALL get_representation_id(status, 'GP_2D_HORIZONTAL', reprid)
+    CALL channel_halt(substr, status)
+! ------------------------------------------------------------------------
+! --- CHANNEL OBJECT REFERENCES ------------------------------------------
+! ------------------------------------------------------------------------
+!
+! ------------------------------------------------------------------------
+! --- NEW CHANNEL OBJECTS ------------------------------------------------
+! ------------------------------------------------------------------------
+! ------------------------------------------------------------------------
+! (diagnostic; decomposition)
+    CALL new_channel_object(status, submodstr,  'decomp_gp_jp', &
+         p2=decomp_gp_jp, reprid=reprid, lrestreq=.FALSE., lstatic=.TRUE.)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, submodstr, 'decomp_gp_jp', &
+         'long_name', c='vector index (1...nproma)')
+    CALL channel_halt(substr, status)
+    DO jp=1, nproma
+       decomp_gp_jp(jp,:) = REAL(jp,DP)
+    END DO
+! ------------------------------------------------------------------------
+! (diagnostic; decomposition)
+    CALL new_channel_object(status, submodstr,  'decomp_gp_jr', &
+         p2=decomp_gp_jr, reprid=reprid, lrestreq=.FALSE., lstatic=.TRUE.)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, submodstr, 'decomp_gp_jr', &
+         'long_name', c='vector index (1...ngpblks)')
+    CALL channel_halt(substr, status)
+    DO jr=1, ngpblks
+       decomp_gp_jr(:,jr) = REAL(jr,DP)
+    END DO
+! ------------------------------------------------------------------------
+! (diagnostic; decomposition)
+    CALL new_channel_object(status, submodstr,  'decomp_gp_pe', &
+         p2=decomp_gp_pe, reprid=reprid, lrestreq=.FALSE., lstatic=.TRUE.)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, submodstr, 'decomp_gp_pe', &
+         'long_name', c='processor number')
+    CALL channel_halt(substr, status)
+    decomp_gp_pe(:,:) = REAL(p_pe,DP)
+! ------------------------------------------------------------------------
+! COS(longitude)
+    CALL new_channel_object(status, submodstr,  'coslon', &
+         p2=coslon_2d, reprid=reprid, lstatic=.TRUE.)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, submodstr, 'coslon', &
+         'long_name', c='cos(longitude)')
+    CALL channel_halt(substr, status)
+    coslon_2d(:,:) = COS(philon_2d(:,:)*DTR)
+! ------------------------------------------------------------------------
+! SIN(longitude)
+    CALL new_channel_object(status, submodstr,  'sinlon', &
+         p2=sinlon_2d, reprid=reprid, lstatic=.TRUE.)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, submodstr, 'sinlon', &
+         'long_name', c='sin(longitude)')
+    CALL channel_halt(substr, status)
+    sinlon_2d(:,:) = SIN(philon_2d(:,:)*DTR)
+! ------------------------------------------------------------------------
+! COS(latitude)
+    CALL new_channel_object(status, submodstr,  'coslat', &
+         p2=coslat_2d, reprid=reprid, lstatic=.TRUE.)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, submodstr, 'coslat', &
+         'long_name', c='cos(latitude)')
+    CALL channel_halt(substr, status)
+    coslat_2d(:,:) = COS(philat_2d(:,:)*DTR)
+! ------------------------------------------------------------------------
+! SIN(latitude)
+    CALL new_channel_object(status, submodstr,  'sinlat', &
+         p2=sinlat_2d, reprid=reprid, lstatic=.TRUE.)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, submodstr, 'sinlat', &
+         'long_name', c='sin(latitude)')
+    CALL channel_halt(substr, status)
+    sinlat_2d(:,:) = SIN(philat_2d(:,:)*DTR)
+! ------------------------------------------------------------------------
+! required for IMPORT GRID
+    CALL new_channel_object_reference(status, 'geoloc', 'gboxarea' &
+                                     , submodstr, 'gboxarea')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, submodstr, 'gboxarea', 'long_name' &
+                      , c= 'grid box area')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, submodstr, 'gboxarea', 'units', c='m2')
+    CALL channel_halt(substr, status)
+    CALL set_channel_object_inst(status, submodstr, 'gboxarea')
+    CALL channel_halt(substr, status)
+
+! ########################################################################
+! ----------------------------- GP_3D_MID --------------------------------
+! ########################################################################
+    CALL get_representation_id(status, 'GP_3D_MID', reprid)
+    CALL channel_halt(substr, status)
+! ------------------------------------------------------------------------
+! --- CHANNEL OBJECT REFERENCES ------------------------------------------
+! ------------------------------------------------------------------------
+!
+! ------------------------------------------------------------------------
+! --- NEW CHANNEL OBJECTS ------------------------------------------------
+! ------------------------------------------------------------------------
+! (from main_grid_def_global_start)
+!                   pointer
+! ------------------------------------------------------------------------
+     CALL new_channel_object(status, submodstr, 'altitude_msl'&
+          , p3=altitude_msl &
+       , reprid=reprid, lrestreq=.FALSE.)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, submodstr, 'altitude_msl', &
+         'long_name', c='mid point altitude above sea level')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, submodstr, 'altitude_msl', 'units', c='m')
+    CALL channel_halt(substr, status)
+! ------------------------------------------------------------------------
+! ------------------------------------------------------------------------
+    CALL new_channel_object(status, submodstr, 'altitude_gnd'&
+         , p3=altitude_gnd &
+         , reprid=reprid, lrestreq=.FALSE.)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, submodstr, 'altitude_gnd', &
+         'long_name', c='mid point altitude above ground')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, submodstr, 'altitude_gnd', 'units', c='m')
+    CALL channel_halt(substr, status)
+! ------------------------------------------------------------------------
+    CALL new_channel_object(status, submodstr, 'deltaz'&
+         , p3=deltaz, reprid=reprid, lrestreq=.FALSE.)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, submodstr, 'deltaz', &
+         'long_name', c='mid point altitude above groundlayer thickness')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, submodstr, 'deltaz', 'units', c='m')
+    CALL channel_halt(substr, status)
+! ------------------------------------------------------------------------
+! (from physc.f90, now from main_grid_def_global_start)
+! copy; only for output
+! ------------------------------------------------------------------------
+! (from physc.f90); no equivalent local varibale available
+    CALL new_channel_object(status, submodstr,  'grmass', &
+         p3=grmass, reprid=reprid)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, submodstr, 'grmass', 'long_name', c='grid mass')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, submodstr, 'grmass', 'units', c='kg')
+    CALL channel_halt(substr, status)
+! ------------------------------------------------------------------------
+    CALL new_channel_object(status, submodstr,  'grmassdry', &
+         p3=grmassdry, reprid=reprid)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, submodstr, 'grmassdry', 'long_name' &
+         , c='mass of dry air')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, submodstr, 'grmassdry', 'units', c='kg')
+    CALL channel_halt(substr, status)
+! ------------------------------------------------------------------------
+! (from physc.f90); no equivalent local varibale available
+    CALL new_channel_object(status, submodstr,  'grvol', p3=grvol, reprid=reprid)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, submodstr, 'grvol', 'long_name', c='grid volume')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, submodstr, 'grvol', 'units', c='m3')
+    CALL channel_halt(substr, status)
+! ------------------------------------------------------------------------
+! ------------------------------------------------------------------------
+
+! ########################################################################
+! ----------------------------- GP_3D_INT --------------------------------
+! ########################################################################
+    CALL get_representation_id(status, 'GP_3D_INT', reprid)
+    CALL channel_halt(substr, status)
+! ------------------------------------------------------------------------
+! --- CHANNEL OBJECT REFERENCES ------------------------------------------
+! ------------------------------------------------------------------------
+!
+! ------------------------------------------------------------------------
+! --- NEW CHANNEL OBJECTS ------------------------------------------------
+! ------------------------------------------------------------------------
+! ------------------------------------------------------------------------
+    CALL new_channel_object(status, submodstr, 'altitudei_gnd' &
+          , p3=altitudei_gnd &
+       , reprid=reprid, lrestreq=.FALSE.)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, submodstr, 'altitudei_gnd', &
+         'long_name', c='interface altitude above sea level ground')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, submodstr, 'altitudei_gnd', 'units', c='m')
+    CALL channel_halt(substr, status)
+! ------------------------------------------------------------------------
+    CALL new_channel_object(status, submodstr, 'altitudei_msl' &
+         , p3=altitudei_msl &
+         , reprid=reprid, lrestreq=.FALSE.)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, submodstr, 'altitudei_msl', &
+         'long_name', c='interface altitude above sea level')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, submodstr, 'altitudei_msl', 'units', c='m')
+    CALL channel_halt(substr, status)
+
+  END SUBROUTINE main_grid_def_init_memory
+!***************************************************************************
+
+!***************************************************************************
+  SUBROUTINE main_grid_def_read_restart
+
+    IMPLICIT NONE
+
+    INTRINSIC :: REAL
+
+    INTEGER :: jp, jr
+
+! If the user, for what reason ever (e.g. post-processing etc.)
+! forces these channel objects into the restart files, and then
+! modifies the parallel decomposition before the next restart,
+! the information would be wrong, since the correct initialisiation
+! from above is overwritten by reading the info from the restart file.
+! Thus, it needs to be reset correctly here.
+
+    DO jp=1, nproma
+       decomp_gp_jp(jp,:) = REAL(jp,DP)
+    END DO
+
+    DO jr=1, ngpblks
+       decomp_gp_jr(:,jr) = REAL(jr,DP)
+    END DO
+
+    decomp_gp_pe(:,:) = REAL(p_pe,DP)
+
+  END SUBROUTINE main_grid_def_read_restart
+!***************************************************************************
+
+!***************************************************************************
+  SUBROUTINE main_grid_def_global_start
+
+! Author: Patrick Joeckel, MPICH, Nov 2004
+
+    USE messy_main_timer,         ONLY: time_step_len
+    USE messy_main_data_bi,       ONLY: press_3d, pressi_3d, qm1_3d
+    USE messy_main_constants_mem, ONLY: g, M_air, R_gas
+
+! 1
+    USE mo_scan_buffer, ONLY: t_scb     => t     & ! TEMPERATURE
+                            , tte_scb   => tte   & ! TEMPERATURE TENDENCY
+                            , qte_scb   => qte     ! SPECIFIC HUMIDITY TENDENCY
+
+    IMPLICIT NONE
+
+! LOCAL
+    CHARACTER(LEN=*), PARAMETER :: substr = 'main_grid_def_global_start'
+    REAL(DP), DIMENSION(:,:,:), ALLOCATABLE :: temp
+    INTEGER                                 :: jk, zjrow
+    INTEGER                                 :: zkproma
+    REAL(DP), DIMENSION(:,:,:), ALLOCATABLE :: zq
+
+! INIT
+    ALLOCATE(temp(dcl%nproma, dcl%nlev, dcl%ngpblks))
+    ALLOCATE(zq(dcl%nproma, dcl%nlev, dcl%ngpblks))
+
+! AIR MASS IN GRID BOX
+    grmass(:,:,:) = ((pressi_3d(:,2:nlevp1,:) - pressi_3d(:,1:nlev,:)) / g) &
+         * SPREAD(gboxarea_2d,2,nlev)
+
+! METRIC VOLUME OF GRID BOX
+    temp(:,:,:) = t_scb(:,:,:) + tte_scb(:,:,:)*time_step_len
+!
+    DO zjrow=1, dcl%ngpblks
+       IF ( zjrow == dcl%ngpblks ) THEN
+          zkproma = dcl%npromz
+       ELSE
+          zkproma = dcl%nproma
+       END IF
+       grvol(1:zkproma,:,zjrow) = grmass(1:zkproma,:,zjrow) / &
+            ( press_3d(1:zkproma,:,zjrow) * (1.0E-03 * M_air) &
+            / (temp(1:zkproma,:,zjrow) * R_gas) )
+    END DO
+
+! CALCULATE RELATIVE HUMIDITY AND DENSITY OF DRY AIR
+    DO zjrow=1, dcl%ngpblks
+       IF ( zjrow == dcl%ngpblks ) THEN
+          zkproma = dcl%npromz
+       ELSE
+          zkproma = dcl%nproma
+       END IF
+! EPSILON(1.) serves to avoid water vapour content in a layer
+!          of less than EPSILON(1.).
+       zq(1:zkproma,:,zjrow)= &
+            MAX( qm1_3d(1:zkproma,:,zjrow) &
+            + time_step_len*qte_scb(1:zkproma,:,zjrow) &
+            , EPSILON(1._dp) )
+       grmassdry(1:zkproma,:,zjrow) = grmass(1:zkproma,:,zjrow) &
+            * (1.0_dp - zq(1:zkproma,:,zjrow))
+!
+    END DO
+
+! CLEAN UP
+    DEALLOCATE(temp)
+    DEALLOCATE(zq)!
+
+  END SUBROUTINE main_grid_def_global_start
+!***************************************************************************
+! -------------------------------------------------------------------
+!***************************************************************************
+  SUBROUTINE main_grid_def_local_start
+
+    IMPLICIT NONE
+
+    jrow = nrow(2)
+    jglat = nrow(3)
+    IF ( jrow == dcl%ngpblks ) THEN
+       kproma = dcl%npromz
+    ELSE
+       kproma = dcl%nproma
+    END IF
+
+  END SUBROUTINE main_grid_def_local_start
+!***************************************************************************
+!***************************************************************************
+  SUBROUTINE main_grid_def_radiation
+
+! Author: Patrick Joeckel, MPICH, Nov 2004
+
+    USE messy_main_data_bi,       ONLY: geosp, geopot_3d, geopoti_3d
+
+    USE messy_main_timer,         ONLY: time_step_len
+    USE messy_main_constants_mem, ONLY: g
+    
+    IMPLICIT NONE
+
+! LOCAL
+    CHARACTER(LEN=*), PARAMETER :: substr = 'main_grid_def_global_start'
+    REAL(DP), DIMENSION(:,:,:), ALLOCATABLE :: temp
+    INTEGER                                 :: jk, zjrow
+    INTEGER                                 :: zkproma
+    REAL(DP), DIMENSION(:,:,:), ALLOCATABLE :: zq
+
+
+    DO zjrow=1, dcl%ngpblks
+       IF ( zjrow == dcl%ngpblks ) THEN
+          zkproma = dcl%npromz
+       ELSE
+          zkproma = dcl%nproma
+       END IF
+       DO jk=2, nlevp1
+          altitudei_msl(1:zkproma,jk,zjrow) = &
+               (geopoti_3d(1:zkproma,jk-1,zjrow) + geosp(1:zkproma,zjrow)) / g
+          altitudei_gnd(1:zkproma,jk,zjrow) = &
+               geopoti_3d(1:zkproma,jk-1,zjrow) / g
+       END DO
+       DO jk=1, nlev
+          altitude_msl(1:zkproma,jk,zjrow) =&
+               (geopot_3d(1:zkproma,jk,zjrow) + geosp(1:zkproma,zjrow)) / g
+          altitude_gnd(1:zkproma,jk,zjrow) = geopot_3d(1:zkproma,jk,zjrow) / g
+       END DO
+       DO jk=2, nlev
+! calculate deltaZ from geopoti_3d and not altitudei_gnd/msl to
+! get binary identical results in submodels when deltaZ
+! replaces the local calculation from geopoti_3d
+          deltaZ(1:zkproma,jk,zjrow) = &
+               altitudei_gnd(1:zkproma,jk,zjrow) &
+               - altitudei_gnd(1:zkproma,jk+1,zjrow)
+       END DO
+! Set layer thinkness of uppermost layer (infinity in pressure
+! coordinates) to the same height as second uppermost layer, to
+! get numerically stable / meaningful results
+       deltaZ(1:zkproma,1,zjrow) = 2._dp * &
+            (altitude_msl(1:zkproma,1,zjrow) - altitudei_msl(1:zkproma,2,zjrow))
+       altitudei_msl(1:zkproma,1,zjrow) = &
+            altitudei_msl(1:zkproma,2,zjrow) + deltaZ(1:zkproma,1,zjrow)
+       altitudei_gnd(1:zkproma,1,zjrow) = &
+            altitudei_gnd(1:zkproma,2,zjrow) + deltaZ(1:zkproma,1,zjrow)
+    END DO
+
+  END SUBROUTINE main_grid_def_radiation
+
+!***************************************************************************
+  SUBROUTINE main_grid_def_free_memory
+
+    IMPLICIT NONE
+
+  END SUBROUTINE main_grid_def_free_memory
+!***************************************************************************
+# 13 "../../messy/bmil/messy_main_grid_def_bi.f90" 2 
+
+
+!==============================================================================
+
+# 19
+
+
+!==============================================================================
+
+# 25
+
+
+!==============================================================================
+
+# 31
+
+
+!==============================================================================
+
+
+# 38
+
+
+!==============================================================================
+
+# 56
+
+
+!==============================================================================
+
+# 62
+
+
+!==============================================================================
+
+# 68
+
+
+!==============================================================================
+
+!*****************************************************************************
+END MODULE messy_main_grid_def_bi
+!*****************************************************************************

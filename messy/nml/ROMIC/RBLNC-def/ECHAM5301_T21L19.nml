@@ -1,0 +1,64 @@
+! -*- f90 -*-
+&SDSCTL
+  LRESUME      = $MSH_LRESUME        ! do not change
+  out_expname  = "$EXP_NAME"
+  out_filetype = 2                   ! GRIB=1, NetCDF=2
+  LSDS1        = F
+/
+&RUNCTL
+! IADVEC       = 0                   ! no advection for quick runs
+  NMWICFI      = 8       ! number of mass-wind-inconsistency fixer iterations
+  LAMIP        = $ECHAM5_LAMIP
+!  LMLO         = $USE_MLO            ! use mixed layer ocean
+  LNUDGE       = $LNUDGE             ! nudging 
+  LNMI         = $LNMI               ! normal mode filtering for nudging
+  LMIDATM      = $ECHAM5_LMIDATM     ! middle atmosphere setup
+!-  DT_START     = $START_YEAR,$START_MONTH,$START_DAY,0,0,0
+!-  DT_STOP      = $STOP_YEAR,$STOP_MONTH,$STOP_DAY,0,0,0
+!-  PUTRERUN     = 1,'months','last',0  ! default: 1,'months','last',0
+!-  NO_CYCLES    = 9999,               ! number of rerun cycles
+!-  PUTDATA      = 6,'hours','first',0
+!-  LABORT       = F
+  NPROMA       = $NPROMA             ! change value in xmessy, not here
+  NPROCA       = $NPROCA             ! change value in xmessy, not here
+  NPROCB       = $NPROCB             ! change value in xmessy, not here
+/
+&DYNCTL
+!  VCHECK=235.             ! activate for L90MA
+!  SPDRAG=0.926E-4         ! activate for L90MA
+/
+&GWSCTL
+!- obsolete; replaced by MESSy-submodel GWAVE
+!-  !  RMSCON=0.96             ! activate for L90MA
+/
+&PHYSCTL
+!  LRAD = F
+/
+&RADCTL
+  TRIGRAD      = 3,'steps','first',0
+/
+&NMICTL
+/
+&POSTCTL
+/
+
+&NDGCTL
+!
+DT_NUDG_START =${START_YEAR},${START_MONTH},${START_DAY},${START_HOUR},0,0
+DT_NUDG_STOP  =${STOP_YEAR},${STOP_MONTH},${STOP_DAY},${STOP_HOUR},0,0
+LNUDGDBX      = F
+!LNUDGINI      = T
+LNUDGINI      = F
+NUDGTRUN      = 0
+LNUDGWOBS     = F
+LNUDGFRD      = F
+!
+NDG_FILE_VOR  = "$INPUTDIR_NUDGE/${FNAME_NUDGE}_vor"
+NDG_FILE_DIV  = "$INPUTDIR_NUDGE/${FNAME_NUDGE}_div"
+NDG_FILE_STP  = "$INPUTDIR_NUDGE/${FNAME_NUDGE}_stp"
+NDG_FILE_SST  = "$INPUTDIR_NUDGE/${FNAME_NUDGE}_sst"
+!
+! nudging weights: 
+!
+!
+/

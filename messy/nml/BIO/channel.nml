@@ -1,0 +1,270 @@
+! -*- f90 -*-
+&CTRL
+! ---------------------------------------------------------------------
+! EXPERIMENT NAME
+! ---------------------------------------------------------------------
+EXP_NAME='$EXP_NAME',
+! ---------------------------------------------------------------------
+! # FLUSH I/O BUFFER IN EVERY TIME STEP (DEFAULT: T (true))
+! # NOTE: F (false) might increase the overall performance
+!L_FLUSH_IOBUFFER = F,
+! ---------------------------------------------------------------------
+! # ADD NEW OUTPUT CHANNELS (MAX. 50)
+! ---------------------------------------------------------------------
+!
+! ---------------------------------------------------------------------
+! # ADD NEW CHANNEL OBJECT REFERENCES (MAX. 500)
+! # NOTES: 
+! #  - SOURCE OBJECT NAME MAY CONTAIN WILDCARDS '?' AND '*'
+! #    (in this case, target object name is ignored)
+! #  - TARGET CHANNEL NAME MAY CONTAIN WILDCARDS '?' AND '*'
+! #  - TARGET OBJECT NAME SET TO SOURCE OBJECT NAME, IF ''
+! ---------------------------------------------------------------------
+ADD_REF( 1)        = 'g3b',         'aps',        'aer_*',         '',
+ADD_REF( 2)        = 'g3b',         'aps',        'tr_*',         '',
+ADD_REF( 3)        = 'g3b',         'aps',        'rad',         '',
+ADD_REF( 4)        = 'scnbuf',      'vervel',     'g3b',       '',
+ADD_REF( 5)        = 'g3b',         'geosp',      'tr_*',      '',
+ADD_REF( 6)        = 'geoloc',      'gboxarea',   'tr_*',      '',
+!
+ADD_REF( 6)        = 'gl',          'q',          'g3b', '',
+ADD_REF( 7)        = 'gl',          'xl',         'g3b', '',
+ADD_REF( 8)        = 'gl',          'xi',         'g3b', '',
+!
+ADD_REF( 9)        = 'ECHAM5',      'tpot',       'tropop',  '',
+ADD_REF(10)        = 'ECHAM5',      'geopot',     'tropop',  '',
+!
+ADD_REF(100)      = 'tracer_gp',    'DU_*',       'aer_bulk',  '',
+ADD_REF(101)      = 'tracer_gp',    'BC_*',       'aer_bulk',  '',
+ADD_REF(102)      = 'tracer_gp',    'OC_*',       'aer_bulk',  '',
+!
+ADD_REF(103)      = 'tracer_gp',    'H2SO4_*',    'aer_sulph',  '',
+ADD_REF(104)      = 'tracer_gp',    'HSO4m_*',    'aer_sulph',  '',
+ADD_REF(105)      = 'tracer_gp',    'SO4mm_*',    'aer_sulph',  '',
+!
+ADD_REF(106)      = 'tracer_gp',    'NO3m_*',     'aer_nitr',  '',
+ADD_REF(107)      = 'tracer_gp',    'NH4p_*',     'aer_nitr',  '',
+ADD_REF(108)      = 'tracer_gp',    'Capp_*',     'aer_nitr',  '',
+ADD_REF(109)      = 'tracer_gp',    'Mgpp_*',     'aer_nitr',  '',
+ADD_REF(110)      = 'tracer_gp',    'Kp_*',       'aer_nitr',  '',
+!
+ADD_REF(111)      = 'tracer_gp',    'H2O_*',      'aer_water',  '',
+ADD_REF(112)      = 'tracer_gp',    'Hp_*',       'aer_water',  '',
+ADD_REF(113)      = 'tracer_gp',    'OHm_*',      'aer_water',  '',
+!
+ADD_REF(114)      = 'tracer_gp',    'SS_*',       'aer_ss',  '',
+ADD_REF(115)      = 'tracer_gp',    'Nap_*',      'aer_ss',  '',
+ADD_REF(116)      = 'tracer_gp',    'Clm_*',      'aer_ss',  '',
+!
+ADD_REF(117)      = 'tracer_gp',    'N_*',        'aer_physc',  '',
+ADD_REF(118)      = 'gmxe_gp',      'AERNUMB*',   'aer_physc',  '',
+ADD_REF(119)      = 'gmxe_gp',      'RWETAER*',   'aer_physc',  '',
+ADD_REF(120)      = 'gmxe_gp',      'RDRYAER*',   'aer_physc',  '',
+ADD_REF(121)      = 'gmxe_gp',      'DDRYAER*',   'aer_physc',  '',
+!
+ADD_REF(122)      = 'aeropt_GMXE',   'aot_opt_TOT_550_*',   'aer_aeropt',  '',
+ADD_REF(123)      = 'aer_aeropt',    '*',   'inst_aer_aeropt',  '',
+!
+! ---------------------------------------------------------------------
+! # SET DEFAULT OUTPUT AND RESTART HANDLING
+!      - ''
+!      - OUTPUT-FILETYPE, RERUN-FILETYPE, NO. OF STEPS PER OUTPUT-FILE,
+!      - RERUN, IGNORE, INST, AVE, STD, MIN, MAX, CNT, CAV, RANGE(2)
+! # NOTES:
+! #    IGNORE = T  FORCES THE MODEL TO IGNORE POTENTIAL lrestreq FLAGS
+! #                FOR PSEUDO-INITIAL RUNS FROM RESTART FILES
+! ---------------------------------------------------------------------
+OUT_DEFAULT     = '', $OFT, $OFT, -1, F,F, F,T,F,F,F, F,F, , ,
+! ---------------------------------------------------------------------
+! # OUTPUT PRECISION (ASCII, (P)NETCDF, (P)NETCDF, GRIB, HDF4, HDF5)
+! # NOTES: - ONLY (P)NETCDF CURRENTLY IMPLEMENTED;
+! #        - (P)NETCDF: 1=NF(90)_FLOAT; 2=NF(90)_DOUBLE
+OUT_PREC = 1, 1, 1, 1, 1, 1,   ! for production
+!OUT_PREC = 1, 2, 2, 1, 1, 1,   ! for tests
+! ---------------------------------------------------------------------
+! # SET CHANNEL SPECIFIC DEFAULT OUTPUT AND RESTART HANDLING (MAX. 500)
+!      - channel-name
+!      - OUTPUT-FILETYPE, RERUN-FILETYPE, NO. OF STEPS PER OUTPUT-FILE,
+!      - RERUN, IGNORE, INST, AVE, STD, MIN, MAX, CNT, CAV, RANGE(2)
+! # NOTE: IF NO. OF STEPS PER OUTPUT-FILE <= 0, THE EVENT TRIGGER
+!         (CPL-NAMELIST, TIMER_TNF BELOW) CONTROLS THE FILE CONTENT
+! ---------------------------------------------------------------------
+! ECHAM5 STANDARD
+OUT_CHANNEL(  1)   = 'geoloc',        $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL(  2)   = 'sp',               2,    2, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL(  3)   = 'ls',               2,    2, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL(  4)   = 'f',                2,    2, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL(  5)   = 'g1a',           $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL(  6)   = 'g1b',           $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL(  7)   = 'g2a',           $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL(  8)   = 'g2b',           $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL(  9)   = 'gl',            $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL( 10)   = 'scnbuf',        $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL( 11)   = 'g3b',           $OFT, $OFT, -1, F,F, F,T,F,F,F, F,F, , ,
+! GRIDPOINT TRACER OUTPUT
+OUT_CHANNEL( 12)   = 'tracer_gp',     $OFT, $OFT, -1, F,F, F,T,F,F,F, F,F, , ,
+OUT_CHANNEL( 13)   = 'tracer_gp_te',  $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL( 14)   = 'tracer_gp_m1',  $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL( 15)   = 'tracer_gp_x*',  $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL( 16)   = 'tracer_pdef_gp',   2,    2, -1, F,F, F,F,F,F,F, F,F, , ,
+! MESSy SUBMODELS
+OUT_CHANNEL( 30)    = 'ECHAM5',       $OFT, $OFT, -1, F,F, F,T,F,F,F, F,F, , ,
+OUT_CHANNEL( 30)    = 'e5vdiff',      $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL( 31)    = 'nudg',            2,    2, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL( 32)    = 'nudg_gp',      $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL( 52)    = 'airsea',       $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL( 53)    = 'airsea_gp',    $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL( 54)    = 'cloud_aer_lohmann', $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL( 55)    = 'cloud_aer_kuebbel', $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL( 56)    = 'cloud_ice',    $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL( 57)    = 'cloud',        $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL( 58)    = 'convect',      $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL( 59)    = 'cvtrans',      $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL( 60)    = 'd14co_gp',     $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL( 61)    = 'd14co_lg',     $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL( 62)    = 'dradon',       $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL( 66)    = 'h2o*',         $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL( 68)    = 'jval_gp',      $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL( 69)    = 'jval_lg',      $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL( 70)    = 'jval_diag',    $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL( 75)    = 'lnox*',        $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL( 76)    = 'lnox_lg',      $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL( 77)    = 'm7_gp',        $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL( 78)    = 'mecca_gp',     $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL( 79)    = 'mecca_lg',     $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL( 80)    = 'mecca_aero',   $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL( 81)    = 'mecca_khet_gp',$OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL( 82)    = 'mecca_khet_lg',$OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL( 85)    = 'mmforce',      $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL( 86)    = 'msbm',         $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL( 91)    = 'ptrac*',       $OFT, $OFT, -1, F,F, F,T,F,F,F, F,F, , ,
+OUT_CHANNEL( 92)    = 'qbo',          $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL( 93)    = 'rad*',         $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL( 94)    = 'rad01',         $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL( 95)    = 'scav',         $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL( 96)    = 'scav_gp',      $OFT, $OFT, -1, F,F, F,T,F,F,F, F,F, , ,
+OUT_CHANNEL( 97)    = 'scav_lg',      $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+!OUT_CHANNEL( 98)    = 'scout_*',         2,   2,  -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL( 99)    = 'sedi',         $OFT, $OFT, -1, F,F, F,T,F,F,F, F,F, , ,
+OUT_CHANNEL(100)    = 's4d_*',           2,   2,1000, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL(101)    = 'sorbit_*',     $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL(102)    = 'spe',          $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL(103)    = 'spacenox',     $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL(105)    = 'tnudge_gp',    $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL(106)    = 'tnudge_lg',    $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL(108)    = 'tropop',       $OFT, $OFT, -1, F,F, F,T,F,F,F, F,F, , ,
+OUT_CHANNEL(109)    = 'viso',         $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL(110)    = 'cloudopt*',    $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL(111)    = 'qtimer',       $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL(112)    = 'import_grid',   $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL(113)    = 'import_ts',    $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL(114)    = 'gwave',        $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL(115)    = 'aeropt*',      $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL(116)    = 'offemis',      $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL(117)    = 'onemis*',      $OFT, $OFT, -1, F,F, F,T,F,F,F, F,F, , ,
+OUT_CHANNEL(118)    = 'orbit',        $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL(119)    = 'sedi_gp',      $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL(120)    = 'gmxe_gp',      $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL(121)    = 'ddep_gp',      $OFT, $OFT, -1, F,F, F,T,F,F,F, F,F, , ,
+OUT_CHANNEL(122)    = 's4d_HALOE*',     2,    2,1000, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL(123)    = 'satsims*',     $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+!
+! ADDITIONAL CHANNELS WITH REFERENCES
+OUT_CHANNEL(202)    = 'tr_transp',    $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL(203)    = 'tr_family',    $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL(204)    = 'tr_Ox_HOx',    $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL(205)    = 'tr_NOx_NOy',   $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL(206)    = 'tr_hycarbs',   $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL(207)    = 'tr_perox',     $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL(208)    = 'tr_alks',      $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL(209)    = 'tr_nalks',     $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL(210)    = 'tr_halocarbs', $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL(211)    = 'tr_chlorine',  $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL(212)    = 'tr_bromine',   $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL(213)    = 'tr_sulphur',   $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL(216)    = 'tr_jvdiag',    $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL(217)    = 'tr_mercury',   $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+! ORACLE
+OUT_CHANNEL(220)     = 'tr_aer_cs',    $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL(221)     = 'tr_aer_as',    $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL(222)     = 'tr_aer_ks',    $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL(223)     = 'tr_aer_ns',    $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL(224)     = 'tr_aer_ci',    $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL(225)     = 'tr_aer_ai',    $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL(226)     = 'tr_aer_ki',    $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL(227)     = 'tr_aer_l',     $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL(228)     = 'tr_OA',        $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+!
+! ACTUAL OUTPUT
+OUT_CHANNEL(250)    = 'sorbit_*',        $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL(251)    = 'scout_*',         $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL(252)    = 'aer_*',           $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL(253)    = 'tr_tracer',       $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL(254)    = 'raddiag01',       $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+
+! ---------------------------------------------------------------------
+! # SET CHANNEL OBJECT SPECIFIC OUTPUT AND RESTART HANDLING (MAX. 1000)
+!      - channel-name
+!      - object-name
+!      - RERUN, IGNORE, INST, AVE, STD, MIN, MAX, CNT, CAV, RANGE(2)
+! ---------------------------------------------------------------------
+! ECHAM5 STANDARD
+! - NO OUTPUT
+!OUT_OBJECT(  1)  = 'g3b','qtnew',               F,F, F,F,F,F,F, F,F, , ,
+!OUT_OBJECT(1)  = 'cloud','acdnc',             F,F, F,F,F,F,F, F,F, , ,
+!OUT_OBJECT(2)  = 'gmxe_gp','DIAGAER_M*_25',   F,F, F,F,F,F,F, F,F, , ,
+!OUT_OBJECT(3)  = 'gmxe_gp','dryradius',       F,F, F,F,F,F,F, F,F, , ,
+!OUT_OBJECT(4)  = 'gmxe_gp','wetradius',       F,F, F,F,F,F,F, F,F, , ,
+!OUT_OBJECT(483)  = 'gmxe_gp','ccn*',          F,F, F,F,F,F,F, F,F, , ,
+!OUT_OBJECT(486)  = 'gmxe_gp','anumber',       F,F, F,F,F,F,F, F,F, , ,
+/
+! #########################################################################
+&CPL
+! --------------------------------------------------------------------------
+! ENABLE ADDITIONAL ECHAM5 STANDARD STREAM OUTPUT ?
+! (e.g, needed for GRIB-template generation)
+! -> OUTPUT TIME INTERVAL => PUTDATA in ECHAM5.nml
+L_BM_ORIG_OUTPUT = F,
+! --------------------------------------------------------------------------
+!===========================================================================
+! --------------------------------------------------------------------------
+! SET OUTPUT INTERVALS FOR ALL CHANNELS (DEFAULT + INDIVIDUAL)
+! NOTE: CHANNEL OUTPUT OF tdiag, tdiag_gp, nudg, nudg_gp
+!       WILL BE SYNCHRONIZED TO THE SHORTEST OUTPUT INTERVAL (IF PRESENT !)
+! NOTE: First match (wildcard) counts 
+! --------------------------------------------------------------------------
+!TIMER_DEFAULT    = '',     1, 'months', 'last', 0, 
+TIMER_DEFAULT    = '',     6, 'hours',  'first', 0,
+!TIMER_DEFAULT    = '',     5, 'hours',  'first', 0,
+!TIMER_DEFAULT    = '',     1, 'days',  'first', 0,
+!TIMER_DEFAULT    = '',     1, 'days',  'last', 0,
+!TIMER_DEFAULT    = '',     1, 'steps',  'last', 0,
+! --------------------------------------------------------------------------
+!TIMER_CHANNEL(  2) = 'aer_aeropt_inst',      5, 'hours', 'first', 0,
+!TIMER_CHANNEL(  2) = 'lnox*',      1, 'months', 'first', 0,
+!TIMER_CHANNEL(  3) = 'qtimer',     1, 'steps',   'first', 0,
+!TIMER_CHANNEL(  4) = 'import_ts', 1, 'steps',   'first', 0,
+!TIMER_CHANNEL(  8) = 'scout*', 1, 'days',   'first', 0,
+!---------------------------------------------------------------------------
+!===========================================================================
+!---------------------------------------------------------------------------
+! SET TIMER EVENTS FOR NEW FILENAMES
+! (IF NO. OF STEPS PER OUTPUT-FILE <= 0 ABOVE !!!)
+! NOTE: First match (wildcard) counts 
+!---------------------------------------------------------------------------
+TIMER_TNF_DEFAULT = '', 1, 'months', 'first', 0,
+!---------------------------------------------------------------------------
+!TIMER_TNF_CHANNEL( 1) = 'qtimer', 1, 'months',   'first', 0
+!TIMER_TNF_CHANNEL( 2) = 'scout*', 1, 'months', 'first', 0
+!TIMER_TNF_CHANNEL( 1) = 'qtimer', 1, 'days',   'first', 0
+!TIMER_TNF_CHANNEL( 2) = 'scout*', 1, 'days', 'first', 0
+!---------------------------------------------------------------------------
+/
+
+&CTRL_PNETCDF
+!---------------------------------------------------------------------------
+!MPI_IO_HINT(1) = 'IBM_largeblock_io','true',
+!MPI_IO_HINT(2) = 'IBM_io_buffer_size','2949120',
+!MPI_IO_HINT(3) = 'IBM_sparse_access','true',
+!---------------------------------------------------------------------------
+/

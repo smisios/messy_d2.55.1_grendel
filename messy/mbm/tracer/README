@@ -1,0 +1,87 @@
+FILES:
+======
+
+A HIGHLY SIMPLIFIED BASE MODEL LAYER (BML)
+==========================================
+(.) tracer_bml.f90
+
+A HIGHLY SIMPLIFIED BASEMODEL INTERFACE LAYER (BMIL)
+====================================================
+(.) messy_main_data_bi.f90           ! a simple data transfer module
+(.) messy_main_mpi_bi.f90            ! a replacement for a parallel environ.
+(.) messy_main_tools_bi.f90          ! some tools for the submodels' BMIL 
+
+(+) messy_main_tracer_mem_bi.f90 ! the BML-dependent part of the BMIL for the
+(+) messy_main_tracer_bi.f90     ! ... generic tracer submodel
+
+THE GENERIC SUBMODEL TRACER
+===========================
+SUBMODEL CORE LAYER (SMCL):
+(*)  messy_main_constants_mem.f90    ! SMCL constants for various MESSy SMs
+                                     ! (Not all of the contents is needed in
+                                     !  the simplified TRACER box model.)
+(*)  messy_main_tools.f90            ! SMCL tools for varius MESSy submodels
+                                     ! (Not all of the contents is needed in
+                                     !  the simplified TRACER box model.)
+(*)  messy_main_tracer.f90           ! SMCL of the submodel TRACER
+(*)  messy_main_tracer_family.f90    ! SMCL of the sub-submodel TRACER_FAMILY
+(*)  messy_main_tracer_pdef.f90      ! SMCL of the sub-submodel TRACER_PDEF
+SUBMODEL INTERFACE LAYER (SMIL):
+(**) messy_main_tracer_family_bi.f90 ! SMIL of the sub-submodel TRACER_FAMILY
+(**) messy_main_tracer_pdef_bi.f90   ! SMIL of the sub-submodel TRACER_PDEF
+USER INTERFACE (UI):
+(*)  tracer.nml                      ! UI namelist file for the SM TRACER
+                                     ! and the sub-submodels
+
+'ORDINARY SUBMODELS'
+====================
+A submodel for defining new tracers via a namelist:
+(*)  messy_ptrac.f90                 ! SMCL of the submodel PTRAC
+(**) messy_ptrac_si.f90              ! SMIL of the submodel PTRAC
+(*)  ptrac.nml                       ! UI namelist file for the SM PTRAC     
+
+A dummy submodel to access the tracers (initialize, diffuse, decay):
+(-) messy_othersm.f90                ! SMCL of the submodel OTHERSM
+(-) messy_othersm_si.f90             ! SMIL of the submodel OTHERSM
+(-) othersm.nml                      ! UI namelist file for the SM OTHERSM
+
+NOTES:
+======
+(*)  These files/modules need NOT to be changed in order to use TRACER in
+     another basemodel.
+(**) These files/modules are automatically created from the respective
+     files of a GCM application with an older naming convention.
+(+)  These files/modules need to be rewritten for any other basemodel. The
+     examples of the simple basemodel here, however, show the overall structure
+     and the usage of the TRACER interface.
+(.)  These files/modules constitute a highly simplified basemodel and are
+     usually replaced by a specific model.
+(-)  These files/modules represent a simple MESSy submodel which is useless
+     outside the context of the simpified basemodel.
+
+HOWTO COMPILE/RUN
+=================
+1. Edit the file 'Makefile' and put in your specific compiler settings.
+   Do not forget to activate the pre-processor!
+
+2. > gmake
+   Note: The 'Makefile' includes 'main.mk' and 'depend.mk'. The latter
+         contains the file dependencies, which are automatically updated
+         (see 5 below).
+   Note: Other usefule gmake-targets are 'gmake clean' and 'gmake distclean'.
+
+3. > gmake run
+
+4. Change entries in
+    - tracer.nml
+    - ptrac.nml-raw
+    - othersm.nml
+   and go back to 3.
+   Note: The namelist file 'ptrac.nml' is created from 'ptrac.nml-raw' with
+         the sh-sript 'copynml.sh', which essentially removes all comments.
+         (Some compilers seem to have problems ...).
+
+5. Change the code and go back to 2,3,4.
+   Note: The file dependencies are automatically updated with the perl-script
+         'sfmakedepend'. Make sure that the path to 'perl' in the very first
+         line of this script is OK.

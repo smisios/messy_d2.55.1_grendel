@@ -1,0 +1,161 @@
+->>- +++++ following lines will not be included into eqn/f90 ++++++ {>CASE:REM}
+
+// ----------------------------------------------------------------------------
+// This file contains necessary consts and expressions to be included into
+// - equation file of the MECCA chemistry module tagged by imtag
+// to process kinetic isotope effects for carbon isotopes
+//
+// [Gromov, MPICH, 2007-2008, 2020]
+// ----------------------------------------------------------------------------
+
+-<<- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ {<CASE:REM}
+->>- +++++ following lines are included in mecca ++++++++ {>CASE:TAG}
+#INLINE F90_GLOBAL
+-<<- ++++++++++++++++++++++++++++++++++++++++++++++++++++ {<CASE:TAG}
+  ! ----- carbon KIE declaration part -----
+
+->>- +++++ following lines are included if G4100 is in mech +++++ {>REAC:G4100.*}
+  ! = G4100 ----- CH4+O1D -----------------------------------------------------
+  ! KIE=1.0130+-       EPS=-12.8+-    (o/oo) IRMS/Saueressig et al.[2001]/C0839
+    REAL(dp) :: r_G4100_k12_k13 = 1.0130_dp
+-<<- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ {<REAC:G4100.*}
+
+->>- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ {>REAC:G4101.*}
+  ! - G4101 ----- CH4+OH ------------------------------------------------------
+  ! KIE=1.0039+-0.0004 EPS=-3.9+-0.00 (o/oo) IRMS/Saueressig et al.[2001]/C0839
+    REAL(dp) :: r_G4101_k12_k13 = 1.0039_dp
+-<<- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ {<REAC:G4101.*}
+
+->>- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ {>REAC:G4110.*}
+  ! - G4110 ------------ CO+OH ------------------------------------------------
+  ! Stevens et al.[1980], Roeckmann et al.[1998]
+  ! ----- p-only polynomial fit -----
+    REAL(dp) :: r_G4110_k12_k13_p2
+  !
+  ! ----- 3-step parameterisation ( 2005.JPCRD34.Troe,etal ) -----
+    REAL(dp) :: r_G4110_k12_k13
+    REAL(dp) :: k_G4110_k0, k_G4110_ki, k_G4110_atp, k_G4110_fc, k_G4110_fx, &
+                k_G4110_x, k_G4110_kab, k_G4110_kac, &
+                k_G4110_kr, k_G4110_k13, &
+                a_G4110_k13a, a_G4110_k13b, a_G4110_k13c
+-<<- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ {<REAC:G4110.*}
+
+->>- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ {>REAC:G6400.*}
+  ! - G6400 ------------------ CH4+Cl -----------------------------------------
+  ! Chlorine + methane
+  ! Saueressig, G et al. Carbon kinetic isotope effect in the reaction of CH4 with Cl atoms.
+  ! GEOPHYSICAL RESEARCH LETTERS, VOL. 22, NO. 10, PAGES 1225-1228, MAY 15, 1995
+    REAL(dp) :: r_G6400_k12_k13
+-<<- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ {<REAC:G6400.*}
+
+->>- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ {>REAC:Gxxxx}
+  ! - Gxxxx -------------------------------------------------------------------
+  ! others
+-<<- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ {<REAC:Gxxxx}
+->>- +++++ following lines are included if mecca ++++++++ {>CASE:TAG}
+#ENDINLINE {above lines go into MODULE messy_meccr_kpp_Global}
+
+#INLINE F90_RCONST
+! USE messy_main_constants_mem ! atm2Pa, N_A, R_gas
+-<<- ++++++++++++++++++++++++++++++++++++++++++++++++++++ {<CASE:TAG}
+->>- +++++ following lines are included in case of tagging ++++++++ {>CASE:TAG}
+
+-<<- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ {<CASE:TAG}
+  ! ----- carbon KIE calculation part -----
+   
+->>- +++++ following lines are included if G4100 is in mech +++++ {>REAC:G4100.*}
+  ! - G4110 ----- CH4+O1D -----------------------------------------------------
+  ! defined constant
+-<<- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ {<REAC:G4100.*}
+
+->>- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ {>REAC:G4101.*}
+  ! - G4101 ----- CH4+OH ------------------------------------------------------
+  ! defined constant
+-<<- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ {<REAC:G4101.*}
+
+->>- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ {>REAC:G4110.*}
+  ! - G4110 ----- CO+OH -------------------------------------------------------
+  ! reaction rate  k_CO_OH = (1.57E-13 + cair*3.54E-33)
+  !
+  !#----- older versions -----
+  !#
+  !#- constant value ------------------------------------------------------(3)-
+  !#r_G4110_k12_k13 = 1 + 5.0_dp / 1000.0_dp
+  !#
+  !#- 2nd order fit ----- (as k2*(p**2) + k1*p + k2) ----------------------(1)-
+    r_G4110_k12_k13_p2 = ( -1.035926E-12_dp * (press ** 2) &
+                           + 2.376942E-07_dp * press &
+                           + 9.931051E-01_dp )
+
+  ! ----- 3-step parameterisation ( 2005.JPCRD34.Troe,etal ) -----
+  !
+  ! low/high-pressure range rate koefficients
+    k_G4110_k0 = 1.661E-11_dp*exp(-8050_dp/temp) &
+               + 1.494E-12_dp*exp(-2300_dp/temp) &
+               + 1.677E-13_dp*exp( -030_dp/temp)
+    k_G4110_ki = 2.042E-09_dp*exp(-7520_dp/temp) &
+               + 1.827E-11_dp*exp(-1850_dp/temp) &
+               + 1.328E-12_dp*exp( -120_dp/temp)
+  !
+  ! pressure modifier: A0 = 5.9, TS = 161K, pressure in bars
+    k_G4110_atp = 5.9_dp * exp(-temp/161_dp) * (press*1E-5_dp)
+  !
+  ! broadening factor calculation
+    k_G4110_fc = 0.49_dp + 0.51_dp * exp(-temp/300_dp)
+    k_G4110_fx = k_G4110_fc**( 1.0_dp/( 1.0_dp + & 
+                 ( log10( k_G4110_atp * k_G4110_k0/(k_G4110_ki - k_G4110_k0) ) )**2 ) )
+  !
+  ! fractionation factors from enrichments
+  ! careful, enrichment in educt (CO) !
+  !
+  ! - 13CO - specify enrichments here
+    a_G4110_k13a = 1.0_dp-(  00.00_dp / 1E3_dp )
+    a_G4110_k13b = 1.0_dp-( -07.66_dp / 1E3_dp )
+    a_G4110_k13c = 1.0_dp-(  23.07_dp / 1E3_dp )
+  !
+  ! channel rates
+    k_G4110_x = k_G4110_atp * ( k_G4110_k0 / (k_G4110_ki - k_G4110_k0) )
+    k_G4110_kab = k_G4110_k0 * ( 1.0_dp - k_G4110_fx * k_G4110_x / (1.0 + k_G4110_x) )
+    k_G4110_kac = k_G4110_atp * k_G4110_k0 * k_G4110_fx * &
+                  (1.0_dp + k_G4110_x / k_G4110_atp) / (1.0 + k_G4110_x)
+  ! regular rate
+    k_G4110_kr  = k_G4110_kab + k_G4110_kac
+  !
+  ! substituted rate
+    k_G4110_k13 = a_G4110_k13a * ( a_G4110_k13b * k_G4110_kab + a_G4110_k13c * k_G4110_kac ) 
+  !
+  ! final fractionation factor
+    r_G4110_k12_k13 = k_G4110_kr / k_G4110_k13
+  !
+#ifdef DISABLEMEFORDEBUG
+  print *,'----- G4110 KIE 13C -----'
+  print *,'r_G4110_k12_k13: ',r_G4110_k12_k13
+  print *,'   e_G4110_13CO: ',(r_G4110_k12_k13-1.0_dp)*1E3_dp,' (o/oo)'
+  print *,'    k_G4110_atp: ',k_G4110_atp
+  print *,'     k_G4110_fx: ',k_G4110_fx
+  print *,'     k_G4110_k0: ',k_G4110_k0
+  print *,'     k_G4110_ki: ',k_G4110_ki
+  print *,'    k_G4110_kab: ',k_G4110_kab
+  print *,'    k_G4110_kac: ',k_G4110_kac
+  print *,'     k_G4110_kr: ',k_G4110_kr
+  print *,'           temp: ',temp,' K'
+  print *,'          press: ',press,' Pa'
+#endif
+
+-<<- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ {<REAC:G4110.*}
+
+->>- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ {>REAC:G6400.*}
+  ! - G6400 ------------------ CH4+Cl -----------------------------------------
+  ! Cl+CH4 = HCl+CH3O2, rate k_CH4_Cl = 9.6E-12*EXP(-1360./temp)
+  ! temperature dependent: alpha = 1.043 * exp(6.455/T)     [k maj/k min]
+
+    r_G6400_k12_k13 = 1.043_dp * EXP(6.455_dp/temp)
+-<<- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ {<REAC:G6400.*}
+
+->>- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ {>REAC:Gxxxx}
+  ! - Gxxxx -------------------------------------------------------------------
+  ! others
+-<<- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ {<REAC:Gxxxx}
+->>- +++++ following lines are included in mecca ++++++++ {>CASE:TAG}
+#ENDINLINE {above lines go into the SUBROUTINES UPDATE_RCONST and UPDATE_PHOTO}
+-<<- ++++++++++++++++++++++++++++++++++++++++++++++++++++ {<CASE:TAG}

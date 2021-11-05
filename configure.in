@@ -1,0 +1,2261 @@
+dnl #####################################################################
+dnl configure file for MESSy distribution
+dnl Author: Patrick Joeckel, DLR, (Feb 2019)
+dnl - version 2.0 (Feb 2019)
+dnl #####################################################################
+
+dnl #####################################################################
+dnl Notes:
+dnl * Variable names for libraries to be potentially overwritten by shell
+dnl   parameters are without underscore, e.g., XYZLIB. This is required
+dnl   to distinguish them from the corresponding settings in
+dnl   config/mconfig.*, e.g. XYZ_LIB. The final results exported to
+dnl   the makefiles are with underscore, e.g. XYZ_LIB.
+dnl   This is the only possibility to potentialy overwrite the
+dnl   imported variables (from config/mconfig.*) at configure time,
+dnl   because the order of operations is
+dnl    1) expand shell parameters, e.g. from ./configure [options] XYZLIB=...
+dnl    2) import XYZ_LIB from config/mconfig.*
+dnl    3) overwrite (in case) XYZ_LIB with XYZLIB
+dnl #####################################################################
+
+dnl #####################################################################
+dnl GLOBAL
+dnl #####################################################################
+AC_PREREQ(2.63)
+AC_INIT(MESSy, (messy_2.*), Patrick.Joeckel@dlr.de)
+AC_REVISION([$Revision: 1.0 (Author Patrick Joeckel)$])
+AC_CONFIG_SRCDIR(messy/smcl/messy_main_constants_mem.f90)
+
+AC_PREFIX_DEFAULT(.)
+AC_CONFIG_AUX_DIR(config)
+
+dnl AC_DISABLE_OPTION_CHECKING
+dnl enable_option_checking=fatal
+
+dnl #######################################################################
+dnl #######################################################################
+dnl #### DEFINE OPTIONS
+dnl #######################################################################
+dnl #######################################################################
+
+AC_ARG_ENABLE([VCSTAG], AC_HELP_STRING( [--enable-VCSTAG],
+	      [compile with version control system tag info (default is yes)]),
+		   [], [enable_VCSTAG=yes] )
+
+dnl #######################################################################
+dnl select legacy basemodels with specific options
+dnl #######################################################################
+
+dnl ##################
+dnl CESM1 with options
+dnl ##################
+
+AC_ARG_ENABLE([CESM1],AC_HELP_STRING( [--enable-CESM1],
+			[build CESM1 (default is no)]),
+			[], [enable_CESM1=no] )
+
+AC_ARG_VAR(CESM1HRES, AS_HELP_STRING[Select a horizontal resolution (which also specifies the dynamical core) for CESM1, e.g. 1.9x2.5, 4x5, ne16, ne30])
+
+AC_ARG_VAR(CESM1VRES, AS_HELP_STRING[Select vertical resolution (number of levels) for CESM1, e.g. 26, 30, 66])
+
+dnl ################
+dnl CLM with options
+dnl ################
+
+AC_ARG_ENABLE([CLM],AC_HELP_STRING( [--enable-CLM],
+			[build CLM (default is no)]),
+			[], [enable_CLM=no] )
+
+dnl ##################
+dnl COSMO with options
+dnl ##################
+
+AC_ARG_ENABLE([COSMO],AC_HELP_STRING( [--enable-COSMO],
+			[build COSMO (NWP) (default is no)]),
+			[], [enable_COSMO=no] )
+
+AC_ARG_ENABLE([COSMOCLM],AC_HELP_STRING( [--enable-COSMOCLM],
+			[build COSMO (CLM) (default is no)]),
+			[], [enable_COSMOCLM=no] )
+
+AC_ARG_ENABLE([I2CINC],
+   AC_HELP_STRING([--enable-I2CINC],
+	    [... with int2cosmo included in COSMO (default is no)],[32],[90]),
+	    [], [enable_I2CINC=no] )
+
+AC_ARG_ENABLE([COSMO2MOM],
+   AC_HELP_STRING([--enable-COSMO2MOM],
+	    [... with two-moment cloud scheme in COSMO (default is no)],[32],[90]),
+	    [], [enable_COSMO2MOM=no] )
+
+AC_ARG_ENABLE([COSMOCLOUDRAD],
+   AC_HELP_STRING([--enable-COSMOCLOUDRAD],
+	    [... with cloud radiation scheme in COSMO (default is no)],[32],[90]),
+	    [], [enable_COSMOCLOUDRAD=no] )
+
+AC_ARG_ENABLE([COSMOEULAG],
+   AC_HELP_STRING([--enable-COSMOEULAG],
+	    [... with EULAG dynamical core in COSMO (default is no)],[32],[90]),
+	    [], [enable_COSMOEULAG=no] )
+
+AC_ARG_ENABLE([COSMORADARFWO],
+   AC_HELP_STRING([--enable-COSMORADARFWO],
+	    [... with radar forward operator calculation in COSMO (default is no)],[32],[90]),
+	    [], [enable_COSMORADARFWO=no] )
+
+AC_ARG_ENABLE([MESSYTWOWAY],
+   AC_HELP_STRING( [--enable-MESSYTWOWAY],
+    [... including int2cosmo with 2-way extensions (default is no)],[32],[90]),
+    [], [enable_MESSYTWOWAY=no] )
+
+dnl ###################
+dnl ECHAM5 with options
+dnl ###################
+
+AC_ARG_ENABLE([ECHAM5], AC_HELP_STRING( [--enable-ECHAM5],
+			[build ECHAM5 (default is yes)]),
+			[], [enable_ECHAM5=yes] )
+
+AC_ARG_ENABLE([E5SGHOST],
+   AC_HELP_STRING([--enable-E5SGHOST],
+	    [... with scalable ghosting for ECHAM5 (default is no)],[32],[90]),
+	    [], [enable_E5SGHOST=no] )
+
+dnl requires --enable-MESSY and has only an effect on ECHAM5/MESSy
+AC_ARG_ENABLE([MESSYIDTC],
+   AC_HELP_STRING([--enable-MESSYIDTC],
+	  [... with MESSy for idealised test cases (default is no)],[32],[90]),
+	  [], [enable_MESSYIDTC=no] )
+
+dnl ###################
+dnl FESOM2 with options
+dnl ###################
+
+AC_ARG_ENABLE([FESOM2],AC_HELP_STRING( [--enable-FESOM2],
+			[build FESOM2 (default is no)]),
+			[], [enable_FESOM2=no] )
+
+dnl #################
+dnl ICON with options
+dnl #################
+
+AC_ARG_ENABLE([ICON],AC_HELP_STRING( [--enable-ICON],
+			[build ICON (default is no)]),
+			[], [enable_ICON=no] )
+
+
+dnl #######################################################################
+dnl MESSy with options
+dnl #######################################################################
+
+AC_ARG_ENABLE([MESSY],AC_HELP_STRING( [--enable-MESSY],
+		       [build with MESSy (default is yes)]),
+		       [], [enable_MESSY=yes] )
+
+AC_ARG_ENABLE([OPENMP],
+   AC_HELP_STRING( [--enable-OPENMP],
+      [... with OpenMP (default is no)],[32],[90]),
+      [], [enable_OPENMP=no] )
+
+AC_ARG_ENABLE([PNCREGRID],
+   AC_HELP_STRING( [--enable-PNCREGRID],
+      [... with parallel-NCREGRID (default is yes)],[32],[90]),
+      [], [enable_PNCREGRID=yes] )
+
+AC_ARG_ENABLE([MESSYTENDENCY],
+   AC_HELP_STRING( [--enable-MESSYTENDENCY],
+      [... including MESSy TENDENCY (default is no)],[32],[90]),
+      [], [enable_MESSYTENDENCY=no] )
+
+AC_ARG_ENABLE([MESSYMMD],
+   AC_HELP_STRING( [--enable-MESSYMMD],
+      [... with MESSy multi model driver (default is no)],[32],[90]),
+      [], [enable_MESSYMMD=no] )
+
+AC_ARG_ENABLE([GUESS],
+   AC_HELP_STRING( [--enable-GUESS],
+      [... with LPJ-GUESS as library for MESSy submodel VEG(etation) (default is no)],[32],[90]),
+      [], [enable_GUESS=no] )
+
+AC_ARG_ENABLE([OASIS3MCT],
+   AC_HELP_STRING( [--enable-OASIS3MCT],
+      [... with OASIS3-MCT library for external coupling (default is no)],[32],[90]),
+       [], [enable_OASIS3MCT=no] )
+
+AC_ARG_ENABLE([POSIX90],
+   AC_HELP_STRING( [--enable-POSIX90],
+      [... with POSIX90 library (default is no)],[32],[90]),
+       [], [enable_POSIX90=no] )
+
+AC_ARG_ENABLE([FORPY],
+   AC_HELP_STRING( [--enable-FORPY],
+      [... with FORPY library (default is no)],[32],[90]),
+       [], [enable_FORPY=no] )
+
+AC_ARG_ENABLE([ASYNCF],
+   AC_HELP_STRING( [--enable-ASYNCF],
+      [... with asynchronous fortran library (default is no)],[32],[90]),
+       [], [enable_ASYNCF=no] )
+
+dnl #####################################################################
+dnl external libraries
+dnl #####################################################################
+
+dnl MPI
+AC_ARG_WITH([MPI],
+	    [AS_HELP_STRING([--with-MPI],
+     [use message passing interface @<:@default=yes@:>@],,)],
+	    [], [with_MPI=yes])
+
+dnl NETCDF
+AC_ARG_WITH([NETCDF],
+	    [AS_HELP_STRING([--with-NETCDF@<:@=DIR@:>@],
+     [use specific netcdf library @<:@default=no@:>@; defined in config/mconfig.*],,)],
+	    [], [with_NETCDF=no])
+
+dnl BLAS
+AC_ARG_WITH([BLAS],
+	    [AS_HELP_STRING([--with-BLAS@<:@=DIR@:>@],
+     [use external blas library @<:@default=no@:>@; requires BLASLIB],,)],
+	    [], [with_BLAS=no])
+
+AC_ARG_VAR([BLASLIB],
+	    AS_HELP_STRING[name of external blas library (in case of --with-BLAS)])
+
+dnl LAPACK
+AC_ARG_WITH([LAPACK],
+	    [AS_HELP_STRING([--with-LAPACK@<:@=DIR@:>@],
+     [use external lapack library @<:@default=no@:>@; requires LAPACKLIB],,)],
+	    [], [with_LAPACK=no])
+
+AC_ARG_VAR(LAPACKLIB,
+	    AS_HELP_STRING[name of external lapack library (in case of --with-LAPACK)])
+
+dnl PNETCDF
+AC_ARG_WITH([PNETCDF],
+	    [AS_HELP_STRING([--with-PNETCDF@<:@=DIR@:>@],
+	    [use external library parallel-netcdf @<:@default=yes@:>@])],
+	    [], [with_PNETCDF=yes])
+
+dnl CDI
+AC_ARG_WITH([CDI],
+	    [AS_HELP_STRING([--with-CDI@<:@=DIR@:>@],
+	    [use external I/O library cdi @<:@default=no@:>@])],
+	    [], [with_CDI=no])
+
+dnl YAXT
+AC_ARG_WITH([YAXT],
+	    [AS_HELP_STRING([--with-YAXT@<:@=DIR@:>@],
+	    [use external transposition library yaxt @<:@default=no@:>@])],
+	    [], [with_YAXT=no])
+
+dnl T8CODE
+AC_ARG_WITH([T8CODE],
+	    [AS_HELP_STRING([--with-T8CODE@<:@=DIR@:>@],
+	    [use external library t8code @<:@default=no@:>@])],
+	    [], [with_T8CODE=no])
+
+dnl CUDA
+AC_ARG_WITH([CUDA],
+	    [AS_HELP_STRING([--with-CUDA@<:@=DIR@:>@],
+	    [use CUDA library for GPU code @<:@default=no@:>@])],
+	    [], [with_CUDA=no])
+
+dnl SPECIAL LIBRARY PATH
+AC_ARG_WITH([SPECLIB],
+	    [AS_HELP_STRING([--with-SPECLIB@<:@=LIB(S)@:>@],
+	    [use additional libraries for linking @<:@default=no@:>@])],
+	    [], [with_SPECLIB=no])
+
+dnl forcheck libraries (for check target)
+AC_ARG_WITH([FCKLIBS],
+	    [AS_HELP_STRING([--with-FCKLIBS@<:@=LIB(S)@:>@],
+     [use special forcheck libraries for checking @<:@default=no@:>@; defined in config/mconfig.*],,)],
+	    [], [with_FCKLIBS=no])
+
+dnl #####################################################################
+dnl aditional VARIABLES
+dnl #####################################################################
+
+AC_ARG_VAR(CONF, AS_HELP_STRING[Select machine dependent configuration (see config/mconfig.*), if it cannot be automatically detected.])
+
+AC_ARG_VAR(COMPILER, AS_HELP_STRING[Select the Fortran95 compiler suite to use, e.g., LF, INTEL, G95, GFORTRAN. This is not available on all platforms and the default is platform specific (see config/mconfig.*).])
+
+AC_ARG_VAR(RUNMODE, AS_HELP_STRING[Select the compiler flags for the run-time mode, e.g., DEBUG, PRODUCTION, DEBUGOPT. This is not available on all platforms and the default is platform specific (see config/mconfig.*).])
+
+AC_ARG_VAR(PROFILEMODE, AS_HELP_STRING[Select a special mode for profiling, e.g., TPROF, SCALASCA, VAMPIR, etc. This is not available on all platforms (see config/mconfig.*).])
+
+dnl #####################################################################
+dnl save module environment at configuration time
+dnl #####################################################################
+AS_ECHO("")
+AS_BOX([MODULE ENVIRONEMNT],=)
+
+AC_MSG_CHECKING(for module environment)
+AS_IF([test -z "$MODULESHOME"],
+      [AC_MSG_RESULT([no \$MODULESHOME])],
+      [AC_MSG_RESULT([$MODULESHOME])
+       AC_CHECK_FILE($MODULESHOME/init/sh,
+		      [. $MODULESHOME/init/sh
+		       module list
+		       timestamp=`date +"%Y%m%d_%H%M%S"`
+		       module list 2> module_config.$timestamp.log 1>&2
+		      ],
+		    )
+      ]
+    )
+
+dnl #######################################################################
+dnl Check domain information
+dnl #######################################################################
+AS_ECHO("")
+AS_BOX([MACHINE SPECIFIC CONFIGURATION],=)
+AC_TEST_DOMAIN()
+
+AC_MSG_CHECKING(for corresponding machine configuration)
+
+dnl check for user specified configuration, if not specified ...
+if test -z "$CONF" ; then
+
+  dnl ... check, if autodetection is possible
+  AS_IF([test $HOSTDOMAIN = unknown],
+	AC_MSG_ERROR([host / domain could not be detected!]) )
+
+  AS_CASE([$HOSTDOMAIN],
+   [m*.hpc.dkrz.de],       [mconfig=mistral.dkrz.de],
+   [*.sm.lrz.de],          [mconfig=supermuc.lrz.de],
+   [*.sng.lrz.de],         [mconfig=supermuc-ng.lrz.de],
+   [a*.bc.rzg.mpg.de],     [mconfig=rzg.mpg.de],
+   [c*.bc.rzg.mpg.de],     [mconfig=rzg.mpg.de],
+   [hydra*.rzg.mpg.de],    [mconfig=rzg.mpg.de],
+   [gaia*.rzg.mpg.de],     [mconfig=rzg.mpg.de],
+   [cobra*],               [mconfig=rzg.mpg.de],
+   [mpc*.rzg.mpg.de],      [mconfig=rzg.mpg.de],
+   [dreseden*],            [mconfig=rzg.mpg.de],
+   [fluorine*],            [mconfig=pc.mpic.de],
+   [*tonnerre*],           [mconfig=pc.mpic.de],
+   [biomodel*],            [mconfig=pc.mpic.de],
+   [*.central.bs.cluster], [mconfig=pa2.dlr.de],
+   [*.cara.dlr.de],        [mconfig=cara.dlr.de],
+   [*.met.fu-berlin.de],   [mconfig=calc02.met.fu-berlin.de],
+   [*.hlrn.de],            [mconfig=blogin.hlrn.de],
+   [lx*.pa.op.dlr.de],     [mconfig=lx.dlr.de],
+   [icg*],                 [mconfig=iek7.fzj.de],
+   [jr*],                  [mconfig=jureca.fzj.de],
+   [*0?.juwels*],          [mconfig=juwels-cluster.fzj.de],
+   [*2?.juwels*],          [mconfig=juwels-booster.fzj.de],
+   [*zdv.uni-mainz.de],    [mconfig=mogon.zdv.uni-mainz.de],
+   [*.igce.ru],            [mconfig=igce.ru],
+			   [AC_MSG_ERROR([unknown host / domain!])] )
+
+else
+  dnl user specified
+  mconfig=$CONF
+fi
+
+AC_MSG_RESULT($mconfig)
+MCONF=config/mconfig.$mconfig
+
+AC_CHECK_FILE($MCONF,
+	      [AC_GET_MH($MCONF)
+	       AS_IF([test -z "$ERRSTR"], ,AC_MSG_ERROR($ERRSTR))
+	      ],
+	      AC_MSG_ERROR([$MCONF not found!]) )
+
+AS_IF([test -z "$ARCH"],
+      [ARCH=undefined],
+     )
+
+AC_SUBST(ARCH)
+AC_SUBST(COMPILER)
+AC_SUBST(EXTMODCASE)
+AC_SUBST(LINKMODE)
+dnl profile mode
+AC_SUBST(PREF90)
+
+dnl basic outfiles
+AS_IF([test -e Makefile.in],
+      [OUTFILES+=" Makefile"],
+      [AC_MSG_ERROR([Makefile.in missing!])]
+     )
+
+AS_IF([test -e messy/util/locate_f90.sh.in],
+      [OUTFILES+=" messy/util/locate_f90.sh"],
+      [AC_MSG_ERROR([messy/util/locate_f90.sh.in missing!])]
+     )
+
+dnl header file
+AC_CONFIG_HEADER(config/config.h)
+
+dnl #######################################################################
+AS_ECHO("")
+AS_BOX([BASIC SOFTWARE REQUIREMENTS],=)
+
+dnl AC_CANONICAL_HOST
+
+AC_CHECK_GNU_MAKE
+AS_IF([test -z "$llvm_cv_gnu_make_command"],
+      [AC_MSG_ERROR([GNU Make required but not found!])],
+     )
+
+AS_ECHO("")
+AS_BOX([SOME HELPER APPLICATONS AND BASIC SETTINGS],=)
+dnl ####################################################################
+dnl checking for version control system
+dnl ####################################################################
+MESSYVCS=""
+AC_MSG_CHECKING(for version control system subdirectory)
+if test -r .git ; then
+  AC_MSG_RESULT(git)
+  AC_CHECK_PROG(VCS, git, [yes], [no])
+  AS_IF([test $VCS = "yes"], MESSYVCS="GIT", MESSYVCS="")
+else
+  dnl if test -d .svn ; then
+  dnl   AC_MSG_RESULT(svn)
+  dnl   AC_CHECK_PROG(VCS, svn, [yes], [no])
+  dnl   AS_IF([test $VCS = "yes"], MESSYVCS="SVN", MESSYVCS="")
+  dnl else
+  dnl   if test -d .hg ; then
+  dnl     AC_MSG_RESULT(mercurial)
+  dnl     AC_CHECK_PROG(VCS, hg, [yes], [no])
+  dnl     AS_IF([test $VCS = "yes"], MESSYVCS="MERCURIAL", MESSYVCS="")
+  dnl   else
+      AC_MSG_RESULT(none)
+  dnl   fi
+  dnl fi
+fi
+
+AC_MSG_CHECKING(whether to compile with vcs tag information)
+AS_IF([test  "$MESSYVCS" = ""],
+      [AC_MSG_RESULT(no vcs found)],
+      [
+       AS_IF([test "$enable_VCSTAG" = "yes"],
+	     [AC_MSG_RESULT([yes ($MESSYVCS)])
+	     ],
+	     [AC_MSG_RESULT(no)
+	      MESSYVCS=""
+	     ]
+	    )
+      ] )
+
+AC_SUBST(MESSYVCS)
+
+dnl ####################################################################
+dnl checking for additional tools
+dnl ####################################################################
+AC_CHECK_PROG(MD5SUM_PRESENT, md5sum, [yes], [no])
+
+dnl ####################################################################
+dnl checking (optional) entries from config/mconfig.*
+dnl ####################################################################
+AS_IF([test -z "$AR"],        [AR="ar"], )
+AC_SUBST(AR)
+
+AS_IF([test -z "$ARFLAGS"],   [ARFLAGS="crv"], )
+AC_SUBST(ARFLAGS)
+
+AS_IF([test -z "$AS"],        [AS="as"], )
+AC_SUBST(AS)
+
+AS_IF([test -z "$NMFLAGS"],   [NMFLAGS=""], )
+AC_SUBST(NMFLAGS)
+
+dnl check how compiler creates module file names; default: asis
+AS_IF([test -z "$EXTMODCASE"], [EXTMODCASE="asis"], )
+
+AS_IF([test -z "$INCOPT"],    [INCOPT=-I], )
+AC_SUBST(INCOPT)
+
+AS_IF([test -z "$DEFOPT"],    [DEFOPT=-D], )
+AC_SUBST(DEFOPT)
+
+AS_IF([test -z "$MODOPT"],    [MODOPT=-I], )
+AC_SUBST(MODOPT)
+
+AS_IF([test -z "$WLPOPT"],    [WLPOPT=-Wl,-rpath,], )
+AC_SUBST(WLPOPT)
+
+dnl loader and flags
+AC_SUBST(LD)
+AC_SUBST(LDFLAGS)
+
+dnl ###################################################################
+dnl checking compiler(s)
+dnl ###################################################################
+AS_ECHO("")
+AS_BOX([COMPILERS],=)
+
+AC_MSG_CHECKING(for Fortran90 compiler version)
+AS_IF([test -z "$F90VERS"], [F90VERS="unknown"], )
+AC_MSG_RESULT($F90VERS)
+AC_SUBST(F90VERS)
+
+dnl need to check standard c compiler for further library testing below
+AC_PROG_CC
+
+AC_C_BIGENDIAN(,[ENDIAN="LITTLE_ENDIAN"],)
+AC_SUBST(ENDIAN)
+
+AC_PROG_CXX
+
+AC_PROG_RANLIB
+
+AC_SUBST(CFLAGS)
+
+AC_PROGRAMS_CHECK(F90, f90 lf95 xlf f95 f90 ifc pgf90 frt g95)
+AS_IF([test -z "$FC"], [FC=$F90], )
+AC_SUBST(FC)
+
+dnl directly from config/mconfig.*
+AC_SUBST(FFLAGS)
+AC_SUBST(F90R8)
+AC_SUBST(F90FLAGS)
+AC_SUBST(F90NOO3)
+
+dnl currently only required for LPJ-GUESS
+AC_SUBST(MPICXX)
+AC_SUBST(MPICXXFLAGS)
+
+dnl ###################################################################
+dnl PERL
+dnl ###################################################################
+AS_ECHO("")
+AS_BOX([PERL],=)
+AC_PATH_PROG(PERL, perl, /bin/false, \
+	       $PATH:$prefix/bin:/usr/bin:/usr/local/bin)
+
+AS_IF([test ! "$PERL" = "/bin/false"],
+      [AS_IF([test -e "messy/util/sfmakedepend.pl.in"],
+	     [ PERLS+=" messy/util/sfmakedepend.pl"],
+	     [AC_MSG_ERROR([messy/util/sfmakedepend.pl.in missing!])]
+	    )
+       AS_IF([test -e "messy/util/genf90.pl.in"],
+	     [PERLS+=" messy/util/genf90.pl"],
+	     [AC_MSG_ERROR([messy/util/genf90.pl.in missing!])]
+	    )
+       AS_IF([test -e "messy/mbm/mecca1/check_conservation1.pl.in"],
+	     [PERLS+=" messy/mbm/mecca1/check_conservation1.pl"], )
+dnl         [AC_MSG_WARN([messy/mbm/mecca1/check_conservation1.pl.in missing!])]
+dnl        )
+       AS_IF([test -e "messy/mbm/caaba/mecca/check_eqns.pl.in"],
+	     [PERLS+=" messy/mbm/caaba/mecca/check_eqns.pl"],
+	     [AC_MSG_WARN([messy/mbm/caaba/mecca/check_eqns.pl.in missing!])]
+	    )
+       OUTFILES+=" $PERLS"
+       AC_SUBST(PERL)
+      ],
+      [AC_MSG_ERROR([perl not found!])
+      ]
+     )
+
+dnl ###################################################################
+dnl checking for forcheck libraries
+dnl ###################################################################
+AS_ECHO("")
+AS_BOX([FORCHECK LIBRARIES],=)
+AC_MSG_CHECKING(for forcheck libraries)
+AS_CASE([$with_FCKLIBS],
+	[yes], [AC_MSG_RESULT(yes)
+		AC_MSG_ERROR([--with-FCKLIBS requires list of libraries!])
+	       ],
+	[no],  [AC_MSG_RESULT(<none specified>)
+		AC_MSG_CHECKING(for FCKLIBS in $MCONF)
+		AS_IF([test -z "$FCKLIBS"],
+		      [AC_MSG_RESULT(<empty>)],
+		      [AC_MSG_RESULT($FCKLIBS)]
+		     )
+	       ],
+	       [
+		FCKLIBS=$with_FCKLIBS
+		AC_MSG_RESULT($FCKLIBS)
+	       ]
+       )
+AC_SUBST(FCKLIBS)
+
+dnl ###################################################################
+dnl checking for message passing interface
+dnl ###################################################################
+AS_ECHO("")
+AS_BOX([MPI SETTINGS],=)
+AC_MSG_CHECKING(for message passing interface (MPI))
+
+AS_CASE([$with_MPI],
+	[no],  [AC_MSG_RESULT(disabled ...); MPI="NOMPI";
+		AC_MSG_CHECKING(... for fortran compiler);
+		AS_CASE([$F90],
+			[*mpi*],
+			   [F90=`$F90 -show | grep '\-l' | awk '{print $1}'`],
+			[*sxmpif9*],
+			   [F90=`echo $F90 | sed 's|mp||' | sed 's|sxi|sx|'`],
+			[*mpxlf9*],
+			   [F90=`echo $F90 | sed 's|mp||'`],
+			[F90=""]
+		       )
+		AC_MSG_RESULT($F90)
+		dnl for further configurations below
+		mpiserialstring="--enable-mpiserial"
+	       ],
+	[yes], [AC_MSG_RESULT(enabled ...)
+		AC_MSG_CHECKING(... for MPI environment);
+		AS_CASE([$F90],
+			[*mp*],
+			   [AC_MSG_RESULT(using compiler wrapper for MPI);
+			    MPI=""],
+			[AC_MSG_RESULT(user defined ($MCONF) ...);
+			 AC_MSG_CHECKING(... for MPIROOT);
+			 AS_IF([test -z $MPIROOT],
+			   AC_MSG_ERROR([MPIROOT not set in $MCONF!]),
+			   AC_MSG_RESULT([$MPIROOT])
+			      )
+			 dnl check for header file
+			 AC_CHECK_FILE([$MPIROOT/include/mpif.h],
+			     [MPI2_INCLUDE="${INCOPT}$MPIROOT/include"],
+			     AC_MSG_ERROR([$MPIROOT/include/mpif.h not found!])
+			     )
+			 dnl check for libraries
+			 SAVE_LDFLAGS=$LDFLAGS
+			 LDFLAGS="-L$MPIROOT/lib"
+			 MPI2_LIB="-Wl,-rpath -Wl,$MPIROOT/lib -L$MPIROOT/lib"
+			 for library in $MPI_LIB
+			 do
+			   AC_CHECK_LIB([${library}], main,
+			      [MPI2_LIB="$MPI2_LIB -l${library}"],
+			      AC_MSG_ERROR([lib${library}.a not found! Check MPI_LIB in $MCONF!]
+			      ) )
+			 done
+			 LDFLAGS=$SAVE_LDFLAGS
+			 MPI=""
+			]
+			AS_ECHO("[MPI2_LIB = $MPI2_LIB"])
+		       )
+		dnl for further configuration below
+		mpiserialstring=""
+	       ],
+	       [AC_MSG_RESULT(directory: $with_MPI)
+		AC_MSG_ERROR([--with-MPI=... not yet implemented!])
+	       ]
+       )
+
+AC_SUBST(MPI)
+AC_SUBST(MPI2_LIB)
+AC_SUBST(MPI2_INCLUDE)
+
+dnl ####################################################################
+dnl checking for external libraries
+dnl ####################################################################
+AS_ECHO("")
+AS_BOX([EXTERNAL LIBRARIES],=)
+
+dnl NETCDF
+AC_MSG_CHECKING(for user defined netcdf library path)
+AS_CASE([$with_NETCDF],
+	[yes], [AC_MSG_RESULT(yes)
+		AC_MSG_ERROR([--with-NETCDF requires path to bin/nf-config!])
+	       ],
+	[no], [ AC_MSG_RESULT([<none defined>])
+		AC_MSG_CHECKING(for NETCDFROOT in $MCONF)
+		AS_IF([test -z "$NETCDFROOT"],
+		      [AC_MSG_RESULT(no)
+		       dnl SPEC_NETCDF_LIB and SPEC_NETCDF_INC required
+		       dnl ... further tests below
+		       NFCONFIG=""
+		       NFCLASSIC=special
+		      ],
+		      [AC_MSG_RESULT($NETCDFROOT)
+		       dnl check for nf-config
+		       dnl ... further tests below
+		       AC_CHECK_FILE([$NETCDFROOT/bin/nf-config],
+				     [NFCONFIG=${NETCDFROOT}/bin/nf-config
+				      NFCLASSIC=no
+				     ],
+				     [NFCONFIG=""
+				      NFCLASSIC=yes
+				     ],
+				    )
+		      ]
+		     )
+	      ],
+	      [ AC_MSG_RESULT($with_NETCDF)
+		AC_CHECK_FILE([$with_NETCDF/bin/nf-config],
+			      [NFCONFIG=$with_NETCDF/bin/nf-config
+			      ],
+			      [NFCONFIG="no"]
+			     )
+		AS_IF([test "$NFCONFIG" = "no"],
+		      [AC_MSG_ERROR([$with_NETCDF/bin/nf-config not found])],
+		      )
+	      ]
+	)
+
+AS_IF([test -n "$NFCONFIG"],
+      [AC_MSG_CHECKING(for CFLAGS)
+       NETCDF_CFLAGS="`$NFCONFIG --cflags`"
+       AC_MSG_RESULT($NETCDF_CFLAGS)
+       dnl
+       AC_MSG_CHECKING(for FFLAGS)
+       NETCDF_FFLAGS="`$NFCONFIG --fflags`"
+       AC_MSG_RESULT($NETCDF_FFLAGS)
+       dnl
+       AC_MSG_CHECKING(for LIBS)
+       NETCDF_FLIBS="`$NFCONFIG --flibs`"
+       AC_MSG_RESULT($NETCDF_FLIBS)
+       dnl
+       NETCDF_INCLUDE="$NETCDF_CFLAGS $NETCDF_FFLAGS"
+       NETCDF_LIB="$NETCDF_FLIBS"
+       ]
+      , )
+
+AS_CASE([$NFCLASSIC],
+    [yes],
+      [AC_CHECK_FILE($NETCDFROOT/include/netcdf.inc,
+		     [NETCDF_INCLUDE="-I$NETCDFROOT/include"],
+		     [AC_MSG_ERROR($NETCDFROOT/include/netcdf.inc not present!)]
+		    )
+	SAVE_LDFLAGS=$LDFLAGS
+	LDFLAGS="-L$NETCDFROOT/lib"
+	AC_CHECK_LIB(netcdf, nc_inq_libvers,
+		     [NETCDF_LIB="-L$NETCDFROOT/lib -lnetcdf"],
+		     [AC_MSG_ERROR([linking with $NETCDFROOT/lib/libnetcdf.a failed!])] )
+	LDFLAGS=$SAVE_LDFLAGS
+	AC_MSG_CHECKING(whether netcdf library is with f90 support)
+	netcdf_f90=`$AR t $NETCDFROOT/lib/libnetcdf.a typeSizes.o`
+	AS_IF([test "$netcdf_f90" = "typeSizes.o"],
+	      [AC_MSG_RESULT(yes)],
+	      [AC_MSG_ERROR([netcdf library with f90 support required!])]
+	     )
+	AC_CHECK_FILE( $NETCDFROOT/include/netcdf.mod,
+		       [NETCDF_INCLUDE+=" ${MODOPT}$NETCDFROOT/include"],
+		       [AC_MSG_ERROR([$NETCDFROOT/include/netcdf.mod not present!])] )
+      ],
+    [special],
+      [AC_MSG_CHECKING(for SPEC_NETCDF_LIB in $MCONF)
+       AS_IF([test -n "$SPEC_NETCDF_LIB"],
+	     [AC_MSG_RESULT($SPEC_NETCDF_LIB)
+	      dnl
+	      SAVE_LDFLAGS=$LDFLAGS
+	      LDFLAGS="$SPEC_NETCDF_LIB"
+	      AC_CHECK_LIB(netcdf, nc_inq_libvers,
+			[NETCDF_LIB="$SPEC_NETCDF_LIB"],
+			[AC_MSG_ERROR([linking with $SPEC_NETCDF_LIB failed!])]
+			  )
+	      LDFLAGS=$SAVE_LDFLAGS
+	      dnl
+	      AC_MSG_CHECKING(for SPEC_NETCDF_INC in $MCONF)
+	      AS_IF([test -n "$SPEC_NETCDF_INC"],
+		    [AC_MSG_RESULT($SPEC_NETCDF_INC)
+		     AC_CHECK_FILE( $SPEC_NETCDF_INC/netcdf.inc,
+				    [NETCDF_INCLUDE="-I$SPEC_NETCDF_INC"],
+				    [AC_MSG_ERROR($SPEC_NETCDF_INC/netcdf.inc not present!)] )
+		     dnl
+		     AC_CHECK_FILE( $SPEC_NETCDF_INC/netcdf.mod,
+			      [NETCDF_INCLUDE+=" ${MODOPT}${SPEC_NETCDF_INC}"],
+			      [AC_MSG_ERROR($SPEC_NETCDF_INC/netcdf.mod not present!)] )
+		    ],
+		    [AC_MSG_RESULT(no)
+		     AC_MSG_ERROR([SPEC_NETCDF_INC must be defined in $MCONF!])
+		    ]
+		   )
+	     ],
+	     [AC_MSG_RESULT(no)
+	      AC_MSG_ERROR(either NETCDFROOT or SPEC_NETCDF_LIB and SPEC_NETCDF_INC mus be defined in ${MCONF}!)
+	     ]
+	    )
+      ]
+      , )
+
+AC_SUBST(NETCDF_LIB)
+AC_SUBST(NETCDF_INCLUDE)
+
+dnl BLAS
+AC_MSG_CHECKING(for user defined external blas library path)
+AS_CASE([$with_BLAS],
+	[no], [ AC_MSG_RESULT([<none defined>])
+		dnl check machine dependent config file
+		AC_MSG_CHECKING(for non-default blas library in $MCONF)
+		AS_IF([test -z "$BLASROOT"],
+		      [AC_MSG_RESULT([<no directory BLASROOT defined>])
+		       dnl empty BLASROOT implies shipped library
+		       AS_IF([test -z "$BLAS_LIB"], [BLAS_LIB=blas], )
+		       AS_IF([test ! "$BLAS_LIB" = "blas"],
+			     [AC_MSG_ERROR([non-default BLAS_LIB requires BLASROOT in $MCONF])
+			     ],
+			    )
+		       dnl use shipped library
+		       external_blas=no
+		       BLASROOT=../../lib
+		       LIBSRCS+=" echam5/blas"
+		      ],
+		      [AC_MSG_RESULT(directory BLASROOT = $BLASROOT)
+		       AC_MSG_CHECKING(for non-default blas library name)
+		       AS_IF([test -z "${BLAS_LIB}"],
+			     [BLAS_LIB="blas"
+			      AC_MSG_RESULT([<empty>; setting to default: $BLAS_LIB])
+			     ],
+			     [AC_MSG_RESULT([$BLAS_LIB])
+			     ]
+			    )
+			external_blas=yes
+		      ]
+		     )
+	      ],
+	      [AC_MSG_RESULT($with_BLAS)
+	       AS_IF([test -z "$BLASROOT"], [BLASROOT=$with_BLAS], )
+	       AS_IF([test -z "${BLASLIB}"],
+		     [AC_MSG_ERROR(BLASLIB not set)],
+		     [BLAS_LIB=$BLASLIB]
+		    )
+	       external_blas=yes
+	      ]
+	)
+
+AS_IF([test "$external_blas" = "yes"],
+      [SAVE_LDFLAGS=$LDFLAGS
+       LDFLAGS="-L$BLASROOT"
+       AC_CHECK_LIB(${BLAS_LIB}, dgemm,
+		    [LIBBLAS="$LDFLAGS -l${BLASLIB}"],
+		    [AC_MSG_ERROR(library ${BLAS_LIB} cannot be linked!)]
+		   )
+       LDFLAGS=$SAVE_LDFLAGS
+      ], )
+
+dnl LAPACK
+AC_MSG_CHECKING(for user defined external lapack library path)
+AS_CASE([$with_LAPACK],
+	[no], [ AC_MSG_RESULT([<none defined>])
+		dnl check machine dependent config file
+		AC_MSG_CHECKING(for non-default lapack library in $MCONF)
+		AS_IF([test -z "$LAPACKROOT"],
+		      [AC_MSG_RESULT([<no directory LAPACKROOT defined>])
+		       dnl empty LAPACKROOT implies shipped library
+		       AS_IF([test -z "$LAPACK_LIB"], [LAPACK_LIB=lapack], )
+		       AS_IF([test ! "$LAPACK_LIB" = "lapack"],
+			     [AC_MSG_ERROR([non-default LAPACK_LIB requires LAPACKROOT in $MCONF])
+			     ],
+			    )
+		       dnl use shipped library
+		       external_lapack=no
+		       LAPACKROOT=../../lib
+		       LIBSRCS+=" echam5/lapack"
+		      ],
+		      [AC_MSG_RESULT(directory LAPACKROOT = $LAPACKROOT)
+		       AC_MSG_CHECKING(for non-default lapack library name)
+		       AS_IF([test -z "${LAPACK_LIB}"],
+			     [LAPACK_LIB="lapack"
+			      AC_MSG_RESULT([<empty>; setting to default: $LAPACK_LIB])
+			     ],
+			     [AC_MSG_RESULT([$LAPACK_LIB])
+			     ]
+			    )
+			external_lapack=yes
+		      ]
+		     )
+	      ],
+	      [AC_MSG_RESULT($with_LAPACK)
+	       AS_IF([test -z "$LAPACKROOT"], [LAPACKROOT=$with_LAPACK], )
+	       AS_IF([test -z "${LAPACKLIB}"],
+		     [AC_MSG_ERROR(LAPACKLIB not set)],
+		     [LAPACK_LIB=$LAPACKLIB]
+		    )
+	       external_lapack=yes
+	      ]
+	)
+
+AS_IF([test "$external_lapack" = "yes"],
+      [SAVE_LDFLAGS=$LDFLAGS
+       LDFLAGS="-L$LAPACKROOT"
+       AC_CHECK_LIB(${LAPACK_LIB}, ilaenv,
+		    [LIBLAPACK="$LDFLAGS -l${LAPACKLIB}"],
+		    [AC_MSG_ERROR(library ${LAPACK_LIB} cannot be linked!)]
+		   )
+       LDFLAGS=$SAVE_LDFLAGS
+      ], )
+
+dnl CDI
+AC_MSG_CHECKING(for cdi library)
+AS_CASE([$with_CDI],
+	[no],  [AC_MSG_RESULT([disabled])],
+	[yes], [AC_MSG_RESULT([enabled])
+		AS_IF([test -z "$CDIROOT"],
+		  AC_MSG_ERROR([CDIROOT not set in $MCONF]),)
+	       ],
+	       [AC_MSG_RESULT([<user defined>]: $with_CDI)
+		CDIROOT=$with_CDI
+	       ]
+       )
+
+AS_IF([test ! "$with_CDI" = "no"],
+      [AC_CHECK_FILE([$CDIROOT/include/cdi.inc],
+		     [CDI_INCLUDE="-I$CDIROOT/include"],
+		     [AC_MSG_ERROR([$CDIROOT/include/cdi.inc not found])]
+		    )
+       AC_CHECK_FILE([$CDIROOT/lib/libcdi.a],
+		     [CDILIB="-L$CDIROOT/lib -lcdi"] ,)
+       LDFLAGS+=" ${WLPOPT}$CDIROOT/lib"
+       CDI_DEF="HAVE_CDI"
+      ], )
+
+AC_SUBST(CDI_LIB)
+AC_SUBST(CDI_INCLUDE)
+AC_SUBST(CDI_DEF)
+
+dnl PNETCDF
+AC_MSG_CHECKING(for parallel-netcdf library)
+AS_CASE([$with_PNETCDF],
+	[no],  [AC_MSG_RESULT([disabled])],
+	[yes], [AC_MSG_RESULT([enabled])
+		AS_IF([test "$with_MPI" = "no"],
+		  AC_MSG_ERROR([parallel-netcdf requires MPI]), )
+		AC_MSG_CHECKING(for parallel-netcdf library root directory)
+		AS_IF([test -z "$PNETCDFROOT"],
+		      [AC_MSG_RESULT([PNETCDFROOT not set in $MCONF])
+		      with_PNETCDF=no
+		      ],
+		      AC_MSG_RESULT([$PNETCDFROOT])
+		     )
+	       ],
+	       [AC_MSG_RESULT([<user defined>]: $with_PNETCDF)
+		PNETCDFROOT=$with_PNETCDF
+	       ]
+       )
+
+AS_IF([test ! "$with_PNETCDF" = "no"],
+      [AC_CHECK_FILE([$PNETCDFROOT/include/pnetcdf.inc],
+		     [PNETCDF_INCLUDE="-I$PNETCDFROOT/include"],
+		     [AC_MSG_ERROR([$PNETCDFROOT/include/pnetcdf.inc not found])]
+		    )
+       AC_MSG_CHECKING(for parallel-netcdf library name)
+       AS_IF([test -n $PNETCDFLIB],
+	     [PNETCDFLIB=pnetcdf
+	      AC_MSG_RESULT([$PNETCDFLIB (default)])
+	     ],
+	     [AC_MSG_RESULT($PNETCDFLIB (user defined ))]
+	    )
+       AC_CHECK_FILE([$PNETCDFROOT/lib/lib${PNETCDFLIB}.a],
+		     [PNETCDF_LIB=" -L$PNETCDFROOT/lib -l${PNETCDFLIB}"] ,)
+       LDFLAGS+=" ${WLPOPT}$PNETCDFROOT/lib"
+       PNETCDF_DEF="HAVE_PNETCDF"
+      ], [PNETCDF_LIB=""])
+AC_SUBST(PNETCDF_LIB)
+AC_SUBST(PNETCDF_INCLUDE)
+AC_SUBST(PNETCDF_DEF)
+
+dnl YAXT
+AC_MSG_CHECKING(for yaxt library)
+AS_CASE([$with_YAXT],
+	[no],  [AC_MSG_RESULT([disabled])],
+	[yes], [AC_MSG_RESULT([enabled])
+		AS_IF([test "$with_MPI" = "no"],
+		  AC_MSG_ERROR([yaxt requires MPI]), )
+		AS_IF([test -z "$YAXTROOT"],
+		  AC_MSG_ERROR([YAXTROOT not set in $MCONF]),)
+	       ],
+	       [AC_MSG_RESULT([<user defined>: $with_YAXT])
+		YAXTROOT=$with_YAXT
+	       ]
+       )
+
+AS_IF([test ! "$with_YAXT" = "no"],
+      [AC_CHECK_FILE([$YAXTROOT/include/yaxt.h],
+		     [YAXT_INCLUDE="-I$YAXTROOT/include"],
+		     [AC_MSG_ERROR([$YAXTROOT/include/yaxt.h not found])]
+		    )
+       AC_CHECK_FILE([$YAXTROOT/lib/libyaxt.a],
+		     [YAXTLIB="-L$YAXTROOT/lib -lyaxt"] ,
+		     [AC_MSG_ERROR([$YAXTROOT/lib/libyaxt.a not found])]
+		    )
+       AC_CHECK_FILE([$YAXTROOT/lib/libyaxt_c.a],
+		     [YAXTLIB+=" -lyaxt_c"] ,)
+       LDFLAGS+=" ${WLPOPT}$YAXTROOT/lib"
+       YAXT_LIB=$YAXTLIB
+       YAXT_DEF="HAVE_YAXT"
+      ], [YAXT_LIB=""])
+AC_SUBST(YAXTROOT)
+AC_SUBST(YAXT_LIB)
+AC_SUBST(YAXT_INCLUDE)
+AC_SUBST(YAXT_DEF)
+
+dnl T8CODE
+AC_MSG_CHECKING(for t8code library)
+AS_CASE([$with_T8CODE],
+	[no],  [AC_MSG_RESULT([disabled])],
+	[yes], [AC_MSG_RESULT([enabled])
+		#AS_IF([test "$with_MPI" = "no"],
+		#  AC_MSG_ERROR([t8code requires MPI]), )
+		AS_IF([test -z "$T8CODEROOT"],
+		  AC_MSG_ERROR([T8CODEROOT not set in $MCONF]),)
+	       ],
+	       [AC_MSG_RESULT([<user defined>: $with_T8CODE])
+		T8CODEROOT=$with_T8CODE
+	       ]
+       )
+
+AS_IF([test ! "$with_T8CODE" = "no"],
+      [AC_CHECK_FILE([$T8CODEROOT/include/t8_config.h],
+		     [T8CODE_INCLUDE="-I$T8CODEROOT/include"],
+		     [AC_MSG_ERROR([$T8CODEROOT/include/t8_config.h not found])]
+		    )
+       AC_CHECK_FILE([$T8CODEROOT/lib64/libt8.a],
+		   [T8CODELIB="-L$T8CODEROOT/lib64 -lt8 -lp4est -lsc -lm -lz"] ,
+		   [AC_MSG_ERROR([$T8CODEROOT/lib64/libt8.a not found])]
+		  )
+       LDFLAGS+=" ${WLPOPT}$T8CODEROOT/lib64"
+       T8CODE_LIB=$T8CODELIB
+       T8CODE_DEF="HAVE_T8CODE"
+      ], )
+AC_SUBST(T8CODEROOT)
+AC_SUBST(T8CODE_LIB)
+AC_SUBST(T8CODE_INCLUDE)
+AC_SUBST(T8CODE_DEF)
+
+dnl CUDA
+AC_MSG_CHECKING(for CUDA library)
+AS_CASE([$with_CUDA],
+	[no],  [AC_MSG_RESULT([disabled])],
+	[yes], [AC_MSG_RESULT([enabled])
+		AS_IF([test -z "$CUDAROOT"],
+		  AC_MSG_ERROR([CUDAROOT not set in $MCONF]),)
+	       ],
+	       [AC_MSG_RESULT([<user defined>]: $with_CUDA)
+		CUDAROOT=$with_CUDA
+	       ]
+       )
+
+AS_IF([test ! "$with_CUDA" = "no"],
+      [AC_CHECK_FILE([$CUDAROOT/lib64/libcudart.so],
+		     [CUDA_LIB="-L$CUDAROOT/lib64 -lcudart -lstdc++"],
+		     [AC_MSG_ERROR([$CUDAROOT/lib64/libcudart.so not found])]
+		    )
+       LDFLAGS+=" ${WLPOPT}$CUDAROOT/lib64"
+       CUDA_DEF="HAVE_CUDA"
+      ], )
+AC_SUBST(CUDA_LIB)
+AC_SUBST(CUDA_DEF)
+
+dnl SPECIAL LIBRARIES (for linking)
+AC_MSG_CHECKING(for user defined additional external libraries)
+AS_CASE([$with_SPECLIB],
+	[no],  [AC_MSG_RESULT(<none specified>)
+		AC_MSG_CHECKING(for SPEC_LIB in $MCONF)
+		AS_IF([test -z "$SPEC_LIB"],
+		      [AC_MSG_RESULT(<empty>)
+		      ],
+		      [AC_MSG_RESULT($SPEC_LIB)
+		      ]
+		     )
+	       ],
+	[yes], [AC_MSG_RESULT(yes)
+		AC_MSG_ERROR(no libraries specified)
+	       ],
+	       [AC_MSG_RESULT($with_SPECLIB)
+		AC_MSG_CHECKING(for SPEC_LIB in $MCONF)
+		AS_IF([test -z "$SPEC_LIB"],
+		      [SPEC_LIB="$with_SPECLIB"
+		       AC_MSG_RESULT(<empty>; using $SPEC_LIB)
+		      ],
+		      [AC_MSG_RESULT(($SPEC_LIB); adding $with_SPECLIB)
+		       SPEC_LIB+=" $with_SPECLIB"
+		      ]
+		     )
+	       ]
+       )
+
+
+dnl ####################################################################
+dnl checking for various MESSy options
+dnl ####################################################################
+AS_ECHO("")
+AS_BOX([MESSy OPTIONS],=)
+MESSY_LIB="-L../../lib"
+
+AC_MSG_CHECKING(for MESSy)
+AS_IF([test "$enable_MESSY" = "yes"],
+      [AC_MSG_RESULT(enabled)
+       MESSY=MESSY
+       LIBSRCS+=" messy/smcl"
+       MESSY_LIB+=" -lmessy"
+
+       dnl ####################
+       dnl PREPROCESSOR OPTIONS
+       dnl ####################
+
+       dnl PNCREGRID
+       AC_MSG_CHECKING(for parallel NCREGRID)
+       AS_IF([test "$enable_PNCREGRID" = "yes"],
+	     [AS_IF([test ! "$with_MPI" = "no"],
+		    [AC_MSG_RESULT(enabled)
+		     PNCREGRID="PNCREGRID"
+		    ],
+		    [AC_MSG_RESULT(MPI disabled)
+		     PNCREGRID=""
+		    ]
+		   )
+	     ],
+	     [AC_MSG_RESULT(disabled)
+	      PNCREGRID=""
+	     ]
+	    )
+
+       dnl MESSYTENDENCY
+       AC_MSG_CHECKING(for MESSy TENDENCY)
+       AS_IF([test "$enable_MESSYTENDENCY" = "yes"],
+	     [AC_MSG_RESULT(enabled)
+	      MESSYTENDENCY="MESSYTENDENCY"
+	     ],
+	     [AC_MSG_RESULT(disabled)
+	      MESSYTENDENCY=""
+	     ]
+	    )
+
+       dnl MESSYIDTC
+       AC_MSG_CHECKING(for MESSy IDealized Test Cases (ECHAM5))
+       AS_IF([test "$enable_MESSYIDTC" = "yes"],
+	     [AC_MSG_RESULT(enabled)
+	      MESSYIDTC="MESSYIDTC"
+	     ],
+	     [AC_MSG_RESULT(disabled)
+	      MESSYIDTC=""
+	     ]
+	    )
+
+       dnl ####################
+       dnl additional libraries
+       dnl ####################
+
+       dnl OASIS3MCT
+       AC_MSG_CHECKING(for OASIS3MCT)
+       AS_IF([test "$enable_OASIS3MCT" = "yes"],
+	     [AC_MSG_RESULT(enabled)
+	      OASIS3MCT="OASIS3MCT"
+	      dnl make sure that the compilation sequence is
+	      dnl scrip - mct/mpeu - psmile
+	      dnl trick: concat with : here and replace ny blank after sort ...
+	      LIBSRCS+=" libsrc/oasis3-mct/lib/scrip/src"
+	      LIBSRCS+=":libsrc/oasis3-mct/lib/mct/build"
+	      LIBSRCS+=":libsrc/oasis3-mct/lib/psmile/build"
+	      OASIS3MCT_LIB="-L../../lib -lpsmile -loasmct -lmpeu -lscrip"
+	      dnl
+	      AS_IF([test "$enable_MPI" = "no"],
+		    [OASIS3MCT_LIB+=" -lmpi-serial"], )
+	      dnl
+	      OASIS3MCT_INCLUDE="${MODOPT}../../libsrc/oasis3-mct/lib/psmile/build ${MODOPT}../../libsrc/oasis3-mct/lib/mct/build/mct ${MODOPT}../../libsrc/oasis3-mct/lib/mct/build/mpeu ${MODOPT}../../libsrc/oasis3-mct/lib/scrip/src"
+	      dnl OASIS3MCT requires MMD
+	      AS_ECHO([" ... enabling MESSy MMD"])
+	      enable_MESSYMMD=yes
+	     ],
+	     [AC_MSG_RESULT(disabled)
+	      MESSYMMD=""
+	     ]
+	    )
+
+       dnl MESSYMMD
+       AC_MSG_CHECKING(for MESSy MMD)
+       AS_IF([test "$enable_MESSYMMD" = "yes"],
+	     [AC_MSG_RESULT(enabled)
+	      MESSYMMD="MESSYMMD"
+	      LIBSRCS+=" libsrc/mmd/src"
+	      MMD_INCLUDE+="${MODOPT}../../libsrc/mmd/src"
+	      MMD_LIB+="-L../../lib -lmmd"
+	     ],
+	     [AC_MSG_RESULT(disabled)
+	      MESSYMMD=""
+	     ]
+	    )
+
+       dnl MPIOM source files
+       AC_MSG_CHECKING(for MPIOM source)
+       AS_IF([test -e mpiom/src/Makefile.m],
+	     [LIBSRCS+=" mpiom/src"
+	      AS_IF([test -e mpiom/mpiom.vers],
+		    [MPIOMVERS=`cat mpiom/mpiom.vers`],
+		    [MPIOMVERS=""]
+		   )
+	      AC_MSG_RESULT(yes (version=$MPIOMVERS))
+	      dnl additional library, only for ECHAM5
+	      ECHAM5_LIB+=" -L../../lib -lmpiom"
+	     ],
+	     [AC_MSG_RESULT(no)
+	      MPIOMVERS=""
+	     ]
+	    )
+
+       dnl dnl ISORROPIA (for GMXE)
+       dnl AC_MSG_CHECKING(for isorropia)
+       dnl AS_IF([test -e  libsrc/isorropia/Makefile.m],
+       dnl       [AC_MSG_RESULT(yes)
+       dnl        MESSY_LIB+=" -lisorropia"
+       dnl        LIBSRCS+=" libsrc/isorropia"
+       dnl       ],
+       dnl       [AC_MSG_RESULT(no)
+       dnl       ]
+       dnl      )
+
+       dnl CRM (for CRM)
+       AC_MSG_CHECKING(for crm)
+       AS_IF([test -e  libsrc/crm/Makefile.m],
+	     [AC_MSG_RESULT(yes)
+	      MESSY_LIB+=" -lcrm"
+	      LIBSRCS+=" libsrc/crm"
+	     ],
+	     [AC_MSG_RESULT(no)
+	     ]
+	    )
+
+       dnl dnl QHULL (for CLaMS)
+       dnl AC_MSG_CHECKING(for qhull)
+       dnl AS_IF([test -e  libsrc/qhull/Makefile.m],
+       dnl       [AC_MSG_RESULT(yes)
+       dnl        MESSY_LIB+=" -lqhull"
+       dnl        LIBSRCS+=" libsrc/qhull"
+       dnl       ],
+       dnl       [AC_MSG_RESULT(no)
+       dnl       ]
+       dnl      )
+
+       dnl LPJ-GUESS
+       AC_MSG_CHECKING(for guess)
+       AS_IF([test "$enable_GUESS" = "yes"],
+	     [ AS_IF([test -e  libsrc/guess/build/Makefile.m],
+		     [MESSY_LIB+=" -lguess"
+		      LIBSRCS+=" libsrc/guess/build"
+		      GUESS="GUESS"
+		      dnl special for ECHAM
+		      ECHAM5_LIB+=" $LIBCXX"
+		      COSMO_LIB+=" $LIBCXX"
+		      AC_MSG_RESULT(yes)
+		     ],
+		     [GUESS=""
+		      AC_MSG_RESULT(no)
+		     ]
+		    )
+	     ],
+	     [GUESS=""
+	      AC_MSG_RESULT(disabled)
+	     ]
+	    )
+
+      ],
+      [AC_MSG_RESULT(disabled)
+       MESSY=""
+      ]
+     )
+
+       dnl POSIX90
+       AC_MSG_CHECKING(for POSIX90)
+       AS_IF([test "$enable_POSIX90" = "yes"],
+	     [AC_MSG_RESULT(enabled)
+	      dnl works only on POSIX systems:
+	      AC_CHECK_HEADER(unistd.h, [is_posix=yes], [is_posix=no])
+	      AS_IF([test "$is_posix" = "yes"],
+	      [
+		dnl
+		POSIX90_DEF="HAVE_POSIX90"
+		LIBSRCS+=" libsrc/posix90/src"
+		POSIX90_LIB="-L../../lib -lposix90"
+		MESSY_LIB+=" -lposix90"
+		dnl
+		POSIX90_INCLUDE="${MODOPT}../../libsrc/posix90/src"
+	      ],
+	      [AS_ECHO("... no posix system: POSIX90 disabled")
+	       POSIX90_DEF=""
+	      ] )
+	     ],
+	     [AC_MSG_RESULT(disabled)
+	      POSIX90_DEF=""
+	     ]
+	    )
+
+       dnl FORPY
+       AC_MSG_CHECKING(for FORPY)
+       AS_IF([test "$enable_FORPY" = "yes"],
+	     [AC_MSG_RESULT(enabled)
+	      dnl works only, if python3-config is available
+	      AC_CHECK_PROG(PY3CONFIG, python3-config, [yes], [no])
+	      AS_IF([test "$PY3CONFIG" = "yes"],
+	      [
+	       dnl
+	       FORPY_DEF="HAVE_FORPY"
+	       LIBSRCS+=" libsrc/forpy"
+	       FORPY_LIB="-L../../lib -lforpy"
+	       dnl check python version
+	       AC_MSG_CHECKING(for python version)
+	       PYV_MAJOR=$(python3 --version | awk '{print $2}' | cut -d'.' -f1)
+	       PYV_MINOR=$(python3 --version | awk '{print $2}' | cut -d'.' -f2)
+	       PYV_PATCH=$(python3 --version | awk '{print $2}' | cut -d'.' -f3)
+	       AC_MSG_RESULT([${PYV_MAJOR}.${PYV_MINOR}.${PYV_PATCH}])
+	       dnl
+	       AS_IF([test ${PYV_MAJOR}${PYV_MINOR} -le 37],
+	       [
+		dnl python3.7 and earlier
+		AS_ECHO(["... 3.7 and earlier"])
+		PYTHON_LDF="`python3-config --ldflags`"
+	       ],
+	       [
+		dnl python3.8 and higher
+		AS_ECHO(["... 3.8 and higher"])
+		PYTHON_LDF="`python3-config --ldflags --embed`"
+	       ] )
+	       dnl
+	       PYTHON_LDWL=`python3-config --ldflags | tr ' ' '\n' | grep '\-L' | sed 's|^-L|'${WLPOPT}'|' | tr '\n' ' '`
+	       dnl
+	       PYTHON_LIB="$PYTHON_LDWL $PYTHON_LDF"
+	       MESSY_LIB+=" -lforpy"
+	       FORPY_INCLUDE="${MODOPT}../../libsrc/forpy"
+	      ],
+	      [AS_ECHO(["... python3-config not found: FORPY disabled"])
+	       FORPY_DEF=""
+	      ] )
+	     ],
+	     [AC_MSG_RESULT(disabled)
+	      FORPY_DEF=""
+	     ]
+	    )
+
+       dnl ASYNCF
+       AC_MSG_CHECKING(for ASYNCF)
+       AS_IF([test "$enable_ASYNCF" = "yes"],
+	     [AC_MSG_RESULT(enabled)
+	     ASYNCF_DEF="HAVE_ASYNCF"
+	     LIBSRCS+=" libsrc/async-fortran/build"
+	     ASYNCF_LIB="-L../../lib -lasyncf"
+	     ASYNCF_INCLUDE="${MODOPT}../../libsrc/async-fortran/build"
+	     MESSY_LIB+=" -lasyncf $LIBCXX"
+	     ],
+	     [AC_MSG_RESULT(disabled)
+	      ASYNCF_DEF=""
+	     ]
+	     )
+
+dnl openMP (currently available for ECHAM and EMAC (kpp under construction))
+AC_MSG_CHECKING(for hybrid parallelisation with openMP)
+AS_IF([test "$enable_OPENMP" = "yes"],
+      [AC_MSG_RESULT(enabled)
+       _MESSY_OMP="_MESSY_OMP"
+       AS_IF([test -z "$F90OMP"],
+	     AC_MSG_ERROR([compiler option F90OMP must be defined in $MCONF])
+	     , )
+       F90FLAGS+=" $F90OMP"
+       AS_IF([test -z "$F90OMPLIB"],
+	     AC_MSG_ERROR([linker option F90OMPLIB must be defined in $MCONF])
+	     , )
+       LDFLAGS+=" $F90OMMPLIB"
+      ],
+      [AC_MSG_RESULT(disabled)
+       _MESSY_OMP=""
+      ]
+     )
+
+AC_SUBST(MESSY)
+AC_SUBST(PNCREGRID)
+AC_SUBST(MESSYIDTC)
+AC_SUBST(MESSYTENDENCY)
+AC_SUBST(OASIS3MCT)
+AC_SUBST(MESSYMMD)
+AC_SUBST(MPIOMVERS)
+AC_SUBST(GUESS)
+AC_SUBST(POSIX90_DEF)
+AC_SUBST(POSIX90_INCLUDE)
+AC_SUBST(POSIX90_LIB)
+AC_SUBST(FORPY_DEF)
+AC_SUBST(FORPY_INCLUDE)
+AC_SUBST(FORPY_LIB)
+AC_SUBST(ASYNCF_DEF)
+AC_SUBST(ASYNCF_INCLUDE)
+AC_SUBST(ASYNCF_LIB)
+AC_SUBST(PYTHON_LIB)
+AC_SUBST(_MESSY_OMP)
+
+dnl #########################################################################
+dnl libraries to be compiled in any case (for MBMs even if MESSy is disabled)
+dnl #########################################################################
+
+dnl QHULL (for CLaMS)
+AC_MSG_CHECKING(for qhull (for CLaMS))
+AS_IF([test -e  libsrc/qhull/Makefile.m],
+      [AC_MSG_RESULT(yes)
+       MESSY_LIB+=" -lqhull"
+       LIBSRCS+=" libsrc/qhull"
+      ],
+      [AC_MSG_RESULT(no)
+      ]
+     )
+
+dnl ISORROPIA (for GMXE)
+AC_MSG_CHECKING(for isorropia (for GMXE))
+AS_IF([test -e  libsrc/isorropia/Makefile.m],
+      [AC_MSG_RESULT(yes)
+       MESSY_LIB+=" -lisorropia"
+       LIBSRCS+=" libsrc/isorropia"
+      ],
+      [AC_MSG_RESULT(no)
+      ]
+     )
+
+dnl t8code(for T8CODE)
+AS_IF([test ! "$with_T8CODE" = "no"],
+      [AC_MSG_RESULT($with_T8CODE)
+       MESSY_LIB+=" $T8CODE_LIB"
+      ],
+      [AC_MSG_RESULT(no)
+      ]
+     )
+
+
+dnl ####################################################################
+dnl checking for code availability of lagacy basemodels
+dnl ####################################################################
+AS_ECHO("")
+AS_BOX([BASEMODELS],=)
+
+dnl #############
+dnl ### CESM1 ###
+dnl #############
+AS_IF( [test "$enable_CESM1" = "yes"],
+      AC_CHECK_FILE(cesm1/Makefile.in,
+		    [OUTFILES+=" cesm1/Makefile"],
+		    enable_CESM1=no) )
+AS_IF( [test "$enable_CESM1" = "yes"],
+       [dnl dynamical core and resolution
+	AC_MSG_CHECKING(for selected CESM1 horizontal resolution)
+	AS_IF([test -n "$CESM1HRES"],
+	      [AC_MSG_RESULT($CESM1HRES)],
+	      [CESM1HRES=ne16
+	       AC_MSG_RESULT($CESM1HRES (default))
+	      ]
+	     )
+	AS_CASE([$CESM1HRES],
+		[ne*],[CESM1DYCORE=HOMMESE],
+		[*x*],[CESM1DYCORE=FVDYCORE],
+		  [AC_MSG_ERROR([CESM1 horizontal resolution not recognized!])]
+	       )
+	AC_MSG_CHECKING(for selected CESM1 vertical resolution)
+	AS_IF([test -n "$CESM1VRES"],
+	      [AC_MSG_RESULT($CESM1VRES)],
+	      [CESM1VRES=26
+	       AC_MSG_RESULT($CESM1VRES (default))
+	      ]
+	     )
+	dnl
+	LIBSRCS+=" libsrc/mct libsrc/pio"
+	dnl required (shipped) libraries
+	CESM1_LIB+=" -L../../lib -lmct -lmpeu -lpio"
+	CESM1_LIB+=" $MESSY_LIB"
+	CESM1_INCLUDE+=" $MESSY_INCLUDE"
+	AS_IF([test "$with_MPI" = "no"],
+	      [CESM1_LIB+=" -lmpi-serial"]
+	      , )
+	dnl required and optional (external) libraries
+	CESM1_LIB+=" $NETCDF_LIB"
+	CESM1_INCLUDE+=" $NETCDF_INCLUDE"
+	CESM1_LIB+=" $MPI2_LIB"
+	CESM1_INCLUDE+=" $MPI2_INCLUDE"
+	CESM1_LIB+=" $PNETCDF_LIB"
+	CESM1_INCLUDE+=" $PNETCDF_INCLUDE"
+	dnl
+	CESM1_LIB+=" $SPEC_LIB"
+	CESM1_LIB+=" $PYTHON_LIB"
+	dnl
+	CESM1_INCLUDE+=" $T8CODE_INCLUDE"
+	dnl
+	CESM1_INCLUDE+=" $ASYNCF_INCLUDE"
+	dnl
+       ], )
+AC_SUBST(CESM1_LIB)
+AC_SUBST(CESM1_INCLUDE)
+AC_SUBST(CESM1HRES)
+AC_SUBST(CESM1VRES)
+AC_SUBST(CESM1DYCORE)
+
+dnl ###########
+dnl ### CLM ###
+dnl ###########
+AS_IF( [test "$enable_CLM" = "yes"],
+       AC_CHECK_FILE(clm/Makefile.in,
+		     [OUTFILES+=" clm/Makefile"],
+		     enable_CLM=no) )
+AS_IF( [test "$enable_CLM" = "yes"],
+       [  LIBSRCS+=" libsrc/mct libsrc/pio"
+	  dnl required (shipped) libraries
+	  CLM_LIB+=" -L${BLASROOT} -l${BLAS_LIB}"
+	  CLM_LIB+=" -L${LAPACKROOT} -l${LAPACK_LIB}"
+	  CLM_LIB+=" -L../../lib  -lmct -lpio"
+	  dnl
+	  AS_IF([test "$enable_MPI" = "no"],
+		[CLM_LIB+=" -lmpi-serial"]
+	     , )
+	  CLM_LIB+=" $MESSY_LIB"
+	  CLM_INCLUDE+=" $MESSY_INCLUDE"
+	  dnl
+	  CLM_INCLUDE+=" $OASIS3MCT_INCLUDE"
+	  CLM_LIB+=" $OASIS3MCT_LIB"
+	  dnl
+	  CLM_INCLUDE+=" $MMD_INCLUDE"
+	  CLM_LIB+=" $MMD_LIB"
+	  dnl required and optional (external) libraries
+	  CLM_LIB+=" $NETCDF_LIB"
+	  CLM_INCLUDE+=" $NETCDF_INCLUDE"
+	  CLM_LIB+=" $MPI2_LIB"
+	  CLM_INCLUDE+=" $MPI2_INCLUDE"
+	  CLM_LIB+=" $PNETCDF_LIB"
+	  CLM_INCLUDE+=" $PNETCDF_INCLUDE"
+	  CLM_LIB+=" $YAXT_LIB"
+	  CLM_INCLUDE+=" $YAXT_INCLUDE"
+	  dnl
+	  dnl
+	  CLM_LIB+=" $SPEC_LIB"
+	  CLM_LIB+=" $PYTHON_LIB"
+	  dnl
+	  CLM_INCLUDE+=" $T8CODE_INCLUDE"
+	  dnl
+       ], )
+AC_SUBST(CLM_LIB)
+AC_SUBST(CLM_INCLUDE)
+
+dnl ##############
+dnl ### ECHAM5 ###
+dnl ##############
+AS_IF( [test "$enable_ECHAM5" = "yes"],
+       AC_CHECK_FILE(echam5/Makefile.in,
+		     [OUTFILES+=" echam5/Makefile"],
+		     enable_ECHAM5=no) )
+AS_IF( [test "$enable_ECHAM5" = "yes"],
+       [ AC_MSG_CHECKING(... with scalable ghosting)
+	 AS_IF([test "$enable_E5SGHOST" = "yes"],
+	       [AC_MSG_RESULT(enabled)
+		E5SGHOST="E5SGHOST"
+		AS_IF([test ! "$with_YAXT" = "no"],
+		      [AC_MSG_ERROR([use either (preferably) YAXT or E5SGHOST])
+		      ],
+		     )
+	       ],
+	       [AC_MSG_RESULT(disabled)
+		E5SGHOST=""
+	       ]
+	      )
+	  LIBSRCS+=" echam5/support"
+	  dnl required (shipped) libraries (order is important!)
+	  ECHAM5_LIB+=" -L${LAPACKROOT} -l${LAPACK_LIB}"
+	  ECHAM5_LIB+=" -L${BLASROOT} -l${BLAS_LIB}"
+	  ECHAM5_LIB+=" -L../../lib -lsupport"
+	  dnl
+	  ECHAM5_LIB+=" $MESSY_LIB"
+	  ECHAM5_INCLUDE+=" $MESSY_INCLUDE"
+	  dnl
+	  ECHAM5_LIB+=" $OASIS3MCT_LIB"
+	  ECHAM5_INCLUDE+=" $OASIS3MCT_INCLUDE"
+	  dnl
+	  ECHAM5_LIB+=" $MMD_LIB"
+	  ECHAM5_INCLUDE+=" $MMD_INCLUDE"
+	  dnl
+	  dnl required and optional (external) libraries
+	  ECHAM5_LIB+=" $NETCDF_LIB"
+	  ECHAM5_INCLUDE+=" $NETCDF_INCLUDE"
+	  ECHAM5_LIB+=" $MPI2_LIB"
+	  ECHAM5_INCLUDE+=" $MPI2_INCLUDE"
+	  ECHAM5_LIB+=" $PNETCDF_LIB"
+	  ECHAM5_INCLUDE+=" $PNETCDF_INCLUDE"
+	  ECHAM5_LIB+=" $YAXT_LIB"
+	  ECHAM5_INCLUDE+=" $YAXT_INCLUDE"
+	  dnl CUDA library (TODO: consider addding to $SPEC_LIB/$MESSY_LIB ?)
+	  ECHAM5_LIB+=" $CUDA_LIB"
+	  dnl
+	  ECHAM5_LIB+=" $SPEC_LIB"
+	  ECHAM5_LIB+=" $PYTHON_LIB"
+	  dnl
+	  ECHAM5_INCLUDE+=" $T8CODE_INCLUDE"
+	  dnl
+	  ECHAM5_INCLUDE+=" $ASYNCF_INCLUDE"
+	], )
+AC_SUBST(ECHAM5_LIB)
+AC_SUBST(ECHAM5_INCLUDE)
+AC_SUBST(E5SGHOST)
+
+dnl #############
+dnl ### COSMO ###
+dnl #############
+dnl check for COSMO in original CLM-community mode
+AS_IF( [test "$enable_COSMOCLM" = "yes"],
+       [enable_COSMO=yes
+	CCLM=CLM
+	CCLMORI=CCLMORI
+	CCLMNEW=CLM_NEW
+       ],
+       [
+	CCLM=""
+	CCLNNEW=""
+	CCLMORI=""
+       ]
+     )
+
+AS_IF( [test "$enable_COSMO" = "yes"],
+       AC_CHECK_FILE(cosmo/Makefile.in,
+		     [OUTFILES+=" cosmo/Makefile"],
+		     enable_COSMO=no) )
+AS_IF( [test "$enable_COSMO" = "yes"],
+       [AC_MSG_CHECKING(... with int2cosmo compiled in)
+	AS_IF([test "$enable_I2CINC" = "yes"],
+	      [AC_MSG_RESULT(enabled)
+	       I2CINC=I2CINC
+	       COSMO_SRC="src"
+	       I2C_SRC="src_i2c"
+	       AS_IF([test "$enable_MESSYMMD" = "yes"],
+		     [AS_IF([test "$enable_MESSYTWOWAY" = "yes"],
+			    [MESSYTWOWAY=MESSYTWOWAY],
+			    [MESSYTWOWAY=""]
+			   )
+		     ],
+		     [MESSYTWOWAY=""]
+		    )
+	      ],
+	      [AC_MSG_RESULT(disabled)
+	       I2CINC=""
+	       COSMO_SRC=" src"
+	       I2C_SRC=""
+	      ]
+	     )
+       AC_MSG_CHECKING(... with COSMO2MOM compiled in)
+	AS_IF([test "$enable_COSMO2MOM" = "yes"],
+	      [AC_MSG_RESULT(enabled)
+	       COSMO2MOM=TWOMOM_SB
+	       COSMO_SRC+=" LOCAL/TWOMOM"
+	      ],
+	      [AC_MSG_RESULT(disabled)
+	       COSMO2MOM=""
+	      ]
+	     )
+       AC_MSG_CHECKING(... with COSMOCLOUDRAD compiled in)
+	AS_IF([test "$enable_COSMOCLOUDRAD" = "yes"],
+	      [AC_MSG_RESULT(enabled)
+	       COSMOCLOUDRAD=CLOUDRAD
+	       COSMO2MOM=TWOMOM_SB
+	       COSMO_SRC+=" LOCAL/TWOMOM"
+	      ],
+	      [AC_MSG_RESULT(disabled)
+	       COSMOCLOUDRAD=""
+	      ]
+	     )
+       AC_MSG_CHECKING(... with COSMOEULAG compiled in)
+	AS_IF([test "$enable_COSMOEULAG" = "yes"],
+	      [AC_MSG_RESULT(enabled)
+	       COSMOEULAG=EULAG
+	       COSMO_SRC+=" LOCAL/EULAG"
+	      ],
+	      [AC_MSG_RESULT(disabled)
+	       COSMOEULAG=""
+	      ]
+	     )
+       AC_MSG_CHECKING(... with COSMORADARFWO compiled in)
+	AS_IF([test "$enable_COSMORADARFWO" = "yes"],
+	      [AC_MSG_RESULT(enabled)
+	       COSMORADARFWO=RADARFWO
+	       COSMO_SRC+=" LOCAL/EMVORADO"
+	      ],
+	      [AC_MSG_RESULT(disabled)
+	       COSMORADARFWO=""
+	      ]
+	     )
+
+	 dnl
+	 dnl required (shipped) libraries
+	 LIBSRCS+=" libsrc/dwdlibgrib1/source"
+	 COSMO_LIB+=" -L../../lib -lgrib1"
+	 LIBSRCS+=" libsrc/rttov7_synsat_vector/src"
+	 COSMO_LIB+=" -L../../lib -lRTTOV7_synsat_new"
+	 LIBSRCS+=" libsrc/ifs"
+	 COSMO_LIB+=" -L../../lib -lconvifs"
+	 dnl THIS IS AN INTERDEPENDENCY OF COSMO ON THE ECHAM5 support LIBRARY
+	 dnl USED FOR TIME, DATE, USER etc. ATTRIBUTES ...
+	 LIBSRCS+=" echam5/support"
+	 COSMO_LIB="$COSMO_LIB -L../../lib -lsupport"
+	 dnl
+	 dnl COSMO_LIB+=" -L${BLASROOT} -l${BLAS_LIB}"
+	 dnl COSMO_LIB+=" -L${LAPACKROOT} -l${LAPACK_LIB}"
+	 dnl
+	 COSMO_LIB+=" $MESSY_LIB"
+	 COSMO_INCLUDE+=" $MESSY_INCLUDE"
+	 dnl
+	 COSMO_LIB+=" $OASIS3MCT_LIB"
+	 COSMO_INCLUDE+=" $OASIS3MCT_INCLUDE"
+	 dnl
+	 COSMO_INCLUDE+=" $MMD_INCLUDE"
+	 COSMO_LIB+=" $MMD_LIB"
+	 dnl
+	 dnl required and optional (external) libraries
+	 COSMO_LIB+=" $NETCDF_LIB"
+	 COSMO_INCLUDE+=" $NETCDF_INCLUDE"
+	 COSMO_LIB+=" $MPI2_LIB"
+	 COSMO_INCLUDE+=" $MPI2_INCLUDE"
+	 COSMO_LIB+=" $PNETCDF_LIB"
+	 COSMO_INCLUDE+=" $PNETCDF_INCLUDE"
+	 dnl COSMO_LIB+=" $YAXT_LIB"
+	 dnl COSMO_INCLUDE+=" $YAXT_INCLUDE
+	 dnl
+	 dnl
+	 COSMO_LIB+=" $SPEC_LIB"
+	 COSMO_LIB+=" $PYTHON_LIB"
+	 dnl
+	 COSMO_INCLUDE+=" $T8CODE_INCLUDE"
+	 dnl
+	 COSMO_INCLUDE+=" $ASYNCF_INCLUDE"
+	 dnl
+	 COSMO=COSMO
+	], )
+AC_SUBST(COSMO)
+AC_SUBST(MESSYTWOWAY)
+AC_SUBST(COSMO_LIB)
+AC_SUBST(COSMO_INCLUDE)
+AC_SUBST(I2CINC)
+AC_SUBST(COSMO_SRC)
+AC_SUBST(I2C_SRC)
+AC_SUBST(COSMO2MOM)
+AC_SUBST(COSMOCLOUDRAD)
+AC_SUBST(COSMOEULAG)
+AC_SUBST(COSMORADARFWO)
+AC_SUBST(CCLM)
+AC_SUBST(CCLMNEW)
+AC_SUBST(CCLMORI)
+
+dnl ############
+dnl ### ICON ###
+dnl ############
+AS_IF( [test "$enable_ICON" = "yes"],
+	AC_CHECK_FILE(icon/Makefile-MESSy.in,
+		      [OUTFILES+=" icon/Makefile-MESSy"],
+		      enable_ICON=no) )
+AS_IF( [test "$enable_ICON" = "yes"],
+       [
+	  dnl LIBSRCS+=" icon/externals/jsbach/src"
+	  dnl ICON_LIB+=" -L../../lib -ljsbach"
+	  dnl ICON_INCLUDE+=" ${MODOPT}../externals/jsbach/src"
+	  LIBSRCS+=" icon/externals/mtime/src"
+	  ICON_LIB+=" -L../../lib -lmtime"
+	  ICON_INCLUDE+=" ${MODOPT}../externals/mtime/src"
+	  dnl
+	  LIBSRCS+=" icon/externals/self/src"
+	  ICON_LIB+=" -L../../lib -lself"
+	  ICON_INCLUDE+=" ${MODOPT}../externals/self/src"
+	  dnl
+	  LIBSRCS+=" icon/externals/yac"
+	  ICON_LIB+=" -L../../lib -lyac"
+	  ICON_INCLUDE+=" ${MODOPT}../externals/yac"
+	  dnl
+	  LIBSRCS+=" icon/support"
+	  ICON_LIB+=" -L../../lib -lsupport_icon"
+	  ICON_INCLUDE+=" ${MODOPT}../support"
+	  dnl
+	  LIBSRCS+=" icon/lapack"
+	  ICON_LIB+=" -L../../lib -llapack_icon"
+	  dnl
+	  LIBSRCS+=" icon/blas"
+	  ICON_LIB+=" -L../../lib -lblas_icon"
+	  dnl
+	  dnl required (shipped) libraries
+	  ICON_LIB+=" $MESSY_LIB"
+	  ICON_INCLUDE+=" $MESSY_INCLUDE"
+	  dnl
+	  dnl required and optional (external) libraries
+	  ICON_LIB+=" $NETCDF_LIB"
+	  ICON_INCLUDE+=" $NETCDF_INCLUDE"
+	  ICON_LIB+=" $MPI2_LIB"
+	  ICON_INCLUDE+=" $MPI2_INCLUDE"
+	  ICON_LIB+=" $PNETCDF_LIB"
+	  ICON_INCLUDE+=" $PNETCDF_INCLUDE"
+	  dnl ICON_LIB+=" $YAXT_LIB"
+	  dnl ICON_INCLUDE+=" $YAXT_INCLUDE"
+	  dnl
+	  ICON_LIB+=" $SPEC_LIB"
+	  ICON_LIB+=" $PYTHON_LIB"
+	  dnl
+	  ICON_INCLUDE+=" $T8CODE_INCLUDE"
+	  dnl
+	  ICON_INCLUDE+=" $ASYNCF_INCLUDE"
+	  dnl
+	], )
+AC_SUBST(ICON_LIB)
+AC_SUBST(ICON_INCLUDE)
+
+dnl ##############
+dnl ### FESOM2 ###
+dnl ##############
+AS_IF( [test "$enable_FESOM2" = "yes"],
+       AC_CHECK_FILE(fesom2/Makefile-MESSy.in,
+		     [OUTFILES+=" fesom2/Makefile-MESSy"],
+		     enable_FESOM2=no) )
+AS_IF( [test "$enable_FESOM2" = "yes"],
+       [LIBSRCS+=" fesom2/lib/metis-5.1.0 fesom2/lib/parms"
+	FESOM2_LIB+=" $MPI2_LIB"
+	FESOM2_INCLUDE+=" $MPI2_INCLUDE"
+	FESOM2_LIB+=" -L../../lib -lmetis-5.1.0 -lparms"
+	FESOM2_INCLUDE+=" ${INCOPT}../lib/parms/include"
+	FESOM2_INCLUDE+=" ${INCOPT}../lib/parms/src/include"
+	FESOM2_INCLUDE+=" ${INCOPT}../lib/metis-5.1.0/include"
+	FESOM2_LIB+=" -L${BLASROOT} -l${BLAS_LIB}"
+	FESOM2_LIB+=" $OASIS3MCT_LIB"
+	FESOM2_INCLUDE+=" ${OASIS3MCT_INCLUDE}"
+	FESOM2_LIB+=" $MMD_LIB"
+	FESOM2_INCLUDE+=" $MMD_INCLUDE"
+	FESOM2_LIB+=" $NETCDF_LIB"
+	FESOM2_INCLUDE+=" $NETCDF_INCLUDE"
+	dnl
+	FESOM2_LIB+=" $SPEC_LIB"
+	#FESOM2_LIB+=" $PYTHON_LIB"
+       ] , )
+AC_SUBST(FESOM2_LIB)
+AC_SUBST(FESOM2_INCLUDE)
+
+dnl ####################################################################
+dnl configure dependent libraries
+dnl ####################################################################
+
+AS_ECHO("")
+AS_BOX([LIBRARY CONFIGURATIONS],=)
+
+dnl remove multiple entries of same libraries
+dnl replace : by space here after sorting ...
+LIBSRCS=`echo $LIBSRCS | tr ' ' '\n' | sort | uniq | tr '\n' ' ' | tr ':' ' '`
+AC_SUBST(LIBSRCS)
+
+dnl libsrcs/pio
+AC_MSG_CHECKING(if libsrc/pio library needs to be configured)
+N_PIO=`echo $LIBSRCS | tr ' ' '\n' | grep "libsrc/pio" | wc -l`
+AS_IF( [test "$N_PIO" = "0"],
+       [AC_MSG_RESULT(no)
+       ],
+       [AC_MSG_RESULT(yes)
+	AS_ECHO("")
+	AS_BOX([--> configure libsrc/pio])
+	AS_IF([test -z $PNETCDF_DEF],
+	      [PNETCDF_PATH=""],
+	      [PNETCDF_PATH="PNETCDF_PATH=$PNETCDFROOT"]
+	     )
+	 dnl
+	 cd libsrc/pio
+	 echo ./configure $mpiserialstring --srcdir=. \
+	      CC=\"$CC\" MPICC=\"$CC\" \
+	      FC=\"$FC\" MPIFC=\"$FC\" \
+	      FCFLAGS=\"$FFLAGS $NETCDF_INCLUDE $NETCDF_LIB\" \
+	      CPPDEFS=\"\" \
+	      CFLAGS=\"$CFLAGS $NETCDF_INCLUDE $NETCDF_LIB\" \
+	      AR=\"$AR\" \
+	      ARFLAGS=\"$ARFLAGS\" $PNETCDF_PATH
+
+	      ./configure $mpiserialstring --srcdir=. \
+	      CC="$CC" MPICC="$CC" \
+	      FC="$FC" MPIFC="$FC" \
+	      FCFLAGS="$FFLAGS $NETCDF_INCLUDE $NETCDF_LIB" \
+	      CPPDEFS="" \
+	      CFLAGS="$CFLAGS $NETCDF_INCLUDE $NETCDF_LIB" \
+	      AR="$AR" \
+	      ARFLAGS="$ARFLAGS" $PNETCDF_PATH \
+
+	 cd ../..
+	 dnl
+	AS_ECHO("--- END ---")
+	AS_ECHO("")
+       ]
+     )
+
+AC_MSG_CHECKING(if libsrc/mct library needs to be configured)
+N_MCT=`echo $LIBSRCS | tr ' ' '\n' | grep "libsrc/mct" | wc -l`
+AS_IF( [test "$N_MCT" = "0"],
+       [AC_MSG_RESULT(no)
+       ],
+       [AC_MSG_RESULT(yes)
+	AS_ECHO("")
+	AS_BOX([--> configure libsrc/mct])
+	 dnl
+	 cd libsrc/mct
+	 echo ./configure $mpiserialstring --srcdir=. \
+	      CC=\"$CC\" MPICC=\"$CC\" \
+	      FC=\"$FC\" MPIFC=\"$FC\" \
+	      FCFLAGS=\"$FFLAGS\" \
+	      CPPDEFS=\"\" \
+	      CFLAGS=\"$CFLAGS $NETCDF_INCLUDE\" \
+	      AR=\"$AR cq\"
+
+	      ./configure $mpiserialstring --srcdir=. \
+	      CC="$CC" MPICC="$CC" \
+	      FC="$FC" MPIFC="$FC" \
+	      FCFLAGS="$FFLAGS" \
+	      CPPDEFS="" \
+	      CFLAGS="$CFLAGS $NETCDF_INCLUDE $TMPINC" \
+	      AR="$AR cq"
+	 cd ../..
+	 dnl
+	AS_ECHO("--- END ---")
+	AS_ECHO("")
+       ]
+     )
+
+AC_MSG_CHECKING(if libsrc/oasis3-mct/lib/mct/build library needs to be configured)
+N_OAS=`echo $LIBSRCS | tr ' ' '\n' | grep "libsrc/oasis3-mct/lib/mct/build" | wc -l`
+AS_IF( [test "$N_OAS" = "0"],
+       [AC_MSG_RESULT(no)
+       ],
+       [AC_MSG_RESULT(yes)
+	AS_ECHO("")
+	AS_BOX([--> configure libsrc/oasis3-mct/lib/mct/build])
+	dnl
+	here=`pwd`
+	ML=libsrc/oasis3-mct
+	AD=${ML}/lib/mct/build
+	mkdir -p ${AD}
+	for file in configure Makefile.conf.in config.h.in Makefile Makefile.m
+	do
+	  cp -f -u -p ${ML}/lib/mct/${file} ${AD}/.
+	done
+	cd ${AD}
+
+	echo ./configure  $mpiserialstring --srcdir=. \
+		     MPIFC=\"$F90\" FC=\"$F90\" CC=\"$CC\" \
+		     AR=\"$AR $ARFLAGS\"
+
+	./configure  $mpiserialstring --srcdir=. \
+		     MPIFC="$F90" FC="$F90" CC="$CC" \
+		     AR="$AR $ARFLAGS"
+	cd $here
+	dnl
+	AS_ECHO("--- END ---")
+	AS_ECHO("")
+       ]
+     )
+
+dnl ####################################################################
+dnl HEADER FILES (config.h) for ECHAM and MPIOM
+dnl ####################################################################
+
+AC_MSG_CHECKING(if config.h for echam5/support needs to be configured)
+N_SUPP=`echo $LIBSRCS | tr ' ' '\n' | grep "echam5/support" | wc -l`
+AS_IF( [test "$N_SUPP" = "0"],
+   [AC_MSG_RESULT(no)],
+   [
+
+   AC_MSG_RESULT(yes)
+   AS_ECHO("")
+   AS_BOX([--> config/config.h])
+
+   AC_HEADER_STDC
+   AC_CHECK_HEADERS(fcntl.h fortran.h limits.h malloc.h netdb.h pwd.h unistd.h  sys/param.h sys/time.h sys/unistd.h sys/utsname.h )
+
+dnl Checks for typedefs, structures, and compiler characteristics.
+   AC_C_CONST
+   AC_HEADER_TIME
+
+dnl Checks for library functions.
+   AC_CHECK_FUNCS(getrusage gettimeofday sysconf uname valloc)
+
+dnl Check for byte ordering
+dnl DEFINE LITTLE_ENDIAN FOR NUDGING ROUTINES
+
+   AC_C_BIGENDIAN(,[ENDIAN="LITTLE_ENDIAN"],)
+
+dnl check for C datatypes
+
+   AC_CHECK_SIZEOF(char)
+   AC_CHECK_SIZEOF(short)
+   AC_CHECK_SIZEOF(int)
+   AC_CHECK_SIZEOF(long)
+   AC_CHECK_SIZEOF(long long)
+   AC_CHECK_SIZEOF(float)
+   AC_CHECK_SIZEOF(double)
+   AC_CHECK_SIZEOF(long double)
+   AC_CHECK_SIZEOF(int *)
+
+dnl Check for Fortran types:
+
+dnl Defines FORT_INT1=1, FORT_INT2=1, FORT_INT4=1, FORT_INT8=1, FORT_INT16=1
+dnl         FORT_REAL4=1, FORT_REAL8=1, FORT_REAL16=1
+dnl         FORT_COMPLEX8=1, FORT_COMPLEX16=1, FORT_COMPLEX32=1
+dnl         FORT_DOUBLE_COMPLEX=1 if the types are available.
+
+   AC_TEST_FORTTYPES()
+
+dnl For each defined type, find the corresponding C datatype.
+dnl its a bit complicated, but necessary.
+dnl If none can be found, use 0.
+
+   if test -z "$FORT_INTEGER_LEN" ; then
+      AC_FORTRAN_GET_INTEGER_SIZE(fort_integer_len)
+      if test -z "$fort_integer_len" ; then
+	 echo "Unable to determine the length of a FORTRAN integer"
+	 echo "You can set the environment variable FORT_INTEGER_LEN"
+	 echo "with the number of bytes in a FORTRAN integer and rerun"
+	 echo "configure."
+      fi
+   else
+      fort_integer_len=$FORT_INTEGER_LEN
+   fi
+
+   if test -z "$FORT_REAL_LEN" ; then
+      AC_FORTRAN_GET_REAL_SIZE(fort_real_len)
+      if test -z "$fort_real_len" ; then
+	 echo "Unable to determine the length of a FORTRAN real"
+	 echo "You can set the environment variable FORT_REAL_LEN"
+	 echo "with the number of bytes in a FORTRAN real and rerun"
+	 echo "configure."
+      fi
+   else
+      fort_real_len=$FORT_REAL_LEN
+   fi
+
+dnl Set the corresponding datatypes
+
+   char_def=1
+   short_def=4
+   int_def=6
+   long_def=8
+   long_long_def=13
+   float_def=10
+   double_def=11
+   long_double_def=13
+
+dnl Warning: float_cplx is Fortran COMPLEX, not (float,float)
+
+   float_cplx_def=23
+
+dnl Warning: double_cplx is Fortran DOUBLE COMPLEX, not (double,double)
+
+   double_cplx_def=24
+
+   for len in 1 2 4 8 16 ; do
+      eval testval=\$"FORT_INT$len"
+      AC_MSG_CHECKING(for Fortran INTEGER*$len)
+      found=0
+      if test "$testval" = 1 ; then
+	 for c_type in long_long long int short char ; do
+	    eval typelen=\$"ac_cv_sizeof_${c_type}"
+	    if test $len = "$typelen" ; then
+		# Fortran type FORT_INT$len corresponds to C type
+		# $ctype
+		eval FORT_INT$len=\$"${c_type}_def"
+		AC_MSG_RESULT(found)
+		found=1
+		break
+	    fi
+	 done
+      fi
+      if test $found = 0 ; then
+	 eval FORT_INT$len=0
+	 AC_MSG_RESULT(not supported)
+      fi
+   done
+
+   for len in 4 8 16 ; do
+      # Use len2 for Complex.
+      len2=`expr $len + $len`
+      lenby2=`expr $len / 2`
+      eval testval=\$"FORT_REAL$len"
+      AC_MSG_CHECKING(for Fortran REAL*$len and COMPLEX*$len2)
+      found=0
+      if test "$testval" = 1 ; then
+	 for c_type in long_double double float ; do
+	    eval typelen=\$"ac_cv_sizeof_${c_type}"
+	    if test $len = "$typelen" ; then
+		# Fortran type FORT_REAL$len corresponds to C type
+		# $ctype
+		eval FORT_REAL$len=\$"${c_type}_def"
+		# Notes that we may not have been able to determine
+		# fort_real_len
+		# The corresponding Complex type
+		if test "$fort_real_len" = "$len" ; then
+		    eval FORT_COMPLEX$len2=$float_cplx_def
+		elif test "$fort_real_len" = "$lenby2" ; then
+		    eval FORT_COMPLEX$len2=$double_cplx_def
+		else
+		    eval FORT_COMPLEX$len2=0
+		fi
+		AC_MSG_RESULT(found)
+		found=1
+		break
+	    fi
+	 done
+      fi
+      if test $found = 0 ; then
+	 eval FORT_REAL$len=0
+	 eval FORT_COMPLEX$len2=0
+	 AC_MSG_RESULT(not supported)
+      fi
+   done
+
+   AC_MSG_CHECKING(for Fortran INTEGER)
+   found=0
+   if test "$fort_integer_len" -gt 1 ; then
+      for c_type in long_long long int short char ; do
+	 eval typelen=\$"ac_cv_sizeof_${c_type}"
+	 if test $fort_integer_len = "$typelen" ; then
+	   # Fortran type fort_integer_len corresponds to C type $ctype
+	   eval FORT_INT=\$"${c_type}_def"
+	   AC_MSG_RESULT(found)
+	   found=1
+	   break
+	 fi
+      done
+   fi
+   if test $found = 0 ; then
+      eval FORT_INT=0
+      AC_MSG_RESULT(not supported)
+   fi
+
+   AC_MSG_CHECKING(for Fortran REAL)
+   found=0
+   if test "$fort_real_len" -gt 1 ; then
+      for c_type in float double long_double  ; do
+	 eval typelen=\$"ac_cv_sizeof_${c_type}"
+	 if test $fort_real_len = "$typelen" ; then
+	   # Fortran type fort_real_len corresponds to C type $ctype
+	   eval FORT_REAL=\$"${c_type}_def"
+	   AC_MSG_RESULT(found)
+	   found=1
+	   break
+	 fi
+      done
+   fi
+   if test $found = 0 ; then
+      eval FORT_REAL=0
+      AC_MSG_RESULT(not supported)
+   fi
+
+   AC_DEFINE_UNQUOTED(FORT_INT, $FORT_INT)
+   AC_DEFINE_UNQUOTED(FORT_INT1, $FORT_INT1)
+   AC_DEFINE_UNQUOTED(FORT_INT2, $FORT_INT2)
+   AC_DEFINE_UNQUOTED(FORT_INT4, $FORT_INT4)
+   AC_DEFINE_UNQUOTED(FORT_INT8, $FORT_INT8)
+   AC_DEFINE_UNQUOTED(FORT_INT16, $FORT_INT16)
+
+   AC_DEFINE_UNQUOTED(FORT_REAL, $FORT_REAL)
+   AC_DEFINE_UNQUOTED(FORT_REAL4, $FORT_REAL4)
+   AC_DEFINE_UNQUOTED(FORT_REAL8, $FORT_REAL8)
+   AC_DEFINE_UNQUOTED(FORT_REAL16, $FORT_REAL16)
+
+   AC_DEFINE_UNQUOTED(FORT_COMPLEX8, $FORT_COMPLEX8)
+   AC_DEFINE_UNQUOTED(FORT_COMPLEX16, $FORT_COMPLEX16)
+   AC_DEFINE_UNQUOTED(FORT_COMPLEX32, $FORT_COMPLEX32)
+
+   AC_DEFINE_UNQUOTED(FORT_INTEGER_LEN, $fort_integer_len)
+   AC_DEFINE_UNQUOTED(FORT_REAL_LEN, $fort_real_len)
+
+   AC_GET_FORTNAMES
+   AC_DEFINE_UNQUOTED($FORTRANNAMES)
+
+   ]
+  )
+
+dnl ####################################################################
+dnl OUTPUT RESULTS
+dnl ####################################################################
+AS_ECHO("")
+AS_BOX([WRITING CONFIGURATION])
+
+AC_OUTPUT($OUTFILES)
+
+dnl perl scripts must be executable
+chmod 755 $PERLS
+
+dnl empty compiler information file
+AS_IF([test "$enable_MESSY" = "yes"],
+      [
+       cp -f  messy/smcl/messy_main_compilerinfo_mem.f90.in messy/smcl/messy_main_compilerinfo_mem.f90
+      ]
+    , )
+
+dnl copy specific Makefiles to correct name
+AS_IF([test -e icon/Makefile-MESSy],
+      [mv -f icon/Makefile-MESSy icon/Makefile]
+    , )
+
+AS_IF([test -e fesom2/Makefile-MESSy],
+      [mv -f fesom2/Makefile-MESSy fesom2/Makefile]
+    , )
+
+dnl ####################################################################
+dnl show results
+dnl ####################################################################
+AS_ECHO("")
+AS_BOX([RESULTING CONFIGURATION],=)
+
+AS_ECHO("OUTFILES       = $OUTFILES")
+
+AS_ECHO("LIBSRCS        = $LIBSRCS")
+AS_ECHO("MESSY_LIB      = $MESSY_LIB")
+AS_ECHO("LDFLAGS        = $LDFLAGS")
+
+AS_ECHO("NETCDF_INCLUDE = $NETCDF_INCLUDE")
+AS_ECHO("NETCDF_LIB     = $NETCDF_LIB")
+
+AS_IF([test ! "$with_YAXT" = "no"],
+      AS_ECHO("YAXTROOT   = $YAXTROOT")
+      AS_ECHO("YAXT_LIB   = $YAXT_LIB")
+     , )
+
+AS_IF([test ! "$with_T8CODE" = "no"],
+      AS_ECHO("T8CODE_INCLUDE = $T8CODE_INCLUDE")
+      AS_ECHO("T8CODE_LIB     = $T8CODE_LIB")
+     , )
+
+AS_IF([test ! "$with_CDI" = "no"],
+      AS_ECHO("CDIROOT    = $CDIROOT")
+      AS_ECHO("CDI_LIB    = $CDI_LIB")
+     , )
+
+AS_IF([test "$enable_OPENMP" = "yes"],
+      AS_ECHO("F90OMP     = $F90OMP")
+      AS_ECHO("F90OMPLIB  = $F90OMPLIB")
+     , )
+
+dnl ####################################################################
+AS_ECHO("")
+AS_BOX([SETUP OF BASEMODELS],=)
+
+AS_ECHO("")
+AS_ECHO("CESM1    : $enable_CESM1")
+AS_IF([test "$enable_CESM1" = "yes"],
+      [AS_ECHO("           INCLUDE = $CESM1_INCLUDE")
+       AS_ECHO("           LIB     = $CESM1_LIB")
+      ],)
+
+AS_ECHO("")
+AS_ECHO("CLM      : $enable_CLM")
+AS_IF([test "$enable_CLM" = "yes"],
+      [AS_ECHO("           INCLUDE = $CLM_INCLUDE")
+       AS_ECHO("           LIB     = $CLM_LIB")
+      ],)
+
+AS_ECHO("")
+AS_ECHO("COSMO    : $enable_COSMO")
+AS_IF([test "$enable_COSMO" = "yes"],
+      [AS_ECHO("           INCLUDE = $COSMO_INCLUDE")
+       AS_ECHO("           LIB     = $COSMO_LIB")
+      ],)
+
+AS_ECHO("")
+AS_ECHO("ECHAM5   : $enable_ECHAM5")
+AS_IF([test "$enable_ECHAM5" = "yes"],
+      [AS_ECHO("           INCLUDE = $ECHAM5_INCLUDE")
+       AS_ECHO("           LIB     = $ECHAM5_LIB")
+      ],)
+
+AS_ECHO("")
+AS_ECHO("FESOM2   : $enable_FESOM2")
+AS_IF([test "$enable_FESOM2" = "yes"],
+      [AS_ECHO("           INCLUDE = $FESOM2_INCLUDE")
+       AS_ECHO("           LIB     = $FESOM2_LIB")
+      ],)
+
+AS_ECHO("")
+AS_ECHO("ICON     : $enable_ICON")
+AS_IF([test "$enable_ICON" = "yes"],
+      [AS_ECHO("           INCLUDE = $ICON_INCLUDE")
+       AS_ECHO("           LIB     = $ICON_LIB")
+      ],)
+
+dnl #####################################################################
+
+AS_ECHO("")
+AS_BOX([END],=)
+AS_ECHO("")
+AS_ECHO("Configuration done. Type '$llvm_cv_gnu_make_command help' ...")
+AS_ECHO("")
+
+dnl #####################################################################
+dnl END #################################################################
+dnl #####################################################################

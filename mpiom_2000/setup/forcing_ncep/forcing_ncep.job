@@ -1,0 +1,156 @@
+#! /bin/sh
+set -x
+set -e
+
+# Script to interpolate forcing data from ncep reanalysis to the mpi-om
+# model grid ( XXXX denotes the year, e.g. 1948 ). The script uses cdo
+# package to convert netcdf to extra.
+#
+# Input data:
+#    mpi-om grid description file:	anta
+#
+#    ncep reanalysis data:
+#			 		land.sfc.gauss.nc (land.nc)
+#					uflx.sfc.gauss.XXXX.nc
+#					vflx.sfc.gauss.XXXX.nc
+#					air.2m.gauss.XXXX.nc
+#					prate.sfc.gauss.XXXX.nc
+#					tcdc.eatm.gauss.XXXX.nc
+#					dswrf.sfc.gauss.XXXX.nc
+#					skt.sfc.gauss.XXXX.nc
+#					pres.sfc.gauss.XXXX.nc
+#					shum.2m.gauss.XXXX.nc
+#					uwnd.10m.gauss.XXXX.nc
+#					vwnd.10m.gauss.XXXX.nc
+#
+# User need to set the grid name ( needed for the file names ) and dimensions
+
+#GRID=GR60
+#ie=60
+#je=50
+#lbounds_exch_tp=.false.
+
+#GRID=TP10
+#ie=362
+#je=192
+#lbounds_exch_tp=.true.
+
+GRID=TP04
+ie=802
+je=404
+lbounds_exch_tp=.true.
+
+ncep_pool=/pool/data/MPIOM/setup/ncep
+
+freq_per_day=1     # forcing frequency per day
+                   #   1: create daily averaged forcing fields 
+                   #   4: create 6h(=24h/4) forcing fields
+
+
+mkdir -p $GRID
+mkdir -p work
+cd work
+\rm -f *
+
+year=1948
+
+while [ $year -lt 2004 ]; do
+  lday=365
+  if [ `expr $year % 4` = 0 ]; then
+    lday=366
+  fi
+  if [ `expr $year % 100` = 0 ]; then
+    lday=365
+  fi
+  if [ `expr $year % 1000` = 0 ]; then
+    lday=366
+  fi
+
+  (( lday = lday * freq_per_day ))
+
+
+#get a local copy of the ncep data from the archive
+#  ftp -i archive <<EOF
+#bin
+#cd /ut/m/m211054/ncep_ori
+#get land.sfc.gauss.nc
+#mget *.gauss.${year}.nc
+#EOF
+  ls -al
+
+
+#######################################################
+
+  if [[ ${freq_per_day} -eq 1 ]]; then
+    cmd="daymean"
+    pcmd="-daymean"
+  elif [[ ${freq_per_day} -eq 4 ]]; then
+    cmd=copy
+    pcmd=""
+  fi
+
+  #cdo -f ext -p 4b copy ../../mk_anta/${GRID}/${GRID}_anta ./anta_${GRID}
+  cdo -f ext -p 4b copy   /pool/data/MPIOM/${GRID}/${GRID}_anta anta.ext
+  cdo -f ext -p 4b copy   ${ncep_pool}/land.sfc.gauss.nc land.ext
+  cdo -f ext -p 4b ${cmd} ${ncep_pool}/uflx.sfc.gauss.$year.nc uflx.sfc
+  cdo -f ext -p 4b ${cmd} ${ncep_pool}/vflx.sfc.gauss.$year.nc vflx.sfc
+  cdo -f ext -p 4b subc,273.15 ${pcmd} ${ncep_pool}/air.2m.gauss.$year.nc air.2m
+  cdo -f ext -p 4b divc,1000   ${pcmd} ${ncep_pool}/prate.sfc.gauss.$year.nc prate.sfc
+  cdo -f ext -p 4b divc,100    ${pcmd} ${ncep_pool}/tcdc.eatm.gauss.$year.nc tcdc.eatm
+  cdo -f ext -p 4b ${cmd} ${ncep_pool}/dswrf.sfc.gauss.$year.nc dswrf.sfc
+  cdo -f ext -p 4b ${cmd} ${ncep_pool}/dlwrf.sfc.gauss.$year.nc dlwrf.sfc
+  cdo -f ext -p 4b ${cmd} ${ncep_pool}/skt.sfc.gauss.$year.nc skt.sfc
+  cdo -f ext -p 4b ${cmd} ${ncep_pool}/pres.sfc.gauss.$year.nc pres.sfc
+  cdo -f ext -p 4b ${cmd} ${ncep_pool}/shum.2m.gauss.$year.nc shum.2m
+  cdo -f ext -p 4b ${cmd} ${ncep_pool}/uwnd.10m.gauss.$year.nc uwnd.10m
+  cdo -f ext -p 4b ${cmd} ${ncep_pool}/vwnd.10m.gauss.$year.nc vwnd.10m
+
+#calc tdew and uvwnd
+  echo $lday | ../dewpoint
+
+  \rm  shum.2m fort.70
+
+
+
+  ../forcing_ncep <<EOF
+&forcingparams
+me=${ie}
+ne=${je}
+lday=$lday
+iyear=${year}
+lbounds_exch_tp=${lbounds_exch_tp}
+/
+EOF
+
+  cdo -p 8b copy GIWIX uflx.sfc.${GRID}.$year.ext
+  cdo -p 8b copy GIWIY vflx.sfc.${GRID}.$year.ext
+  cdo -p 8b copy GITEM air.2m.${GRID}.$year.ext
+  cdo -p 8b copy GITDEW tdew.sfc.${GRID}.$year.ext
+  cdo -p 8b copy GIPREC prate.sfc.${GRID}.$year.ext
+  cdo -p 8b copy GICLOUD tcdc.eatm.${GRID}.$year.ext
+  cdo -p 8b copy GIU10 uvwnd.10m.${GRID}.$year.ext
+  cdo -p 8b copy GISWRAD dswrf.sfc.${GRID}.$year.ext
+#cdo -p 8b copy GISST skt.sfc.${GRID}.$year.ext
+  cdo -p 8b copy GIPRESS pres.sfc.${GRID}.$year.ext
+
+  cdo -p 8b copy GIWX uwnd.sfc.${GRID}.$year.ext
+  cdo -p 8b copy GIWY vwnd.sfc.${GRID}.$year.ext
+  cdo -p 8b copy GILWRAD dlwrf.sfc.${GRID}.$year.ext
+
+  \rm GI*
+
+  tar cvf ncep.${GRID}.$year.tar *.${GRID}.$year.ext
+
+  mv ncep.${GRID}.$year.tar ../${GRID}
+
+  \rm *.ext
+
+  cd ..
+
+  echo $year 'done.'
+
+  echo ${year} ${lday}
+
+  year=`expr $year + 1`
+
+done

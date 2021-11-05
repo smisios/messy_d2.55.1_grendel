@@ -1,0 +1,94 @@
+!*****************************************************************************
+!                Time-stamp: <2014-01-15 16:47:01 sander>
+!*****************************************************************************
+
+! This dummy file produces ascii output. It can be used if no netcdf
+! library is available.
+
+MODULE mo_netcdf
+
+  IMPLICIT NONE
+
+  PRIVATE
+  PUBLIC :: open_jval_nc_file, write_jval_nc_file, close_jval_nc_file
+
+CONTAINS
+
+  !***************************************************************************
+
+  FUNCTION find_next_free_unit() RESULT(unit)
+
+    IMPLICIT NONE
+
+    INTEGER :: unit
+    LOGICAL :: found, opened
+    INTEGER :: i
+    
+    found = .FALSE.
+    DO i=100,200
+      INQUIRE(unit=i,opened=opened)
+      IF (.NOT.opened) THEN
+        unit = i
+        found = .TRUE.
+        EXIT
+      END IF
+    END DO
+
+  END FUNCTION find_next_free_unit
+
+  !***************************************************************************
+
+  SUBROUTINE open_jval_nc_file (f90unit, nlev, nsza, sza)
+
+    IMPLICIT NONE
+
+    INTEGER, INTENT(OUT)              :: f90unit
+    INTEGER, INTENT(IN)               :: nlev, nsza
+    REAL,    INTENT(IN), DIMENSION(:) :: sza
+
+    f90unit = find_next_free_unit()
+
+    OPEN(f90unit,file='jval.dat')
+
+    WRITE(f90unit,*) 'vertical levels     =', nlev
+    WRITE(f90unit,*) 'solar zenith angles =', nsza
+    WRITE (f90unit,'(3X,10(1PE12.4))') sza
+
+  END SUBROUTINE open_jval_nc_file
+
+  !***************************************************************************
+
+  SUBROUTINE write_jval_nc_file (f90unit, species, x)
+
+    IMPLICIT NONE
+
+    INTEGER,                      INTENT(IN) :: f90unit
+    CHARACTER(*),                 INTENT(IN) :: species
+    REAL,         DIMENSION(:,:), INTENT(in) :: x
+    INTEGER :: i
+
+    WRITE (f90unit,*)
+    WRITE (f90unit,*) species
+    DO i=1,SIZE(x,2)
+      WRITE (f90unit,'(I3,10(1PE12.4))') i, x(:,i)
+    ENDDO
+
+  END SUBROUTINE write_jval_nc_file
+
+  !***************************************************************************
+
+  SUBROUTINE close_jval_nc_file (f90unit)
+
+    IMPLICIT NONE
+
+    INTEGER, INTENT(IN) :: f90unit
+
+    CLOSE (f90unit)
+
+  END SUBROUTINE close_jval_nc_file
+
+  !***************************************************************************
+
+END MODULE mo_netcdf
+
+!*****************************************************************************

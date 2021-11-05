@@ -1,0 +1,42 @@
+cancel data/all
+cancel variable/all
+!cancel viewport
+cancel region/all
+
+define symbol fname = test_data_monthly.txt
+define symbol oname = test_data_monthly.nc
+! number of columns (data)
+define symbol nc    = 19
+
+sp rm axis_($fname)
+sp rm time_($fname)
+sp rm data_($fname)
+
+sp awk '{if (NR==7) print'} ($fname) | tr ',' '\n' > axis_($fname)
+sp awk '{if (NR>8) print $1" "$2}' ($fname) > time_($fname)
+sp awk '{if (NR>8) { {for(i=3;i<=NF;i++) printf("%s ",$i)} printf("\n")} }' ($fname) > data_($fname)
+
+file/var="axval" axis_($fname)
+define axis/z/name=zax/from/name=zax/depth/unit=Pa axval[d=1]
+
+file/var="year, month" time_($fname)
+define axis/from/name=tax/t0="01-Jan-1950"/units=days \
+  DAYS1900(year[d=2],month[d=2],1) - DAYS1900(1950,1,1)
+
+define grid/z=zax/t=tax gtz
+
+file/columns=($nc)/grid=gtz/var="q_qbo" data_($fname)
+define variable/bad=99.90/title="observed equatorial zonal wind"/unit="m/s" \
+    qbo = q_qbo
+!   qbo = IF (q_qbo LT 99.90) THEN q_qbo
+
+!shade/levels="(-Inf)(-40,40,10)(Inf)" qbo
+
+save/clobber/file=($oname) qbo
+
+!define axis/z/from/name=lgzax/depth log(Z[gz=zax])
+!shade/levels="(-Inf)(-40,40,10)(Inf)"  qbo[gz=lgzax@asn]
+
+sp rm axis_($fname)
+sp rm time_($fname)
+sp rm data_($fname)

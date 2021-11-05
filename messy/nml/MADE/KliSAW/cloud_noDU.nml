@@ -1,0 +1,91 @@
+! -*- f90 -*-
+
+&CTRL
+cloud_param = 5,     ! switch for cloud scheme
+                     ! 1 = original ECHAM5 cloud scheme
+                     ! 2 = ECHAM5 - CDNC scheme (Lohmann et al., 2007)
+                     ! 3 = ECHAM5 - CDNC/ICNC scheme (Lohmann et al., 2007)
+                     ! 4 = ECHAM5 - CDNC/ICNC scheme (Lohmann et al., 2010)
+                     ! 5 = ECHAM5 - CDNC/ICNC scheme (Kuebbeler et al., 2014)
+ncdnc       = 2,     ! activation for CDNC scheme
+                     ! 1 = Lin & Leaitch
+                     ! 2 = Abdul-Razzak & Ghan
+nicnc       = 2,     ! ICNC scheme:
+                     ! 0 = OFF
+                     ! 1 = Prognostic ICNC  (Lohmann, 2000)
+                     ! 2 = Prognostic ICNC + Cirrus (Kaercher and Lohmann, 2002)
+lcover      = F,     ! logical switch for extra cloud cover calculation 
+                     ! default: T (Tompkins); F (Sundqvist)
+rset_ccraut = T, 5.0,  ! autoconversion rate (typical range: 1-10)
+rset_ccsaut = T, 1300., ! aggregation rate (typical range: 100-1200)
+/
+
+
+&CTRL_K14
+!# Kuebbeler (2014)
+! Minimum cloud droplet number concentration [m^(-3)]
+cdncmin    = 20.0e6,
+
+! Number of freezing aerosol particle types in cirrus (only for cloud_param = 5
+! and icnc = 2, set the corresponding INP properties below):
+!   1 = homogeneous freezing
+!   2 = DU deposition + hom. freezing
+!   3 = DU deposition + DU immersion + hom. freezing
+!   4 = DU dep. + DU imm. + BC dep. + hom. freezing
+!   5 = DU dep. + DU imm. + BC dep. + BCtag dep. + hom. freezing
+nfrzaer = 4,
+
+! Number of external ice modes
+!   0 = without pre-existing ice crystals
+!   1 = with pre-existing ice crystals
+nexti = 1,
+
+! INP properties (number of entries must be equal nfrzaer - 1):
+!   name: 'DUdep', 'DUimm', 'BC', 'BCtag' currently supported
+!   (corresponding case must be defined in messy_cloud_kuebbeler.f90)
+!   Scrit: critical supersaturation (for DUdep will be further split at 220 K)
+!   f_active: activation fraction
+! Must be listed in strictly monotonically increasing order of Scrit!
+inp_properties(1) = 'DUdep', 1.2, 1.E-30,  ! => no DU effects on cirrus
+inp_properties(2) = 'DUimm', 1.3, 1.E-30,  ! => no DU effects on cirrus
+inp_properties(3) = 'BC',    1.4, 0.0025,
+
+! Scheme for vertical velocity in cirrus
+!   1 = Standard ECHAM5 (large-scale + TKE)
+!   2 = Kuebbeler et al. 2014 (large-scale + TKE/OROGW)
+!   3 = Joos et al. 2008 (large-scale + TKE + OROGW)
+!   4 = Penner et al. 2018 (large-scale + Laplace distribution)
+vervel_scheme = 2,
+
+! Scaling factors for vertical velocities in cirrus clouds
+scale_v_ls_cirrus = 1.,
+scale_v_tke_cirrus = 0.7,  ! Kaercher and Lohmann (2002)
+scale_v_orogw_cirrus = 1.,
+
+! IC larger than 100 micron are transformed to snow
+l_ic2snow = T,
+
+! Dust-dominance threshold in number fraction of dust (cm mode)
+du_nfrac_thr = 0.7,
+/
+
+
+&CPL
+l_cdnc_calc = F,     ! True for additional CDNC parameterisation calculations
+i_cdnc_calc = 5,     ! switch for number of CDNC parameterisation calculation
+                     ! 0 = DEFAULT ECHAM5 only at starting date
+                     ! 1 = DEFAULT ECHAM5, but each time step
+                     ! 2 = Rotstayn parameterisation
+                     ! 3 = Jones parameterisation
+                     ! 4 = Menon parameterisation
+                     ! 5 = Abdul-Razzak & Ghan parameterisation (activation)
+                     ! 6 = Lin & Leaitch parameterisation (activation)
+                     ! 9 = all parameterisations (if possible)
+i_cdnc_cpl = 0,      ! switch for number of CDNC parameterisation feedback
+                     !    (must be equal to i_cdnc_calc or i_cdnc_calc = 9)
+sup_sat_scheme = 1   ! Critical supersaturation scheme (for l_cdnc_calc = 5)
+                     ! 1 = Standard calculation (ARG 2000, Eq. 9)
+                     ! 2 = GMXe internal tracer DIAGAER_MX_27 (gmxe_gp only)
+                     ! 3 = Kappa theory (Petters and Kreidenweis 2007, Eq. 6)
+aer_stream = 'made3_gp', ! stream name of aerosol model for cdnc coupling
+/

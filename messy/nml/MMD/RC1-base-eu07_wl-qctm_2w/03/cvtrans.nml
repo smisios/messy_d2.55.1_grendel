@@ -1,0 +1,40 @@
+! -*- f90 -*-
+
+&CTRL
+ bulk      = T,
+ seg_plume = F,
+ sc_trans  = 2,     ! interaction of transport and convective scavenging
+                    ! 1 = convective transport after scavenging
+                    ! 2 = convective transport splitted by scavenging
+                    !     first part until top level of rain production, 
+                    !     then scavenging, then second part
+                    ! 3 = as 2 but the second transport from bottom of 
+                    !     convection to top of convection (might overestimate
+                    !     the convective transport)
+                    ! 4 = as 1, but considering only a convective column 
+                    !     of approx. 5 % (determined by updraft strength), 
+                    !     also for scavenging if active
+                    ! 5 = as 2, but considering only a convective column 
+                    !     of approx. 5 % (determined by updraft strength), 
+                    !     also for scavenging if active
+ lcvt_gp = T,       ! transport of gridpoint tracers active
+ lcvt_lg = F,       ! transport of mapped lagrangian tracers active
+/
+&CPL
+ umass   = 'COSMO','massfu',
+ dmass   = 'COSMO','massfd',
+ entru   = 'COSMO','u_entr',
+ detru   = 'COSMO','u_detr',
+ entrd   = 'COSMO','d_entr',
+ detrd   = 'COSMO','d_detr',
+ raincv  = 'COSMO','cv_precflx',
+ snowcv  = 'COSMO','cv_snowflx',
+ !covcv   = 'COSMO','clc_con',
+ !c_top   = 'COSMO','top_con',
+ covcv   = 'COSMO_ORI','CLC_CON',
+ c_top   = 'COSMO_ORI','TOP_CON',
+ mass    = 'grid_def','grmass',
+ vol     = 'grid_def','grvol',
+ press   = 'COSMO','press',
+ pressi  = 'COSMO','pressi',
+/

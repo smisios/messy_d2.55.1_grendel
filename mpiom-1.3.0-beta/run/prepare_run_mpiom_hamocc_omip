@@ -1,0 +1,429 @@
+#! /bin/ksh
+
+#set echo
+#set verbose
+
+######################################
+#       PREPARE DIRECTORIES
+#       AND RUN SCRIPT
+######################################       
+# name of the experiment:
+EXPNO=gr15-bgc-test
+
+# absolute path to work directory:
+EXPDIR=/scratch3/users/pozzer/hamocc
+#EXPDIR=/home/haak
+
+# absolute path to directory with plenty of space:
+ARCDIR=/scratch3/users/pozzer/hamocc
+#ARCDIR=/home/haak
+
+# absolute path to model binary, including the executable
+MODDIR=/scratch3/users/pozzer/hamocc
+#MODDIR=~/mpiom-latest/bin
+
+# absolute path to directory with initial data:
+INITIAL_DATA=/pool/SX-6/MPIOM
+
+# the directories for the experiment will be created, if not already there
+WRKDIR=${EXPDIR}/${EXPNO}
+ARCHIVE=${ARCDIR}/${EXPNO}
+
+if [ ! -d $WRKDIR ]; then
+    mkdir -p ${WRKDIR}
+    cd ${WRKDIR}
+#    cp ${MODEL}/mpiom.x ./mpiom.x
+    echo 0 > year.asc
+fi
+if [ ! -d $ARCHIVE ]; then
+    mkdir -p $ARCHIVE/restart
+fi
+
+HOST=`hostname`
+echo $HOST > host.list
+ESH_NCPUS=$NCPUS
+x=$ESH_NCPUS
+while [[ $x -gt 1 ]] ; do
+    echo $HOST >>  host.list
+    x=`expr $x - 1`
+done
+
+
+cat > ${WRKDIR}/run_mpiom_omip<<EOF1
+#! /bin/ksh
+#-----------------------------------------------------------------------------
+##
+##PBS -S /bin/ksh
+##
+##PBS -N mpiom_omip   # job name
+##
+##PBS -l cpunum_prc=8      #  8 cpus per node
+##PBS -l cputim_job=01:00:00  # 2 h realtime per node
+##PBS -l memsz_job=0.5gb       # 48 GB Memory per node
+##PBS -j o                    # join err and out to out
+##
+#-----------------------------------------------------------------------------
+# GRAND
+################# shell to use
+#$ -S /bin/ksh
+################# set submit-dir to current dir
+#$ -cwd
+################# export all  environment  variables to job-script
+#$ -V
+################# path and name of the log file
+#$ -o $test.log
+### #$ -o $test
+################# join standard out and error stream (y/n) ?
+#$ -j y
+################# send an email at end of job
+### #$ -m e
+################# notify me about pending SIG_STOP and SIG_KILL
+#$ -notify
+################# resources
+################ (use ONLY 'NCPUS=...' below on saturn, jupiter, ...)
+################ activate on grand at MPICH
+#$ -pe mpi 1
+#
+#
+#-----------------------------------------------------------------------------
+#
+# Version for shell script running on workstation
+#
+#-----------------------------------------------------------------------------
+#
+#                  Job file to run MPIOM with OMIP forcing
+#
+#-----------------------------------------------------------------------------
+#
+# If a command has a non-zero exit status, execute ERR trap, if set, and exit
+#
+#set -ex
+#
+#=============================================================================
+
+export MPIPROGINF=ALL_DETAIL
+#export F_PROGINF=DETAIL
+export F_SETBUF=4096
+
+OMP_NUM_THREADS=1; export OMP_NUM_THREADS
+MPIOM_THREADS=1 ; export MPIOM_THREADS
+MPIEXPORT="MPIOM_THREADS" ; export MPIEXPORT
+
+EXPNO=${EXPNO}
+echo "Experiment: \${EXPNO}"
+ncpus=1
+nprocx=1
+nprocy=1
+#
+echo "   CPUs: \${ncpus} (nprocx: \${nprocx}, nprocy: \${nprocy})" 
+#
+#-----------------------------------------------------------------------------
+#
+WRKDIR=${EXPDIR}/\${EXPNO}
+
+MODEL=${MODDIR}
+
+# absolute path to directory with plenty of space:
+ARCHIVE=${ARCDIR}/\${EXPNO}
+
+# absolute path to directory with initial data:
+INITIAL_DATA=${INITIAL_DATA}
+
+# horizontal and vertical resolution
+GRID=GR15
+LEV=L40
+
+#-----------------------------------------------------------------------------
+if [ "\${GRID}" = "GR60" ] ; then 
+II=60
+JJ=50
+DT=10800
+fi
+if [ "\${GRID}" = "GR30" ] ; then 
+II=122
+JJ=101
+DT=8640
+fi
+
+if [ "\${GRID}" = "GR15" ] ; then 
+II=256
+JJ=220
+DT=4800
+fi
+
+if [ "\${GRID}" = "TP04" ] ; then 
+II=802
+JJ=401
+DT=3600
+fi
+
+if [ "\${GRID}" = "TP40" ] ; then 
+II=82
+JJ=41
+DT=3600
+fi
+
+
+
+if [ "\${LEV}" = "L20" ] ; then 
+KK=20
+fi
+
+if [ "\${LEV}" = "L40" ] ; then 
+KK=40
+fi
+
+if [ "\${LEV}" = "L3" ] ; then 
+KK=3
+fi
+
+
+
+#-----------------------------------------------------------------------------
+#
+cd \${WRKDIR}           #  output and rerun files are written into \$ARCHIVE
+#
+pwd
+#-----------------------------------------------------------------------------
+#
+# specification of files
+#
+#-----------------------------------------------------------------------------
+#
+ln -s \${INITIAL_DATA}/\${GRID}/\${GRID}_arcgri             arcgri
+ln -s \${INITIAL_DATA}/\${GRID}/\${GRID}_topo_jj               topo
+ln -s \${INITIAL_DATA}/\${GRID}/\${GRID}_anta               anta
+cp \${INITIAL_DATA}/\${GRID}/\${GRID}_BEK                   BEK
+chmod 755 BEK
+
+ln -s \${INITIAL_DATA}/\${GRID}/\${GRID}_GIWIX_OMIP365      GIWIX   
+ln -s \${INITIAL_DATA}/\${GRID}/\${GRID}_GIWIY_OMIP365      GIWIY   
+ln -s \${INITIAL_DATA}/\${GRID}/\${GRID}_GITEM_OMIP365      GITEM   
+ln -s \${INITIAL_DATA}/\${GRID}/\${GRID}_GIPREC_OMIP365     GIPREC  
+ln -s \${INITIAL_DATA}/\${GRID}/\${GRID}_GISWRAD_OMIP365    GISWRAD 
+ln -s \${INITIAL_DATA}/\${GRID}/\${GRID}_GITDEW_OMIP365     GITDEW  
+ln -s \${INITIAL_DATA}/\${GRID}/\${GRID}_GIU10_OMIP365      GIU10   
+ln -s \${INITIAL_DATA}/\${GRID}/\${GRID}_GICLOUD_OMIP365    GICLOUD
+ln -s \${INITIAL_DATA}/\${GRID}/\${GRID}_GIRIV_OMIP365    GIRIV
+
+ln -s \${INITIAL_DATA}/\${GRID}/\${GRID}\${LEV}_INITEM_PHC  INITEM
+ln -s \${INITIAL_DATA}/\${GRID}/\${GRID}\${LEV}_INISAL_PHC  INISAL
+ln -s \${INITIAL_DATA}/\${GRID}/\${GRID}\${LEV}_SURSAL_PHC  SURSAL
+
+ln -s \${INITIAL_DATA}/runoff_obs                         runoff_obs
+ln -s \${INITIAL_DATA}/runoff_pos                         runoff_pos
+
+#-----------------------------------------------------------------------------
+# monthly mean dust field for hamocc
+
+ln -s \${INITIAL_DATA}/\${GRID}/\${GRID}_INPDUST.nc      INPDUST.nc
+
+#-----------------------------------------------------------------------------
+
+
+for lll in 1 ; do
+
+YEAR=\`cat year.asc\` ; export YEAR
+echo \$YEAR
+STA=3 ; export STA
+RES=0 ; export RES
+
+if [ \${YEAR} -eq 0 ] ; then
+STA=2 ; export STA
+RES=1 ; export RES
+fi
+
+#
+# istart=0 >NEWSTART USE ONLY FOR COMPLETELY NEW SETUP (new topography etc!!!)
+# istart=1 start from horizonally uniform t,s profiles
+# istart=2 start from levitus
+# istart=3 start from existing restart files Z37000, Z38000 (default)
+#
+# i3drest=0 NO 3d-restoring (default)
+# i3drest=1 restoring to annual mean t,s
+# i3drest=2 restoring to monthluy mean t,s
+#
+# Advection schemes
+# iocad=3 ADPO
+# iocad=4 ADPO + SLOPECON (default) 
+# iocad=5 ADFS
+#
+# imean=0 no output
+# imean=1 daily average of output fields
+# imean=2 monthly average of output fields (default)
+# imean=3 yearly average of output fields
+# imean=4 every time step
+#
+# nyears: number of years to be simulated (default=0)
+# nmonths: number of months to be simulated (default=1)
+#
+cat > OCECTL  << EOF
+&ocedim
+ ie_g = \${II}
+ je_g = \${JJ}
+ ke = \${KK}
+/
+&nprocs
+ nprocx=\${nprocx}
+ nprocy=\${nprocy}
+/
+ &ocectl
+ dt      = \${DT}
+ caulapts= 0.
+ caulapuv= 0.005
+ aus     = 0.
+ cah00   = 1000.
+ dv0     = 1.e-2
+ av0     = 1.e-2
+ cwt     = 4.e-4
+ cstabeps= 0.03
+ dback   = 1.e-5
+ aback   = 1.e-4
+ crelsal = 3.3e-7
+ creltem = 0.
+ cdvocon = 0.05
+ cavocon = 0.0
+ nyears  = 0
+ nmonts  = 12
+ imean   = 0
+ istart  = \${STA}
+ i3drest = \${RES}
+ /
+EOF
+
+
+if [ \${KK} -eq 20 ] ; then
+cat >> OCECTL  << EOF2
+ &ocedzw
+  cdzw = 20.,20., 20., 30.,40.,50.,70.
+        ,90.,120.,150.,180.,210.,250.,300.
+        ,400.,500.,600.,700.,900.,1400.
+ /
+EOF2
+fi
+
+if [ \${KK} -eq 40 ] ; then
+cat >> OCECTL  << EOF2
+ &ocedzw
+ cdzw     = 12.,10.,10.,10.,10.,10.,13.,15.,20.,25.,
+           30.,35.,40.,45.,50.,55.,60.,70.,80.,90.,
+           100.,110.,120.,130.,140.,150.,170.,180.,190.,200.,
+           220.,250.,270.,300.,350.,400.,450.,500.,500.,600./
+ /
+EOF2
+fi
+
+if [ \${KK} -eq 3 ] ; then
+cat >> OCECTL  << EOF2
+ &ocedzw
+ cdzw     = 12.,10.,5000./
+ /
+EOF2
+fi
+
+
+# hamocc
+#-----------------------------------------------------------------------------
+
+# mean_2D/3D_freq=0 no output
+# mean_2D/3D_freq=1 daily average of output fields
+# mean_2D/3D_freq=2 monthly average of output fields (default for mean_2D_freq)
+# mean_2D/3D_freq=3 yearly average of output fields (default for mean_3D_freq)
+# mean_2D/3D_freq=4 every time step
+
+#creates daily averages for bgc timeseries
+TSDT=\`expr 86400 / \${DT}\`   
+
+cat > NAMELIST_BGC  << EOF2
+ &BGCCTL
+ io_stdo_bgc =  8,
+ kchck       =  0,
+ isac        =  1,
+ mean_2D_freq =  1,
+ mean_3D_freq = 1,
+ rmasko      = -9e33
+ nfreqts1    =  \${TSDT},
+ rlonts1     = -20.0,60.0,65.0,-64.0,-175.0,-145.0,-25.0,-140.0
+ rlatts1     = 47.0,17.0,10.0,32.0,-53.0,50.0,64.0,5.0
+ rdep1ts1    = 80.0, 80.0,80.0,80.0,80.0,80.0,80.0,80.0
+ rdep2ts1    = 1000.0,1000.0,1000.0,200.0,1000.0,1000.0,1000.0,1000.0
+ rdep3ts1    = 3000.0,3000.0,3000.0,300.0,2000.0,2000.0,2000.0,2000.0
+ /
+EOF2
+#
+#-----------------------------------------------------------------------------
+
+
+
+#mpiom.x
+
+#linux pc
+#/home/haak/SOFTWARE/mpich2-1.0.2p1-intel/bin/mpd --daemon
+#/home/haak/SOFTWARE/mpich2-1.0.2p1-intel/bin/mpirun -n \${ncpus} \${MODEL}/mpiom.x
+#grand
+ESH_RUN="mpirun -n \${ncpus} -machinefile host.list \${MODEL}/mpiom.x $ESH_PINP"
+
+#/sw/sarge-ia32/mpich2-1.0.2p1-intel/bin/mpd --daemon
+#/sw/sarge-ia32/mpich2-1.0.2p1-intel/bin/mpirun -n \${ncpus} \${MODEL}/mpiom.x
+
+#solaris
+#/opt/SUNWhpc/bin/mprun -np \${ncpus} \${MODEL}/mpiom.x
+
+#nec
+#mpirun -np \${ncpus} \${MODEL}/mpiom.x
+
+#=============================================================================
+
+cat TIMESER >>ZEITSER ; \rm TIMESER
+cp Z37000 Z38000
+
+if [ \`expr \$YEAR % 10\` -eq 0 ]; then
+cp Z37000 \${ARCHIVE}/restart/Z37000_\${YEAR}
+fi
+
+
+mv fort.71 \${EXPNO}_\${YEAR}.ext4
+
+#mv fort.93 \${EXPNO}_weto.ext4
+#mv fort.94 \${EXPNO}_gila.ext4
+#mv fort.97 \${EXPNO}_giph.ext4
+#mv fort.96 \${EXPNO}_depto.ext4
+#mv fort.151 \${EXPNO}_dlxp.ext4
+#mv fort.152 \${EXPNO}_dlyp.ext4
+#mv fort.153 \${EXPNO}_deuto.ext4
+#mv fort.154 \${EXPNO}_dlxu.ext4
+#mv fort.155 \${EXPNO}_dlyu.ext4
+
+mv \${EXPNO}_\${YEAR}.ext4 \${ARCHIVE}/\${EXPNO}_\${YEAR}.ext4
+
+#\rm fort.* \${EXPNO}_*.ext4 
+# hamocc
+
+#=============================================================================
+tar cvf \${YEAR}_hamocc.tar restartw_bgc.nc bgcmean_2d.nc bgcmean_3d.nc bgcmean_bioz.nc bgcmean_sed.nc timeser_bgc.nc bgcout oceout
+mv \${YEAR}_hamocc.tar \${ARCHIVE}/\${YEAR}_hamocc.tar
+
+\mv restartw_bgc.nc restartr_bgc.nc
+\rm bgcmean_2d.nc bgcmean_3d.nc bgcmean_bioz.nc bgcmean_sed.nc timeser_bgc.nc bgcout oceout 
+#=============================================================================
+
+YEAR=\`expr \${YEAR} + 1\`
+\rm year.asc
+echo \$YEAR > year.asc
+
+done
+
+echo "submitting next job"
+#if [ \${YEAR} -le 100 ] ; then
+#qsub \${WRKDIR}/run_mpiom_omip
+#\${WRKDIR}/run_mpiom_omip
+#fi[M e%
+
+exit
+EOF1
+
+chmod 755 ${WRKDIR}/run_mpiom_omip
+echo "cd ${WRKDIR} and qsub run_mpiom_omip" 
+#-----------------------------------------------------------------------------
+exit
+

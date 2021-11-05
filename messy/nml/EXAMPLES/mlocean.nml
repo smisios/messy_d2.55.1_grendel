@@ -1,0 +1,37 @@
+! -*- f90 -*-
+
+! DETAILS ON nlfxcorr OPTIONS
+! 1: A precalculated ocean heat transport climatology has to be supplied with
+!    fn_mlo_fluxcorr below, i.e., the complete RHS of Eq. (6.42) in Roeckner et
+!    al. (2003)
+! 2: A precalculated net surface energy flux climatology has to be supplied
+!    with fn_mlo_fluxcorr below, i.e., H_clim in Eq. (6.42) in Roeckner et al.
+!    (2003) (SW + LW radiation flux + latent + sensible heat flux). The SST
+!    climatology is used to derive the ocean heat transport taking the heat
+!    capacity of the ocean layer into account.
+!  Literature: E. Roeckner, G. Bäuml, L. Bonaventura, R. Brokopf, M. Esch M.
+!  Giorgetta, S.  Hagemann, I. Kirchner, L. Kornblueh E. Manzini, A. Rhodin, U.
+!  Schlese, U.  Schulzweida, A. Tompkins, The atmospheric general circulation
+!  model ECHAM5 Part 1: Model description, Max Planck Institute for Meteorology
+!  Report No. 349, 2003 
+
+&CTRL
+ mloswitch = 1     ! 1 -> use the mixed layer ocean of ECHAM5
+/
+
+&CTRL_MLO
+ mldmix   = 50.,   ! depth of the mixed layer ocean
+ nflxcorr = 2,     ! 2 -> flux correction calculated from net surface energy budget
+                   ! 1 -> use precalculated flux correction
+ flxscale = 1.,    ! scaling factor for the flux correction
+ ! Additional flux to limit sea ice thickness 
+ ! provided separately for northern and southern hemisphere.
+ fbase_north = 0., !  0 -> default value for the northern hemisphere
+ fbase_south = 20. ! 20 -> default value for the southern hemisphere
+
+/
+
+&CPL
+ l_diag_out = .TRUE.,
+ fn_mlo_fluxcorr = "${INPUTDIR_ECHAM5_SPEC}/T42_netflux_ctrlb.nc"
+/

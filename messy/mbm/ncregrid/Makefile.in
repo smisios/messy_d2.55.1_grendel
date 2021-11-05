@@ -1,0 +1,35 @@
+# ----------------------------------------------
+export
+SHELL     = sh
+
+F90       = @F90@
+F90FLAGS  = @F90FLAGS@ -DNOMPI
+LIBS      = @LIBS@
+INCLUDES  = @INCLUDES@
+
+# ----------------------------------------------
+
+srcdir     = ./src
+bindir     = ./bin
+includedir = ./include
+PROG       = ncregrid
+
+# ----------------------------------------------
+
+all:
+	cd $(srcdir) ; \
+	$(MAKE)
+
+install: all
+	if test ! -d $(bindir) ; then mkdir $(bindir) ; fi
+	cp -f $(srcdir)/$(PROG) $(bindir)/.
+	if test ! -d $(includedir) ; then mkdir $(includedir) ; fi
+	cp -f $(srcdir)/*.mod $(includedir)/.
+
+clean:
+	rm -f $(srcdir)/*.o $(srcdir)/*~ $(srcdir)/*.mod $(srcdir)/$(PROG)
+
+distclean: clean
+	rm -fr $(bindir) $(includedir) ./config.log ./config.status ./Makefile
+
+# ----------------------------------------------

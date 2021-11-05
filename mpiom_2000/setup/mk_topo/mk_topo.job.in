@@ -1,0 +1,127 @@
+#! /bin/sh
+set -e
+
+. "@abs_builddir@/../setup-common.inc"
+test -z "$GMT_BINDIR" || GMT_BINDIR="$GMT_BINDIR/"
+
+# assert that GRID ie je ke FRMT are set!
+assert_vars_are_set DEST GRID ie je FRMT
+
+@MKDIR_P@ mk_topo
+cd mk_topo
+
+test -f "${GRID}_topo.save" || \
+  cp "${DEST}/${GRID}_topo" "${GRID}_topo.save"
+#cp "${DEST}/${GRID}_topo"  "${GRID}_topo"
+#"${CDO}" -p 8b copy "${DEST}/${GRID}_anta"  "${GRID}_anta"
+
+#cp "${POOL}/${GRID}/${GRID}_topo.new" "${GRID}_topo"
+
+$CMD_PREFIX "@abs_builddir@/plogit" <<EOF
+&gridparams
+ie=${ie}
+je=${je}
+verbose = ${DEBUG+1}${DEBUG-0} /
+${GRID}
+${FRMT}
+${DEST}/${GRID}_anta
+${DEST}/${GRID}_topo
+EOF
+
+
+if [ -x `which "${GMT_BINDIR}psxy" 2>/dev/null` ]; then
+  filel="anta.${GRID}.l.txt"
+  files="anta.${GRID}.s.txt"
+
+  rand="30g30f/30g30fnSEwd"
+  latlon="0/360/-90/90"
+  # proj="M16"
+  proj="A-30/45/16"
+  # proj="A60/90/16"
+  # proj="q0/0.07"
+
+  X=3
+  Y=2
+
+  # gitter aus anta (feuchte punkte)
+  "${GMT_BINDIR}pscoast" -Dc -W -R"$latlon" -J"$proj" -G255/255/0 -X+"$X" \
+    -Y+"$Y" -V -K >"$GRID.np.ps"
+  "${GMT_BINDIR}psxy" "$filel" "-R$latlon" "-J$proj" -Sc0.05 -G255/0/0 \
+    -K -O >>"$GRID.np.ps"
+  "${GMT_BINDIR}psxy" "$files" "-R$latlon" "-J$proj" -Sc0.05 -G0/0/255 \
+    -O >>"$GRID.np.ps"
+
+  latlon="0/360/-90/90"
+  #proj="M16"
+  proj="A150/-45/16"
+  #proj="A180/-90/16"
+  #proj="q0/0.07"
+
+  X=2
+  Y=2
+
+  # gitter aus anta (feuchte punkte)
+  "${GMT_BINDIR}pscoast" -Dc -W "-R$latlon" "-J$proj" -G255/255/0 \
+    -X+"$X" -Y+"$Y" -V -K >"$GRID.sp.ps"
+  "${GMT_BINDIR}psxy" "$filel" "-R$latlon" "-J$proj" -Sc0.05 \
+    -G255/0/0 -K -O >>"$GRID.sp.ps"
+  "${GMT_BINDIR}psxy" "$files" "-R$latlon" "-J$proj" -Sc0.05 -G0/0/255 \
+    -O >>"$GRID.sp.ps"
+
+  #latlon="100/300/-20/20"
+  proj="M16"
+  proj="A15/65/16"
+  proj="q0/0.07"
+
+  X=2
+  Y=2
+
+  # gitter aus anta (feuchte punkte)
+  #pscoast -Dc  -R$latlon -J$proj -G200/200/200 -X+$X -Y+$Y -V -K > $GRID.tp.ps
+  #psxy $filel -R$latlon -J$proj -Sc0.05 -G255/0/0 -K -O >> $GRID.tp.ps
+  #psxy $files -R$latlon -J$proj -Sc0.01 -G50/50/50 -O >> $GRID.tp.ps
+
+  /bin/rm -f LISTE
+  #ls fort.??? > LISTE
+  #pscoast -Dc  -R$latlon -J$proj -G255/0/0 -X+$X -Y+$Y -V -K > $GRID.tp.ps
+  #for file in `cat LISTE`; do
+  ## gitter aus anta (feuchte punkte)
+  #psxy $file -R$latlon -J$proj -A -M -O -K >> $GRID.tp.ps
+  #done
+  #psxy fort.8 -R$latlon -J$proj -G50/50/50 -M -O  >> $GRID.tp.ps
+  #end
+  ##pscoast -Dc  -R$latlon -J$proj -B$rand -G255/0/0 -V -O >> $GRID.tp.ps
+
+
+  /bin/rm -f LISTE
+  ls fort.??? > LISTE
+  "${GMT_BINDIR}pscoast" -Dc "-R$latlon" "-J$proj" -G255/255/255 "-X+$X" \
+    "-Y+$Y" -V -K >"$GRID.tp.ps"
+  for file in `cat LISTE` ; do
+    # gitter aus anta (feuchte punkte)
+    "${GMT_BINDIR}psxy" "$file" "-R$latlon" "-J$proj" -A -M -O -K \
+      >>"$GRID.tp.ps"
+    #"${GMT_BINDIR}psxy" "$file" "-R$latlon" "-J$proj" -A -M -O  >>"$GRID.tp.ps"
+  done
+  "${GMT_BINDIR}psxy" fort.8 "-R$latlon" "-J$proj" -G50/50/50 -M -O \
+    >>"$GRID.tp.ps"
+fi
+cd ..
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

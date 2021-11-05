@@ -1,0 +1,51 @@
+#!/bin/tcsh -f
+
+# produce extra tagging tracers properties listed in *_chemprop.tbl
+# in form of a code to be appended to messy_${submodel}_trac_si.inc
+
+set self = `basename $0`
+set inc = $1 # e.g. messy_mecca_trac_si.inc
+set tbl = $2 # e.g. tagging *_chemprop.tbl
+set hbn = "(<CHEMPROP>)|(basename)"
+
+# tracer property fields found in tbl
+set props = `cat ${tbl} | grep -i -E "${hbn}" | head -n 1 | sed 's/[|#]//g'`
+# finding basename
+@ pn = 0
+@ cbn = 0
+foreach p ( $props )
+  @ pn++
+  set chk = `echo "$props[$pn]" | grep -i -E "${hbn}"`
+  if ( "${chk}" != "" ) @ cbn = $pn
+end
+if ( "$cbn" == "0" ) then
+  echo "${self}: error: could not determine basename column / $hbn / in $1. exit."
+  exit 1
+endif
+
+#rm -f $0.tmp
+cat ${tbl} | grep -v '#' | sed 's/^|//' > $0.tmp
+
+# push info
+echo "! - processed by xtag/`basename $0` by ${USER}@`hostname -f` on `date`, do not edit" >> ${inc}
+
+echo -n "[${self}] producing code for tagging tracers in <${inc}> from <${tbl}> for CHEMPROP properties:"
+# produce statements for non-empty property values
+@ pn = 0
+foreach p ( $props )
+  @ pn++
+  if ( "${pn}" != "${cbn}" ) then
+    echo -n " ${props[$pn]}"
+    cat $0.tmp | gawk -v pn=$pn -v prop=$props[$pn] -v cbn=$cbn \
+      '{ n=split($0,val,"|"); \
+         gsub(/ /,"",val[cbn]); gsub(/ /,"",val[pn]); \
+         if ( (val[pn])!="" ) { \
+           print "  call set_tracer(status, setname, idt_"val[cbn]", "prop", "val[pn]")"; \
+           print "  call tracer_halt(substr, status)"; \
+         } }' >> ${inc}
+  endif
+end
+echo " -- done"; echo
+
+# cleanup
+rm -f $0.tmp

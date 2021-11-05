@@ -1,0 +1,73 @@
+MODULE YOMCST
+
+USE PARKIND1  ,ONLY : JPIM     ,JPRB
+
+IMPLICIT NONE
+
+SAVE
+
+!     ------------------------------------------------------------------
+
+!*    Common of physical constants
+!     You will find the meanings in the annex 1 of the documentation
+
+! A1.0 Fundamental constants
+REAL(KIND=JPRB) :: RPI
+REAL(KIND=JPRB) :: RCLUM
+REAL(KIND=JPRB) :: RHPLA
+REAL(KIND=JPRB) :: RKBOL
+REAL(KIND=JPRB) :: RNAVO
+! A1.1 Astronomical constants
+REAL(KIND=JPRB) :: RDAY
+REAL(KIND=JPRB) :: REA
+REAL(KIND=JPRB) :: REPSM
+REAL(KIND=JPRB) :: RSIYEA
+REAL(KIND=JPRB) :: RSIDAY
+REAL(KIND=JPRB) :: ROMEGA
+! A1.2 Geoide
+REAL(KIND=JPRB) :: RA
+REAL(KIND=JPRB) :: RG
+REAL(KIND=JPRB) :: R1SA
+! A1.3 Radiation
+REAL(KIND=JPRB) :: RSIGMA
+REAL(KIND=JPRB) :: RI0
+! A1.4 Thermodynamic gas phase
+REAL(KIND=JPRB) :: R
+REAL(KIND=JPRB) :: RMD
+REAL(KIND=JPRB) :: RMV
+REAL(KIND=JPRB) :: RMO3
+REAL(KIND=JPRB) :: RD
+REAL(KIND=JPRB) :: RV
+REAL(KIND=JPRB) :: RCPD
+REAL(KIND=JPRB) :: RCPV
+REAL(KIND=JPRB) :: RCVD
+REAL(KIND=JPRB) :: RCVV
+REAL(KIND=JPRB) :: RKAPPA
+REAL(KIND=JPRB) :: RETV
+! A1.5,6 Thermodynamic liquid,solid phases
+REAL(KIND=JPRB) :: RCW
+REAL(KIND=JPRB) :: RCS
+! A1.7 Thermodynamic transition of phase
+REAL(KIND=JPRB) :: RLVTT
+REAL(KIND=JPRB) :: RLSTT
+REAL(KIND=JPRB) :: RLVZER
+REAL(KIND=JPRB) :: RLSZER
+REAL(KIND=JPRB) :: RLMLT
+REAL(KIND=JPRB) :: RTT
+REAL(KIND=JPRB) :: RATM
+REAL(KIND=JPRB) :: RDT
+! A1.8 Curve of saturation
+REAL(KIND=JPRB) :: RESTT
+REAL(KIND=JPRB) :: RALPW
+REAL(KIND=JPRB) :: RBETW
+REAL(KIND=JPRB) :: RGAMW
+REAL(KIND=JPRB) :: RALPS
+REAL(KIND=JPRB) :: RBETS
+REAL(KIND=JPRB) :: RGAMS
+REAL(KIND=JPRB) :: RALPD
+REAL(KIND=JPRB) :: RBETD
+REAL(KIND=JPRB) :: RGAMD
+
+
+!    ------------------------------------------------------------------
+END MODULE YOMCST

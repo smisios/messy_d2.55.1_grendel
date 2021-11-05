@@ -1,0 +1,804 @@
+<!DOCTYPE html 
+     PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+     "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xml:lang="en" lang="en">
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="GENERATOR" content="Mozilla/4.7C-SGI [en] (X11; I; IRIX64 6.5 IP27) [Netscape]">
+   <title>Changes in the COSMO-Model 4.25</title>
+<style type="text/css">
+  body { font-family:       Arial;
+         font-size:         12pt;
+         background-repeat: no-repeat; 
+         margin:            1em; }
+
+  tt   { font-size:         12pt;}
+
+  li   { margin-top:         5pt;
+         margin-bottom:      5pt }
+
+  th   { border:           1px solid black;
+         padding:          3pt;
+         vertical-align:   top;
+         background-color: lightblue;}
+
+  td   { border:           1px solid black;
+         padding:          3pt;
+         vertical-align:   top;}
+
+  td.middl   { border:           1px solid black;
+               padding:          3pt;
+               vertical-align:   middle;}
+
+  td.hilit       { border:           1px solid black;
+                   padding:          1pt;
+                   vertical-align:   top;
+                   background-color: lightblue;}
+
+  td.clean       { padding:          0pt;
+                   border-style:     none;
+                   vertical-align:   top;}
+
+  td.notes       { padding:          3pt;
+                   border-style:     none;
+                   vertical-align:   top;}
+
+  td.nomid       { padding:          3pt;
+                   border-style:     none;
+                   vertical-align:   middle;}
+
+  table.note     { border-width:     0pt;
+                   border-style:     none;
+                   margin-left:      5pt;
+                   margin-top:       1pt;
+                   margin-bottom:    1pt;
+                   cell-padding:     5pt;
+                   vertical-align:   top;
+                   text-align:       left;}
+  
+  table.atte     { border-width:     0pt;
+                   border-style:     none;
+                   margin-left:      5pt;
+                   margin-top:       1pt;
+                   margin-bottom:    1pt;
+                   cell-padding:     5pt;
+                   vertical-align:   top;
+                   text-align:       left;
+                   background-color: red;}
+  
+  table.namelist { border-width:  2pt;
+                   border-style:  groove;
+                   border-color:  black;
+                   width:         90%;
+                   text-align:    left;
+                   margin-top:    1pt;
+                   margin-bottom: 1pt;
+                   padding:       3pt;
+                   align:         center;}
+  
+  tr.headings    { text-align:       left;
+                   vertical-align:   top;
+                   border-width:     1pt;
+                   border-style:     groove;
+                   border-color:     grey;
+                   padding:          2pt;
+                   font-weight:      bold;}
+
+  .rot           { background-color: red;}
+</style>
+
+</head>
+  <body text="#000000" bgcolor="#FFFFFF" link="#0000EE" vlink="#551A8B" alink="#FF0000">
+
+<center>
+<h1>
+<a NAME="begin">Documentation of the Changes in the COSMO-Model <br /> Version 4.25</a>
+</h1>
+<h3>
+26.09.2012
+</h3>
+</center>
+
+<p>
+4.25 hopefully is one of the last big steps to COSMO-Model 5.0. Several <i>bigger</i> 
+modifications have been implemented, e.g. the new tracer module, the possibility for asynchronous
+NetCDF I/O and a modified and optimized asynchronous GRIB(1) I/O.
+</p>
+
+<h4><a NAME="content">Contents:</a></h4>
+
+<ol>
+<li><a href="#tracers">Implementation of new Tracer Module</a></li>
+<li><a href="#twomoms">Implementation of 2-moment microphysics - Interfaces</a></li>
+<li><a href="#gribasy">Optimizations and cleanup in the asynchronuous GRIB IO module: mpe_io2.f90</a></li>
+<li><a href="#ncdfasy">Implementation of new asynchronous netcdf I/O strategy</a></li>
+<li><a href="#gather2">Implementation of another option for the global communication in the output</a></li>
+<li><a href="#mulsnow">Update of the Multi-Layer Snow Model</a></li>
+<li><a href="#soiltyp">Usage of the field soiltyp</a></li>
+<li><a href="#maxtags">Limiting the ntag-value for the boundary exchange</a></li>
+<li><a href="#ifsconv">IFS Convection scheme for the CLM</a></li>
+<li><a href="#gribsee">New Grib values</a></li>
+<li><a href="#bugfixe">Bug Fixes and Technical Changes</a></li>
+<li><a href="#namelis">Changes to the Namelists</a></li>
+<li><a href="#results">Changes of Results</a></li>
+</ol>
+<p>
+<hr>
+
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="tracers">1. Implementation of new Tracer Module</a></h3>
+  <h4>(by Anne Roches, Oliver Fuhrer)</h4>
+
+<p>
+A generic handling of Tracers has been implemented into the COSMO-Model. This handling
+is already implemented for the microphysics tracers: <tt>qv</tt>, <tt>qc</tt>, 
+<tt>qi</tt>, <tt>qr</tt>, <tt>qs</tt> and <tt>qg</tt>
+</p>
+
+<p>
+A detailed documentation of how to use this new tracer module will be published soon
+as a COSMO Technical Report.
+</p>
+  
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+<p align="right"><a href="#content">Back to Contents</a>
+<hr>
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="twomoms">2. Implementation of 2-moment microphysics - Interfaces</a></h3>
+  <h4>(by Uli Blahak)</h4>
+
+<p>
+Only the interfaces to the 2-moment scheme (together with some other necessary changes)
+have been implemented to the COSMO-Model using <tt>ifdef TWOMOM_SB</tt> (two-moment scheme from
+Seifert and Beheng).
+If this parameter is not defined during compilation, the model does not change at all.
+</p>
+    
+<p>
+To get the source code and further documentation of the code, please contact the colleagues
+at DWD.
+</p>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+<p align="right"><a href="#content">Back to Contents</a>
+<hr>
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="gribasy">3. Optimizations and cleanup in the asynchronuous GRIB IO module: mpe_io2.f90</a></h3>
+  <h4>(by Florian Prill)</h4>
+
+<p>
+The module <tt>mpe_io.f90</tt> serves a number of GRIB1 I/O related purposes in the COSMO-Model.
+    
+<ul>
+<li>Write operation: This can be done in the 
+   <ul>
+   <li> traditional operation mode, where I/O is done by the first compute processes</li>
+   <li> or it can be truly asynchronous, where dedicated I/O processes receive data from
+        the compute processes and perform writing without blocking the computations.</li>
+   </ul></li>
+
+<li>Read operation: The reading of GRIB files is inherently sequential, thus it is always
+    conducted by a single I/O process. In principle, the reading process is a non-blocking
+    operation for the compute PEs. However, it may constitute a barrier, when input data
+    is actually required for the next compute step.</li>
+
+<li>Writing Ready-files: The <tt>mpe_io</tt> implementation supports the use of ready>-files,
+    i.e. small files indicating the completion of an output step. Ready-files are used within DWD's NWP
+    suite to handle interdependencies of programs.</li>
+  
+<li>Database support: <tt>mpe_io.f90</tt> could be configured that read- and write-operations could
+    be directly done from / to DWD's relational Oracle data base. But this feature has never
+    been used because of performance problems.</li>
+</ul>
+</p>
+  
+<p>
+There have been several changes now to the asynchronuous GRIB1 I/O module <tt>mpe_io.f90</tt>.
+Because of these changes also some interfaces have been modified. Therefore we decided to
+choose a new name for this module: It is now called <tt>mpe_io2.f90</tt> (other models at DWD
+still use <tt>mpe_io.f90</tt>). 
+</p>
+  
+<p>
+The modifications are:
+
+<ul>
+<li>Removed database support: The Namelist group <tt>/DATABASE/</tt> in <tt>INPUT_IO</tt> 
+    is not necessary any more.</li>
+
+<li>Added a "pre-fetching mode": pre-fetching strives to avoid blocking of the compute PEs
+    due to reading boundary data. In this node, boundary data are read ahead of time, i.e.
+    when the forthcoming I/O operation wil be the input of a GRIB file. This can then be
+    performed simulanteously with the preceding compute steps.</li>
+
+<li>Ready-files: bug correction: Ready-files are now only written, if all files of an
+    output step have been written.</li>
+</ul>
+</p>
+
+<p>
+New Namelist parameter in <tt>/IOCTL/</tt>:
+
+<center>
+<table border="1" cellspacing="3" class="namelist">
+ <tbody>
+   <tr>
+     <th>Group</th>
+     <th>Name</th>
+     <th>Meaning</th>
+     <th align="center", width="5%">Default</th>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td class="hilit" rowspan="1"><tt>/IOCTL/</tt></td>
+     <td><tt>lprefetch_io</tt></td>
+     <td class="middl" rowspan="1">
+      Enables reading of boundary files ahead of time, i.e. when the forthcoming I/O operation
+      will be reading a GRIB file, then this can be done simultaneously with the preceding
+      compute steps.
+      Prefetching can only be enabled with true asynchronous I/O. (<tt>lasync_io=.TRUE.</tt>)
+       </td>
+     <td class="middl" align="center" rowspan="1"><tt>.FALSE.</tt></td>
+   </tr>
+<!---------------------------------------------------------------------------->
+ </tbody>
+</table>
+</center>
+</p>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+<p align="right"><a href="#content">Back to Contents</a>
+<hr>
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="ncdfasy">4. Implementation of new asynchronous netcdf I/O strategy</a></h3>
+  <h4>(by Carlos Osuna)</h4>
+
+<p>
+An asynchronous solution for output of NetCDF files has been implemented. By namelist
+configuration, asynchronous I/O for NetCDF can be enabled reserving some dedicated I/O PEs
+that will receive output levels from compute PEs and record them (asynchronously) into disk.
+</p>
+
+<p>
+The switch <tt>lasync_io</tt> is used to enable the asynchronous mode. 
+There are two new namelist switches, to control the configuration of the asynchronous 
+Netcdf I/O in the group <tt>/RUNCTL/</tt>:
+
+<center>
+<table border="1" cellspacing="3" class="namelist">
+ <tbody>
+   <tr>
+     <th>Group</th>
+     <th>Name</th>
+     <th>Meaning</th>
+     <th align="center", width="5%">Default</th>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td class="hilit" rowspan="2"><tt>/RUNCTL/</tt></td>
+     <td><tt>num_asynio_comm</tt></td>
+     <td class="middl" rowspan="1">To choose the number of asynchronous I/O communicators
+           for NetCDF. With several communicators it is possible to parallelize the output
+           over the files to be written (the <tt>GRIBOUT</tt> namelists). </td>
+     <td class="middl" align="center" rowspan="1"><tt>0</tt></td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td><tt>num_iope_percomm</tt></td>
+     <td class="middl" rowspan="1">To choose the number of asynchronous I/O processes
+          per communicator for NetCDF I/O. With several processes per communicator it
+          is possible to do a parallel writing of single files. This is only possible,
+          if the parallel NetCDF library is available and the code has been compiled
+          with the preprocessor directive <tt>-DPNETCDF</tt>
+     <td class="middl" align="center" rowspan="1"><tt>0</tt></td>
+   </tr>
+<!---------------------------------------------------------------------------->
+ </tbody>
+</table>
+</center>
+
+The number of asynchronous I/O PEs is then computed by 
+<tt>nc_asyn_io = num_asynio_comm * num_iope_percomm</tt>
+</p>
+
+<p>
+If both namelist switches are &gt; 0, and <tt>lasync_io=.TRUE.</tt>, asynchronous NetCDF
+I/O is selected as I/O strategy.
+Note, that the code for sequential netcdf I/O (<tt>lasync_io=.FALSE.</tt>) has not been modified.
+</p>
+
+<p>
+<span class="rot">NOTE:</span><br />
+<ul>
+ <li>Asynchronous NetCDF and asynchronous GRIB are NOT compatible. Therefore if <tt>lasync_io=TRUE</tt>,
+     all the output files have to be either in NetCDF or in GRIB format!</li>
+ <li><tt>num_iope_percomm &gt; 1</tt> is only allowed if parallel NetCDF is available.
+     Then, the code has to be compiled with the preprocessor flag -DPNETCDF.</li>
+</ul>
+</p>
+
+<p>
+Using <tt>num_iope_percomm=1</tt> and <tt>nc_asyn_io=1</tt>
+may give good performance results in most of the cases where the amount of data
+being written is moderate.
+</p>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+<p align="right"><a href="#content">Back to Contents</a>
+<hr>
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="gather2">5. Implementation of another option for the global communication in the output</a></h3>
+  <h4>(by Oliver Fuhrer)</h4>
+
+<p>
+A switchable gathering of vertical levels (2D fields) on the compute PEs has been 
+implemented. Up to now a communication is started for every level. The new option allows to
+gather <tt>nproc</tt> levels at the same time (where <tt>nproc</tt> is the number
+of processors used).
+</p>
+
+<p>
+To choose the desired option, a new Namelist switch <tt>itype_gather</tt> has been 
+implemented in the group <tt>/IOCTL/</tt>:
+
+<center>
+<table border="1" cellspacing="3" class="namelist">
+ <tbody>
+   <tr>
+     <th>Group</th>
+     <th>Name</th>
+     <th>Meaning</th>
+     <th align="center", width="5%">Default</th>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td class="hilit" rowspan="1"><tt>/IOCTL/</tt></td>
+     <td><tt>itype_gather</tt></td>
+     <td class="middl" rowspan="1">To choose the type of gathering output fields:
+          <ol start="1">
+           <li>gather the fields by an extra communication per level (default)
+           <li>gather fields by one communication for nproc levels (with MPI_ALLTOALLV)
+          </ol>
+       </td>
+     <td class="middl" align="center" rowspan="1"><tt>1</tt></td>
+   </tr>
+<!---------------------------------------------------------------------------->
+ </tbody>
+</table>
+</center>
+</p>
+
+<p>
+The new option has been tested using debug options to give bit-reproducible results for a
+run with original code, a run with new code using <tt>itype_gather=1</tt> and a
+run with new code using <tt>itype_gather=2</tt>.
+The benefit of using this optimization for a full COSMO-2 24h forecast on a Cray
+is a decrease of the total simulation time by 8%.
+</p>
+
+<p>
+On the NEC SX-9 with using only 16 CPUs, no significant changes can be seen between 
+the two options (Uli Schaettler).
+</p>
+
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+<p align="right"><a href="#content">Back to Contents</a>
+<hr>
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="mulsnow">6. Update of the Multi-Layer Snow Model</a></h3>
+  <h4>(by Ekaterina Machulskaya)</h4>
+
+<p>
+To avoid numerical instability caused by very low snow surface temperatures
+in the case of very thin snow heights, a minimal critical value of snow height
+is introduced which depends on the timestep and on the heat fluxes through
+the upper and lower boundaries of snowpack. If snow height is smaller than
+this critical value, the multi-layer snow model switches to an algorithm similar
+to single-layer snow model.
+</p>
+
+<p>
+The correction of the surface outgoing long-wave radiation flux with due regard
+for the low frequency of the radiation routine calls is introduced.
+The call of the subroutine "normalize" is eliminated in order to reduce computational costs.
+Its functionality is transferred to the subroutine "terra_multlay"
+</p>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+<p align="right"><a href="#content">Back to Contents</a>
+<hr>
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="soiltyp">7. Usage of the field soiltyp</a></h3>
+  <h4>(by Oliver Fuhrer)</h4>
+
+<p>
+This is a <tt>REAL</tt> field, but contains values that should be <tt>INTEGER</tt>s. 
+In several routines comparisons with integer values are done. All these comparisons 
+are now implemented with <tt>NINT (soiltyp)</tt>
+</p>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+<p align="right"><a href="#content">Back to Contents</a>
+<hr>
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="maxtags">8. Limiting the ntag-value for the boundary exchange</a></h3>
+
+<p>
+All calls to <tt>exchg_boundaries</tt> contain a tag for the identification of the message.
+In most calls this tag is connected to the time step of the model and in case of climate runs
+this could be a very large number.
+</p>
+
+<p>
+Some MPI implementations have a strict handling of the maximal value a tag can have and
+the model is running into problems here. Therefore all calls were changed and the time step
+<tt>ntstep</tt> has been changed by a variable <tt>nexch_tag</tt>, which is set as 
+<tt>MOD (ntstep, 24*3600/INT(dt))</tt>.
+</p>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+<p align="right"><a href="#content">Back to Contents</a>
+<hr>
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="ifsconv">9. IFS Convection scheme for the CLM</a></h3>
+
+<p>
+An interface has been implemented for the IFS convection scheme in <tt>organize_physics</tt>
+using conditional compilation: <tt>ifdef CLM</tt>
+</p>
+
+<p>
+The source code of the scheme itself is not distributed with the official COSMO versions,
+but has to be obtained by the CLM community. If the code is compiled with <tt>-DCLM</tt>,
+the IFS convection scheme can be activated by setting <tt>itype_conv=2</tt>.
+</p>
+
+<p>
+If <tt>itype_conv=2</tt> is chosen, the averaging of the convective forcing cannot be activated,
+<tt>lconf_avg</tt> has to be <tt>.FALSE.</tt> then. If it is <tt>.TRUE.</tt>, 
+the model resets it to <tt>.FALSE.</tt> again.
+</p>
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+<p align="right"><a href="#content">Back to Contents</a>
+<hr>
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="gribsee">10. New Grib values</a></h3>
+
+<p>
+Official Grib1 numbers have been given to the variables of the multi-layer snow model:
+Up to now these variables had been given element numbers from table 250, which is used
+at MeteoSwiss, and the new vertical level type 211. This level type is now officially
+accepted by WMO. But the element numbers are now chosen according to the variable,
+i.e. <tt>T_SNOW_MUL</tt> has the same element number as <tt>T_SNOW</tt>, but just a different level type:
+And all variables just get an <tt>'_M'</tt> to indicate the multi-layer variable.
+</p>
+
+<p>
+For the 2-Moment scheme, one new field for the total vertically integrated hail content
+has been introduced.
+</p>
+
+<p>
+<center>
+<table border="1" cellspacing="3" class="namelist">
+ <tbody>
+   <tr>
+     <th>Name</th>
+     <th>Meaning</th>
+     <th align="center", width="5%">iee</th>
+     <th align="center", width="5%">itabtyp</th>
+     <th align="center", width="5%">ilevtyp</th>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td><tt>T_SNOW_M</tt></td>
+     <td>Snow temperature </td>
+     <td class="middl" align="center">203</td>
+     <td class="middl" align="center">201</td>
+     <td class="middl" align="center">211</td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td><tt>H_SNOW_M</tt></td>
+     <td>Snow depth in m (per layer)</td>
+     <td class="middl" align="center"> 66</td>
+     <td class="middl" align="center">  2</td>
+     <td class="middl" align="center">211</td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td><tt>RHO_SNOW_M</tt></td>
+     <td>Snow density in kg / (m**3)</td>
+     <td class="middl" align="center">133</td>
+     <td class="middl" align="center">201</td>
+     <td class="middl" align="center">211</td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td><tt>W_SNOW_M</tt></td>
+     <td>Water equivalent of accumulated snow</td>
+     <td class="middl" align="center"> 65</td>
+     <td class="middl" align="center">  2</td>
+     <td class="middl" align="center">211</td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td><tt>WLIQ_SNOW_M</tt></td>
+     <td>Liquid water content in the snow</td>
+     <td class="middl" align="center">137</td>
+     <td class="middl" align="center">201</td>
+     <td class="middl" align="center">211</td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td><tt>TQH</tt></td>
+     <td>Total hail content vertically integrated</td>
+     <td class="middl" align="center">136</td>
+     <td class="middl" align="center">201</td>
+     <td class="middl" align="center">211</td>
+   </tr>
+<!---------------------------------------------------------------------------->
+ </tbody>
+</table>
+</center>
+</p>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+<p align="right"><a href="#content">Back to Contents</a>
+<hr>
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="bugfixe">10. Bug Fixes and Technical Changes</a></h3>
+
+<ul>
+ <li><tt>fast_waves_sc.f90</tt>:<br />
+  Format change in namelist-parameter <tt>itype_bbc_w</tt>:
+  The 'new' nomenclature now has the format <tt>1ed</tt> instead of only <tt>ed</tt>. 
+  Otherwise e.g. the case <tt>04</tt> is not properly recognized, but confused
+  with the case <tt>4</tt> of the 'old' nomenclature.</li>
+  
+ <li><tt>io_utilities.f90</tt>, Subroutine <tt>make_fn</tt>:<br />
+  When using a time step <tt>dt</tt>, which does not fit into the I/O time increment
+  (i.e. the I/O step is NOT a multiple of <tt>dt</tt>), the file name is not determined
+  correct. Some modifications have been done to adjust the file name to the correct
+  time for I/O.</li>
+  
+ <li><tt>organize_physics.f90</tt>:<br />
+  Prohibit concurrent use of <tt>nradcoarse &gt; 1</tt> and <tt>nboundlines &gt; 3</tt>, 
+  which is not working.<br />
+  Added plausibility checks regarding lrad and itype_aerosols in combination
+  with periodic BCs.</li>
+
+ <li><tt>organize_dynamics.f90</tt>:<br />
+  Adapted format of lines in <tt>YUSPECIF</tt>, so that all variables can properly be written</li>
+
+ <li><tt>src_advection_rk.f90</tt>:<br />
+  Better computation of wcon in SR <tt>advection_pd</tt> (with already advected <tt>w</tt>) 
+  (Michael Baldauf) <br />
+  New T- and p- advection scheme (internal switch <tt>iztype_tppadv=2</tt>) only works for
+   odd-order upwind advection schemes (<tt>iadv_order=1,3,5</tt>), so in
+   case of even advection order, switch back to the old scheme and issue a
+   warning instead of aborting the run (Ulrich Blahak).</li>
+  
+ <li><tt>src_conv_tiedtke.f90</tt>:<br />
+  Implemented some type conversions (to avoid special compiler warnings)</li>
+
+ <li><tt>src_lheat_nudge.f90</tt>:<br />
+  Bug fix for variable <tt>min0_lhn</tt> (should be known at each processor)<br >
+  Changes to enable subhourly model starting points (LETKF approach):
+  <ul>
+   <li>use full information of new <tt>get_utc_date</tt> routine</li>
+   <li>additional call of SR <tt>lhn_sumrad</tt> if first observation is within current hour (lhm1)</li>
+   <li>modifications of <tt>obs_time</tt>, <tt>next_obs_time</tt></li>
+  </ul>
+  Correction of array size of diagnostic variables with respect to local processors.</li>
+
+ <li><tt>src_obs_processing.f90</tt>:<br />
+  Patch in order to run with AOF files: without that, in SR <tt>src_obs_cdfin_print.f90</tt> the model
+  tries to reopen <tt>YUREJECT</tt> and <tt>YUOBSDR</tt> files with a runtime error.</li>
+
+ <li><tt>src_output.f90</tt>, Subroutine <tt>makepds</tt>:<br />
+  The same situation as in <tt>make_fn</tt> occurs when determining the reference time for
+  an analysis, when using a dt that does not fit into the output increment. The
+  reference time is adapted accordingly now.</li>
+
+ <li><tt>src_input.f90</tt>:<br />
+   <ul>
+    <li>Checks, if files are existing: After every call to <tt>make_fn</tt>, the 
+        extension <tt>.nc</tt> has to be added, in order to properly check the NetCDF files.</li>
+    <li>In the <tt>make_fn</tt>-call for the restart file, <tt>ydirini</tt> has been replaced (again) by
+        <tt>ydir_restart</tt></li>
+   </ul></li>
+
+ <li><tt>src_gridpoints.f90, organize_diagnosis.f90</tt>:<br />
+  <ul>
+    <li>Corrected unit of height of convective clouds in (short) meteograph output</li>
+    <li>Increased length of station names for grid point output</li>
+  </ul></li>
+
+ <li><tt>src_radiation.f90</tt>:<br />
+
+
+ <li><tt>src_setup.f90</tt>:<br />
+  Adapted format of lines in <tt>YUSPECIF</tt>, so that all variables can properly be written</li>
+
+ <li><tt>src_sfcana.f90</tt>:<br />
+  The control of writing the surface analysis fields has been adapted to deal with a
+  time step, which does not fit into a full hour. Now, all surface analysis fields
+  should be written.</li>
+
+ <li><tt>time_utilities.f90</tt>, Subroutine <tt>collect_timings</tt>:<br />
+  The output format for the timings have been enlarged. Now even very long times should
+  be displayed properly.</li>
+</ul>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+<p align="right"><a href="#content">Back to Contents</a>
+<hr>
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="namelis">12. Changes to the Namelists</a></h3>
+
+<p>There were new Namelist variables in the following groups:</p>
+
+<center>
+<table border="1" cellspacing="3" class="namelist">
+ <tbody>
+   <tr>
+     <th>Group</th>
+     <th>Name</th>
+     <th>Meaning</th>
+     <th align="center", width="5%">Default</th>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td class="hilit" rowspan="2"><tt>/RUNCTL/</tt></td>
+     <td><tt>num_asynio_comm</tt></td>
+     <td class="middl" rowspan="1">To choose the number of asynchronous I/O communicators
+           for NetCDF. With several communicators it is possible to parallelize the output
+           over the files to be written (the <tt>GRIBOUT</tt> namelists). </td>
+     <td class="middl" align="center" rowspan="1"><tt>0</tt></td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td><tt>num_iope_percomm</tt></td>
+     <td class="middl" rowspan="1">To choose the number of asynchronous I/O processes
+          per communicator for NetCDF I/O. With several processes per communicator it
+          is possible to do a parallel writing of single files. This is only possible,
+          if the parallel NetCDF library is available and the code has been compiled
+          with the preprocessor directive <tt>-DPNETCDF</tt>
+     <td class="middl" align="center" rowspan="1"><tt>0</tt></td>
+   </tr>
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td class="hilit" rowspan="2"><tt>/IOCTL/</tt></td>
+     <td><tt>lprefetch_io</tt></td>
+     <td class="middl" rowspan="1">
+      Enables reading of boundary files ahead of time, i.e. when the forthcoming I/O operation
+      will be reading a GRIB file, then this can be done simultaneously with the preceding
+      compute steps.
+      Prefetching can only be enabled with true asynchronous I/O. (<tt>lasync_io=.TRUE.</tt>)
+       </td>
+     <td class="middl" align="center" rowspan="1"><tt>.FALSE.</tt></td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td><tt>itype_gather</tt></td>
+     <td class="middl" rowspan="1">To choose the type of gathering output fields:
+          <ol start="1">
+           <li>gather the fields by an extra communication per level (default)
+           <li>gather fields by one communication for nproc levels (with MPI_ALLTOALLV)
+          </ol>
+       </td>
+     <td class="middl" align="center" rowspan="1"><tt>1</tt></td>
+   </tr>
+<!---------------------------------------------------------------------------->
+ </tbody>
+</table>
+</center>
+
+<p align="right"><a href="#content">Back to Contents</a>
+<hr>
+
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="results">13. Changes of Results</a></h3>
+
+<p>
+The following changes influence the results:
+</p>
+
+<p>
+<ul>
+ <li>The implementation of the new tracer module does not change the results, with the 
+     exception of the NEC SX-9. Here, very small changes are observed, which might be
+     due to different compiler optimizations.</li>
+
+ <li>The implementation of the 2-moment microphysics does not change the results, if the
+     new scheme is not activated.</li>
+
+ <li>Bug Fixes in <tt>src_radiation.f90</tt>
+  <ul>
+   <li>Wrong index <tt>js</tt> used for averaging values to <tt>fesft</tt> input 
+       for <tt>nradcoarse &gt; 1</tt>. This changes the results for COSMO_DE.</li>
+   <li>The other modifications cause numerical differences in COSMO_EU and COSMO_DE.</li>
+  </ul></li>
+
+ <li>Bug Fix in <tt>src_input.f90</tt><br />
+     Calculation of qrs and rho was missing for initial data. Before, these quantities were
+     used with value 0.0. Now they have a reasonable initialization.<br />
+    This changes the results for COSMO_DE and COSMO_EU.
+     </li>
+
+ <li>Bug Fix in <tt>src_advection_rk.f90</tt><br />
+     Computation of <tt>wcon</tt> in SR <tt>advection_pd</tT>: use the already advected 
+     <tt>w</tt> to compute <tt>wcon</tt>.</li>
+
+ <li>Modification in <tt>meteo_utilities.f90</tt><br />
+     Computation of <tt>clwc(i,j,k)</tt> resp. <tt>ql</tt> by using a new formula 
+     provided by M. Raschendorfer. The old formula lead to problems for special settings 
+     of <tt>q_crit</tt> and <tt>clc_diag</tt> and could lead to negative values 
+     for <tt>ql</tt>.
+     </li>
+</ul>
+</p>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+<p align="right"><a href="#content">Back to Contents</a>
+<hr>
+
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+</body>
+</html>

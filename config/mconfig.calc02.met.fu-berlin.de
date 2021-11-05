@@ -1,0 +1,100 @@
+# -*- Makefile -*- Time-stamp: <2019-02-11 14:46:45 joec_pa>
+###############################################################################
+##### PLATFORM SPECIFIC SETTINGS (LINUX64) ####################################
+###############################################################################
+ARCH       = LINUX64
+
+###########################################################################
+### DEFAULTS
+###########################################################################
+#### DEFAULT COMPILE MODE
+if test -z "$RUNMODE" ; then
+   RUNMODE=PRODUCTION
+fi
+
+#### SET DEFAULT PROFILING MODE
+if test -z "$PROFILEMODE" ; then
+   PROFILEMODE=NONE
+fi
+
+##### TOOLS
+#AR       = ar
+#ARFLAGS  = cvr
+#NMFLAGS  = 
+
+##### F95 EXTENSIONS
+DEFOPT   = -D
+MODOPT   = -I
+
+
+  #########################################################################
+  ### calc02.met.fu-berlin.de - Institute for Meteorology 
+  #########################################################################
+
+     ### (1) MESSAGE PASSING INTERFACE (options a and b are exclusive!)
+     ####    a) use mpi-compiler wrappers (preferable!) and keep
+     ####       MPIROOT and MPI_LIB unset.
+     ####    b) set MPIROOT and MPI_LIB (e.g. for MPI-1 
+     ###        MPI_LIB = mpichf90nc mpich)
+     MPIROOT    =
+     MPI_LIB    = 
+     ### (2) NETCDF LIBRARY (options a and b are exclusive!)
+     ###     a) set NETCDFROOT (must contain lib/libnetcdf.a and
+     ###        include/netcdf.inc) (for necdf-3)
+     ###     b) set SPEC_NETCDF_INC to include path and
+     ###        SPEC_NETCDF_LIB to ld-options (-L ...  -l...)
+     NETCDFROOT      = `nf-config --prefix`
+     SPEC_NETCDF_INC = `nf-config --fflags | sed 's|-I||g'`
+     SPEC_NETCDF_LIB = `nf-config --flibs`
+     ###
+     ### (3) BLAS and LAPACK LIBRARIES (options a, b and are exclusive)
+     ###     a) keep all entries empty -> blas/lapack contained in 
+     ###        distribution will be compiled and used
+     ###     b) specify *ROOT (path to library) and
+     ###        and *_LIB (name of library without "-llib" and ".a",
+     ###        e.g., BLASROOT=/usr/lib and BLAS_LIB=blas for
+     ###        /usr/lib/libblas.a)
+     ###     c) specifiy SPEC_LABLA_LIB with full ld options)
+     BLASROOT   =
+     BLAS_LIB   =
+     LAPACKROOT =
+     LAPACK_LIB =
+     SPEC_LABLA_LIB =
+     ### (4) EMOS and SPHERE LIBRARIES (for INTERA only); 
+     ###     a) keep empty, if not available
+     ###     b) similar as option b) for BLAS/LAPACK
+     EMOSROOT   =
+     EMOS_LIB   =
+     SPHEREROOT =
+     SPHERE_LIB = 
+     ### (5) ADDITONAL LIBRARIES REQUIRED FOR LINKING (full ld options)
+     SPEC_LIB   = -Wl,-rpath,${NETCDFROOT}/lib -Wl,-rpath,${HDF5_ROOT}/lib -Wl,-rpath,${SZ_ROOT}/lib
+     ### (6) SPECIAL LIBRARIES FOR FORCHECK
+     FCKLIBS    =  
+     
+     CXX      = g++
+     CC       = `which mpicc`
+     CFLAGS   = -O -Df2cFortran `nc-config --cflags`
+     F90      = `which mpif90`
+     F90VERS  = `$F90 --version | awk '{if (NR == 1) print}'`
+     ##### F95 EXTENSIONS
+     DEFOPT   = -D
+     MODOPT   = -I
+     ##### F95 COMPILER FLAG TO OBTAIN DOUBLE PRECISION
+     F90R8    = -fdefault-real-8
+     ##### F95 COMPILER FLAGS
+     case $RUNMODE in
+        DEBUGOPT*)
+           F90FLAGS = -cpp -D__linux__ -fno-second-underscore -ffree-line-length-none -fno-range-check -fbacktrace -fbounds-check -fdump-core -g -O -Wall ${SPEC_LIB}
+           ;;
+        DEBUG*)
+           F90FLAGS = -cpp -D__linux__ -fno-second-underscore -ffree-line-length-none -fno-range-check -fbacktrace -fbounds-check -fdump-core -g -O0 -Wall ${SPEC_LIB}
+           ;;
+        PRODUCTION*)
+           F90FLAGS = -cpp -D__linux__ -fno-second-underscore -ffree-line-length-none -fno-range-check -O ${SPEC_LIB}
+           ;;
+     esac
+
+###########################################################################
+###########################################################################
+###########################################################################

@@ -1,0 +1,386 @@
+#! /usr/bin/env bash
+set -e
+test x${DEBUG+set} != xset || set -x
+
+usage_exit1() {
+  b=\\033[1m  ; it=\\033[3m  ; u=\\033[4m ; n=\\033[0m
+  printf "\n${b}NAME${n}\n\t`basename $0` - generate 2d map plots with gmt\n" >&2
+
+  printf "${b}SYNOPSIS ${n}\n\t${b}`basename $0`${n}  [${u}FILE${n}]  ${u}OPTIONS${n}\n" >&2
+
+  printf "${b}DESCRIPTION ${n}\n\tGenerates 2d map plots from MPIOM data using gmt \n" >&2
+
+  printf "\t${u}FILE${n}\n\t\t file to plot (required).\n" >&2
+
+  printf "\t${b}--code, -c${n} ${u}CODE${n}\n\t\t code number to plot (required)\n." >&2
+
+  printf "\t${b}--lev,  -l${n} ${u}LEVEL${n}\n\t\t level to plot (required)\n." >&2
+
+  printf "\t${b}--min,  -n${n} ${u}MINIMUM${n}\n\t\t miniumum of colorbar (required for plot types 0,1 and 3)\n." >&2
+
+  printf "\t${b}--max,  -x${n} ${u}MAXIMUM${n}\n\t\t maximum  of colorbar (required for plot types 0,1 and 3 )\n." >&2
+
+  printf "\t${b}--inc,  -i${n} ${u}INCREMENT${n}\n\t\t increment of colorbar (required for plot types 0,1 and 3)\n." >&2
+
+  printf "\t${b}--scal,  -s${n} ${u}SCALE${n}\n\t\t linear scaling factor ; default is 1\n." >&2
+
+  printf "\t${b}--unit,  -u${n} ${u}UNIT${n}\n\t\t physical unit of the data ; default is NN\n." >&2
+
+  printf "\t${b}--title,  -t${n} ${u}TITLE${n}\n\t\t title of the plot ; default is input file name\n." >&2
+
+  printf "\t${b}--pal,  -p${n} ${u}PALETTE${n}\n\t\t color palette ; default is jet\n." >&2
+
+  printf "\t${b}--grid,  -g${n} ${u}GRID${n}\n\t\t grid description; default is GR30\n." >&2
+
+  printf "\t${b}--proj,  -j${n} ${u}PROJECTION${n}\n\t\t projection of the plot (merc, nps); default is merc\n." >&2
+
+  printf "\t${b}--type,  -y${n} ${u}TYPE${n}\n\t\t plot type (0=tiles,1=shaded,2=bw-isolines,3=vectors) ; default is 1\n." >&2
+
+  printf "\t${b}--up,    -k${n} ${u}TYPE${n}\n\t\t use upright output format (portrait mode) ; default is landscape format\n." >&2
+  exit 1
+}
+
+CDO=${CDO-@CDO@}
+GMT_BINDIR=${GMT_BINDIR-@GMT_BINDIR@}
+test -z "$GMT_BINDIR" || GMT_BINDIR="$GMT_BINDIR/"
+
+# Defaults
+
+TITLE=""
+UNIT=""
+SCAL=1
+pal=jet
+GRID=GR30
+proj=merc
+type=0
+
+args=`getopt -u  -lcode:,lev:,min:,max:,inc:,iso:,scal:,unit:,title:,pal:,grid:,proj:,type:,help:,up c:l:o:s:u:t:p:g:j:y:n:x:i:h:k "$@"` || {
+  usage_exit1
+}
+
+set -- $args
+
+while [ $1 != "--" ]
+do
+  case $1 in
+    --help  | -h     ) usage_neu ;;
+    --code  | -c     ) CODE=$2  ;;
+    --lev   | -l     ) LEVEL=$2 ;;
+    --min   | -n     ) MINI=$2  ;;
+    --max   | -x     ) MAXI=$2  ;;
+    --inc   | -i     ) INCR=$2  ;;
+#    --iso   | -o     ) MINI=$2 ;MAXI=$3 ; INCR=$4 ;;
+    --scal  | -s     ) SCAL=$2  ;;
+    --unit  | -u     ) UNIT=$2   ;;
+    --title | -t     ) TITLE=$2  ;;
+    --pal   | -p     ) pal=$2    ;;
+    --grid  | -g     ) GRID=$2   ;;
+    --proj  | -j     ) proj=$2   ;;
+    --type  | -y     ) type=$2   ;;
+    --up    | -k     ) portrait=-P ;;
+  esac
+  shift
+done
+
+shift
+IFILE="$1"
+
+echo 'FILE:  ' $IFILE
+echo 'CODE:  ' $CODE
+echo 'LEVEL: ' $LEVEL
+echo 'MIN:   ' $MINI
+echo 'MAX:   ' $MAXI
+echo 'INCR:  ' $INCR
+echo 'SCALE: ' $SCAL
+if [ "${UNIT}" = "" ] ; then
+  UNIT=NN
+fi
+echo 'UNIT:  ' $UNIT
+if [ "${TITLE}" = "" ] ; then
+  TITLE=${IFILE}
+fi
+echo 'TITLE: ' $TITLE
+echo 'pal:   ' $pal
+echo 'grid:  ' $GRID
+echo 'proj:  ' $proj
+echo 'type:  ' $type
+
+#exit
+
+test x${DEBUG+set} != xset || set verbose
+
+. @abs_top_srcdir@/setup/grid-configs.sh.inc
+
+ie1=`expr ${ie} - 1`
+
+POOL=${POOL-@POOL_ROOT@/MPIOM/$GRID}
+OFILE=${OFILE-${IFILE##*/}.nc}
+GFILE=${IFILE##*/}.gmt
+CFILE=my.cpt
+PFILE=${IFILE##*/}.ps
+
+for required_setting in IFILE CODE ; do
+  eval test -n \"\$$required_setting\" || usage_exit1
+done
+
+test -r ${IFILE}
+
+#MINI=`expr ${MEAN} \- ${INCR} \* 8`
+#MAXI=`expr ${MEAN} \+ ${INCR} \* 8`
+
+#if [ ${SCAL} -gt 0 ] ; then
+${GMT_BINDIR}makecpt -C${pal} -T${MINI}/${MAXI}/${INCR} > $CFILE
+#else
+#SCAL=`expr ${SCAL} \* -1`
+#SCAL=$(echo "scale=10; ${scal} * -1" | bc -l)
+#echo $SCAL
+#makecpt -C${pal} -Qo -T${MINI}/${MAXI}/${INCR} > $CFILE
+#fi
+
+
+#change from extra to netcdf and cutting the overlaps
+steps=`${CDO} ntime ${IFILE}`
+test $steps != 0 || steps=1
+
+ttt=`echo ${CODE} | cut -c 1`
+ttt1=`echo ${CODE} | cut -c 2-99`
+
+if [ "${ttt}" = "_" ] ; then
+  ${CDO} selvar,${ttt1} -sellevel,${LEVEL},${LEVEL} ${IFILE} ${OFILE}
+fi
+if [ "${ttt}" != "_" ] ; then
+  ${CDO} selcode,${CODE} -sellevel,${LEVEL},${LEVEL} ${IFILE} ${OFILE}
+fi
+
+if [ "${type}" == "3" ] ; then
+  ttt=`echo ${CODE} | cut -c 1`
+  if [ "${ttt}" = "_" ] ; then
+    echo "type need code numbers instead of variable names"
+    exit
+  fi
+  CODE1=`expr ${CODE} \+ 1`
+  ${CDO} selcode,${CODE1} -sellevel,${LEVEL},${LEVEL} ${IFILE} ${OFILE}.1
+fi
+
+${CDO} selcode,84 ${IFILE} lsm
+
+ilsm=`${CDO} nvar lsm`
+
+if [ "${ilsm}" == "1" ] ; then
+  ${CDO} ifthen lsm  ${OFILE} ${OFILE}.2
+  if  [ "$type" == "3" ] ; then
+    ${CDO} ifthen lsm  ${OFILE}.1 tt ; \mv tt ${OFILE}.2
+  fi
+  \rm lsm
+fi
+
+if [ "$ilsm" != "1" ] ; then
+  \rm lsm
+  \mv ${OFILE} ${OFILE}.2
+fi
+
+i=1
+
+echo $i
+echo $steps
+
+
+while [ "${i}" -le "${steps}" ]
+do
+
+  ni=`printf %.6d ${i}`
+
+  if [ "$type" != "3" ] ; then
+    ${CDO} -f ext copy   ${OFILE}.2 ${OFILE}.2.ext
+    ${CDO} selrec,$i,$i ${OFILE}.2.ext mist
+    date=`${CDO} showdate mist`
+    if [ "$GRID" != "T31" ] && [ "$GRID" != "1DEG" ] ; then
+      ${CDO} -t mpiom1 -f nc \
+        setgrid,${POOL}/${GRID}s.nc \
+        -selindexbox,2,${ie1},1,${je} -setgrid,r${ie}x${je} mist ${OFILE}.3
+    else
+      if [ "$GRID" = "T31" ]; then
+        ${CDO} -t echam5 -f nc setgrid,t31grid mist ${OFILE}.3
+      else
+        ${CDO} -f nc setgrid,${IFILE} mist ${OFILE}.3
+      fi
+    fi
+
+  else
+    ${CDO} -f ext copy   ${OFILE}.2 ${OFILE}.2.ext
+    ${CDO} selrec,$i,$i ${OFILE}.2.ext mist
+    ${CDO} -f ext copy   ${OFILE}.1 ${OFILE}.1.ext
+    ${CDO} selrec,$i,$i ${OFILE}.1 mist1
+
+    date=`${CDO} showdate mist`
+
+    ${CDO} -f nc mrotuvb -setgrid,${POOL}/${GRID}u.nc \
+      -selindexbox,2,${ie1},1,${je} -setgrid,r${ie}x${je} mist \
+      -setgrid,${POOL}/${GRID}v.nc \
+      -selindexbox,2,${ie1},1,${je} \
+      -setgrid,r${ie}x${je} mist1 ${OFILE}.4
+  fi
+    #create inputfile for gmt
+  if [ "$type" != "3" ] ; then
+    if [ "$type" == "0" ] ; then
+      ${CDO} outputbounds -mulc,${SCAL} ${OFILE}.3 > $GFILE
+    else
+      ${CDO} outputcenter -mulc,${SCAL} ${OFILE}.3 > $GFILE
+    fi
+  else
+    ${CDO} outputvector,1 ${OFILE}.4 > $GFILE
+    ${CDO} -f nc setgrid,${POOL}/${GRID}s.nc \
+      -sqrt -add -sqr -selcode,${CODE} ${OFILE}.4 \
+                 -sqr -selcode,${CODE1} ${OFILE}.4 ${OFILE}.5
+    ${CDO} outputbounds -mulc,${SCAL} ${OFILE}.5 > ${GFILE}.0
+  fi
+
+  \rm -f ${IFILE}.ps
+
+    #cylindrical equidistant GMT output
+  if [ "${GRID}" = "T31" ] ; then
+    FLL=""
+  else
+    FLL="-G50"
+  fi
+
+  if [ "${proj}" = "merc" ] ; then
+    #plot 2D dat
+    ${GMT_BINDIR}psbasemap -R-180/180/-90/90 -JQ0/8.0i -X1.5i -Y2.0i \
+      -Ba60f30/a30f15:."${TITLE} ${date}": $portrait -K > ${PFILE}.${ni}
+    if [ "${type}" = "0" ] ; then
+      ${GMT_BINDIR}psxy -R -JQ0/8.0i -Bg30/g30 -M ${GFILE} -L \
+        -C./${CFILE} $portrait -O -K >> ${PFILE}.${ni}
+#      ${GMT_BINDIR}pscoast -R -JQ0/8.0i -W0.5p -G50 $portrait -O -K \
+#      >> ${PFILE}.${ni}
+      if [ "${GRID}" = "T31" ] ; then
+        ${GMT_BINDIR}pscoast -R -JQ0/8.0i -W0.5p -I1 $portrait -O -K \
+          >> ${PFILE}.${ni}
+      fi
+    fi
+
+    if [ "$type" == "1" ] ; then
+      ${GMT_BINDIR}pscontour -R -JQ0/8.0i -Bg30/g30 -I ${GFILE} \
+        -C./${CFILE} $portrait -O -K >> ${PFILE}.${ni}
+    	    #add coastlines and land
+      ${GMT_BINDIR}pscoast -R -JQ0/8.0i -W0.5p ${FLL} $portrait -O -K \
+        >> ${PFILE}.${ni}
+    fi
+
+    if [ "$type" == "2" ] ; then
+      ${GMT_BINDIR}pscontour -R -JQ0/8.0i -Bg30/g30 -W0.75 -G8i \
+        ${GFILE} -C./${CFILE} $portrait -O -K >> ${PFILE}.${ni}
+	    #add coastlines and land
+      ${GMT_BINDIR}pscoast -R -JQ0/8.0i -W0.5p ${FLL} $portrait -O -K \
+        >> ${PFILE}.${ni}
+    fi
+
+    if [ "$type" == "3" ] ; then
+      ${GMT_BINDIR}psxy -R -JQ0/8.0i -Bg30/g30 -M ${GFILE}.0 -L \
+        -C./${CFILE} $portrait -O -K >> ${PFILE}.${ni}
+      ${GMT_BINDIR}psxy -SV0.05c/0.2c/0.1c/n0.2i -R -JQ0/8.0i \
+        ${GFILE} $portrait -O -K >> ${PFILE}.${ni}
+	    #add coastlines and land
+      ${GMT_BINDIR}pscoast -R -JQ0/8.0i -W0.5p ${FLL} $portrait -O -K \
+        >> ${PFILE}.${ni}
+    fi
+
+    if [ "$type" != "2" ] ; then
+	#plot color bar
+      ${GMT_BINDIR}psscale -C./${CFILE} -D4.0i/-0.5i/8.0i/0.2ih \
+        -E -B${INCR}:"[${UNIT}]": $portrait -O >> ${PFILE}.${ni}
+    fi
+  fi
+
+
+  # azimutal GMT output
+
+  if [ "${proj}" == "nps" ] ; then
+
+    #plot 2D dat north pole
+    ${GMT_BINDIR}psbasemap -R-180/180/50/90 -JA0/90/10c -Y5c \
+      -Ba60f30/a30f15:."$TITLE $date": $portrait -K > ${PFILE}.${ni}
+    if [ "$type" == "0" ] ; then
+      ${GMT_BINDIR}psxy -R -JA0/90/10c -Bg30/g30 -M $GFILE -L \
+        -C./$CFILE $portrait -O -K >> ${PFILE}.${ni}
+#      ${GMT_BINDIR}pscoast -R -JA0/90/10c -W0.5p ${FLL} $portrait -O \
+#      -K >> ${PFILE}.${ni}
+      if [ "${GRID}" = "T31" ] ; then
+        ${GMT_BINDIR}pscoast -R -JA0/90/10c -W0.5p  $portrait -Dc -O -K \
+          >> ${PFILE}.${ni}
+      fi
+    fi
+    if [ "$type" == "1" ] ; then
+      ${GMT_BINDIR}pscontour -R -JA0/90/10c -Bg30/g30 -I $GFILE \
+        -C./$CFILE $portrait -O -K >> ${PFILE}.${ni}
+      # add coastlines and land
+      ${GMT_BINDIR}pscoast -R -JA0/90/10c -W0.5p ${FLL} $portrait -O -K \
+        >> ${PFILE}.${ni}
+    fi
+
+    if [ "$type" == "2" ] ; then
+      ${GMT_BINDIR}pscontour -R -JA0/90/10c -Bg30/g30 -W0.75 -G8i $GFILE \
+        -C./$CFILE $portrait -O -K >> ${PFILE}.${ni}
+	#add coastlines and land
+      ${GMT_BINDIR}pscoast -R -JA0/90/10c -W0.5p ${FLL} $portrait -O -K \
+        >> ${PFILE}.${ni}
+    fi
+
+    if [ "$type" == "3" ] ; then
+      ${GMT_BINDIR}psxy -SV0.05c/0.2c/0.1c/n0.2i -R -JA0/90/10c $GFILE \
+        -C./$CFILE $portrait -O -K >> ${PFILE}.${ni}
+    fi
+    # plot 2D dat south pole
+    ${GMT_BINDIR}psbasemap -R-180/180/-90/-50 -JA0/-90/10c -X14c \
+      -Ba60f30/a30f15:."$TITLE $date": -K $portrait -O >> ${PFILE}.${ni}
+
+    if [ "$type" == "0" ] ; then
+      ${GMT_BINDIR}psxy -R -JA0/-90/10c -Bg30/g30 -M $GFILE \
+        -L -C./$CFILE $portrait -O -K >> ${PFILE}.${ni}
+#      ${GMT_BINDIR}pscoast -R -JA0/-90/10c -W0.5p ${FLL}  $portrait -O -K \
+#      >> ${PFILE}.${ni}
+      if [ "${GRID}" = "T31" ] ; then
+        ${GMT_BINDIR}pscoast -R -JA0/-90/10c -W0.5p $portrait -O -K \
+          >>${PFILE}.${ni}
+      fi
+    fi
+
+    if [ "$type" == "1" ] ; then
+      ${GMT_BINDIR}pscontour -R -JA0/-90/10c -Bg30/g30 -I $GFILE \
+        -C./$CFILE $portrait -O -K >> ${PFILE}.${ni}
+      # add coastlines and land
+      ${GMT_BINDIR}pscoast -R -JA0/-90/10c -W0.5p ${FLL}  $portrait -O -K \
+        >> ${PFILE}.${ni}
+    fi
+
+    if [ "$type" == "2" ] ; then
+      ${GMT_BINDIR}pscontour -R -JA0/-90/10c -Bg30/g30 -W0.75 -G8i $GFILE -C./$CFILE \
+        $portrait -O -K >> ${PFILE}.${ni}
+    # add coastlines and land
+      ${GMT_BINDIR}pscoast -R -JA0/-90/10c -W0.5p ${FLL} $portrait -O -K \
+	>> ${PFILE}.${ni}
+    fi
+
+    if [ "$type" == "3" ] ; then
+      ${GMT_BINDIR}psxy -SV0.05c/0.2c/0.1c/n0.2i -R -JA0/-90/10c $GFILE \
+        -C./$CFILE $portrait -O -K >> ${PFILE}.${ni}
+    fi
+    if [ "$type" != "2" ] ; then
+      # plot color bar
+      ${GMT_BINDIR}psscale -C./$CFILE -D-2c/-2c/20c/0.8ch -E \
+        -B${INCR}:"[${UNIT}]": $portrait -O >> ${PFILE}.${ni}
+    fi
+  fi
+
+  \rm -f $GFILE ${GFILE}.0
+
+  (( i++ ))
+done
+
+outfile=`basename ${PFILE} .ps`
+#ps2raster -Tf ${PFILE}.[0-9]*
+cat  ${PFILE}.[0-9]* | ps2pdf - ${IFILE##*/}.pdf
+\rm -f ${PFILE}.[0-9]* tt ${OFILE} ${OFILE}.* mist* my.cpt
+#\rm  ${PFILE}.* tt ${OFILE} ${OFILE}.* mist* my.cpt
+
+exit

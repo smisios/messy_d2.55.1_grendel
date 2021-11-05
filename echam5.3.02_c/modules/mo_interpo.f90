@@ -1,0 +1,13 @@
+MODULE mo_interpo
+
+     USE mo_kind,  ONLY: dp
+!
+!    WEIGHTNG FACTORS AND MONTH INDICES FOR
+!    INTERPOLATION IN TIME IN *CLSST* AND *RADINT*
+!
+
+     REAL(dp):: WGT1, WGT2
+     INTEGER :: NMW1, NMW2, NMW1CL, NMW2CL
+!
+ 
+END MODULE mo_interpo

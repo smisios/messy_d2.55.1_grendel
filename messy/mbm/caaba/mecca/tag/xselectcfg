@@ -1,0 +1,87 @@
+#! /bin/tcsh -f
+
+# --------------------------------------------------------------------------
+# SELECTION OF DESIRED CONFIGURATION(S)
+# --------------------------------------------------------------------------
+
+#set nonomatch
+set letters = (a b d e f g h i j k l m n p q r s t u v w x y z A B C D E F G H I J K L M N O P Q R S T U V W X Y Z 0 1 2 3 4 5 6 7 8 9)
+
+if ( "$1" == "" ) then
+  set crit = \*.cfg
+else
+  set crit = $1
+endif
+
+echo "please, choose the set of tagging configurations from:"
+echo ""
+# listing configurations found in the current directory
+set cn = "0"
+set cfgfiles = (${crit})
+set cfgletters = ""
+foreach i (${cfgfiles})
+  @ cn=$cn + 1
+  set desc = `grep "#N#" ${cfgfiles[$cn]} | sed 's|#N#||g' | sed 's|;||g'`
+  set ltmp = `grep "#K#" ${cfgfiles[$cn]} | sed 's|#K#||g' | sed 's|;||g'`
+  if ("${desc}" == "") set desc = "<no description found>"
+  if ("${ltmp}" == "") set ltmp = ${letters[$cn]}
+  set cfgletters = (${cfgletters} ${ltmp})
+  printf " (%s) " "${cfgletters[$cn]}"
+  printf "%32s" "~${cfgfiles[$cn]}" | tr ' ~' '. '
+  printf " | %-10s\n" "${desc}"
+end
+
+set dupes = `echo "${cfgletters}" | tr ' ' '\n' | sort | uniq -d | tr '\n' ' '`
+if ( "$dupes" != "" ) then
+  echo ""
+  echo "<!> warning: duplicate configuration shortcut keys detected ( ${dupes} )"
+endif
+echo ""
+echo -n "[one or more letters, quit='!']: "
+
+# inputting selection
+if (! ${?batch}) then
+  set inputstring = "$<"
+else
+  echo "${tagcfg} (selected from batch)"
+  echo ""
+  set inputstring = ${tagcfg}
+endif
+
+# removing spaces
+set inputstring = `echo "${inputstring}" | sed 's/ //g'`
+
+# masking empty input with a non-letter char
+if ( "${inputstring}" == "" ) set inputstring = "&"
+
+# desired quit
+if ( "${inputstring}" == "!" ) exit 1
+
+# parsing configurations selection
+set cfglist = ""
+set cln = "0"
+foreach i (${cfgletters})
+  @ cln=$cln + 1
+  set instr = `echo ${inputstring} ${cfgletters[$cln]} | awk '{print index($1,$2)}'`
+  if ("${instr}" != "0") then
+  # adding configuration
+    set cfglist = (${cfglist} ${cfgfiles[$cln]})
+  # checking if input has keys detected as dupes
+    set dd = `echo "${dupes}" | grep "${cfgletters[$cln]}"`
+    if ( "${status}" != "1" ) then
+      echo "<!> error: selected configuration shortcut key ( ${cfgletters[$cln]} ) is in the list of duplicates, abort."
+      echo ""
+      exit 2
+    endif
+  endif
+end
+
+# final choice
+if ("${cfglist}" == "") then
+  echo "ambiguous input; no configurations selected. exiting."
+  echo ""
+  exit 1
+endif
+
+echo "[ selected configuration(s): ${cfglist} ]"
+echo ""

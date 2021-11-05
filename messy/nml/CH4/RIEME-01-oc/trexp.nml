@@ -1,0 +1,66 @@
+! -*- f90 -*-
+&CPL
+! ALLOW POINT EMISSIONS ALSO FOR NON-TREXP-TRACERS ?
+l_force_emis = T,
+! ALLOW REACTION / DECAY ALSO FOR NON-TREX-TRACERS ?
+l_allow_ext = T,
+!
+L_GP = T,
+L_LG = F,
+l_tf_corr = F,         ! time filter correction (classic points only!)
+!
+! ### LIST OF TRACERS
+! ### O : ORDER
+!         = 0 : dx/dt = -ka * x       + p , [ka] = 1/s , Ta = 0
+!         = 1 : dx/dt = -ka * x * [Y] + p , [ka] = cm3/s
+!         = -1: dx/dt = -k  * x * [Y] + p , [ka] = cm3/s
+!               k = ka + c_air*kb           [kb] = cm6/s, [c_air] = 1/cm3
+!         (p: production, x: mixing ratio, Y: reaction partner)
+! ### ka: O=0 : DECAY CONSTANT              [ka] = 1/s
+!         O=1 : ARRHENIUS A FACTOR          [ka] = cm3/s
+!         O=-1:                             [ka] = cm3/s
+! ### Ta: O=0 : Ta=0
+!         O=1 : ACTIVATION TEMPERATURE      [Ta] = K
+!         O=-1: PRESSURE DEPENDENCE         [Ta] = cm6/s
+! SYNTAX:
+!                                   ONLY FOR ORDER=1
+!                                 |==================|
+!   'name', 'subname', ORDER, ka, Ta, 'channel', 'object'
+!
+TR(1) = 'NH',   '05',   0, 2.3148148148e-06,         ,           ,   ,
+TR(2) = 'NH',   '50',   0, 2.3148148148e-07,         ,           ,   ,
+TR(3) = 'NH50W', '',    0, 2.3148148148e-07,         ,           ,   ,
+TR(4) = 'AOA',  'NH',   0, 0.0             ,         ,           ,   ,
+TR(5) = 'ST80', '25',   0, 4.6296296296e-07,         ,           ,   ,
+TR(6) = 'CO',   '25',   0, 4.6296296296e-07,         ,           ,   ,
+TR(7) = 'CO',   '50',   0, 2.3148148148e-07,         ,           ,   ,
+TR(11) = 'AOA', 'CCMI', 0,                 ,         ,           ,   ,
+!
+! ### LIST OF RELEASE POINTS AND TIME
+! ### LEV  [hPa], MASS [kg], LON [-180 ... 180], LAT [-90 ... 90]
+! SYNTAX:
+!   TYPE, LON, LAT, 
+!   1     LEV, MASS, YYYY, MM, DD, HH, MI, SE, YYYY, MM, DD, HH, MI, SE,
+!                    |=======================| |======================|
+!                            START                    STOP
+!   2     'channel', 'p_min', 'p_max', 'flux [molec/s]', scaling factor,
+!   1,2   'list of tracers separated with ";"'
+!
+!
+! TIME SERIES
+!POINT(1) =  2, -19.630, 63.629, 
+!            0.0, , , , ,  , , , , , , , , ,
+!            'import_ts', 'EYJA_pmin', 'EYJA_pmax', 'EYJA_flux', 1.0, 
+!            'VASH_001;VASH_005;VASH_010;VASH_020;VASH_060;VGAS',
+!!            'VASH_001;VASH_005;VASH_010;VASH_020;VASH_060;VASH_150;VASH_250;VASH_400;VASH_600;VGAS',
+!
+!POINT(1) = 1, 113.0, 4.536,
+!           1013.25, 8.8, 2011, 11, 21, 02, 24, 00, 2011, 11, 21, 03, 03, 00,
+!           '','','','', 1.0,
+!           'PMCP',
+!POINT(2) = 1, 119.4, 6.532,
+!           1013.25, 8.5, 2011, 11, 25, 22, 00, 00, 2011, 11, 25, 22, 31, 00,
+!           '','','','', 1.0,
+!           'PMCH',
+!
+/

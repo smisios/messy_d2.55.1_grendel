@@ -1,0 +1,44 @@
+// -*- kpp -*- kpp mode for emacs
+// see example.rpl for details about replacement files
+
+// Author: Patrick Joeckel (for RC1-base-02 and subsequent)
+//         Klaus-Dirk Gottschaldt
+
+// replace the comprehensive organic chemistry by mim1:
+#include mim1
+
+// modifications for the ESCiMo base run:
+#include ESCiMo
+
+// O3s diagnostic
+#REPLACE <>
+<G01Diag> O3s            = LO3s        : {%StTrG} k_O3s; {&1714}
+#ENDREPLACE
+
+// additional diagnostic tracers (Note: these have NOT been present
+// in REFC1-DLR-01, RC1-base-01, RC2-base-01
+#REPLACE <>
+<G10G6501>  CFCl3_c   + O1D  = O1D   : {%StG}   2.3E-10{§1.2}; {&2626} // equivalent reaction for diagnostic tracer
+<J11J6500>  CFCl3_c   + hv   = Dummy : {%StGJ}  jx(ip_CFCl3){§}; {&2342} // equivalent reaction for diagnostic tracer
+<G12G6500>  CF2Cl2_c  + O1D  = O1D   : {%StG}   1.4E-10{§1.25}; {&2626} // equivalent reaction for diagnostic tracer
+<J13J6501>  CF2Cl2_c  + hv   = Dummy : {%StGJ}  jx(ip_CF2Cl2){§}; {&2342} // equivalent reaction for diagnostic tracer
+<G14G3102a> N2O_c     + O1D  = O1D   : {%UpStG}   7.25E-11{§1.1}*EXP(20./temp); {&2626} // equivalent reaction for diagnostic tracer
+<G15G3102b> N2O_c     + O1D  = O1D + Dummy : {%StG} 4.63E-11{§1.1}*EXP(20./temp); {&2626} // equivalent reaction for diagnostic tracer
+<J16J3100>  N2O_c     + hv   = Dummy : {%UpStGJ}  jx(ip_N2O){§}; {&2342} // equivalent reaction for diagnostic tracer
+<G17G6407>  CH3CCl3_c + O1D  = O1D   : {%StG}   3.E-10{§}; {&} // equivalent reaction for diagnostic tracer
+<G18G6408>  CH3CCl3_c + OH   = OH    : {%StTrG} 1.64E-12{§1.15}*EXP(-1520./temp); {&2626} // equivalent reaction for diagnostic tracer
+<J19J6402>  CH3CCl3_c + hv   = Dummy : {%StGJ}  jx(ip_CH3CCl3){§}; {&2342} // equivalent reaction for diagnostic tracer
+<J20J7601>  CF2ClBr_c + hv   = Dummy : {%StGJ}  jx(ip_CF2ClBr){§}; {&2342} // equivalent reaction for diagnostic tracer
+<J21J7500>  CF3Br_c   + hv   = Dummy : {%StGJ}  jx(ip_CF3Br){§}; {&2342} // equivalent reaction for diagnostic tracer
+#ENDREPLACE
+
+// consider HO2 + NO = HNO3 with humidity correction
+
+#REPLACE <G3201>
+<b> NO   + HO2      = NO2   + OH  : {%StTrG} k1w_NO_HO2; {&1555} 
+#ENDREPLACE
+
+#REPLACE <>
+<G3201bKG> NO   + HO2      = HNO3  : {%StTrG} k2w_NO_HO2; {&2661} 
+#ENDREPLACE
+

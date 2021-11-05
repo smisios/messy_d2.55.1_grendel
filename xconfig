@@ -1,0 +1,440 @@
+#! /bin/tcsh -f
+# Time-stamp: <2016-08-25 17:26:07 joec_pa>
+# xconfig = configure (and execute) MESSy code
+# Authors:
+# Rolf Sander,     Max-Planck-Institute, Mainz, Germany
+# Patrick Joeckel, DLR Oberpfaffenhofen, Germany
+
+#############################################################################
+
+# with "anyerror", status remains <> 0 if any error occurs:
+set anyerror
+
+# set echo verbose:
+set echo_style = both
+
+# define hline string:
+set hline = `printf %78s | tr " " "-"`
+
+if (! ${?TRASH}) then
+  echo
+  echo "WARNING: The environment variable TRASH does not exist."
+  echo "         Creating directory $HOME/trash for this purpose."
+  echo "         Instead of irreversibly removing old workdir/* files,"
+  echo "         xconfig can move them into the TRASH directory."
+  echo
+  echo "It is better to set TRASH to a directory with more disk space, e.g.:"
+  echo "mkdir /scratch/users/$USER/trash"
+  echo "setenv TRASH /scratch/users/$USER/trash"
+  echo
+  if (! -d $HOME/trash) then
+    mkdir $HOME/trash
+  endif
+  set TRASH = "$HOME/trash"
+endif
+
+# what is the current operating system?
+set system = "`uname`"
+if ( "$HOST" =~ "hydra*" ) set system = hydra
+if ( "$HOST" =~ "mpc01"  ) set system = mpc01
+echo "system = $system"
+echo "HOST   = $HOST"
+echo
+
+# default is not to start xmecca
+unset xmecca
+unset xscav
+
+#############################################################################
+# configure
+#############################################################################
+
+set confopt = ""
+if ( "$system" == "AIX"    ) set confopt = "--host=rs6000"
+if ( "$system" == "mpc01"  ) set confopt = "COMPILER=INTEL"
+if ( "$HOST" == "fluorine" ) set confopt = "--disable-MPI COMPILER=G95"
+
+echo "The configure command is:"
+echo "  ./configure $confopt"
+if ( -r Makefile ) then
+  echo "Execute 'gmake veryclean' and create new Makefile from"
+  echo "Makefile.in via ./configure? [default = n]"
+  set default = "n"
+else
+  echo "Makefile does not exist. The distribution seems to be freshly"
+  echo "unpacked / distclean(ed). In order to prepare the MECCA/KPP and"
+  echo "SVAC/KPP chemistry mechanisms, 'configure' and 'gmake tools' are"
+  echo "required. Continue? [default = y]"
+  set default = "y"
+endif
+echo "y = yes"
+echo "d = yes (debug runmode)"
+if ( -r Makefile ) echo "n = no"
+echo "q = quit"
+set inputstring = "$<"
+if ( "$inputstring" == "q" ) exit
+if ( "$inputstring" == "" ) set inputstring = "$default"
+if ( "$inputstring" == "d" ) then
+  set inputstring = "y"
+  set confopt = "$confopt RUNMODE=DEBUG"
+endif
+if ( "$inputstring" == "y" ) then
+  # cleanup:
+  if ( -r Makefile ) then
+    echo "gmake veryclean"
+    gmake veryclean
+    set exitstatus = "$status"
+    echo
+    if ( $exitstatus == '0' ) then
+      echo "'gmake veryclean' finished successfully"
+    else
+      echo "ERROR: Exit status from 'gmake veryclean' is: $exitstatus"
+      exit 1
+    endif
+  else
+    if (-f config.cache)    mv -f config.cache    $TRASH
+    if (-f config.log)      mv -f config.log      $TRASH
+    if (-f config.status)   mv -f config.status   $TRASH
+    if (-f config/config.h) mv -f config/config.h $TRASH
+  endif
+  # configure:
+  echo "./configure $confopt" > configure.log
+  ./configure $confopt |& tee configure.log
+  set exitstatus = "$status"
+  echo
+  echo "Output of configure has been written to configure.log"
+  if ( $exitstatus == "0" ) then
+    echo "'configure' finished successfully"
+    echo "The configuration is:"
+    gmake list
+  else
+    echo "ERROR: Exit status from 'configure' is: $exitstatus"
+    exit 1
+  endif
+else
+  echo "skipping configure"
+  if ( ! -r Makefile ) then
+    echo "ERROR: 'Configure' is necessary because Makefile does not exist."
+    exit 1
+  endif
+endif
+
+#############################################################################
+# gmake tools
+#############################################################################
+
+echo ; echo 'Run "gmake tools" to compile MESSy tools? [y/n/q, default=n]'
+set inputstring = "$<"
+if ( "$inputstring" == "q" ) exit
+if ( "$inputstring" == "y" ) then
+  gmake tools |& tee gmake_tools.log
+  set exitstatus = "$status"
+  if ( $exitstatus == '0' ) then
+    echo ; echo '"gmake tools" finished successfully'
+  else
+    echo ; echo 'ERROR: Exit status from "gmake tools" is: $exitstatus'
+    exit 1
+  endif
+else
+  echo 'skipping "gmake tools"'
+endif
+
+#############################################################################
+# MECCA
+#############################################################################
+
+main:
+if ( "$1" == "" ) then
+  # find the "wanted" string from the current chemical mechanism:
+  # for MECCA: distinguish kpp and kp4 path
+  # for all: avoid error messages after dau-ngrade.tcsh
+  set wanted = ""
+  if (-e messy/mbm/caaba/messy_mecca_kpp_global.f90) then
+    set wanted = `grep -i "wanted *="  messy/mbm/caaba/messy_mecca_kpp_global.f90 | sed "s|.*'\(.*\)'.*|\1|g"`
+  else
+    if (-e messy/smcl/messy_mecca_kpp.f90) then
+      set wanted = `grep -i "wanted *="  messy/smcl/messy_mecca_kpp.f90 | sed "s|.*'\(.*\)'.*|\1|g"`
+    endif
+  endif
+  if ("$wanted" != "") then
+  echo "The MECCA chemistry currently contains this chemical mechanism:"
+  echo $wanted
+  endif
+
+  if ((-e messy/smcl/messy_scav_l_kpp.f90) && (-e messy/smcl/messy_scav_i_kpp.f90)) then
+    set wanted_scav_l = `grep selection messy/smcl/messy_scav_l_kpp.f90 | awk -F '=' '{print $2}'`
+    set wanted_scav_i = `grep selection messy/smcl/messy_scav_i_kpp.f90 | awk -F '=' '{print $2}'`
+    echo
+    echo "The SCAV chemistry currently contains these chemical mechanisms:"
+    echo "liquid phase: "$wanted_scav_l
+    echo "ice phase   : "$wanted_scav_i
+  endif
+
+  # ask about running xmecca:
+  echo
+  echo "Create new chemical mechanism with xmecca / xscav ? [default=n]"
+  echo "n = no"
+  if (-e messy/mbm/caaba/mecca/xmecca) then
+    echo "y = yes (with xmecca)"
+    echo "m = mecca"
+  endif
+  if (-e messy/mbm/scav/mechanism/xscav) then
+    echo "s = scav"
+  endif
+  echo "q = quit"
+  set inputstring = "$<"
+  if ( "$inputstring" == "q" ) exit
+  if ( "$inputstring" == "y" ) set inputstring = "m"
+else
+  # run xmecca with batch file $1.bat:
+  set inputstring = "m"
+endif
+
+if ( "$inputstring" == "m" ) then
+  set xmecca
+  echo ; echo "starting xmecca."
+  if ( "$1" == "" ) then
+    (cd messy/mbm/caaba/mecca ; ./xmecca)
+    set exitstatus = "$status"
+  else
+    (cd messy/mbm/caaba/mecca ; ./xmecca $1)
+    set exitstatus = "$status"
+  endif
+  if ( $exitstatus == '0' ) then
+    echo ; echo "'xmecca' finished successfully"
+  else
+    echo ; echo "ERROR: Exit status from 'xmecca' is: $exitstatus"
+    exit 1
+  endif
+  echo ; echo "$hline"
+endif
+
+if ( "$inputstring" == "s" ) then
+  set xscav
+  echo ; echo "starting xscav."
+  (cd messy/mbm/scav/mechanism ; pwd; ./xscav)
+  set exitstatus = "$status"
+  if ( $exitstatus == '0' ) then
+    echo ; echo "'xscav' finished successfully"
+  else
+    echo ; echo "ERROR: Exit status from 'xscav' is: $exitstatus"
+    exit 1
+  endif
+  echo ; echo "$hline"
+endif
+
+#-----------------------------------------------------------------------------
+
+if ( ( $?xmecca || $?xscav ) && ("$1" == "") )then
+  echo ; echo "Jump back to create another mechanism? [y/n/q, default=n]"
+  set inputstring = "$<"
+  if ( "$inputstring" == "q" ) exit
+  if ( "$inputstring" == "y" ) then
+    goto main
+  endif
+endif
+
+#############################################################################
+# gmake mbm
+#############################################################################
+
+echo ; echo 'Run "gmake mbm" to compile MESSy Base Models? [y/n/q, default=n]'
+set inputstring = "$<"
+if ( "$inputstring" == "q" ) exit
+if ( "$inputstring" == "y" ) then
+  gmake mbm |& tee gmake_mbm.log
+  set exitstatus = "$status"
+  if ( $exitstatus == '0' ) then
+    echo ; echo '"gmake mbm" finished successfully'
+  else
+    echo ; echo 'ERROR: Exit status from "gmake mbm" is: $exitstatus'
+    exit 1
+  endif
+else
+  echo 'skipping "gmake mbm"'
+endif
+echo
+
+#############################################################################
+# compile
+#############################################################################
+
+echo "Compile the code? [y/n/q, default=y]"
+set inputstring = "$<"
+if ( "$inputstring" == "q" ) exit
+if ( "$inputstring" == "n" ) then
+  if ( $?xmecca ) then
+    echo "ERROR: You must compile the code after creating"
+    echo "       a new chemical mechanism with xmecca."
+    exit 1
+  endif
+else
+  echo "gmake (writing output to gmake.log)"
+  gmake |& tee gmake.log
+  set exitstatus = "$status"
+  if ( $exitstatus == '0' ) then
+    echo ; echo "'gmake' finished successfully"
+  else
+    echo ; echo "ERROR: Exit status from 'gmake' is: $exitstatus"
+    exit 1
+  endif
+endif
+echo ; echo "$hline"
+
+#############################################################################
+# run
+#############################################################################
+
+cd messy/util
+set allfiles = "xmessy_mmd*"
+# delete backup files from $allfiles
+set allfiles = `echo $allfiles | sed 's|[^ ]*~ ||g' | sed 's|[^ ]*~$||g'`
+set defaultscript = "xmessy_mmd"
+# use first xmessy_mmd* file if defaultscript does not exist
+if ( ! -f $defaultscript) set defaultscript = $allfiles[1]
+echo
+echo "Choose a run script for MESSy [default=$defaultscript, q=quit]:"
+set inn=1
+foreach i ($allfiles) # list all possibilities
+  echo "$inn) $i"
+  @ inn=$inn + 1
+end
+set inputstring = "$<"
+if ( "$inputstring" == "q" ) exit
+if (("$inputstring" <= $#allfiles) && ($inputstring >= 1)) then
+  set script = $allfiles[$inputstring]
+  echo "you selected $inputstring) $script"
+else
+  set script = $defaultscript
+  echo "default selection $script"
+endif
+
+# add full path
+set fullscriptname = $PWD/$script
+### echo ; echo "(full path = $fullscriptname)"
+
+#-----------------------------------------------------------------------------
+
+# go to base directory:
+cd ../..
+
+# cleanup
+
+set tempdirname = "workdir-`date +'%Y-%m-%d-%H-%M-%S'`"
+unset keep_s1r
+unset partial_cleanup
+
+echo
+echo "Cleanup of workdir/ directory before start of model run? [default=y]"
+echo "y   = yes, move workdir/* to $TRASH"
+echo "rm  = remove with rm"
+echo "n   = no, don't delete any files"
+echo "s1r = clean up, but keep save/ directory, 1D, and rerun files"
+echo "q   = quit"
+set inputstring = "$<"
+if ( "$inputstring" == "q" ) exit
+switch ("$inputstring")
+case "rm":
+  echo "You have chosen: rm"
+  echo "rm -fr workdir/*"
+  \rm -fr workdir/*
+  breaksw
+case "n":
+  echo "You have chosen: n"
+  echo
+  echo "write 0 to ESH_NO? [y/n/q, default=n]"
+  set inputstring = "$<"
+  if ( "$inputstring" == "q" ) exit
+  if ( "$inputstring" == "y" ) then
+    echo 0 >! workdir/ESH_NO
+  endif
+  breaksw
+case "s1r":
+  set partial_cleanup
+  set keep_s1r
+  echo "You have chosen: s1r"
+  breaksw
+default:
+  echo "You have chosen: y"
+  echo "Moving contents of workdir/ to $TRASH/$tempdirname"
+  mkdir $TRASH/$tempdirname
+  mv workdir/* $TRASH/$tempdirname/
+  echo "... done!"
+  breaksw
+endsw
+
+if ($?partial_cleanup) then
+  echo "partial cleanup of workdir/"
+  echo "Moving contents of workdir/ to $tempdirname"
+  mkdir $tempdirname
+  mv workdir/* $tempdirname/
+  if ( $status != '0' ) then
+    echo "ERROR WHEN EXECUTING: mv workdir/* $tempdirname/"
+    exit
+  endif
+  cd $tempdirname
+  if ($?keep_s1r) then
+    # 1D files
+    echo "keeping forcing"
+    mv forcing ../workdir
+    echo "keeping residui"
+    mv residui ../workdir
+    # rerun files
+    echo "keeping bin/*"
+    mv bin    ../workdir
+    echo "keeping nml/*"
+    mv nml    ../workdir
+    echo "keeping save/*"
+    mv save   ../workdir
+    echo "keeping ESH_NO"
+    mv ESH_NO ../workdir
+    echo "keeping rerun*"
+    mv rerun* ../workdir
+    echo "keeping *.rst"
+    mv *.rst  ../workdir
+  endif
+  cd -
+  mv -f $tempdirname $TRASH
+
+  echo
+  echo "write 0 to ESH_NO? [y/n/q, default=n]"
+  set inputstring = "$<"
+  if ( "$inputstring" == "q" ) exit
+  if ( "$inputstring" == "y" ) then
+    echo 0 >! workdir/ESH_NO
+  endif
+
+endif
+
+#-----------------------------------------------------------------------------
+
+echo "$hline" ; echo
+echo "Do you want to run $script? [y/n/q, default=y]"
+set inputstring = "$<"
+if ( "$inputstring" == "n" ) exit
+if ( "$inputstring" == "q" ) exit
+
+cd workdir
+echo "submitting $script to queue on $system"
+echo
+
+if ( "$system" == "mpc01" ) then
+  set job_id = `qsub $fullscriptname | sed 's|Your job ||' | sed 's| .*||'`
+  qstat
+  echo "Show job status:       qstat"
+  echo "Delete job:            qdel $job_id"
+  echo "Follow output:         tail -f workdir/$script.$job_id.log"
+endif
+
+if ( "$system" == "hydra" ) then
+  set job_id = `llsubmit $fullscriptname | sed 's|.* "||' | sed 's|" .*||'`
+  llq -u $USER
+  echo "Show job status:       llq -u $USER"
+  echo "Delete job:            llcancel $job_id"
+  echo "Follow output:         tail -f workdir/xmessy_mmd.*.out.log"
+
+endif
+
+#############################################################################
+
+exit

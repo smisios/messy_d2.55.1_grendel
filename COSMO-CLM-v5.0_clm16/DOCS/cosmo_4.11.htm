@@ -1,0 +1,908 @@
+<!DOCTYPE html 
+     PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+     "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xml:lang="en" lang="en">
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="GENERATOR" content="Mozilla/4.7C-SGI [en] (X11; I; IRIX64 6.5 IP27) [Netscape]">
+   <title>Changes in the COSMO-Model from 4.2 to 4.11</title>
+<style type="text/css">
+  body { font-family:       Arial;
+         font-size:         12pt;
+         background-repeat: no-repeat; 
+         margin:            1em; }
+
+  tt   { font-size:         12pt;}
+
+  li   { margin-top:         5pt;
+         margin-bottom:      5pt }
+
+  th   { border:           1px solid black;
+         padding:          3pt;
+         vertical-align:   top;
+         background-color: lightblue;}
+
+  td   { border:           1px solid black;
+         padding:          3pt;
+         vertical-align:   top;}
+
+  td.hilit       { border:           1px solid black;
+                   padding:          1pt;
+                   vertical-align:   top;
+                   background-color: lightblue;}
+
+  td.clean       { padding:          0pt;
+                   border-style:     none;
+                   vertical-align:   top;}
+
+  td.notes       { padding:          3pt;
+                   border-style:     none;
+                   vertical-align:   top;}
+
+  table.note     { border-width:     0pt;
+                   border-style:     none;
+                   margin-left:      5pt;
+                   margin-top:       1pt;
+                   margin-bottom:    1pt;
+                   cell-padding:     5pt;
+                   vertical-align:   top;
+                   text-align:       left;}
+  
+  table.atte     { border-width:     0pt;
+                   border-style:     none;
+                   margin-left:      5pt;
+                   margin-top:       1pt;
+                   margin-bottom:    1pt;
+                   cell-padding:     5pt;
+                   vertical-align:   top;
+                   text-align:       left;
+                   background-color: red;}
+  
+  table.namelist { border-width:  2pt;
+                   border-style:  groove;
+                   border-color:  black;
+                   width:         90%;
+                   text-align:    left;
+                   margin-top:    1pt;
+                   margin-bottom: 1pt;
+                   padding:       3pt;
+                   align:         center;}
+  
+  tr.headings    { text-align:       left;
+                   vertical-align:   top;
+                   border-width:     1pt;
+                   border-style:     groove;
+                   border-color:     grey;
+                   padding:          2pt;
+                   font-weight:      bold;}
+
+</style>
+
+</head>
+  <body text="#000000" bgcolor="#FFFFFF" link="#0000EE" vlink="#551A8B" alink="#FF0000">
+
+<center>
+<h1>
+<a NAME="begin">Documentation of the Changes in the COSMO-Model <br /> from Version 4.2 to 4.11</a></h1></center>
+
+<p>
+In the following, the main changes for the COSMO-Model between Version 4.2 and Version 4.11
+are briefly documented. For more comprehensive explanations take a look to the file
+<tt>misc.global</tt>, which is distributed with the COSMO-Model source code. Also, only
+the most important Namelist changes are described here. For a full documentation please
+refer to the User Guide.
+</p>
+
+<h4><a NAME="content">Contents:</a></h4>
+
+<ol>
+<li><a href="#chantec">Technical Changes</a></li>
+<li><a href="#chandyn">Changes in the Dynamics</a></li>
+  <ul>
+    <li><a href="#REF">New (alternative) reference atmosphere</a></li>
+    <li><a href="#POT">Potential temperature as advected variable in the Runge-Kutta dynamics</a></li>
+    <li><a href="#FIL">Generalized Asselin filter in the Leapfrog dynamics</a></li>
+  </ul>
+<li><a href="#chanphy">Changes in the Physics</a></li>
+  <ul>
+    <li><a href="#ART">Introduction of an online coupling of aerosols and reactive tracers: COSMO-ART</a></li>
+    <li><a href="#SSO">Introduction of the sub-grid scale orography scheme</a></li>
+    <li><a href="#SEA">Introduction of the sea-ice scheme</a></li>
+    <li><a href="#TIE">Modifications in the Tiedtke convection scheme</a></li>
+    <li><a href="#TKE">Modifications in the TKE scheme</a></li>
+  </ul>
+<li><a href="#chandia">Changes in the Diagnostics</a></li>
+  <ul>
+    <li><a href="#T2M">Additional options to calculate the 2m temperature</a></li>
+    <li><a href="#GUS">Additional options to calculate wind gusts</a></li>
+  </ul>
+<li><a href="#chanass">Changes in the Assimilation</a></li>
+  <ul>
+    <li><a href="#OBS">Reading observation data from NetCDF files</a></li>
+  </ul>
+<li><a href="#chanfur">Further developments still under testing</a></li>
+  <ul>
+    <li><a href="#SNO">The multi-layer snow model</a></li>
+    <li><a href="#EXT">Use of additional external parameters</a></li>
+  </ul>
+<li><a href="#namelis">Brief description of new and changed Namelist Variables</a></li>
+<li><a href="#results">Changes of Results</a></li>
+</ol>
+<p>
+<hr>
+
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="chantec">1. Technical Changes</a></h3>
+
+<!---------------------------------------------------------------------------->
+
+<p>With COSMO_ART and the necessity to have some vector processor specific
+(or NEC-SX specific) optimizations, we implemented more ifdef-directives to
+the COSMO-Model. If you want to run the corresponding features, you have to
+define the appropriate directives before compiling the program.
+</p>
+
+<ul>
+ <li>COSMOART: <br />
+     if you want to compile the model for including the COSMO-ART,
+     you have to set -DCOSMOART </li>
+  
+ <li>POLLEN:  <br />
+     if you want to compile the model for including the Pollen package,
+     you have to set -DPOLLEN </li>
+
+ <li>NEC_SX:  <br />
+     if you want to do some special optimizations for the NEC-SX,
+     you have to set -DNECSX. These special optimizations are:
+     <ul>
+       <li>use of 3D versions of advection- and relaxation operators
+           Tests on the IBM in Reading showed, that this is not
+           beneficial for this architecture. Most probably the cache
+           use is heavily disturbed because of bigger local variables</li>
+       <li>Enabling of loop collapsing in some routines:
+           The computational indices of the horizontal loops are
+           changed so that a twodimensional field is processed as one
+           long vector. </li>
+      </ul>
+</ul>
+
+<p>Because of introducing more ifdefs, we changed the suffix of the main program
+again to be lmorg.f90 (in the last versions it was lmorg.F90). For a successful
+compilation of the COSMO-Model (no matter whether you use some of the ifdef
+variables or not), you have to use the preprocessor of your compiler in
+any case.
+</p>
+
+<p align="right"><a href="#content">Back to Contents</a>
+
+<hr>
+
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="chandyn">2. Changes in the Dynamics</a></h3>
+
+<!---------------------------------------------------------------------------->
+
+<h4><a NAME="REF">New (alternative) reference atmosphere <br />
+   (by G&uuml;nther Z&auml;ngl; Version 4.8)</a></h4>
+
+<p>A new (alternative) reference atmosphere has been introduced, which
+   is based on the temperature profile<br />
+   <center><tt>T0(z) = T00 + delta_t EXP(-z/h_scal),</tt></center><br />
+   with default values of <tt>T00 = 213.15 K</tt>, <tt>delta_t = 75 K</tt> 
+   and <tt>h_scal = 10 km</tt>; (in the model code, <tt>T00 = t0sl - delta_t</tt>).
+</p>
+
+<p>Thus, the reference atmosphere approaches an isothermal profile in the
+   stratosphere, whereas the existing reference profile has an increasingly
+   negative vertical temperature gradient in the stratosphere. The vertical
+   extent of the model domain is no longer limited with the new reference
+   atmosphere.
+</p>
+
+<p>Except for idealized simulations, the reference atmosphere can only be
+   chosen in INT2LM (from Version 1.9 on). All parameters of the reference
+   atmosphere are coded in the GRIB/NetCDF records, and the COSMO-Model determines
+   the type of reference atmosphere by decoding the GRIB/NetCDF records.
+</p>
+
+<p>The following holds right now (might be changed in the future
+to account for additional vertical coordinate types):</p>
+
+<ul>
+ <li>For the old reference atmosphere the vertical coordinate type (<tt>ivctype</tt>)
+     is: 1 - 3.<br />
+     The internal model variable <tt>irefatm</tt> is set to 1.</li>
+ <li>For the new reference atmosphere the vertical coordinate type (<tt>ivctype</tt>)
+     is: 101 - 103.<br />
+     The internal model variable <tt>irefatm</tt> is set to 2.</li>
+ <li>It is: <tt>ivctype = </tt>:<br />
+       <tt>1, 101</tt>:   Pressure-based vertical coordinate on input<br />
+       <tt>2, 102</tt>:   Heigt based vertical coordinate on input<br />
+       <tt>3, 103</tt>:   SLEVE coordinate</li>
+</ul>
+
+<p>The new reference atmosphere needs 2 additional parameters, which
+   are also coded in the GRIB/NetCDF records:</p>
+
+<ul>
+ <li><tt>delta_t</tt>: temperature difference between sea level and stratosphere</li>
+ <li><tt>h_scal</tt>: scale height</li>
+</ul>
+
+<p align="right"><a href="#content">Back to Contents</a>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+
+<h4><a NAME="POT">Potential temperature as advected variable in the Runge-Kutta dynamics <br />
+   (by G&uuml;nther Z&auml;ngl; Version 4.9)</a></h4>
+
+<p>An option for using potential temperature as advected variable has  
+   been implemented in the Runge-Kutta scheme. The default still is using
+   perturbed temperature.
+</p>
+
+<p>A new Namelist variable <tt>itheta_adv</tt>  has been introduced in /DYNCTL/ 
+   to choose the desired option:
+</p>
+
+<ol>
+  <li>use perturbation temperature (T') for advection (default) </li>
+  <li>use perturbation potential temperature (theta') </li>
+  <li>use full potential temperature (theta)</li>
+</ol>
+
+<p align="right"><a href="#content">Back to Contents</a>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+
+<h4><a NAME="FIL">Generalized Asselin filter in the Leapfrog dynamics <br />
+   (by G&uuml;nther Z&auml;ngl, based on the work of Williams 2009; Version 4.11)</a></h4>
+
+<p>An option to use a generalized Asselin Filter has been introduced. A new Namelist variable
+   <tt>alphaass</tt> has been implemented for that. With the default value (<tt>1.0</tt>)
+   the same results as before are obtained.
+</p>
+
+<p align="right"><a href="#content">Back to Contents</a>
+
+<hr>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="chanphy">3. Changes in the Physics</a></h3>
+
+<!---------------------------------------------------------------------------->
+
+<h4><a NAME="ART">Introduction of an online coupling of aerosols and reactive 
+   tracers: COSMO-ART <br />(by Karlsruhe Institute of Technology; Version 4.9)</a></h4>
+
+<p>COSMO_ART is a chemistry package to compute aerosols and reactive tracers.
+It also includes a package to use pollen as tracers. The work of
+implementing COSMO_ART into the COSMO-model has been done by the group of
+Bernhard Vogel at the Karlsruhe Institute of Technology.
+</p>
+
+<p>The COSMO-Model has been adapted to include this package via online
+coupling into its meteorology. The setup of the model, the I/O-module
+and the dynamics have been adapted to work with the additional variables.
+</p>
+
+<p>COSMO_ART is implemented using ifdef-statements.  Therefore
+COSMO_ART or the Pollen part have to be activated at compile time with
+the preprocessor directives -DCOSMOART or -DPOLLEN, resp. If these
+directives are not set, no change to the COSMO-Model is done.
+</p>
+
+<p>There are 3 new Namelist switches in /RUNCTL/: with <tt>l_cosmo_art</tt> and <tt>l_pollen</tt>, resp.,
+the execution of COSMO_ART can be controlled. In addition, with <tt>ldebug_art</tt>, a
+debug mode for COSMO_ART can be activated. The default for all these variables
+is <tt>.FALSE.</tt>
+</p>
+
+<p>The COSMO_ART package itself is NOT part of the COSMO-Model. For accessing
+the source code for COSMO_ART, please contact the Karlsruhe Institute of Technology
+directly.
+</p>
+
+<p align="right"><a href="#content">Back to Contents</a>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+
+<h4><a NAME="SSO">Introduction of the sub-grid scale orography scheme <br />
+   (by Jan-Peter Schulz; Version 4.5)</a></h4>
+
+<p>The sub-grid scale orography (SSO) scheme by Lott and Miller (1997) has
+   been implemented in the COSMO-Model. It is also included in the DWD
+   global model and works here well. The scheme deals explicitly with a
+   low-level flow which is blocked when the sub-grid scale orography is
+   sufficiently high. For this blocked flow separation occurs at the
+   mountain flanks, resulting in a form drag. The upper part of the
+   low-level flow is lead over the orography, while generating gravity
+   waves. Verification at DWD had shown that the forecasted surface
+   pressure in the COSMO-EU model shows a systematic bias. In particular,
+   in wintertime high pressure systems tend to develop a positive pressure
+   bias, by 1-2 hPa after 48h, low pressure systems a negative bias ("highs
+   too high, lows too low"). Assumed causes are an underestimation of the
+   cross-isobar flow in the PBL, caused by too little surface drag or too
+   weak blocking at the orography. Tests with an envelope orography which
+   exhibits considerably higher values in the mountains have shown a high
+   sensitivity of the model to this change in orography with respect to the
+   blocking of cyclones. Consequently, low pressure systems were filled
+   more efficiently, the negative pressure bias was reduced. But an obvious
+   disadvantage of the envelope orography is that the precipitation fields
+   are altered in an unfavourable way. An alternative way to increase the
+   surface drag and the blocking while not altering the precipitation
+   fields is the use of an SSO scheme.
+</p>
+
+<p>New Namelist switches:
+   <ul>
+     <li><tt>lsso</tt>:    to turn on / off the scheme </li>
+     <li><tt>nincsso</tt>: to call the scheme only in intervals of nincsso steps </li>
+   </ul>
+</p>
+
+<p align="right"><a href="#content">Back to Contents</a>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+
+<h4><a NAME="SEA">Introduction of the sea-ice scheme <br />
+   (by Jan-Peter Schulz; Version 4.10)</a></h4>
+
+<p>The sea-ice model, that is already used in DWD's global model GME has been
+   implemented into the COSMO-Model.</p>
+
+<p>New Namelist switch:
+   <ul>
+     <li><tt>lseaice</tt>: to turn on / off the scheme </li>
+   </ul>
+</p>
+
+<p align="right"><a href="#content">Back to Contents</a>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+
+<h4><a NAME="TIE">Modifications in the Tiedtke convection scheme <br />
+   (by Dmitrii Mironov; Version 4.3)</a></h4>
+
+<p>A number of changes in the Tiedtke cumulus convection scheme, that are related
+to the treatment of convective cloud condensate as a mixed water-ice phase and
+of detrained convective cloud condensate are made.
+</p>
+
+<p>These are
+<ul>
+  <li>the relative humidity threshold for the evaporation of convective
+      precipitation in the sub-cloud layer is set to 80%
+      (95% in the previous operational formulation),</li>
+  <li>cloud water-cloud ice mixed phase in convective clouds is allowed over
+      a certain temperature range (in the previous operational formulation,
+      convective cloud condensate is either water or ice, depending upon the
+      air temperature being higher or lower than the water freezing point), and</li>
+  <li>detrained convective cloud condensate is saved as tendencies of the
+      cloud water and of the cloud ice, these tendencies are then passed to
+      the COSMO-model physics and dynamics schemes for further processing
+      (the previous operational formulation assumes instantaneous evaporation
+       of detrained convective cloud condensate).</li>
+</ul>
+</p>
+
+<p>The fraction of cloud ice is computed as a function of temperature. The lower
+and the upper bounds of the temperature range, where convective cloud water
+and convective cloud ice are allowed to co-exist and the form of the
+interpolation function are the same as in the ECMWF IFS (IFS Documentation 2006).
+</p>
+
+<p align="right"><a href="#content">Back to Contents</a>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+
+<h4><a NAME="TKE">Modifications in the TKE scheme <br />
+   (by Matthias Raschendorfer, Oliver Fuhrer; Version 4.10)</a></h4>
+
+<p>The following changes were implemented in the TKE scheme</p>
+<ul>
+<li>Introduction of implicit vertical diffusion also for TKE and
+   correction of a bug related with the explicit TKE diffusion (by Oliver Fuhrer).
+   Adoptions with respect to the implicit vertical TKE diffusion.
+   This is controlled by a new Namelist switch <tt>limpltkediff</tt>
+   (default: <tt>.FALSE.</tt>)</li>
+
+<li>Introduction of 3D and horizontal corrections for windshear production
+   incl. metric terms.
+   This is controlled by a new Namelist switch <tt>itype_sher</tt> (default: 0)</li>
+
+<li>Introduction of a separate horizontal shere mode and wake turbulence
+   terms due to the SSO-scheme.
+   This is controlled by a new Namelist switch <tt>ltkesso</tt> (default: <tt>.FALSE.</tt>)
+   </li>
+
+<li>Introduction of a stablity correction for turbulent length scale.</li>
+</ul>
+
+<p align="right"><a href="#content">Back to Contents</a>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+
+<hr>
+
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="chandia">4. Changes in the Diagnostics</a></h3>
+
+<!---------------------------------------------------------------------------->
+
+<h4><a NAME="T2M">Additional options to calculate the 2m temperature <br />
+   (by Matthias Raschendorfer; Version 4.3/4.8)</a></h4>
+
+<p>In the surface scheme, the interpolation onto diagnostic levels has changed,
+   in particular it is now done without an exponential canopy profile, but with 
+   a diagnostic Prandtl layer interpolation even for scalars, using an adopted 
+   canopy layer resistance. This measure changes the values of the 2m temperature.
+</p>
+
+<p>NOTE: </br >
+   Because the 2m-temperature is also used in the soil model, these changes
+   also influence the results of the forecast.
+</p>
+
+<p>To choose also the old computation of the 2m temperature, a new Namelist 
+   switch <tt>itype_diag_t2m</tt> has been introduced:
+<ol>
+  <li>New computation with an exponential canopy profile,
+      but with a diagnostic Prandtl layer interpolation
+      even for scalars, using an adopted canopy layer
+      resistance. (Default)</li>
+  <li>Old computation with exponential canopy profile</li>
+</ol>
+</p>
+
+<p align="right"><a href="#content">Back to Contents</a>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+
+<h4><a NAME="GUS">Additional options to calculate wind gusts <br />
+   (by MCH; Version 4.8)</a></h4>
+
+<p>Several options have been implemented to compute the wind gusts.
+   To choose a special option, a new Namelist switch <tt>itype_diag_gusts</tt>
+   has been introduced:
+
+<ol>
+  <li>Dynamical gust derived from lowest model layer</li>
+  <li>Dynamical gust derived from 30 m</li>
+  <li>Computation of dynamical gust after Brasseur</li>
+</ol>
+</p>
+
+<p>The computation of the gust has been splitted into a dynamical and a
+   convective gust (with corresponding fields and output variables
+   vgust_dyn and vgust_con). vmax_10m still is the combination of both.
+</p>
+
+<p align="right"><a href="#content">Back to Contents</a>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+
+<hr>
+
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="chanass">5. Changes in the Assimilation</a></h3>
+
+<!---------------------------------------------------------------------------->
+
+<h4><a NAME="OBS">Reading observation data from NetCDF files <br />
+       (by Christoph Schraff; Version 4.5)</a></h4>
+
+<p>
+A new interface has been introduced to read and pre-process observation
+data from NetCDF files instead of an AOF file.
+These NetCDF files are obtained by simple conversion from BUFR files
+which contain BUFR reports according to Table Driven Code Formats (TDCF)
+of WMO (see
+<tt>http://www.wmo.int/pages/prog/www/WMOCodes/OperationalCodes.html</tt>,
+<tt>http://www.wmo.int/pages/prog/www/WMOCodes/TemplateExamples.html</tt>)
+for those data types where TDCF have been defined, namely for
+SYNOP, SHIP, PILOT and TEMP types, but also for BUOY and AMDAR.
+For ACARS, BUFR from ARINC Centre 56 (USA) and from UK Met Office
+can be read, or alternatively, a combined format.
+For wind profiler, RASS, and VAD radar wind, a format defined by
+DWD is read, since there is no standard format defined by WMO yet.
+The names of the input files, that can already be used, are:
+</p>
+
+<ul>
+  <li><tt>cdfin_temp</tt></li>
+  <li><tt>cdfin_tempship</tt></li>
+  <li><tt>cdfin_pilot</tt></li>
+  <li><tt>cdfin_pilot_p</tt></li>
+  <li><tt>cdfin_amdar_ml</tt></li>
+  <li><tt>cdfin_amdar</tt></li>
+  <li><tt>cdfin_acars:</tt> ACARS combined format from DWD</li>
+  <li><tt>cdfin_wprof</tt></li>
+  <li><tt>cdfin_rass</tt></li>
+  <li><tt>cdfin_radar_vad</tt></li>
+  <li><tt>cdfin_synop</tt></li>
+  <li><tt>cdfin_synop_mob</tt></li>
+  <li><tt>cdfin_ship</tt></li>
+  <li><tt>cdfin_buoy</tt></li>
+  <li><tt>cdfin_acars_uk:</tt> ACARS BUFR from UK Met Office</li>
+  <li><tt>cdfin_acars_us:</tt> ACARS BUFR from ARINC Centre 56 (USA)</li>
+</ul>
+
+<p>
+Other input files cannot yet be used. If a file is empty, it should be removed.
+</p>
+
+<p>
+From which files the observations are read is controlled by the 2 Namelist variables
+(in the group <tt>NUDGING</tt>):
+</p>
+
+<p>
+<center>
+<table border="1" cellspacing="3" class="namelist">
+ <tbody>
+   <tr>
+     <th>Name</th>
+     <th>Meaning</th>
+     <th align="center">Default</th>
+   </tr>
+   <tr>
+     <td><tt>itype_obfile</tt></td>
+     <td>to determine, from which file(s) the observations are read
+         <ul>
+           <li><tt>1</tt>: read observations from AOF</li>
+           <li><tt>2</tt>: read observations from NetCDF files</li>
+         </ul>
+       </td>
+     <td align="center"><tt>1</tt></td>
+   </tr>
+   <tr>
+     <td><tt>ycdfdir</tt></td>
+     <td>directory in which the NetCDF input observation files reside</td>
+     <td align="center"><tt>./</tt></td>
+   </tr>
+ </tbody>
+</table>
+</center>
+</p>
+
+<p align="right"><a href="#content">Back to Contents</a>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+
+<hr>
+
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="chanfur">6. Further Developments still under Testing</a></h3>
+
+<!---------------------------------------------------------------------------->
+
+<h4><a NAME="SNO">The multi-layer snow model <br />
+   (by Ekaterina Machulskaya; Version 4.11)</a></h4>
+
+<p>A new multi-layer snow model has been implemented in <tt>src_soil_multlay.f90</tt>.
+This model is still under testing and it is not recommended to use it right now.
+More information will be given, once the tests have proceeded.
+</p>
+
+<p align="right"><a href="#content">Back to Contents</a>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+
+<h4><a NAME="EXT">Use of additional External Parameters <br />
+   (by J&uuml;rgen Helmert; Version 4.11)</a></h4>
+
+<p>Additional external parameter fields have been introduced for
+<ul>
+  <li>Surface emissivity</li>
+  <li>Aerosol distributions</li>
+  <li>Minimum stomata resistance for plants</li>
+</ul>
+
+The use of these additional parameters is still under testing. The corresponding
+parameters are not yet included in the external parameter files distributed by
+DWD. More information will be given, once the tests have proceeded.
+</p>
+
+<p align="right"><a href="#content">Back to Contents</a>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+
+<hr>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="namelis">7. Summary of new and changed Namelist Variables</a></h3>
+
+<p>There were the following changes for the Namelist variables:</p>
+
+<center>
+<table border="1" cellspacing="3" class="namelist">
+ <tbody>
+   <tr>
+     <th>Group</th>
+     <th>Name</th>
+     <th>Meaning</th>
+     <th align="center", width="5%">Default</th>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td class="hilit" rowspan="9"><tt>/RUNCTL/</tt></td>
+     <td><tt>itype_timing</tt></td>
+     <td>To specify, how a timing of the program should be done:
+         <ol>
+           <li>output hourly timings per task</li>
+           <li>output timings per task, summed up over all hours</li>
+           <li>output hourly mean values for all tasks</li>
+           <li>output mean values for all tasks, summed up over all hours</li>
+         </ol>
+       </td>
+     <td align="center"><tt>4</tt></td>
+   </tr>
+   <tr>
+     <td><tt>ltime_mean <br />ltime_proc</tt></td>
+     <td>These variables have been eliminated. They are replaced by <tt>itype_timing</tt></td>
+     <td align="center"><tt>-</tt></td>
+   </tr>
+   <tr>
+     <td><tt>itype_calendar</tt></td>
+     <td>To specify, which calendar is used during the forecast
+         <ol>
+           <li>Gregorian calendar</li>
+           <li>Every year has 360 days</li>
+         </ol>
+       </td>
+     <td align="center"><tt>1</tt></td>
+   </tr>
+   <tr>
+     <td><tt>lyear_360</tt></td>
+     <td>This variable has been eliminated. It is replaced by <tt>itype_calendar</tt></td>
+     <td align="center"><tt>-</tt></td>
+   </tr>
+   <tr>
+     <td><tt>lcori, lmetr<br />lradlbc</tt></td>
+     <td>These variables have been moved to the group /DYNCTL/.</td>
+     <td align="center"><tt>-</tt></td>
+   </tr>
+   <tr>
+     <td><tt>lartif_data</tt></td>
+     <td>This variable has been moved from group /IOCTL/ (where it was named
+         <tt>lgen</tt> to the group /RUNCTL/.</td>
+     <td align="center"><tt>-</tt></td>
+   </tr>
+   <tr>
+     <td><tt>l_cosmo_art</tt></td>
+     <td>Main switch to activate the COSMO-ART.</td>
+     <td align="center"><tt>.FALSE.</tt></td>
+   </tr>
+   <tr>
+     <td><tt>l_pollen</tt></td>
+     <td>Main switch to activate the Pollen Module.</td>
+     <td align="center"><tt>.FALSE.</tt></td>
+   </tr>
+   <tr>
+     <td><tt>ldebug_art</tt></td>
+     <td>To switch on/off the debug output for the ART / Pollen module.</li>
+     <td align="center"><tt>.FALSE.</tt></td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td class="hilit" rowspan="6"><tt>/DYNCTL/</tt></td>
+     <td><tt>itheta_adv</tt></td>
+     <td>Option for using potential temperature as advected variable in the
+         Runge-Kutta scheme:
+       <ol start="0">
+        <li>Use perturbation of temperature (T') for advection.</li>
+        <li>Use perturbation of potential temperature (theta') for advection.</li>
+        <li>Use full potential temperature (theta) for advection.</li>
+       </ol></td>
+     <td align="center"><tt>0</tt></td>
+   </tr>
+   <tr>
+     <td><tt>alphaass</tt></td>
+     <td>Weight for Williams 2009 modification to the Asselin time-filter.
+         (0.5 < alphaass <= 1.0)</td>
+     <td align="center"><tt>1.0</tt></td>
+   </tr>
+   <tr>
+     <td><tt>lcori, lmetr<br />lradlbc</tt></td>
+     <td>These variables have been moved from /RUNCTL/ to the group /DYNCTL/.</td>
+     <td align="center"><tt>-</tt></td>
+   </tr>
+   <tr>
+     <td><tt>itype_lbcqx</tt></td>
+     <td>This variable has been renamed to <tt>itype_outflow_qrsg</tt> for 
+         a more meaningful name.</td>
+     <td align="center"><tt>-</tt></td>
+   </tr>
+   <tr>
+     <td><tt>itype_outflow_qrsg</tt></td>
+     <td>To choose the type of relaxation treatment for <tt>qr, qs, qg</tt>.
+       <ol start="1">
+        <li><tt>qr, qs, qg</tt> are treated with the same lateral boundary
+            relaxation as the other variables.</li>
+        <li>No relaxation of <tt>qr, qs, qg</tt> is done at outflow
+            boundary points.</li>
+       </ol></td>
+     <td align="center"><tt>1</tt></td>
+   </tr>
+   <tr>
+     <td><tt>itype_lbc_qrsg</tt></td>
+     <td>To choose the type of lateral boundary treatment for <tt>qr, qs, qg</tt>,
+         i.e., which values are used at the boundary zone:
+       <ol start="1">
+        <li>A zero-gradient condition is used for <tt>qr, qs, qg</tt>.</li>
+        <li><tt>qr, qs, qg</tt> are set to 0.0 at the boundary zone. </li>
+        <li>No presetting is done at all at the boundary zone.</li>
+       </ol></td>
+     <td align="center"><tt>1</tt></td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td class="hilit" rowspan="9"><tt>/PHYCTL/</tt></td>
+     <td><tt>lsso</tt></td>
+     <td>Main switch to include subgrid scale orography processes.</td>
+     <td align="center"><tt>.FALSE.</tt></td>
+   </tr>
+   <tr>
+     <td><tt>nincsso</tt></td>
+     <td>Interval (in time steps) between two calls of the SSO scheme.</td>
+     <td align="center"><tt>5</tt></td>
+   </tr>
+   <tr>
+     <td><tt>lseaice</tt></td>
+     <td>Main switch to switch on/off the sea ice scheme.</td>
+     <td align="center"><tt>.FALSE.</tt></td>
+   </tr>
+   <tr>
+     <td><tt>lemiss</tt></td>
+     <td>Option, to use an external surface emissivity map (if set to <tt>.TRUE.</tt>).
+         If <tt>lemiss</tt>} is <tt>.FALSE.</tt> (default), a constant surface emissivity
+         is assumed.</td>
+     <td align="center"><tt>.FALSE.</tt></td>
+   </tr>
+   <tr>
+     <td><tt>lstomata</tt></td>
+     <td>Switch to use a minimum stomata resistance map for plants.</td>
+     <td align="center"><tt>.FALSE.</tt></td>
+   </tr>
+   <tr>
+     <td><tt>itype_aerosol</tt></td>
+     <td>Switch to choose the type of aerosol map:
+         <ol>
+           <li>Tanre. Constant aerosol distributions are given for rural, 
+               urban, desert areas and the sea.</li>
+           <li>Tegen. A monthly aerosol climatology is used for sulfate drops,
+               total dust, organic, black carbon and sea salt.</li>
+         </ol>
+       </td>
+     <td align="center"><tt>1</tt></td>
+   </tr>
+   <tr>
+     <td><tt>itype_root</tt></td>
+     <td>Switch to select the type of root distribution:
+         <ol>
+           <li>Uniform.</li>
+           <li>Exponential (following Arora and Boer, 2003).</li>
+         </ol>
+       </td>
+     <td align="center"><tt>1</tt></td>
+   </tr>
+   <tr>
+     <td><tt>itype_conv</tt></td>
+     <td>To specify the type of convection parameterization
+         <ol start="0">
+           <li>Tiedtke scheme</li>
+           <li>Kain-Fritsch scheme (Caution: Not fully tested yet)</li>
+           <li>Bechtold scheme (Caution: Not yet in the official code)</li>
+           <li>Shallow convection based on Tiedtke scheme</li>
+         </ul>
+       </td>
+     <td align="center"><tt>0</tt></td>
+   </tr>
+   <tr>
+     <td><tt>ltiedtke<br />lkainfri<br />lbechtol<br />lshallow</tt></td>
+     <td>These variables have been eliminated. They are replaced by <tt>itype_conv</tt></td>
+     <td align="center"><tt>-</tt></td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td class="hilit" rowspan="2"><tt>/DIACTL/</tt></td>
+     <td><tt>itype_diag_t2m</tt></td>
+     <td>To specify the method for computing the 2m temperature:
+       <ol>
+        <li>Computation with an exponential canopy profile,
+            but with a diagnostic Prandtl layer interpolation
+            even for scalars, using an adopted canopy layer
+            resistance.</li>
+        <li>Computation with exponential canopy profile.</li>
+       </ol>
+       </td>
+     <td align="center"><tt>1</tt></td>
+   </tr>
+   <tr>
+     <td><tt>itype_diag_t2m</tt></td>
+     <td>To specify the method for computing the maximal wind gusts:
+       <ol>
+        <li>Dynamical gust derived from lowest model layer. </li>
+        <li>Dynamical gust derived from 30 m. </li>
+        <li>Dynamical gust derived after Brasseur. </li>
+       </ol>
+       </td>
+     <td align="center"><tt>1</tt></td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td class="hilit" rowspan="2"><tt>/NUDGING/</tt></td>
+     <td><tt>itype_obfile</tt></td>
+     <td>to determine, from which file(s) the observations are read
+         <ol>
+           <li>read observations from AOF</li>
+           <li>read observations from NetCDF files</li>
+         </ol>
+       </td>
+     <td align="center"><tt>1</tt></td>
+   </tr>
+   <tr>
+     <td><tt>ycdfdir</tt></td>
+     <td>directory in which the NetCDF input observation files reside</td>
+     <td align="center"><tt>./</tt></td>
+   </tr>
+<!---------------------------------------------------------------------------->
+ </tbody>
+</table>
+</center>
+
+<p align="right"><a href="#content">Back to Contents</a>
+<spacer type=vertical size=10>
+<hr>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="results">8. Changes of Results</a></h3>
+
+<p>Because of the many changes, the results of all applications have been 
+   changed. New reference data sets are now provided on the ftp-server for 
+   both dynamical cores, the Leapfrog-scheme (coarser resolution with 7 km)
+   and the Runge-Kutta scheme (finer resolution with 2.8 km).</p>
+
+<p align="right"><a href="#content">Back to Contents</a>
+
+</body>
+</html>

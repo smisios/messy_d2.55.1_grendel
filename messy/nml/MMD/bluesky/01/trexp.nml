@@ -1,0 +1,188 @@
+! -*- f90 -*-
+&CPL
+! ALLOW POINT EMISSIONS ALSO FOR NON-TREXP-TRACERS ?
+l_force_emis = T,
+! ALLOW REACTION / DECAY ALSO FOR NON-TREX-TRACERS ?
+l_allow_ext = T,
+!
+L_GP = T,
+L_LG = F,
+l_tf_corr = F,         ! time filter correction (classic points only!)
+!
+! ### LIST OF TRACERS
+! ### O : ORDER
+!         = 0 : dx/dt = -ka * x       + p , [ka] = 1/s , Ta = 0
+!         = 1 : dx/dt = -ka * x * [Y] + p , [ka] = cm3/s
+!         = -1: dx/dt = -k  * x * [Y] + p , [ka] = cm3/s
+!               k = ka + c_air*kb           [kb] = cm6/s, [c_air] = 1/cm3
+!         (p: production, x: mixing ratio, Y: reaction partner)
+! ### ka: O=0 : DECAY CONSTANT              [ka] = 1/s
+!         O=1 : ARRHENIUS A FACTOR          [ka] = cm3/s
+!         O=-1:                             [ka] = cm3/s
+! ### Ta: O=0 : Ta=0
+!         O=1 : ACTIVATION TEMPERATURE      [Ta] = K
+!         O=-1: PRESSURE DEPENDENCE         [Ta] = cm6/s
+! SYNTAX:
+!                                   ONLY FOR ORDER=1
+!                                 |==================|
+!   'name', 'subname', ORDER, ka, Ta, 'channel', 'object'
+!
+
+!For all city tracers choose 25 day mean lifetime
+! tau = 1 / decay_rate 
+
+TR(1)= 'gp','LOD' , 0, 4.6296296296e-07 ,  , ,  ,
+TR(2)= 'gp','PAR' , 0, 4.6296296296e-07, , , ,
+TR(3)= 'gp','BRU' , 0, 4.6296296296e-07 ,         ,           ,   ,
+TR(4)= 'gp','MAI' , 0, 4.6296296296e-07 ,         ,           ,   ,
+!TR(5)= 'VEN',  , 0, 4.6296296296e-07  ,         ,           ,   ,
+TR(6)= 'gp', 'ESS' , 0, 4.6296296296e-07 ,         ,           ,   ,
+!TR(7)= 'BAR',  , 0, 4.6296296296e-07  ,         ,           ,   ,
+TR(8)= 'gp', 'COL' , 0, 4.6296296296e-07 ,         ,           ,   ,
+!TR(9)= 'MAD',  , 0, 4.6296296296e-07  ,         ,           ,   ,
+!TR(10)= 'HAM',  , 0, 4.6296296296e-07   ,         ,           ,   ,
+TR(11)= 'gp', 'BER' , 0, 4.6296296296e-07 ,         ,           ,   ,
+TR(12)= 'gp', 'FRA' , 0, 4.6296296296e-07 ,         ,           ,   ,
+!TR(13)= 'PRA',  , 0, 4.6296296296e-07  ,         ,           ,   ,
+!TR(14)= 'MAR',  , 0, 4.6296296296e-07  ,         ,           ,   ,
+!TR(15)= 'ROM',  , 0, 4.6296296296e-07  ,         ,           ,   ,
+!TR(16)= 'NAP',  , 0, 4.6296296296e-07  ,         ,           ,   ,
+TR(17)= 'gp', 'MUC' , 0, 4.6296296296e-07  ,         ,           ,   ,
+!TR(18)= 'TPP',  , 0, 4.6296296296e-07          ,         ,           ,   ,
+TR(18)= 'gp', 'ROT'  , 0, 4.6296296296e-07   ,         ,           ,   ,      
+
+!Special Tracer for Convection (10 day exp. decay)
+TR(19)= 'gp', 'CONVECT'  , 0, 1.15741e-06  ,  ,           ,   ,
+
+
+!Special Tracers for emisisons regions (5 day lifetime)
+TR(20) = 'gp', 'NA5' , 0, 2.31481e-06  ,         ,           ,   ,
+TR(21) = 'gp', 'EU5' , 0, 2.31481e-06 ,         ,           ,   ,
+TR(22) = 'gp', 'EA5' , 0, 2.31481e-06 ,         ,           ,   ,
+TR(23) = 'gp', 'AIR5' , 0, 2.31481e-06  ,         ,           ,   ,
+
+
+!Special Tracers for emisisons regions (5 day lifetime)    
+TR(24) = 'gp', 'NA15' , 0, 7.71605e-07  ,         ,           ,   ,
+TR(25) = 'gp', 'EU15' , 0, 7.71605e-07  ,         ,           ,   ,
+TR(26) = 'gp', 'EA15' , 0, 7.71605e-07 ,         ,           ,   ,
+TR(27) = 'gp', 'AIR15' , 0, 7.71605e-07 ,         ,           ,   ,
+
+
+
+
+!
+! ### LIST OF RELEASE POINTS AND TIME
+! ### LEV  [hPa], MASS [kg], LON [-180 ... 180], LAT [-90 ... 90]
+! SYNTAX:
+!   TYPE, LON, LAT, 
+!   1     HEIGHT, UNIT, EMISSION, UNIT, YYYY, MM, DD, HH, MI, SE, YYYY, MM, DD, HH, MI, SE,
+!                                       |=======================| |======================|
+!                                               START                    STOP
+!   2     'channel', 'altitude', 'flux', scaling factor,
+!   1,2   ';-separated tracer set list', ';-separated list of tracers'
+!
+!
+! TIME SERIES
+!POINT(1) =  2, -19.630, 63.629, 
+!            0.0, , , , ,  , , , , , , , , ,
+!            'import_ts', 'EYJA_pmin', 'EYJA_pmax', 'EYJA_flux', 1.0, 
+!            'VASH_001;VASH_005;VASH_010;VASH_020;VASH_060;VGAS',
+!!            'VASH_001;VASH_005;VASH_010;VASH_020;VASH_060;VASH_150;VASH_250;VASH_400;VASH_600;VGAS',
+!
+!POINT(1) = 1, 113.0, 4.536,
+!           1013.25, 8.8, 2011, 11, 21, 02, 24, 00, 2011, 11, 21, 03, 03, 00,
+!           '','','','', 1.0,
+!           'PMCP',
+!POINT(2) = 1, 119.4, 6.532,
+!           1013.25, 8.5, 2011, 11, 25, 22, 00, 00, 2011, 11, 25, 22, 31, 00,
+!           '','','','', 1.0,
+!           'PMCH',
+!
+
+
+
+POINT(4) = 1,  -0.1, 51.30,  1000,'hPa', 1.0E+04, 'kg',
+          ${START_YEAR}, 01, 01,  0, 0, 0,  2100, 01, 01, 0, 0, 0,
+          '', '', '', 1.0,
+          'gp', 'LOD',
+POINT(5) = 1,  2.21, 48.51,  1000,'hPa', 1.0E+04,'kg',
+          ${START_YEAR}, 01, 01,  0, 0, 0,  2100, 01, 01, 0, 0, 0,
+          '', '', '', 1.0,
+          'gp', 'PAR',
+POINT(6) = 1,  4.21, 50.51,  1000,'hPa', 1.0E+04,'kg',
+          ${START_YEAR}, 01, 01,  0, 0, 0,  2100, 01, 01, 0, 0, 0,
+          '', '', '', 1.0,
+          'gp', 'BRU',
+POINT(7) = 1,  9.11, 45.28,  1000,'hPa',  1.0E+04,'kg',
+          ${START_YEAR}, 01, 01,  0, 0, 0,  2100, 01, 01, 0, 0, 0,
+          '', '', '', 1.0,
+          'gp', 'MAI',
+
+!POINT(8) = 1,  12.32, 45.44,  1000, 1.0E+04,
+!          ${START_YEAR}, 01, 01,  0, 0, 0,  ${START_YEAR_P1}, 01, 01, 0, 0, 0,
+!          '', '', '', '', 1.0,
+!          'VEN',
+!POINT(9) = 1,  5.37, 43.30,  1000, 1.0E+04,
+!          ${START_YEAR}, 01, 01,  0, 0, 0,  ${START_YEAR_P1}, 01, 01, 0, 0, 0,
+!          '', '', '', '', 1.0,
+!          'MAR',
+POINT(10) = 1,  7.01, 51.46,  1000,'hPa', 1.0E+04,'kg',
+          ${START_YEAR}, 01, 01,  0, 0, 0,  2100, 01, 01, 0, 0, 0,
+          '', '', '', 1.0,
+          'gp', 'ESS',
+!POINT(11) = 1,  2.17, 41.38,  1000,  1.0E+04,
+!          ${START_YEAR}, 01, 01,  0, 0, 0,  ${START_YEAR_P1}, 01, 01, 0, 0, 0,
+!          '', '', '', '', 1.0,
+!          'BAR',
+POINT(12) = 1,  6.95, 50.593, 1000,'hPa' 1.0E+04,'kg',
+          ${START_YEAR}, 01, 01,  0, 0, 0,  2100, 01, 01, 0, 0, 0,
+          '', '', '', 1.0,
+          'gp', 'COL',
+!POINT(13) = 1,  -3.70, 40.41,  1000, 1.0E+04,
+!          ${START_YEAR}, 01, 01,  0, 0, 0,  ${START_YEAR_P1}, 01, 01, 0, 0, 0,
+!          '', '', '', '', 1.0,
+!          'MAD',
+!POINT(14) = 1,  9.99, 53.55,  1000, 1.0E+04,
+!          ${START_YEAR}, 01, 01,  0, 0, 0,  ${START_YEAR_P1}, 01, 01, 0, 0, 0,
+!          '', '', '', '', 1.0,
+!          'HAM',
+POINT(15) = 1,  13.41, 52.52,  1000,'hPa',  1.0E+04, 'kg',
+          ${START_YEAR}, 01, 01,  0, 0, 0,  2100, 01, 01, 0, 0, 0,
+           '', '', '', 1.0,
+          'gp', 'BER',
+!POINT(16) = 1, 9.18, 48.78,  1000, 1.0E+04,
+!          ${START_YEAR}, 01, 01,  0, 0, 0,  ${START_YEAR_P1}, 01, 01, 0, 0, 0,
+!          '', '', '', '', 1.0,
+!          'STU',
+!POINT(17) = 1,  14.42, 50.08,  1000, 1.0E+04,
+!          ${START_YEAR}, 01, 01,  0, 0, 0,  ${START_YEAR_P1}, 01, 01, 0, 0, 0,
+!          '', '', '', '', 1.0,
+!          'PRA',
+!POINT(18) = 1, 12.49, 41.89,  1000, 1.0E+04,
+!          ${START_YEAR}, 01, 01,  0, 0, 0,  ${START_YEAR_P1}, 01, 01, 0, 0, 0,
+!          '', '', '', '', 1.0,
+!          'ROM',
+!POINT(19) = 1,  14.30, 40.85,  1000, 1.0E+04,
+!          ${START_YEAR}, 01, 01,  0, 0, 0,  ${START_YEAR_P1}, 01, 01, 0, 0, 0,
+!          '', '', '', '', 1.0,
+!          'NAP',
+
+POINT(20) = 1,  11.58, 48.14,  1000, 'hPa', 1.0E+04,'kg',
+          ${START_YEAR}, 01, 01,  0, 0, 0,  2100, 01, 01, 0, 0, 0,
+           '', '', '', 1.0,
+          'gp', 'MUC',
+
+POINT(21) = 1,  4.47, 51.91,  1000,'hPa', 1.0E+04, 'kg'
+          ${START_YEAR}, 01, 01,  0, 0, 0,  2100, 01, 01, 0, 0, 0,
+           '', '', '', 1.0,
+         'gp',  'ROT',
+
+POINT(22) = 1,  8.68, 50.11,  1000, 'hPa' 1.0E+04,'kg'
+          ${START_YEAR}, 01, 01,  0, 0, 0,  2100, 01, 01, 0, 0, 0,
+           '', '', '', 1.0,
+         'gp',  'FRA',
+
+
+
+/

@@ -1,0 +1,75 @@
+// -*- kpp -*- kpp mode for emacs
+
+// Replacement files allow you to modify gas.eqn. Please note: If you apply
+// any *.rpl files to the reaction mechanism, you do so at your own risk.
+// The files provided here are mostly under development. For more
+// information, please contact the authors mentioned in the *.rpl files.
+
+// IMPORTANT: When adding a new reaction, please assign a PRELIMINARY
+// equation tag by adding your initials as a suffix, e.g. John Doe could
+// use "<G0001JD>".
+
+// Syntax of this replacement file is similar to kpp syntax, but...
+// - Only the commands "#REPLACE" and "#ENDREPLACE" are allowed.
+// - Comments must start with "//", curly braces ("{}") cannot be used here.
+
+// Known limitations:
+// - The equation tag (e.g. "<G9876>") in the input equation file
+//   (gas.eqn) must be the first (non-whitespace) item in the line. If it is
+//   preceded by a comment in curly braces, replace.awk will not be able to
+//   find it.
+// - New reactions will always be at the end.
+
+// Here, reaction G4110 is replaced by a modified reaction:
+#REPLACE <G4110>
+<> CO + OH = HO2 + CO2 : {%StTrG} 1.57E-13 + cair*3.54E-33; {&1628}
+#ENDREPLACE
+
+// Equation tags in the replacement (<a>, <b>, ...) will be added as a suffix
+// to the original equation tag, i.e.:
+// <a> --> <G4110a>
+#REPLACE <G4110>
+<a> CO + OH = HO2 + CO2 : {%StTrG} 1.57E-13 + cair*3.54E-33; {&1628}
+#ENDREPLACE
+
+// It is possible to create several branches of the reaction:
+#REPLACE <G4101>
+<a> CH4 + OH = CH3 + H2O : {%StTrG} 1.85E-20*EXP(2.82*log(temp)-987./temp); {&&1627}
+<b> CH3 + O2 = CH3O2 : {%StTrG} 1E-999; {&SGN}
+#ENDREPLACE
+
+// To add a new reaction, specify an empty equation tag
+// in the "#REPLACE" command ("<>"), and give a complete
+// equation tag in the replacement ("<G9876>"):
+#REPLACE <>
+<G9876JD> Dummy + OH = CH3O2 + H2O : {%StG} 1.57E-13; {&SGN}
+#ENDREPLACE
+
+// To delete a reaction, specify an empty replacement:
+#REPLACE <G4200>
+#ENDREPLACE
+
+// An error message is given if the specified reaction does not exist.
+// Activate the following lines to test if the error is detected:
+// #REPLACE <G9999>
+// <a> CO + OH = HO2 + CO2 : {%StTrG} 1.57E-13 + cair*3.54E-33; {&1628}
+// #ENDREPLACE
+
+// use "*" as the last character to delete several reactions:
+#REPLACE <G300*>
+#ENDREPLACE
+
+// use "*" as the last character to replace several reactions. Here,
+// the complete equation tag must be given in the replacement:
+#REPLACE <G98*>
+<G9801> Dummy + OH  = CH3O2 + H2O : {%StG} 1E-13; {&SGN}
+<G9802> Dummy + O1D = CH3O2 + H2O : {%StG} 2E-13; {&SGN}
+<G9803> Dummy + O3  = CH3O2 + H2O : {%StG} 3E-13; {&SGN}
+#ENDREPLACE
+
+// Additional *.rpl files can be included. 
+// - The include file must be in the rpl/include/ directory
+// - The included files cannot contain include commands (no nesting).
+// - Type filename with or without the suffix ".rpl", e.g.:
+//   #include myrplfile1
+//   #include myrplfile2.rpl

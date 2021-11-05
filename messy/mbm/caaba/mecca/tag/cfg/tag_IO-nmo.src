@@ -1,0 +1,317 @@
+; [Gromov, MPI-C, 2010-2020]
+;
+; mz_sg_200410(@tonnerre): taken out of general IO transfer scheme, updated, cleaned up
+;
+; tag_IO-nmo.src
+;
+; ISOTOPIC OXYGEN SOURCES & TRANSFER INCLUDE FILE
+;
+; NMO chemistry (new methane oxidation scheme, part of MOM)
+
+; = methane chain ====================================================
+; ----------------------------------------------------------
+;<G4100>  CH4      + O1D      = .75 CH3 + .75 OH + .25 HCHO + .4 H + .05 H2 {+ 638. kJmol} : {%UpStG} 1.75E-10{§1.15}; {&2626}
+; ----------------------------------------------------------
+;<G4101>  CH4      + OH       = CH3 + H2O          : {%StTrG} 1.85E-20{§1.2}*EXP(2.82*LOG(temp)-987./temp); {&1627}
+; ----------------------------------------------------------
+;<G4102>  CH3OH   + OH           = HCHO + HO2 + H2O  : {%TrG}    2.9E-12{§1.10}*EXP(-345./temp); {&2626}
+;<G4102>  CH3OH   + OH {+.85 O2} = .85 HCHO + .85 HO2 + .15 CH3O + H2O   : {%TrG} 6.38E-18{§§0.08}*temp**2.*EXP(144./temp); {&1759}
+  G4102    OH = H2O
+  G4102 CH3OH =     HCHO CH3O
+  G4102    O2 = HO2
+; ----------------------------------------------------------
+;<G4103a> CH3O2    + HO2      = CH3OOH + O2        : {%StTrG} 3.8E-13*EXP(780./temp)/(1.+1./498.*EXP(1160./temp)); {&1759}
+  G4103a CH3O2 = CH3OOH
+  G4103a   HO2 = O2
+; ----------------------------------------------------------
+;<G4103b> CH3O2    + HO2      = HCHO + H2O + O2    : {%StTrG} 3.8E-13*EXP(780./temp)/(1.+498.*EXP(-1160./temp)); {&1759}
+; via CH4O2 [ Hu R., Seager S., Bains W. : Photochemistry in Terrestrial Exoplanet Atmospheres I: Photochemistry Model and Benchmark Cases | https://iopscience.iop.org/0004-637X/761/2/166/suppdata/apj450768t1_mrt.txt ]
+  G4103b CH3O2 = HCHO H2O
+  G4103b   HO2 =          O2
+; ----------------------------------------------------------
+;<G4104a> CH3O2    + NO       = CH3O + NO2         : {%StTrG} 2.3E-12{§§0.05}*EXP(360./temp)*(1.-beta_CH3NO3); {&1759, 3177, 3164}
+  G4104a  CH3O2 = CH3O NO2
+  G4104a     NO =      NO2
+; ----------------------------------------------------------
+;<G4104b> CH3O2    + NO       = CH3NO3             : {%StTrG} 2.3E-12{§§0.05}*EXP(360./temp)*beta_CH3NO3; {&1759, 3177, 3164} // Methyl nitrate yield according to \citet{2130} but reduced by a factor of 10 according to the upper limit derived from measurements by \citet{2048}.
+  G4104b  CH3O2 = CH3NO3 ; !! FO: modified to account for correct O3->CO O transfer
+; ----------------------------------------------------------
+;<G4105> CH3O2    + NO3      = CH3O + NO2 + O2    : {%TrG} 1.2E-12{§§0.3}; {&1759}
+  G4105  CH3O2 = CH3O O2
+  G4105    NO3 = NO2  O2
+; ----------------------------------------------------------
+;<G4106a> CH3O2               = CH3O + .5 O2                : {%StTrG} 7.4E-13{§§0.15}*EXP(-520./temp)*RO2*2.; {&1759}
+; ----------------------------------------------------------
+;<G4106b> CH3O2               = .5 HCHO + .5 CH3OH + .5 O2  : {%StTrG} (k_CH3O2-7.4e-13{§§0.15}*EXP(-520./temp))*RO2*2.; {&1759}
+; ----------------------------------------------------------
+;<G4107> CH3OOH + OH = .7 CH3O2 + .3 HCHO + .3 OH + H2O
+;  [Weston, 2001]: CH3OOH + OH -> CH3O2 + H2O
+;                  CH3OOH + OH -> CH2OOH + H2O
+;                  CH2OOH + M  -> HCHO + OH + M
+  G4107 CH3OOH = CH3O2 HCHO OH
+  G4107     OH =               H2O
+; ----------------------------------------------------------
+;<G4108>  HCHO     + OH       = CO + H2O + HO2     : {%StTrG} 9.52E-18{§1.05}*EXP(2.03*LOG(temp)+636./temp); {&1634}
+;  [Weston, 2001]: HCHO + OH -> HCO + H2O  : k ~ E-11
+;                  HCO  + O2 -> CO  + HO2  : k ~ E-12
+;                  HCO  + OH -> CO  + H2O  : k ~ E-10     // [OH]<<[O2], thus neglected in MECCA (?)
+  G4108 HCHO = CO
+  G4108   OH =    H2O
+  G4108   O2 =        HO2
+; ----------------------------------------------------------
+;<G4109>  HCHO    + NO3   = HNO3 + CO + HO2       : {%TrG}    3.4E-13{§1.3}*EXP(-1900./temp); {&&2626}
+; assuming H binds rapidly with O2 om => *+HCHO -> H* + H + CO pathway [2003.PCCP5.D'Anna,etal]
+  G4109 HCHO = CO
+  G4109  NO3 =    HNO3
+  G4109   O2 =         HO2
+; ----------------------------------------------------------
+;<G4110>  CO       + OH       = H + CO2 {+ 103. kJmol} : {%UpStTrG} (1.57E-13+cair*3.54E-33){§1.15}; {&1628}
+; ----------------------------------------------------------
+;;<G4111>  HCOOH + OH {+O2} = CO2 + HO2 + H2O   : {%TrG}    4.0E-13{§1.2}; {&2626}
+;<G4111>  HCOOH    + OH {+O2} = CO2 + HO2 + H2O    : {%TrG} 2.94E-14*exp(786./temp)+9.85E-13*EXP(-1036./temp){§}; {&3038}
+  G4111    OH = H2O
+  G4111 HCOOH =     CO2
+  G4111    O2 =         HO2
+; ----------------------------------------------------------
+;<G4112>  CO       + O3P {+M} = CO2 {+ 516. kJmol} : {%UpStG} 6.60E-33*EXP(-1103./temp); {&2615}
+; ----------------------------------------------------------
+;;<G4113>  CH4 + O3P {+O2} = CO + 2 OH + H2O {+ 638. kJmol} : {%UpG} 3.50E-11*EXP(-4550./temp); {&2615}
+;;<G4113>  CH4 + O3P {+O2} = .51 OH + .51 CH3O2 + .49 H + .49 HCHO + .49 HO2 - O2 {+ 638. kJmol} : {%UpStG} 6.03E-18{§}*temp**(2.17)*EXP(-3619./temp); {&2615, 3059, 3060}
+; straightforward
+;<G4113>  CH4      + O3P {+O2}= .51 CH3 + .51 OH + .49 CH3O + .49 H {+ 638. kJmol} : {%UpStG} 6.03E-18{§}*temp**(2.17)*EXP(-3619./temp); {&2615, 3059, 3060}
+; G4113  O3P = OH CH3O
+; ----------------------------------------------------------
+;<G4114>  CH3O2    + NO2      = CH3O2NO2           : {%StTrG} k_NO2_CH3O2; {&2626}
+  G4114   CH3O2 = CH3O2NO2 ; !! FO: modified to account for correct O3->CO O transfer
+; ----------------------------------------------------------
+;<G4115>  CH3O2NO2 {+ M}      = CH3O2 + NO2        : {%StTrG} k_NO2_CH3O2/(9.5E-29{§1.3}*EXP(11234./temp)); {&2626}
+  G4115   CH3O2NO2 = CH3O2 ; !! FO: modified to account for correct O3->CO O transfer
+  G4115        NO2 = NO2   ; !! FO: modified to account for correct O3->CO O transfer
+; ----------------------------------------------------------
+; uncertain
+;<G4116>  CH3O2NO2 + OH       = HCHO + NO3 + H2O   : {%StTrG} 3.00E-14{§} ; // Same value as for PAN + OH.
+  G4116       OH = H2O
+; G4116 CH3O2NO2 = HCHO NO3
+  G4116 CH3O2NO2 = HCHO 1 NO3 ; !! FO: modified to account for correct O3->CO O transfer
+  G4116      NO2 =      2 NO3 ; !! FO: modified to account for correct O3->CO O transfer
+; ----------------------------------------------------------
+;<G4117>  CH3NO3   + OH {+ O2}= H2O + HCHO + NO2   : {%StTrG} 4.0E-13{§}*EXP(-845./temp); {&1759}
+  G4117      OH = H2O
+; G4117  CH3NO3 = NO2 HCHO
+  G4117  CH3NO3 =     HCHO ; !! FO: modified to account for correct O3->CO O transfer
+  G4117     NO2 = NO2      ; !! FO: modified to account for correct O3->CO O transfer
+; ----------------------------------------------------------
+;<G4118>  CH3O     {+ O2}     = HO2 + HCHO         : {%StTrG} 1.3E-14{§}*exp(-663./temp)*c(ind_O2); {&3043}
+  G4118   CH3O = HCHO
+  G4118     O2 = HO2
+; ----------------------------------------------------------
+;<G4119a> CH3O     + NO2 {+ M}= CH3NO3             : {%StTrG} k_3rd_iupac(temp,cair,8.1E-29,4.5,2.1E-11,0.,0.44){§}; {&1759}
+  G4119a  CH3O = CH3NO3 ; !! FO: modified to account for correct O3->CO O transfer
+; ----------------------------------------------------------
+;<G4119b> CH3O     + NO2      = HCHO + HONO        : {%StTrG} 9.6E-12*EXP(-1150./temp){§§0.5}; {&1759}
+  G4119b  CH3O = HCHO
+  G4119b   NO2 = HONO
+; ----------------------------------------------------------
+;<G4120a> CH3O     + NO       = CH3ONO             : {%StTrG} k_3rd_iupac(temp,cair,2.6E-29,2.8,3.3E-11,0.6,REAL(EXP(-temp/900.),SP)); {&1759}
+  G4120a> CH3O = CH3ONO ; !! FO: modified to account for correct O3->CO O transfer
+; ----------------------------------------------------------
+;<G4120b> CH3O     + NO       = HCHO + HNO         : {%StTrG} 2.3E-12{§§0.2}*(temp/300.)**0.7; {&1759}
+  G4120b  CH3O = HCHO
+  G4120b    NO = HNO
+; ----------------------------------------------------------
+;<G4121>  CH3O2    + O3       = CH3O + 2 O2        : {%StTrG} 2.9E-16{§2.}*exp(-1000./temp); {&2626}
+  G4121   CH3O2 = CH3O 1 O2
+  G4121      O3 =      3 O2
+; ----------------------------------------------------------
+;<G4122>  CH3ONO + OH {+ O2}= H2O + HCHO + NO    : {%StTrG} 1.E-10{§}*exp(-1764./temp); {&3044}
+; uncertain
+  G4122     OH = H2O
+; G4122 CH3ONO = HCHO + NO
+  G4122 CH3ONO = HCHO ; !! FO: modified to account for correct O3->CO O transfer
+  G4122     NO = NO   ; !! FO: modified to account for correct O3->CO O transfer
+; ----------------------------------------------------------
+;<G4123>  HCHO     + HO2      = HOCH2O2            : {%StTrG} 9.7E-15{§§0.3}*EXP(625./temp); {&1759}
+; ----------------------------------------------------------
+;<G4124>  HOCH2O2             = HCHO + HO2         : {%StTrG} 2.4E12{§§0.3}*EXP(-7000./temp); {&1759}
+; ----------------------------------------------------------
+;<G4125>  HOCH2O2  + HO2      = .5 HOCH2OOH + .5 HCOOH + .2 OH + .2 HO2 + .3 H2O + .8 O2 : {%StTrG} 5.6E-15{§§0.3}*EXP(2300./temp); {&1759}
+; ----------------------------------------------------------
+;<G4126>  HOCH2O2  + NO {+ O2}= NO2 + HO2 + HCOOH  : {%StTrG} 0.7275*2.3E-12*EXP(360./temp); {&1759} // Same as for G4104 but scaled to match the recommeded value at 298K.
+; uncertain
+  G4126   HOCH2O2 = NO2 HCOOH
+  G4126        NO = NO2
+  G4126        O2 =           HO2
+; ----------------------------------------------------------
+;<G4127>  HOCH2O2  + NO3      = NO2 + HO2 + HCOOH  : {%StTrG} 1.2E-12{§§0.3};  // Same as for CH3O2 + NO3 in G4105.
+  G4127   HOCH2O2 = NO2 HCOOH
+  G4127       NO3 = NO2       HO2
+; ----------------------------------------------------------
+;<G4129a> HOCH2O2             = HCOOH + HO2                   : {%StTrG} (k_CH3O2*5.5E-12{§§0.3})**0.5*RO2*2.; {&1759}
+; uncertain
+  G4129a  HOCH2O2 = HCOOH
+  G4129a       O2 =       HO2
+; ----------------------------------------------------------
+;<G4130a> HOCH2OOH + OH       = HOCH2O2 + H2O      : {%StTrG} 0.6*k_CH3OOH_OH; {&3030} // SAR for H-abstraction by OH.
+  G4130a        OH = H2O
+  G4130a  HOCH2OOH =     HOCH2O2
+; ----------------------------------------------------------
+;<G4130b> HOCH2OOH + OH       = HCOOH + H2O + OH   : {%StTrG} k_rohro + k_s*f_sooh*f_soh; {&3030} // SAR for H-abstraction by OH.
+  G4130b        OH = H2O
+  G4130b  HOCH2OOH =     HCOOH OH
+; ----------------------------------------------------------
+;<G4132>  HOCH2OH  + OH {+ O2}= HO2 + HCOOH + H2O  : {%StTrG} k_rohro + 2.*k_s*f_soh*f_soh; {&3030} // SAR for H-abstraction by OH.
+  G4132        OH = H2O
+  G4132   HOCH2OH = HCOOH
+  G4132        O2 =       HO2
+; ----------------------------------------------------------
+;<G4133>  CH3O2    + OH       = CH3O + HO2         : {%StTrG} 1.4E-10{§}; {&3042} // Lower limit of the rate constant. Products uncertain but \chem{CH_3OH} can be excluded because of a likely high energy barrier (L.\ Vereecken, pers. comm.). \chem{CH_2OO} production cannot be excluded.
+; ----------------------------------------------------------
+;<G4134>  CH2OO    {+ O2}     = CO + HO2 + OH      : {%StTrG} 1.124E+14{§}*EXP(-10000./temp); // Estimate based on the decomposition lifetime of 3 s \citep{3047} and a 20 kcal/mol energy barrier \citep{3040}.
+  G4134   CH2OO = CO OH
+  G4134      O2 =       HO2
+; ----------------------------------------------------------
+;<G4135>  CH2OO    + H2O      = HOCH2OOH           : {%StTrG} k_CH2OO_NO2*3.6E-6; {&3048} // Rate constant for \chem{CH_2OO + NO_2} (G4138) multiplied by the factor from \citet{3048}.
+; ----------------------------------------------------------
+;<G4136>  CH2OO    + H2OH2O   = HOCH2OOH + H2O     : {%StTrG} 5.2E-12; {&3173, 3174} // Average of two measurements.
+  G4136   CH2OO  = 2 HOCH2OOH
+  G4136   H2OH2O = 1 HOCH2OOH H2O
+; ----------------------------------------------------------
+;<G4137>  CH2OO    + NO       = HCHO + NO2         : {%StTrG} 6.E-14{§}; {&3041} // Upper limit.
+  G4137   CH2OO = HCHO NO2
+  G4137      NO =      NO2
+; ----------------------------------------------------------
+;<G4138>  CH2OO    + NO2      = HCHO + NO3         : {%StTrG} k_CH2OO_NO2; {&3041, 3049} // Average of 7.E-12 and 1.5E-12.
+  G4138   CH2OO = HCHO 1 NO3
+  G4138     NO2 =      2 NO3
+; ----------------------------------------------------------
+;<G4139> new reaction number G9408
+; ----------------------------------------------------------
+;<G4140>  CH2OO    + CO       = HCHO + CO2         : {%StTrG} 3.6E-14{§}; {&3039}
+  G4140   CH2OO = HCHO CO2
+  G4140      CO =      CO2
+; ----------------------------------------------------------
+;<G4141>  CH2OO    + HCOOH    = 2 HCOOH            : {%StTrG} 1.E-10{§}; {&3051} // \chem{HOOCH_2OCHO} forms and then decomposes to formic anhydride \citep{2071} which hydrolyses in the humid atmosphere \citep{3045}.
+; ----------------------------------------------------------
+;<G4142>  CH2OO    + HCHO     = 2 LCARBON          : {%StTrG} 1.7E-12{§}; {&3049} // High-pressure limit.
+;<G4143>  CH2OO    + CH3OH    = 2 LCARBON          : {%StTrG} 5.E-12{§}; {&3039} // Generic estimate for reaction with alcohols.
+;<G4144>  CH2OO    + CH3O2    = 2 LCARBON          : {%StTrG} 5.E-12{§}; {&3039} // Generic estimate for reaction with \chem{RO_2}.
+;<G4145>  CH2OO    + HO2      = LCARBON            : {%StTrG} 5.E-12{§}; {&3039}
+; ----------------------------------------------------------
+;<G4146>  CH2OO    + O3       = HCHO + 2 O2        : {%StTrG} 1.E-12{§}; {&3053}
+  G4146   CH2OO = HCHO 1 O2
+  G4146      O3 =      2 O2
+; ----------------------------------------------------------
+;<G4147>  CH2OO    + CH2OO    = 2 HCHO + O2        : {%StTrG} 6.E-11{§}; {&3054}
+; ----------------------------------------------------------
+;<G4148>  HOCH2O2  + NO2      = HOCH2O2NO2         : {%StTrG} k_NO2_CH3O2; {&2626}
+  G4148   HOCH2O2 = HOCH2O2NO2 ; !! FO: modified to account for correct O3->CO O transfer
+; ----------------------------------------------------------
+;<G4149>  HOCH2O2NO2 {+ M}    = HOCH2O2 + NO2      : {%StTrG} k_NO2_CH3O2/(9.5E-29{§1.3}*EXP(11234./temp)); {&2626, 3055} // \citet{3055} estimated a decomposition rate equal to that of \chem{CH_3O_2NO_2}.
+  G4149   HOCH2O2NO2 = HOCH2O2 ; !! FO: modified to account for correct O3->CO O transfer
+  G4149          NO2 = NO2     ; !! FO: modified to account for correct O3->CO O transfer
+; ----------------------------------------------------------
+;<G4150>  HOCH2O2NO2 + OH     = HCOOH + NO3 + H2O  : {%StTrG} 9.50E-13{§}*EXP(-650./temp)*f_soh; // Value for \chem{CH_3O_2NO_2} + OH, H-abstraction enhanced by the HO-group by f\_soh.
+  G4150           OH = H2O
+; G4150   HOCH2O2NO2 =     HCOOH NO3
+  G4150   HOCH2O2NO2 = 1 NO3 HCOOH ; !! FO: modified to account for correct O3->CO O transfer
+  G4150          NO2 = 2 NO3       ; !! FO: modified to account for correct O3->CO O transfer
+; ----------------------------------------------------------
+;<G4151>  CH3      + O2 {+ M} = CH3O2              : {%StTrG} k_3rd_iupac(temp,cair,7.0E-31,3.,1.8E-12,-1.1,0.33){§}; {&1759}
+; ----------------------------------------------------------
+;<G4152>  CH3      + O3       = .956 HCHO + .956 H + .044 CH3O + O2 : {%StTrG} 5.1E-12{§}*exp(-210./temp); {&3056, 3057}
+; ----------------------------------------------------------
+;<G4153>  CH3      + O3P      = .83 HCHO + .83 H + .17 CO + .17 H2 + .17 H : {%StTrG} 1.3E-10{§}; {&1759}
+; ----------------------------------------------------------
+;<G4154>  CH3O     + O3       = CH3O2 + O2         : {%StTrG} 2.53E-14{§}; {&3056} // Products assumed to be \chem{CH_3O_2 + O_2} (could also be \chem{HCHO + O_2 + OH}).
+; G4154     O3 = O2 CH3O2
+  G4154   CH3O = 0.5 CH3O2 ; !! FO: modified to account for correct O3->CO O transfer
+  G4154     O3 = O2        ; !! FO: modified to account for correct O3->CO O transfer
+; ----------------------------------------------------------
+;<G4155>  CH3O     + O3P      = .75 CH3 + .75 O2 + .25 HCHO + .25 OH  : {%StTrG} 2.5E-11{§}; {&3037}
+  G4155   CH3O = O2 HCHO
+  G4155    O3P = O2      OH
+; ----------------------------------------------------------
+;<G4156>  CH3O2    + O3P      = CH3O + O2          : {%StTrG} 4.3E-11{§1.46}; {&3061}
+  G4156   CH3O2 = CH3O O2
+  G4156     O3P =      O2
+; ----------------------------------------------------------
+;<G4157>  HCHO     + O3P      = .7 OH + .7 CO + .3 H + .3 CO2 + HO2 : {%StTrG} 3.E-11*EXP(-1600./temp){§1.3}; {&2626}
+  G4157    O3P =     OH    CO2
+  G4157   HCHO =        CO CO2
+  G4157     O2 = HO2
+; ----------------------------------------------------------
+;<G4158>  CH2OOA              = .37 CH2OO + .47 CO + .47 H2O + .16 HO2 + .16 CO + .16 OH : {%TrG} KDEC; {&1759}
+; uncertain
+  G4158       O2 = HO2
+  G4158   CH2OOA =
+; ----------------------------------------------------------
+;<G4159>  HCN      + OH       = H2O + CN           : {%TrG} k_3rd(temp,cair,4.28E-33,1.0,REAL(4.25E-13*EXP(-1150./temp),SP),1.0,0.8); {&3191}
+; ----------------------------------------------------------
+;<G4160a> HCN      + O1D      = O3P + HCN          : {%TrG} 1.08E-10*EXP(105./temp)*0.15*EXP(200./temp); {&3197}
+; ----------------------------------------------------------
+;<G4160b> HCN      + O1D      = H + NCO            : {%TrG} 1.08E-10*EXP(105./temp)*0.68/2.; {&3197} // Half of the H-yield is attributed to fast secondary chemistry.
+; ----------------------------------------------------------
+;<G4160c> HCN      + O1D      = OH + CN            : {%TrG} 1.08E-10*EXP(105./temp)*(1.-(0.68/2.+0.15*EXP(200./temp))); {&3197} // The NH + CO channel is also significant but neglected here.
+; ----------------------------------------------------------
+;<G4161>  HCN      + O3P      = H + NCO            : {%TrG} 1.0E-11*EXP(-4000./temp); {&2626} // No studies below 450 K and only the major channel is considered.
+; ----------------------------------------------------------
+;<G4162>  CN       + O2       = NCO + O3P          : {%TrG} 1.2E-11*EXP(210./temp)*0.75; {&3037}
+; ----------------------------------------------------------
+;<G4163>  CN       + O2       = CO +  NO           : {%TrG} 1.2E-11*EXP(210./temp)*0.25; {&3037}
+; ----------------------------------------------------------
+;<G4164>  NCO      + O2       = CO2 + NO           : {%TrG} 7.E-15; {&3198} // Upper limit. Dominant pathway under atmospheric conditions.
+  G4164   NCO =    CO2   ; assuming N-=C-O* radical, 1 O2 oxygen enters NO
+  G4164   O2  = NO CO2
+
+; === PHOTOLYSIS ===========================================
+; ----------------------------------------------------------
+;<J4100> CH3OOH + hv = HCHO + OH + HO2
+;  [Weston, 2001]: CH3OOH + hv -> CH3O + OH
+;                  CH3O   + O2 -> HCHO + HO2
+;<J41000>  CH3OOH      + hv = CH3O + OH                  : {%StTrGJ} jx(ip_CH3OOH){§}; {&2342}
+; straightforward
+; ----------------------------------------------------------
+;<J41001a> HCHO        + hv = H2 + CO                    : {%StTrGJ} jx(ip_COH2){§}; {&2342}
+; ----------------------------------------------------------
+;<J4101b> HCHO + hv = H + CO + HO2
+;  [Weston, 2001]: HCHO + hv -> H + HCO
+;                  HCO  + O2 -> CO  + HO2  : k ~ E-12
+;                  HCO  + OH -> CO  + H2O  : k ~ E-10     // [OH]<<[O2], thus neglected in MECCA (?)
+;<J41001b> HCHO        + hv = H + CO + HO2               : {%StTrGJ} jx(ip_CHOH){§}; {&2342}
+  J41001b  HCHO = CO
+  J41001b    O2 =    HO2
+; ----------------------------------------------------------
+;<J41002>  CO2         + hv = CO + O3P                   : {%StGJ}   jx(ip_CO2){§}; {&2342}
+; ----------------------------------------------------------
+;<J41003>  CH4         + hv = .42 CH3 + .42 H + .6912 H2 + .0864 HCHO + .0864 O3P + .1584 OH + .1584 HO2 + .2112 CO2 + .1824 CO + .024 H2O + .10 LCARBON : {%StGJ} jx(ip_CH4){§}; {&2342} // \chem{CH_3}- and \chem{CH_2}-channels are considered only and with their branching ratios being 0.42 and 0.48, respectively \citep{3058}. \chem{CH}-production is neglected. \chem{CH_2} is assumed to react only with O2 yielding 1.44 \chem{H_2} + .18 \chem{HCHO} + .18 \chem{O(^3P)} + .33 \chem{OH} + .33 \chem{HO_2} + .44 \chem{CO_2} + .38 \chem{CO} + .05 \chem{H_2O} as assumed in the WACCM model by J. Orlando (Doug Kinnison, pers. comm. with D. Taraborrelli).
+; assuming all O from O2
+  J41003   O2 =
+; ----------------------------------------------------------
+;<J41004>  CH3ONO      + hv = CH3O + NO                  : {%StTrGJ} jx(ip_CH3ONO); {&2342}
+  J41004   CH3ONO = CH3O ; !! FO: modified to account for correct O3->CO O transfer
+  J41004       NO = NO   ; !! FO: modified to account for correct O3->CO O transfer
+; ----------------------------------------------------------
+;<J41005>  CH3NO3      + hv = CH3O + NO2                 : {%StTrGJ} jx(ip_CH3NO3); {&2342}
+  J41005   CH3NO3 = CH3O ; !! FO: modified to account for correct O3->CO O transfer
+  J41005      NO2 = NO2  ; !! FO: modified to account for correct O3->CO O transfer
+; ----------------------------------------------------------
+;<J41006>  CH3O2NO2    + hv = .667 NO2 + .667 CH3O2 + .333 NO3 + .333 CH3O : {%StTrGJ} jx(ip_CH3O2NO2); {&2342} // product distribution as for HNO4
+; ----------------------------------------------------------
+;<J41007>  HOCH2OOH    + hv = HCOOH + OH + HO2           : {%StTrGJ} jx(ip_CH3OOH); {&2342}
+  J41007        O2 = HO2
+  J41007  HOCH2OOH =     HCOOH OH
+; ----------------------------------------------------------
+;<J41008>  CH3O2       + hv = HCHO + OH                  : {%StTrGJ} jx(ip_CH3O2); {&2342}
+; ----------------------------------------------------------
+;<J41009>  HCOOH       + hv = CO + HO2 + OH              : {%StTrGJ} jx(ip_HCOOH); {&2342}
+  J41009   HCOOH = CO OH
+  J41009      O2 =       HO2
+; ----------------------------------------------------------
+;<J41010>  HOCH2O2NO2  + hv = .667 NO2 + .667 HOCH2O2 + .333 NO3 + .333 HCOOH + .333 HO2 : {%StTrGJ} jx(ip_CH3O2NO2); {&2342}
+  J41010           O2 = HO2
+; J41010   HOCH2O2NO2 =
+  J41010   HOCH2O2NO2 = 1 NO3 HOCH2O2 HCOOH ; !! FO: modified to account for correct O3->CO O transfer
+  J41010          NO2 = 2 NO3 NO2           ; !! FO: modified to account for correct O3->CO O transfer
+
+
+; EOF

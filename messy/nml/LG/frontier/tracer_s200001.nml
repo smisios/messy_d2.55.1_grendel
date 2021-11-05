@@ -1,0 +1,96 @@
+! -*- f90 -*-
+&CTRL
+L_FAMILY     = T, !# USE TRACER FAMILIES (SEE CTRL_FAMILY BELOW)
+L_PDEF       = T, !# SWITCH TRACER SUB-SUBMODEL PDEF (SEE CPL/CTRL_PDEF BELOW)
+/
+
+&CPL
+L_TRACER_INIT = T, !# SWITCH ON(T)/OFF(F) TRACER INITIALISATION
+L_CONV_LG2GP =  T, !# ONLY IF ATTILA LAGRANGIAN TRACERS PRESENT 
+L_CONV_CL2GP =  T, !# ONLY IF CLAMS LAGRANGIAN TRACERS PRESENT
+!
+! initialize specific humidity ('q') with input variable 'H2O' and
+! convert from mol/mol into kg/kg (option 1)
+ini_pvar(1) = 'ECHAM5','q','H2O',1,
+!
+/
+
+&CTRL_FAMILY
+l_verbose = F,   !# diagnostic output
+i_diag_pe = 0,   !# ... for this p_pe
+i_diag_jrow = 1, !# ... and this jrow
+!#
+!# NOTES:
+!#    - MAX. NUMBER OF FAMILIES: 50
+!#    - FAMILY-TYPE = 1: FAMILY = SUM OF TRACERS, TRACER = FRACTION OF FAMILY
+!#                                - TRACER FRACTIONS NOT TRANSPORTED
+!#                                - PROCESS SPECIFIC CONVERSION
+!#                                - switch is meaningless for type 1
+!#    -             = 2: FAMILY = SUM OF TRACERS, TRACER REMAINS
+!#                                - TRACER TRANSPORTED
+!#                                - RESCALED TO SUM AFTER TRANSPORT
+!#                                - switch = .FALSE.: no re-scaling,
+!#                                                    only summation
+!#                                -        = .TRUE. (default): re-scaling ON
+!#    - FAMILY TRACER MUST NOT EXIST
+!#    - FIRST VALID TRACER IN FAMILY SPECIFIES ATTRIBUTES OF TRACER FAMILY
+!#    - nadvect=nconvect=nvdiff = ON FOR FAMILIES WITH FAMILY-TYPE = 1
+!#    - EACH TRACER CAN BE MEMBER OF ZERO OR ONE TRACER FAMILY
+!#    - THE DEFAULT WEIGHT FOR EACH TRACER IS 1.0
+!# SYNTAX:
+!#    tracer-set, family-type, switch, family-name, family-subname,
+!#    LIST OF TRACERS ...
+!#    ... ('name' OR 'name_subname' OR 'name:weight' OR 'name_subname:weight')
+!# EXAMPLES:
+!
+!TF(1) = 'gp',1, ,'ClOX','','Cl','ClO','HOCl','OClO','Cl2O2:2.0','Cl2:2.0',!94*''
+!TF(2) = 'gp',1, ,'BrOX','','Br','BrO','HOBr','BrCl','Br2:2.0',!95*''
+!TF(3) = 'gp',1, ,'NOX','','N','NO','NO2','NO3','N2O5:2.0',!95*''
+!TF(4) = 'gp',1, ,'HOx','','H','OH','HO2',!97*''
+!TF(5) = 'gp',1, ,'Ox','','O1D','O3P','O3',!97*''
+!
+! TRACER Families for FRONTAIR setup
+TF(1)  = 'gp',2, ,'SRGsum','00','SRG00y1_00','SRG00y2_00','SRG00y3_00','SRG01y1_00','SRG01y2_00','SRG01y3_00','SRG02y1_00','SRG02y2_00','SRG02y3_00','SRG03y1_00','SRG03y2_00','SRG03y3_00','SRG04y1_00','SRG04y2_00','SRG04y3_00','SRG05y1_00','SRG05y2_00','SRG05y3_00','SRG06y1_00','SRG06y2_00','SRG06y3_00','SRG07y1_00','SRG07y2_00','SRG07y3_00','SRG08y1_00','SRG08y2_00','SRG08y3_00','SRG09y1_00','SRG09y2_00','SRG09y3_00','SRG10y1_00','SRG10y2_00','SRG10y3_00'
+TF(2)  = 'gp',2, ,'SRGsumn','00','SRG00ny1_00','SRG00ny2_00','SRG00ny3_00','SRG01ny1_00','SRG01ny2_00','SRG01ny3_00','SRG02ny1_00','SRG02ny2_00','SRG02ny3_00','SRG03ny1_00','SRG03ny2_00','SRG03ny3_00','SRG04ny1_00','SRG04ny2_00','SRG04ny3_00','SRG05ny1_00','SRG05ny2_00','SRG05ny3_00','SRG06ny1_00','SRG06ny2_00','SRG06ny3_00','SRG07ny1_00','SRG07ny2_00','SRG07ny3_00','SRG08ny1_00','SRG08ny2_00','SRG08ny3_00','SRG09ny1_00','SRG09ny2_00','SRG09ny3_00','SRG10ny1_00','SRG10ny2_00','SRG10ny3_00','SRG11ny1_00','SRG11ny2_00','SRG11ny3_00','SRG12ny1_00','SRG12ny2_00','SRG12ny3_00',
+TF(3)  = 'gp',2, ,'SRGsum','05','SRG00_05','SRG01_05','SRG02_05','SRG03_05','SRG04_05','SRG05_05','SRG06_05','SRG07_05','SRG08_05','SRG09_05','SRG10_05','SRG11_05','SRG12_05',
+TF(4)  = 'gp',2, ,'SRGsumn','05','SRG00n_05','SRG01n_05','SRG02n_05','SRG03n_05','SRG04n_05','SRG05n_05','SRG06n_05','SRG07n_05','SRG08n_05','SRG09n_05','SRG10n_05','SRG11n_05','SRG12n_05',
+TF(5)  = 'gp',2, ,'SRGsum','25','SRG00_25','SRG01_25','SRG02_25','SRG03_25','SRG04_25','SRG05_25','SRG06_25','SRG07_25','SRG08_25','SRG09_25','SRG10_25','SRG11_25','SRG12_25',
+TF(6)  = 'gp',2, ,'SRGsumn','25','SRG00n_25','SRG01n_25','SRG02n_25','SRG03n_25','SRG04n_25','SRG05n_25','SRG06n_25','SRG07n_25','SRG08n_25','SRG09n_25','SRG10n_25','SRG11n_25','SRG12n_25',
+TF(7)  = 'gp',2, ,'SRGsum','50','SRG00_50','SRG01_50','SRG02_50','SRG03_50','SRG04_50','SRG05_50','SRG06_50','SRG07_50','SRG08_50','SRG09_50','SRG10_50','SRG11_50','SRG12_50',
+TF(8)  = 'gp',2, ,'SRGsumn','50','SRG00n_50','SRG01n_50','SRG02n_50','SRG03n_50','SRG04n_50','SRG05n_50','SRG06n_50','SRG07n_50','SRG08n_50','SRG09n_50','SRG10n_50','SRG11n_50','SRG12n_50', 
+TF(9)  = 'gp',2, ,'SRGsum','90','SRG00_90','SRG01_90','SRG02_90','SRG03_90','SRG04_90','SRG05_90','SRG06_90','SRG07_90','SRG08_90','SRG09_90','SRG10_90','SRG11_90','SRG12_90',
+TF(10) = 'gp',2, ,'SRGsumn','90','SRG00n_90','SRG01n_90','SRG02n_90','SRG03n_90','SRG04n_90','SRG05n_90','SRG06n_90','SRG07n_90','SRG08n_90','SRG09n_90','SRG10n_90','SRG11n_90','SRG12n_90', 
+/
+
+&CTRL_PDEF
+!# diagnostic output ?
+L_DIAGOUT = F,
+!# SYNTAX: set-name, tracer-name, subname,
+!#         reset to zero?, stop on exceed?, relative tolerance
+TPD_DEFAULT(1) = 'gp',   '',     '',    T, F, 0.01,
+TPD_DEFAULT(2) = 'lg',   '',     '',    T, F, 0.01,
+TPD_DEFAULT(3) = 'cl',   '',     '',    T, F, 0.01,
+TPD_DEFAULT(4) = 'lggp', '',     '',    F, F, 0.01,
+TPD_DEFAULT(5) = 'clgp', '',     '',    F, F, 0.01,
+!
+!TPD(1)         = 'gp',   'HNO3', 'nat', T, F,     ,
+!TPD(2)         = 'gp',   'N',    '',    T, F,     ,
+!
+/
+
+&regrid
+! 2000/01:
+infile    = "$INPUTDIR_MESSY/tracer/RC1SD-base-10a_0140_restart_0001_tracer_gp.nc",
+i_latm    = "lat",      ! name of latitude dimension in input file
+i_latr    = -90.0,90.0,
+i_lonm    = "lon",      ! name of longitude dimension in input file
+!i_timem   = "time",     ! name of time dimension in input file
+!i_hyai    = "hyai",     ! name of hybrid A coefficients in input file
+i_hyam    = "hyam",     ! name of hybrid A coefficients in input file
+!i_hybi    = "hybi",     ! name of hybrid B coefficients in input file
+i_hybm    = "hybm",     ! name of hybrid B coefficients in input file
+i_ps      = "101325.0 Pa",
+i_p0      = "1. Pa",        ! value of reference pressure in input file
+var       = "H2O;",
+!i_t       = 1,
+/

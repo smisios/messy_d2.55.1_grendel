@@ -1,0 +1,1042 @@
+# 1 "../src/physc.f90"
+# 3
+
+!OCL NOALIAS
+
+SUBROUTINE physc(krow, kglat)
+!
+! Description:
+!
+! Controls the calls to the various physical subroutines.
+!
+!
+!  *physc* is called from *gpc*.
+!
+!  Externals:
+!
+!  *geopot*    computes full level geopotentials.
+!  *pres*      computes half level pressure.
+!  *presf*     computes full level pressure.
+!  *radiation* controls radiation computations.
+!  *radheat*   computes radiation tendencies.
+!  *vdiff*     computes vertical exchange by turbulence.
+!  *ssodrag*   computes gravity wave drag.
+!  *cucall*    controls mass-flux scheme.
+!  *cloud*     computes large scale water phase changes and cloud cover.
+!  *surf*      computes soiltemperature and moisture.
+!  *lake*      computes water temperature and ice of lakes
+!  *ml_ocean*  computes mixed layer ocean
+!  *licetemp*  computes ice temperature of lakes
+!  *sicetemp*  computes sea ice skin temperature.
+!
+!
+!  Authors:
+!
+!  M. Jarraud, ECMWF, January 1982, original source
+!
+!     Modifications.
+!     --------------
+!  M.A. Giorgetta, MPI-Hamburg, May 2000, modified for 1
+!  A.Tompkins,     MPI-Hamburg, June  2000, cloud cover scheme
+!  U. Schlese,     MPI-Hamburg, July  2000, calling sequence changed
+!  I. Kirchner,    MPI, July 2000, tendency diagnostics revision
+!  L. Kornblueh,   MPI, August 2001, changes for different advection
+!                       schemes, adapt polefilter call
+!  U. Schulzweida, MPI, May 2002, blocking (nproma)
+!  I. Kirchner,    MPI, August 2002, nmi revision/extension
+!  U. Schlese, M. Esch, MPI, September 2002, mixed layer ocean
+!  L. Kornblueh,   MPI, August 2004, new tropopause calculation
+!
+!
+USE mo_kind,              ONLY: dp
+USE mo_exception,         ONLY: message
+USE mo_memory_g1a,        ONLY: xlm1, xim1, tm1, qm1, alpsm1, xtm1
+USE mo_memory_g2a,        ONLY: vm1, um1
+USE mo_memory_g3a
+USE mo_memory_g3b
+# 60
+
+USE mo_control,           ONLY: ltdiag, lcouple, lmidatm,   &
+                                nlev, nlevp1, ltimer
+
+USE mo_hyb,               ONLY: delb, nlevm1
+# 68
+
+!!$USE mo_param_switches,    ONLY: lgwdrag ! op_pj_20160618
+USE mo_constants,         ONLY: cpd, vtmpc1, vtmpc2, g, tmelt          &
+                              , rhoh2o ! mz_lg_20030902
+
+# 77
+
+USE mo_scan_buffer,       ONLY: vo, vol, vom, qte, xlte, xite, tte, xtte, &
+                                alnpr, alpha, alpste, vervel
+# 82
+
+# 85
+
+# 88
+
+!mz_rs_20040326+
+USE messy_main_tracer_mem_bi, ONLY: ntrac => ntrac_gp
+!mz_rs_20040326-
+
+!
+# 96
+
+# 99
+
+!
+USE mo_decomposition,     ONLY: ldc => local_decomposition
+USE mo_diag_tendency,     ONLY: pdiga
+# 105
+
+# 112
+
+USE mo_geoloc,            ONLY: sqcst_2d, philat_2d
+!
+USE mo_time_control,      ONLY: lstart, lresume, delta_time,&
+                                lfirst_day, time_step_len
+
+!
+USE mo_advection
+USE mo_spitfire,          ONLY: pole_filter
+
+! mz_rs_20020828+
+USE messy_main_data_bi, ONLY: geopot_3d, geopoti_3d, &
+!!$                             cvs, cvw & ! ub_ak_20190208
+                                prc, prl,                        &
+!!$                             icecov,  &                  ! mz_pj_20030714 ! ub_ak_20190208+
+                                ilab, qtec, qflux, &        ! mz_ht_20040405
+                                vmixtau, vdiffp, &          ! mz_ht_20041026
+! ub_ak_20190208+
+!!$                             cvsc,  seacov, &            ! mz_bs_20050520
+!!$                             landcov, &                  ! op_pj_20130410
+! ub_ak_20190208-
+                                tslnew, &                   ! mz_pj_20050522
+                                srfl_2d, &                  ! mz_pj_20071130
+                                aphm1, aphp1, apm1, app1,              &
+! ub_ak_20190208+
+!!$                             geom1, loglac,                         &
+!!$                             loland, rsfc, rsfl, ssfc, ssfl,        &
+!geom1, rsfc, rsfl, ssfc, ssfl,        &
+! ub_ak_20190208-
+! mz_ap_20161103+
+!!$                                ! fields for exchange with ocean:
+!!$                                awhea_2d, aicon_2d, &  ! mz_ap_20070820
+!!$                                aiqre_2d,           &  ! mz_ap_20070820
+!!$                                awfre_2d, aifre_2d, &  ! mz_ap_20070820
+!!$                                aiust_2d,aivst_2d,  &  ! mz_ap_20070820
+!!$                                awust_2d, awvst_2d, &  ! mz_ap_20070820
+!!$                                apmebco_2d, &          ! mz_ap_20090519
+!!$                                evapi, cvsi, &         ! fb_mk_20100215
+!!$                                evapw, &               ! mz_ho_20160412
+!!$                                ahfsw, & !!$ ahfsi,  &       ! fb_mk_20100514
+!!$                                radflxw_2d,         &  ! op_pj_20130408
+!!$                                cvsi, & ! fb_mk_20100215 ! ub_ak_20190208
+! mz_ap_20161103-
+! op_sb_20120927+
+                                rsfl_2d, rsfc_2d, ssfl_2d, ssfc_2d !, &
+! ub_ak_20190208+
+!!$                             wlmx_2d, & !!$ evapl_2d, evapot_2d,       &
+!!$                             loland_2d, loglac_2d !,               &
+! ub_ak_20190208-
+! op_sb_20121119-
+!!$                             ahflw, ustri, vstri, ustrw, vstrw ! op_pj_20160614
+                              
+! mz_rs_20020828-
+# 168
+
+
+USE mo_timer,             ONLY: timer_start, timer_stop, timer_radiation, timer_cloud
+!
+USE mo_nmi,               ONLY: nmi_phase, NMI_ACCU, NMI_USE_AVG, &
+     dh_t, dh_m, dh_l, buf_t, buf_m, buf_l, lnmi_run, lnmi_cloud
+# 176
+
+# 180
+
+
+!mz_ht_20040415+
+USE messy_main_switch,    ONLY: USE_CONVECT, USE_CLOUD
+!!#D crm +
+USE messy_main_switch,    ONLY: USE_CRM
+!!#D crm -
+!mz_ht_20040415-
+
+
+IMPLICIT NONE
+!
+INTEGER :: krow, kglat
+!
+! ub_ak_20190208+
+!!$#ifndef OBSOLETE
+!!$! op_pj_20160619: this has been temporarily moved here to
+!!$!                 get rid of mo_physc2.f90, iniphy and finaly physc ...
+!!$!  *inverse of equivalent water height when snow
+!!$!  is considered to cover completely the ground
+!!$!  in the box.
+!!$REAL(dp), PARAMETER :: cqsncr = 0.95_dp
+!!$REAL(dp), PARAMETER :: cwlmax = 2.E-4_dp  !  *maximum moisture content of
+!!$                                          !   the skin reservoir
+!!$#endif
+! ub_ak_20190208-
+!  Local array bounds
+INTEGER :: nglon, nproma, nbdim
+!
+!  Local scalars:
+REAL(dp) :: zcst, zrcst, ztwodt, zprat,  zcdnc,  zn1,  zn2, ztsurf         &
+       , zepsec, zsigfac, zsigh, zsn_mm
+INTEGER :: jlev, jl, kfdia, kidia, ktdia, jk, nexp
+INTEGER :: jglat
+LOGICAL :: loconv, locond
+!
+!  Local arrays:
+
+REAL(dp) ::  zalpha_hp(ldc%nproma,nlev) ! mz_lg_20030127
+REAL(dp) ::  zdadc(ldc%nproma), zdpsdt(ldc%nproma), zgeo(ldc%nproma)          &
+        ,ztvm1(ldc%nproma,nlev)                                               &
+# 224
+
+! zbetaa: qt distribution minimum in beta
+! zbetab: qt distribution maximum in beta
+! zvdiffp:  dq/dt from vdiff scheme needed
+! zhmixtau:  timescale of mixing for horizontal eddies
+! zvmixtau:  timescale of mixing for vertical turbulence
+        ,zbetaa(ldc%nproma,nlev)                                        &
+        ,zbetab(ldc%nproma,nlev)
+# 238
+
+REAL(dp) ::  zbetass(ldc%nproma,nlev)
+
+REAL(dp) ::  zqtold(ldc%nproma)
+
+!
+# 246
+
+!
+!  Surface fluxes over land/water/ice
+!
+# 256
+
+! fb_mk_20100215+
+REAL(dp) :: zhfsl(ldc%nproma), zhfll(ldc%nproma)
+! sensible/latent heat flux over water in W m-2
+!!$REAL(dp), DIMENSION(:), POINTER :: zhfsw, zhflw ! mz_ap_20161103
+! sensible/latent heat flux over ice in W m-2
+!!$REAL(dp), DIMENSION(:), POINTER :: zhfsi, zhfli ! op_pj_20160614
+! evaporation over ice
+!!$REAL(dp), DIMENSION(:), POINTER :: zevapi ! mz_ap_20161103
+! fb_mk_20100215-
+!!$REAL(dp), DIMENSION(:), POINTER :: zevapl ! op_sb_20120927
+!!$REAL(dp), DIMENSION(:), POINTER :: zevapw ! mz_ho_20160412 ! mz_ap_20161103
+
+
+# 274
+
+! ub_ak_20190208+
+!!$! mz_bs_20050114+
+!!$REAL(dp), DIMENSION(:), POINTER :: zfrl     ! op_pj_20130410
+!!$REAL(dp), DIMENSION(:), POINTER :: zcvsc
+!!$REAL(dp), DIMENSION(:), POINTER :: zfrw
+!!$! mz_bs_20050114-
+!!$REAL(dp), DIMENSION(:), POINTER :: zfri
+!!$REAL(dp), DIMENSION(:), POINTER :: zcvs
+!!$REAL(dp), DIMENSION(:), POINTER :: zcvw
+!!$REAL(dp), DIMENSION(:), POINTER :: zcvsi ! fb_mk_20100215
+!!$REAL(dp), DIMENSION(:), POINTER :: zwlmx ! op_sb_20121205
+! ub_ak_20190208-
+
+!
+!  Local arrays for the HD-model and glacier calving model
+!
+
+# 295
+
+
+# 301
+
+INTEGER :: invb(ldc%nproma)
+!
+INTEGER :: itrpwmo(ldc%nproma), itrpwmop1(ldc%nproma)
+!
+!
+!    Arrays internal to physics
+!
+# 311
+
+REAL(dp) :: zprecip(ldc%nproma)
+! mz_ht_20041026+
+REAL(dp), DIMENSION(:,:), POINTER :: zilab    ! movable to cloud or convect?
+REAL(dp), DIMENSION(:,:), POINTER :: zqtec    ! obsolete?
+REAL(dp), DIMENSION(:,:), POINTER :: zvmixtau ! for vdiff
+REAL(dp), DIMENSION(:,:), POINTER :: zvdiffp  ! for vdiff
+REAL(dp), DIMENSION(:),   POINTER :: qhfla    ! for vdiff
+REAL(dp), DIMENSION(:),   POINTER :: ztslnew  ! for vdiff ! mz_pj_20050522
+! mz_ht_20041026-
+!!$REAL(dp), DIMENSION(:), POINTER :: evapot     ! for vdiff ! op_sb_20121205
+
+!
+REAL(dp) :: zdtime
+!
+! Local arrays
+!
+# 336
+
+REAL(dp), DIMENSION(:,:), POINTER :: geom1 => NULL()
+REAL(dp), DIMENSION(:),   POINTER :: srfl  => NULL()
+REAL(dp), DIMENSION(:),   POINTER :: rsfc  => NULL()
+REAL(dp), DIMENSION(:),   POINTER :: ssfc  => NULL()
+REAL(dp), DIMENSION(:),   POINTER :: ssfl  => NULL()
+REAL(dp), DIMENSION(:),   POINTER :: rsfl  => NULL()
+
+!
+!  External subroutines
+# 350
+
+! mz_jb_20040511+
+EXTERNAL geopot, pres, presf, &
+         messy_convec, messy_physc, messy_vdiff, &
+         messy_mixlo, &        ! fb_mk_20110129
+         messy_radiation, messy_radheat, messy_gwdrag ! op_pj_20130407
+! mz_jb_20040511-
+
+!
+!  Intrinsic functions
+INTRINSIC EXP, &
+  ABS, EPSILON, MAX, MIN, NINT, SQRT, TANH   ! mz_jb_20040512
+!
+!  Local array bounds
+  jglat = kglat           ! global continuous latitude index
+  nglon = ldc% nglon      ! local number of longitudes
+
+  nbdim = ldc% nproma
+
+  IF ( krow == ldc% ngpblks ) THEN
+    nproma = ldc% npromz
+  ELSE
+    nproma = ldc% nproma
+  END IF
+
+
+! mz_ht_20040405+
+  zilab    => ilab(:,:,krow)
+  zqtec    => qtec(:,:,krow)
+  zvmixtau => vmixtau(:,:,krow)
+  zvdiffp  => vdiffp(:,:,krow)
+  qhfla    => qflux(:,krow)
+  zilab(:,:)    = 0.0_dp
+  zqtec(:,:)    = 0.0_dp
+  qhfla(:)      = 0.0_dp
+  zvdiffp(:,:)  = 0.0_dp
+  zvmixtau(:,:) = 0.0_dp
+! mz_ht_20040405-
+! ub_ak_20190208+
+!!$ mz_pj_20041026+
+!!$  zfri => icecov(:,krow)
+!!$  zcvs => cvs(:,krow)
+!!$  zcvw => cvw(:,krow)
+!!$ mz_pj_20041026-
+!!$! mz_bs_20050114+
+!!$  zfrw => seacov(:,krow)
+!!$  zcvsc => cvsc(:,krow)
+!!$! mz_bs_20050114-
+!!$  zfrl => landcov(:,krow)   ! op_pj_20130410
+! ub_ak_20190208-
+  ztslnew => tslnew(:,krow) ! mz_pj_20050522
+! op_sb_20120927+ for surface
+  rsfl  => rsfl_2d(:,krow)
+  rsfc  => rsfc_2d(:,krow)
+  ssfl  => ssfl_2d(:,krow)
+  ssfc  => ssfc_2d(:,krow)
+!!$  zwlmx  => wlmx_2d(:,krow)   ! ub_ak_20190208
+!!$  zevapl => evapl_2d(:,krow)  ! op_pj_20160615
+!!$  evapot => evapot_2d(:,krow) ! op_pj_20160615
+! ub_ak_20190208+
+!!$ loland    => loland_2d(:,krow)
+!!$ loglac    => loglac_2d(:,krow)
+!!$  ! op_sb_20120927-
+!!$  ! fb_mk_20100212+
+! ub_ak_20190208-
+! mz_ap_20161103+
+!!$  zhfsw  => ahfsw(:,krow)
+!!$  zhflw  => ahflw(:,krow)
+!!$!!!$  zhfsi  => ahfsi(:,krow) ! op_pj_20160614
+!!$!!!$  zhfli  => ahfli(:,krow) ! op_pj_20160614
+!!$  zevapi => evapi(:,krow)
+!!$  zevapw => evapw(:,krow) ! mz_ho_20160412
+! mz_ap_20161103-
+!!$  zcvsi  => cvsi(:,krow) ! ub_ak_20190208
+! mz_ap_20161103+
+!!$  zhfsw(:)  = 0.0_dp
+!!$  zhflw(:)  = 0.0_dp
+! mz_ap_20161103-
+!!$  zhfsi(:)  = 0.0_dp ! op_pj_20160614
+!!$  zhfli(:)  = 0.0_dp ! op_pj_20160614
+! mz_ap_20161103+
+!!$  zevapi(:) = 0.0_dp
+!!$  zevapw(:) = 0.0_dp      ! mz_ho_20160412
+! mz_ap_20161103-
+!!$  zcvsi(:)  = 0.0_dp ! ub_ak_20190208
+! fb_mk_20100212-
+! op_sb_20120927+
+  rsfl(:) = 0.0_dp
+  rsfc(:) = 0.0_dp
+  ssfl(:) = 0.0_dp
+  ssfc(:) = 0.0_dp
+!!$  zwlmx(:) = 0.0_dp ! ub_ak_20190208
+!!$  zevapl(:)= 0.0_dp
+!!$  evapot(:) = 0.0_dp ! op_pj_20160615
+! op_sb_20120927-
+
+
+
+!*    COMPUTATIONAL CONSTANTS.
+!     ------------- ----------
+!
+  zdtime = delta_time
+  zepsec=1.E-12_dp
+  zsigfac=0.15_dp
+!
+!     ----------------------------------------------------------------
+!
+!*        2.    ALLOCATE STORAGE
+!               -------- -------
+!
+200 CONTINUE
+!
+
+  ALLOCATE (aphm1(ldc%nproma,nlevp1))
+  ALLOCATE (apm1(ldc%nproma,nlev))
+  ALLOCATE (aphp1(ldc%nproma,nlevp1))
+  ALLOCATE (app1(ldc%nproma,nlev))
+  srfl => srfl_2d(:,krow)
+! mz_pj_20050616+
+  aphm1(:,:) = 0.0_dp
+  apm1(:,:)  = 0.0_dp
+  aphp1(:,:) = 0.0_dp
+  app1(:,:)  = 0.0_dp
+! ub_ak_20190208+
+!!$ loland(:)  = .FALSE.
+!!$ loglac(:)  = .FALSE.
+! ub_ak_20190208-
+  rsfc(:)    = 0.0_dp
+  ssfc(:)    = 0.0_dp
+  rsfl(:)    = 0.0_dp
+  ssfl(:)    = 0.0_dp
+! mz_pj_20050616-
+
+!
+!     ------------------------------------------------------------
+!
+!*        3.    COMPUTE SOME FIELDS NEEDED BY THE PHYSICAL ROUTINES.
+!               ------- ---- ------ ------ -- --- -------- ---------
+!
+300 CONTINUE
+!
+!*        3.1   COMPUTE VIRTUAL TEMPERATURE AT T-DT AND SET *ZGEO* TO 0.
+!
+310 CONTINUE
+!
+  ztvm1(1:nproma,:) = tm1(1:nproma,:,krow)*(1._dp+vtmpc1*qm1(1:nproma,:,krow) &
+                      -(xlm1(1:nproma,:,krow)+xim1(1:nproma,:,krow)))
+!
+  zgeo(1:nproma)=0._dp
+!
+!*        3.2   COMPUTE (PHI-PHIS) AT T-DT USING LN(P) AT T.
+!
+320 CONTINUE
+!
+
+! mz_lg_20030127+
+! added the calculation of the half pressure
+! geopotential height, which is needed to calculate the thickness
+! the layers by calling the routine geopot and setting the
+! parameter alpha to zero.
+  zalpha_hp(:,:) = 0.0_dp
+  geom1 => geopoti_3d(:,:,krow)
+  CALL geopot(geom1,ztvm1,alnpr(:,:,krow),zalpha_hp(:,:),zgeo,nbdim,nproma)
+  geom1 => geopot_3d(:,:,krow)
+! mz_lg_20030127-
+
+  CALL geopot(geom1,ztvm1,alnpr(:,:,krow),alpha(:,:,krow),zgeo,nbdim,nproma)
+!
+!
+!*        3.3    COMPUTE PRESSURE AT FULL AND HALF LEVELS AT T-DT.
+!
+330 CONTINUE
+!
+  aphm1(1:nproma,nlevp1)=EXP(alpsm1(1:nproma,krow))
+!
+  CALL pres(aphm1,nbdim,aphm1(1,nlevp1),nproma)
+!
+  CALL presf(apm1,nbdim,aphm1,nproma)
+!
+!*        3.4   COMPUTE REAL WINDS AND WIND TENDENCIES.
+!
+340 CONTINUE
+!
+  DO jlev = 1, nlev
+!DIR$ CONCURRENT
+    DO jl = 1, nproma
+      zrcst=1._dp/sqcst_2d(jl,krow)
+      um1(jl,jlev,krow) = zrcst*um1(jl,jlev,krow)
+      vm1(jl,jlev,krow) = zrcst*vm1(jl,jlev,krow)
+      vol(jl,jlev,krow) = zrcst*vol(jl,jlev,krow)
+      vom(jl,jlev,krow) = zrcst*vom(jl,jlev,krow)
+    END DO
+  END DO
+# 546
+
+
+!
+! Horizontal wind shear for horizontal mixing of variance
+!
+  DO jlev=1,nlev
+     DO jl=1,nproma
+# 556
+
+        zvmixtau(jl,jlev)=0._dp
+     END DO
+  END DO
+!
+! ---------------------------!!!!!-----------------------------------
+!   no moisture computations at the first day to prevent instability
+!   at the beginning caused by unbalanced initial fields  !!!!
+!
+# 573
+
+!mz_ht_20040422+
+       IF (lstart) THEN
+          locond=.false.
+          loconv=.false.
+!!#D crm +
+          IF (USE_CRM) loconv = .TRUE.
+!!#D crm -
+       ELSE
+          locond=USE_CLOUD
+          loconv=USE_CONVECT
+!!#D crm +
+          loconv=USE_CONVECT .OR. USE_CRM
+!!#D crm -
+       END IF
+!mz_ht_20040422-
+
+
+     IF (lnmi_run) THEN
+! control cloud parameterisation in nmi initialization mode
+       locond=lnmi_cloud
+       loconv=lnmi_cloud
+       SELECT CASE(nmi_phase)
+       CASE(NMI_ACCU)     ! store tendencies
+!DIR$ CONCURRENT
+         buf_t(:,:) = tte(:,:,krow)
+!DIR$ CONCURRENT
+         buf_m(:,:) = vom(:,:,krow)
+!DIR$ CONCURRENT
+         buf_l(:,:) = vol(:,:,krow)
+       CASE(NMI_USE_AVG)  ! store tendencies
+!DIR$ CONCURRENT
+         buf_t(:,:) = tte(:,:,krow)
+!DIR$ CONCURRENT
+         buf_m(:,:) = vom(:,:,krow)
+!DIR$ CONCURRENT
+         buf_l(:,:) = vol(:,:,krow)
+       CASE default
+       END SELECT
+     END IF
+!
+! ------------------------------------------------------------------
+!
+!*        3.5   ESTIMATE ADIABATIC CONVERSION OF POTENTIAL ENERGY.
+!
+350 CONTINUE
+!
+  zdadc(1:nproma)=0._dp
+!
+  DO 351 jl=1,nproma
+     zdpsdt(jl)=aphm1(jl,nlevp1)*alpste(jl,krow)
+     zdadc(jl)=zdadc(jl)+geospm(jl,krow)*zdpsdt(jl)
+351 END DO
+!
+  DO 353 jlev=1,nlev
+     DO 352 jl=1,nproma
+        zdadc(jl)=zdadc(jl)+(1._dp+vtmpc2*qm1(jl,jlev,krow))*cpd*   &
+                (tte(jl,jlev,krow)*(aphm1(jl,jlev+1)-aphm1(jl,jlev)) &
+                        +tm1(jl,jlev,krow)*delb(jlev)*zdpsdt(jl))
+352  END DO
+353 END DO
+!
+# 695
+
+!
+370 CONTINUE
+!
+!
+!*         3.8    SET LOOP  VALUES FOR PHYSICAL PARAMETERIZATIONS
+!
+  kidia=1
+  kfdia=nproma
+  ktdia=1
+!
+!         3.9   DETERMINE TROPOPAUSE HEIGHT AND MASS BUDGETS
+!
+!
+# 713
+
+!
+!
+# 792
+
+! mz_ht_20041102+
+!  separate routine for cloud droplet numbers and cover from
+!  1 cloud called in MESSY_radiation
+  CALL messy_radiation
+! mz_ht_20041102-
+
+!
+!*        4.    RADIATION PARAMETERISATION.
+!               --------- -----------------
+!
+400 CONTINUE
+!
+!
+410 CONTINUE
+!
+# 878
+
+! ... of #ifndef 1 ! op_pj_20130407
+
+!
+! ----------------------------------------------------------------------
+!
+!       Update solar incidence *zi0* and compute solar surface flux *srfl*
+!
+!
+# 899
+
+! ... of #ifndef 1 ! op_pj_20130407
+!
+!     ------------------------------------------------------------
+!
+!*              VERTICAL EXCHANGE OF U,V,T,Q BY TURBULENCE.
+!               -------- -------- -- - - - - -- -----------
+!
+!
+!      COMPUTE PRESSURE AT FULL AND HALF LEVELS AT T+DT.
+!
+  ztwodt=time_step_len
+  DO 522 jl=1,nproma
+     aphp1(jl,nlevp1)=EXP(alpsm1(jl,krow)+ztwodt*alpste(jl,krow))
+522 END DO
+!
+  CALL pres(aphp1,nbdim,aphp1(1,nlevp1),nproma)
+!
+  CALL presf(app1,nbdim,aphp1,nproma)
+!
+  IF (ltdiag) THEN
+! prepare next fields for VDIFF
+# 925
+
+! mz_jb_20040830+
+    pdiga(1:nproma,:, 3,krow) = pdiga(1:nproma,:, 3,krow)- vom(1:nproma,:,krow)
+    pdiga(1:nproma,:, 8,krow) = pdiga(1:nproma,:, 8,krow)- vol(1:nproma,:,krow)
+    pdiga(1:nproma,:,16,krow) = pdiga(1:nproma,:,16,krow)- tte(1:nproma,:,krow)
+! mz_jb_20040830-
+
+  ENDIF
+!!
+! mz_ho_20160412+
+
+  CALL messy_vdiff
+# 1048
+
+! mz_ho_20160412-
+!
+!
+  IF (ltdiag) THEN
+! store VDIFF increment
+# 1061
+
+! mz_jb_20040830+
+    pdiga(1:nproma,:, 3,krow) = pdiga(1:nproma,:, 3,krow)+ vom(1:nproma,:,krow)
+    pdiga(1:nproma,:, 8,krow) = pdiga(1:nproma,:, 8,krow)+ vol(1:nproma,:,krow)
+    pdiga(1:nproma,:,16,krow) = pdiga(1:nproma,:,16,krow)+ tte(1:nproma,:,krow)
+! prepare next fields for RADHEAT
+    pdiga(1:nproma,:,15,krow) = pdiga(1:nproma,:,15,krow)- tte(1:nproma,:,krow)
+! mz_jb_20040830-
+
+  ENDIF
+!
+# 1078
+
+!
+!------------------------------------------------------------------------------
+!
+!*            ADD RADIATION TENDENCIES EVERY TIME STEP.
+!
+420 CONTINUE
+!
+# 1154
+
+! ... of #ifndef 1 ! op_pj_20130407
+!
+
+! mz_bs_20050228+
+   CALL messy_radheat
+! mz_bs_20050228-
+
+  IF (ltdiag) THEN
+! store RADHEAT increment
+# 1171
+
+! mz_jb_20040830+
+    pdiga(1:nproma,:,15,krow) = pdiga(1:nproma,:,15,krow)+ tte(1:nproma,:,krow)
+! prepare next fields for GWDRAG
+    pdiga(1:nproma,:, 4,krow) = pdiga(1:nproma,:, 4,krow)- vom(1:nproma,:,krow)
+    pdiga(1:nproma,:, 9,krow) = pdiga(1:nproma,:, 9,krow)- vol(1:nproma,:,krow)
+    pdiga(1:nproma,:,17,krow) = pdiga(1:nproma,:,17,krow)- tte(1:nproma,:,krow)
+! mz_jb_20040830-
+
+  ENDIF
+!
+!
+!     ------------------------------------------------------------
+!
+!        ***  GRAVITY WAVE DRAG PARAMETERISATION  ***
+!
+  IF (lmidatm) THEN
+    IF (lresume) THEN
+       aprflux(1:nproma,krow) = 0._dp
+       aprfluxm(1:nproma,krow) = 0._dp
+    ENDIF
+
+# 1199
+
+  END IF
+
+
+  CALL messy_gwdrag
+
+
+! op_re_20160608+
+# 1234
+
+! op_re_20160608-
+
+  IF (ltdiag) THEN
+! store GWDRAG increment
+# 1248
+
+! mz_jb_20040830+
+    pdiga(1:nproma,:, 4,krow) = pdiga(1:nproma,:, 4,krow)+ vom(1:nproma,:,krow)
+    pdiga(1:nproma,:, 9,krow) = pdiga(1:nproma,:, 9,krow)+ vol(1:nproma,:,krow)
+    pdiga(1:nproma,:,17,krow) = pdiga(1:nproma,:,17,krow)+ tte(1:nproma,:,krow)
+! prepare next fields for CUCALL
+! this is done in MESSY_CONVECT_E5 ! mz_ht_20050330
+! mz_jb_20040830-
+
+  ENDIF
+!
+!     ------------------------------------------------------------------
+!
+!*        6.    CONVECTION PARAMETERISATION.
+!               ---------- -----------------
+!
+600 CONTINUE
+!
+!
+!*        6.3    COMPUTE *T* AND *Q* TENDENCIES BY MOIST CONVECTION.
+!*                AND SHALLOW CONVECTION.
+!
+630 CONTINUE
+!
+!
+# 1275
+
+!
+!
+!
+!*         6.3.1   INITIALIZE ARRAYS FOR CONVECTIVE PRECIPITATION
+!*                 AND COPY ARRAYS FOR CONVECTIVE CLOUD PARAMETERS
+!*                 -----------------------------------------------
+!
+631 CONTINUE
+!
+!
+   xtec(1:nproma,:,krow)=0._dp  !!!!!
+!
+   IF (.NOT. USE_CRM) THEN
+     DO 632 jl=1,nproma
+       rsfc(jl)=0._dp
+       ssfc(jl)=0._dp
+632  END DO
+   END IF
+!
+!
+!*         6.3.3   CALL SUBROUTINE CUCALL FOR CUMULUS PARAMETERIZATION
+!                  ---------------------------------------------------
+!
+633 CONTINUE
+!
+!
+# 1348
+
+! +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+  if (loconv.or.locond) then
+    CALL messy_convec
+  ELSE
+!       NECESSARY COMPUTATIONS IF MASSFLUX IS BY-PASSED
+
+    if (.not.loconv) zilab(1:nproma,1:nlev)=0.0_dp ! mz_ht_20040405
+  ENDIF
+! +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+!
+# 1370
+
+!
+!     ------------------------------------------------------------
+!
+!*       7.    LARGE SCALE CONDENSATION.
+!              ----- ----- -------------
+!
+700 CONTINUE
+!
+!
+  IF(locond) THEN
+!
+!     POLE FILTER FOR TENDENCIES
+!
+     IF (iadvec == spitfire .and. .not. ldc%col_1d)                    & 
+       CALL pole_filter(tte(:,:,krow), qte(:,:,krow), krow)
+# 1388
+
+
+
+! mz_ht_20041102+
+! separate routine from 1 cloud called at the end of 1 convec
+# 1435
+
+  ELSE
+!
+!              NECESSARY COMPUTATIONS IF *CLOUD* IS BY-PASSED.
+!
+! um_hr_20190301+
+!!#D crm +
+
+     IF (.NOT. USE_CRM) THEN
+
+!!#D crm -
+! um_hr_20190301-
+    ssfl(1:nproma) = 0._dp
+    rsfl(1:nproma) = 0._dp
+!
+    aclc(1:nproma,:,krow) = 0._dp
+! um_hr_20190301+
+!!#D crm +
+
+    END IF
+
+!!#D crm -
+! um_hr_20190301-
+
+!
+  ENDIF
+!
+! store COND increment
+# 1466
+
+! for MESSy this is done in messy_cloud_e5 ! mz_ht_20050330
+
+ 
+  IF (lmidatm) THEN
+    DO jl=1,nproma
+       aprflux(jl,krow)=rsfl(jl)+ssfl(jl)+rsfc(jl)+ssfc(jl)
+    END DO
+  END IF
+  DO jl=1,nproma
+    zprecip(jl)=rsfl(jl)+ssfl(jl)+rsfc(jl)+ssfc(jl)
+  END DO
+!
+!     ----------------------------------------------------------------
+!
+!*        8.    Computation of new surface values over land points
+!
+!
+# 1628
+
+! op_sb_20121008+
+! moved from above
+! fb_mk_20100407+
+! MESSy interface to the mixed layer ocean and surf ...
+    CALL messy_mixlo
+! fb_mk_20100407-
+! op_sb_20121008-
+
+! end of #ifndef 1
+!
+!
+!    compute surface temperature for diagnostics
+!
+# 1650
+
+! moved to SURFACE
+
+
+    IF (lnmi_run) THEN
+      SELECT CASE(nmi_phase)
+      CASE(NMI_ACCU)    ! accumulate tendencies
+!DIR$ CONCURRENT
+        dh_t(:,:,krow) = dh_t(:,:,krow) + tte(:,:,krow) - buf_t(:,:)
+!DIR$ CONCURRENT
+        dh_m(:,:,krow) = dh_m(:,:,krow) + vom(:,:,krow) - buf_m(:,:)
+!DIR$ CONCURRENT
+        dh_l(:,:,krow) = dh_l(:,:,krow) + vol(:,:,krow) - buf_l(:,:)
+
+      CASE(NMI_USE_AVG) ! prepare/reset tendencies
+!DIR$ CONCURRENT
+        tte(:,:,krow) = buf_t(:,:) + dh_t(:,:,krow)
+!DIR$ CONCURRENT
+        vom(:,:,krow) = buf_m(:,:) + dh_m(:,:,krow)
+!DIR$ CONCURRENT
+        vol(:,:,krow) = buf_l(:,:) + dh_l(:,:,krow)
+
+      END SELECT
+    END IF
+!
+!      p-e budget correction for coupling
+!
+      DO jl=1,nproma
+        zqtold(jl)=qtnew(jl,krow)
+        qtnew(jl,krow)=0._dp
+      END DO
+      DO jk=ktdia,nlev
+!DIR$ CONCURRENT
+        DO jl=1,nproma
+          qtnew(jl,krow)=qtnew(jl,krow)+(qm1(jl,jk,krow)              &
+                         +xlm1(jl,jk,krow)+xim1(jl,jk,krow))          &
+                         *(aphm1(jl,jk+1)-aphm1(jl,jk))/g
+        END DO
+      END DO
+!
+!     Accumulate p-e correction for standard diagnostics
+!
+!DIR$ CONCURRENT
+      DO jl=1,nproma
+        apmeb(jl,krow)=apmeb(jl,krow)-(qtnew(jl,krow)-zqtold(jl))     &
+                       -(zprecip(jl)+qhfla(jl))*zdtime
+      END DO
+!
+# 1711
+
+!
+# 1769
+
+
+
+! mz_ap_20161103+
+!!$!mz_ap_20070820+
+!!$!!!$ IF (lcouple) THEN ! mz_pj_20071129
+!!$    ! save some istantaneous data for later use in the ocean exchange
+!!$    ! (a2o_global_end, via a2o.nml)
+!!$    ! latent + sensible heat+ SW + LW radiation
+!!$    awhea_2d(1:nproma,krow) = ( zhflw(1:nproma) + zhfsw(1:nproma)  &
+!!$         + radflxw_2d(1:nproma,krow) )
+!!$    aicon_2d(1:nproma,krow) = ahfice(1:nproma,krow)
+!!$    aiqre_2d(1:nproma,krow) = qres(1:nproma,krow)
+!!$    awfre_2d(1:nproma,krow) = (  (rsfl(1:nproma)+rsfc(1:nproma)) + &
+!!$         (ssfl(1:nproma)+ssfc(1:nproma)+zevapw(1:nproma))*         &
+!!$         (1._dp-seaice(1:nproma,krow))) / &
+!!$         rhoh2o
+!!$    aifre_2d(1:nproma,krow) = ((ssfl(1:nproma)+ssfc(1:nproma) + &
+!!$         zevapi(1:nproma)) * (seaice(1:nproma,krow))) / rhoh2o
+!!$    aiust_2d(1:nproma,krow) = ustri(1:nproma,krow)
+!!$    aivst_2d(1:nproma,krow) = vstri(1:nproma,krow)
+!!$    awust_2d(1:nproma,krow) = ustrw(1:nproma,krow)
+!!$    awvst_2d(1:nproma,krow) = vstrw(1:nproma,krow)
+!!$
+!!$    ! save some istantaneous data for later use in the
+!!$    ! hydrological discharge model (hd_global_end)
+!!$    ! Note: aros_2d, adrain_2d, apmecal_2d are channel objects
+!!$    !       if 1 (i.e. in messy_main_data_e5.f90) and
+!!$    !       calculated in submodel SURFACE
+!!$    apmebco_2d(1:nproma,krow)   =                    &
+!!$         -(qtnew(1:nproma,krow)-zqtold(1:nproma))    &
+!!$         -(zprecip(1:nproma)+qhfla(1:nproma))*zdtime
+!!$!!!$ END IF ! mz_pj_20071129
+!!$!mz_ap_20070820-
+! mz_ap_20161103-
+
+! mz_rs_20040326+
+! +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+CALL messy_physc
+! +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+!mz_rs_20040326-
+
+!
+! allow submodels to calculate some diagnostics
+!
+
+# 1821
+
+!
+! daily block statistics - AMIP2 global diagnostics
+!
+# 1832
+
+
+! mz_lg_20030116+ save the convective and large-scale rainfall
+  prc(1:nproma,krow)=rsfc(1:nproma)*zdtime/rhoh2o
+  prl(1:nproma,krow)=rsfl(1:nproma)*zdtime/rhoh2o
+! mz_lg_20030116-
+
+!
+!
+!*        9.    RESTORE WINDS AND WIND TENDENCIES.
+!
+900 CONTINUE
+!
+!
+!
+!*        9.2   RESTORE WINDS AND WIND TENDENCIES.
+!
+920 CONTINUE
+!
+  DO jlev = 1, nlev
+!DIR$ CONCURRENT
+    DO jl = 1, nproma
+      zcst = sqcst_2d(jl,krow)
+      um1(jl,jlev,krow) = zcst*um1(jl,jlev,krow)
+      vm1(jl,jlev,krow) = zcst*vm1(jl,jlev,krow)
+      vol(jl,jlev,krow) = zcst*vol(jl,jlev,krow)
+      vom(jl,jlev,krow) = zcst*vom(jl,jlev,krow)
+    END DO
+  END DO
+# 1864
+
+!
+!
+!     ------------------------------------------------------------
+!
+!*       10.    RELEASE SPACE.
+!               ------- ------
+!
+1200 CONTINUE
+
+
+  DEALLOCATE (aphm1)
+  DEALLOCATE (apm1)
+  DEALLOCATE (aphp1)
+  DEALLOCATE (app1)
+  NULLIFY(geom1)
+  NULLIFY(ssfc)
+  NULLIFY(ssfl)
+  NULLIFY(rsfc)
+  NULLIFY(rsfl)
+  NULLIFY(srfl)
+
+!
+!     ------------------------------------------------------------
+!
+  RETURN
+END SUBROUTINE physc

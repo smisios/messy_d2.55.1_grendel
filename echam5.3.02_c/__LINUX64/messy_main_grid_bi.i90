@@ -1,0 +1,562 @@
+# 1 "../../messy/bmil/messy_main_grid_bi.f90"
+!******************************************************************************
+MODULE messy_main_grid_bi
+!******************************************************************************
+
+  USE messy_main_grid,            ONLY: t_geohybgrid
+  USE messy_main_grid_def_mem_bi, ONLY: BASEGRID_ID
+  USE messy_main_blather_bi,      ONLY: start_message_bi, end_message_bi
+  USE messy_main_constants_mem,   ONLY: dp
+
+  IMPLICIT NONE
+  PRIVATE
+  SAVE
+
+! DEFINE MODEL BASEGRID
+! DUE to cyclic dependency in COSMO/MESSy
+!     tracer_bi => grid_bi => src_input => src_tracer => tracer_bi
+! BASEGRID_ID can not be defined here:
+! There are two solutions possible:
+!   a) create grid_mem_bi  (only for this integer
+!   b) move BASEGRID_ID TO DATA_BI
+! b) is enacted here
+!INTEGER,                     PUBLIC :: BASEGRID_ID
+
+! SUBROUTINES
+  PUBLIC :: main_grid_setup
+  PUBLIC :: main_grid_initialize
+  PUBLIC :: main_grid_init_memory
+# 30
+
+  PUBLIC :: main_grid_read_restart
+  PUBLIC :: main_grid_global_start
+  PUBLIC :: main_grid_local_start
+
+  PUBLIC :: main_grid_radiation
+
+  PUBLIC :: main_grid_vdiff
+  PUBLIC :: main_grid_free_memory
+  PUBLIC :: p_bcast_grid
+# 43
+
+
+CONTAINS
+
+! ---------------------------------------------------------------------------
+  SUBROUTINE p_bcast_grid(grid, proc)
+
+    USE messy_main_mpi_bi,         ONLY: P_BCAST, p_pe
+    USE messy_main_grid_netcdf_bi, ONLY: P_BCAST_NCVAR, P_BCAST_NCATT
+    USE messy_main_grid,           ONLY: INIT_GEOHYBGRID
+
+    IMPLICIT NONE
+
+! I/O
+    TYPE(t_geohybgrid), INTENT(INOUT) :: grid
+    INTEGER           , INTENT(IN)    :: proc
+! LOCAL
+    INTEGER                           :: i
+
+    IF (p_pe /= proc) THEN
+       CALL INIT_GEOHYBGRID(grid)
+    ENDIF
+
+    CALL P_BCAST(grid%name, proc)
+    CALL P_BCAST(grid%ID,   proc)
+    CALL P_BCAST(grid%file, proc)
+    CALL P_BCAST(grid%t,    proc)
+
+    CALL P_BCAST_NCATT(grid%att, proc)
+
+    DO i = 1, 4
+       CALL P_BCAST(grid%ranges(i,1), proc)
+       CALL P_BCAST(grid%ranges(i,2), proc)
+    END DO
+
+    CALL P_BCAST(grid%corners,           proc)
+    CALL P_BCAST(grid%minmaxlonlat(:,:), proc)
+    CALL P_BCAST(grid%start(:),          proc)
+    CALL P_BCAST(grid%count(:),          proc)
+    CALL P_BCAST(grid%lonc,              proc)
+
+    CALL P_BCAST_NCVAR(grid%lonm,  proc)
+    CALL P_BCAST_NCVAR(grid%latm,  proc)
+    CALL P_BCAST_NCVAR(grid%hyam,  proc)
+    CALL P_BCAST_NCVAR(grid%hybm,  proc)
+    CALL P_BCAST_NCVAR(grid%timem, proc)
+
+    CALL P_BCAST_NCVAR(grid%loni,  proc)
+    CALL P_BCAST_NCVAR(grid%lati,  proc)
+    CALL P_BCAST_NCVAR(grid%hyai,  proc)
+    CALL P_BCAST_NCVAR(grid%hybi,  proc)
+    CALL P_BCAST_NCVAR(grid%timei, proc)
+
+    CALL P_BCAST_NCVAR(grid%ps,    proc)
+    CALL P_BCAST_NCVAR(grid%p0,    proc)
+
+    CALL P_BCAST(grid%clonc,       proc)
+
+    CALL P_BCAST_NCVAR(grid%clonm,  proc)
+    CALL P_BCAST_NCVAR(grid%clatm,  proc)
+    CALL P_BCAST_NCVAR(grid%cloni,  proc)
+    CALL P_BCAST_NCVAR(grid%clati,  proc)
+
+    CALL P_BCAST(grid%rlonc,       proc)
+
+    CALL P_BCAST_NCVAR(grid%rlonm,  proc)
+    CALL P_BCAST_NCVAR(grid%rlatm,  proc)
+    CALL P_BCAST_NCVAR(grid%rloni,  proc)
+    CALL P_BCAST_NCVAR(grid%rlati,  proc)
+
+    CALL P_BCAST_NCVAR(grid%pollon, proc)
+    CALL P_BCAST_NCVAR(grid%pollat, proc)
+    CALL P_BCAST_NCVAR(grid%polgam, proc)
+
+    CALL P_BCAST_NCVAR(grid%ulonm,  proc)
+    CALL P_BCAST_NCVAR(grid%ulatm,  proc)
+    CALL P_BCAST_NCVAR(grid%uloni,  proc)
+    CALL P_BCAST_NCVAR(grid%ulati,  proc)
+
+    CALL P_BCAST_NCVAR(grid%ps,     proc)
+    CALL P_BCAST_NCVAR(grid%p0,     proc)
+
+    CALL P_BCAST_NCVAR(grid%imask,  proc)
+
+    CALL P_BCAST_NCVAR(grid%pressm, proc)
+    CALL P_BCAST_NCVAR(grid%pressi, proc)
+
+  END SUBROUTINE p_bcast_grid
+! ---------------------------------------------------------------------------
+
+! ---------------------------------------------------------------------------
+  SUBROUTINE main_grid_setup
+
+# 142
+
+
+  END SUBROUTINE main_grid_setup
+! ---------------------------------------------------------------------------
+
+! ---------------------------------------------------------------------------
+  SUBROUTINE main_grid_initialize
+
+    USE messy_main_grid_def_bi, ONLY: main_grid_def_initialize
+
+    IMPLICIT NONE
+
+    CALL main_grid_def_initialize
+
+  END SUBROUTINE main_grid_initialize
+! ---------------------------------------------------------------------------
+
+! ---------------------------------------------------------------------------
+  SUBROUTINE main_grid_init_memory(flag)
+
+
+    USE messy_main_grid_def_bi, ONLY: main_grid_def_init_memory
+# 166
+
+    USE messy_main_blather_bi,  ONLY: ERROR_BI
+    USE messy_main_channel_bi,  ONLY: n_dom
+    USE messy_main_grid,        ONLY: NEW_GEOHYBGRID, GRID_ERROR &
+                                    , INIT_GEOHYBGRID
+    USE messy_main_channel_mem, ONLY: dom_curid
+
+    IMPLICIT NONE
+
+! I/O
+    INTEGER, INTENT(IN)         :: flag
+
+! LOCAL
+    CHARACTER(LEN=*), PARAMETER :: substr = 'main_grid_init_memory'
+    TYPE(t_geohybgrid)          :: bgrid     ! base model grid
+    INTEGER                     :: status
+    LOGICAL                     :: lok
+    INTEGER                     :: np
+
+    np = dom_curid
+
+
+    IF (.NOT. ALLOCATED(BASEGRID_ID)) THEN
+       ALLOCATE(BASEGRID_ID(0:n_dom))
+       BASEGRID_ID(:) = -99
+    END IF
+
+    SELECT CASE(flag)
+    CASE (1)
+# 197
+
+       CALL main_grid_def_init_memory
+
+    CASE(2)
+       CALL start_message_bi('DEFINING BASEMODEL GRID', 'INIT_MEMORY',substr)
+!  define base model grid:
+       CALL DEFINE_BASEMODEL_GEOHYBGRID(bgrid, lok)
+       IF (.NOT. lok) &
+            CALL ERROR_BI ('definition of basemodel grid failed', substr)
+
+! copy grid into list of grids
+       CALL NEW_GEOHYBGRID(status, BASEGRID_ID(np), bgrid)
+       IF (status /= 0 .AND. status /= 01) &
+            CALL ERROR_BI(grid_error(status), substr)
+
+! free memory
+       CALL INIT_GEOHYBGRID(bgrid)
+
+       CALL end_message_bi('DEFINING BASEMODEL GRID', 'INIT_MEMORY',substr)
+
+    END SELECT
+
+  CONTAINS
+
+
+
+
+! -------------------------------------------------------------------------
+    SUBROUTINE DEFINE_BASEMODEL_GEOHYBGRID(g, ok)
+
+      USE messy_main_grid_def_mem_bi, ONLY: nvclev, vct, nlon, ngl, nhgl, nlev
+      USE messy_main_grid_def_bi,     ONLY: gl_gmu
+      USE messy_main_data_bi,         ONLY:  aps
+
+      USE messy_main_timer,         ONLY: YEAR_START, MONTH_START, DAY_START &
+                                        , HOUR_START, MINUTE_START           &
+                                        , SECOND_START                       &
+                                        , YEAR, MONTH, DAY, HOUR, MINUTE, SECOND
+      USE messy_main_constants_mem, ONLY: api=>pi, sp
+      USE messy_main_timer,         ONLY: TIME_SPAN_D
+
+      USE messy_main_grid_trafo,   ONLY: RGEMPTY, COMPLETE_GEOHYBGRID
+      USE messy_main_grid_netcdf,  ONLY: ERRMSG  &
+                                       , NULL_DIMID, NULL_VARID &
+                                       , VTYPE_REAL, VTYPE_DOUBLE &
+                                       , nf90_float  &
+                                       , POSITION, INIT_NARRAY, ADD_NCATT
+      USE messy_main_grid,         ONLY: t_geohybgrid, INIT_GEOHYBGRID
+
+      IMPLICIT NONE
+
+! I/O
+      TYPE (t_geohybgrid), INTENT(OUT) :: g
+      LOGICAL          ,   INTENT(OUT) :: ok
+
+! LOCAL
+      REAL(DP)                 :: dts
+      INTEGER                  :: i,j
+      INTEGER                  :: status
+      CHARACTER(LEN=100)       :: tunit
+
+! INIT
+      CALL INIT_GEOHYBGRID(g)
+
+      g%name = 'ECHAM5'
+      g%file = ''                              ! Filename
+      g%t    = 0                               ! time step
+      g%corners = 4                            ! number of corners
+
+! LONGITUDE (MID) ...
+      g%lonm%name  = 'lon'
+      g%lonm%id    = NULL_VARID
+      g%lonm%xtype = NF90_FLOAT
+! ... dimensions
+      g%lonm%ndims = 1
+      ALLOCATE(g%lonm%dim(g%lonm%ndims), STAT=status)
+      CALL ERRMSG('INTERFACE_GEOHYBGRID',status,1)
+      g%lonm%dim(1)%name  = 'lon'
+      g%lonm%dim(1)%id    = NULL_DIMID
+      g%lonm%dim(1)%len   = nlon
+      g%lonm%dim(1)%fuid  = .false.
+      g%lonm%dim(1)%varid = NULL_VARID
+      g%lonc = .TRUE. ! Axis is circular
+! ... data
+      CALL INIT_NARRAY(g%lonm%dat, g%lonm%ndims, (/g%lonm%dim(1)%len/) &
+           ,VTYPE_REAL)
+      DO i=1, nlon
+         g%lonm%dat%vr(i) = 360. * REAL(i-1) / REAL(nlon)
+      END DO
+! ... attributes
+      CALL ADD_NCATT(g%lonm, 'long_name', vs='longitude')
+      CALL ADD_NCATT(g%lonm, 'units', vs='degrees_east')
+      g%ranges(1,1) = RGEMPTY  ! equidistant; no correction of range required
+      g%ranges(1,2) = RGEMPTY
+
+! LATITUDE (MID) ...
+      g%latm%name  = 'lat'
+      g%latm%id    = NULL_VARID
+      g%latm%xtype = NF90_FLOAT
+! ... dimensions
+      g%latm%ndims = 1
+      ALLOCATE(g%latm%dim(g%latm%ndims), STAT=status)
+      CALL ERRMSG('INTERFACE_GEOHYBGRID',status,2)
+      g%latm%dim(1)%name  = 'lat'
+      g%latm%dim(1)%id    = NULL_DIMID
+      g%latm%dim(1)%len   = ngl
+      g%latm%dim(1)%fuid  = .false.
+      g%latm%dim(1)%varid = NULL_VARID
+! ... data
+      CALL INIT_NARRAY(g%latm%dat, g%latm%ndims, (/g%latm%dim(1)%len/) &
+           ,VTYPE_REAL)
+
+      DO j=1,nhgl
+         g%latm%dat%vr(j)=REAL(ASIN(gl_gmu(j))*180./api,sp)
+         g%latm%dat%vr(ngl+1-j)=-g%latm%dat%vr(j)
+      END DO
+
+! ... attributes
+      CALL ADD_NCATT(g%latm, 'long_name', vs='latitude')
+      CALL ADD_NCATT(g%latm, 'units', vs='degrees_north')
+      g%ranges(2,1) = -90.0_dp
+      g%ranges(2,2) =  90.0_dp
+
+! HYBRID-A-COEFFICIENTS (INTERFACES) ...
+      g%hyai%name  = 'hyai'
+      g%hyai%id    = NULL_VARID
+      g%hyai%xtype = NF90_FLOAT
+! ... dimensions
+      g%hyai%ndims = 1
+      ALLOCATE(g%hyai%dim(g%hyai%ndims), STAT=status)
+      CALL ERRMSG('INTERFACE_GEOHYBGRID',status,3)
+      g%hyai%dim(1)%name  = 'ilev'
+      g%hyai%dim(1)%id    = NULL_DIMID
+      g%hyai%dim(1)%len   = nlev+1
+      g%hyai%dim(1)%fuid  = .false.
+      g%hyai%dim(1)%varid = NULL_VARID
+! ... data
+      CALL INIT_NARRAY(g%hyai%dat, g%hyai%ndims, (/g%hyai%dim(1)%len/) &
+           ,VTYPE_REAL)
+      g%hyai%dat%vr(:) = REAL(vct(1:nvclev),sp)
+! ... attributes
+      CALL ADD_NCATT(g%hyai, 'long_name'                              &
+           ,vs='hybrid-A-coefficients at layer interfaces')
+      CALL ADD_NCATT(g%hyai, 'units', vs='1')
+      g%ranges(3,1) = 0.0_dp
+      g%ranges(3,2) = 0.0_dp
+
+! HYBRID-B-COEFFICIENTS (INTERFACES) ...
+      g%hybi%name  = 'hybi'
+      g%hybi%id    = NULL_VARID
+      g%hybi%xtype = NF90_FLOAT
+! ... dimensions
+      g%hybi%ndims = 1
+      ALLOCATE(g%hybi%dim(g%hybi%ndims), STAT=status)
+      CALL ERRMSG('INTERFACE_GEOHYBGRID',status,4)
+      g%hybi%dim(1) = g%hyai%dim(1)
+! ... data
+      CALL INIT_NARRAY(g%hybi%dat, g%hybi%ndims, (/g%hybi%dim(1)%len/) &
+           ,VTYPE_REAL)
+      g%hybi%dat%vr(:) = REAL(vct(nvclev+1:2*nvclev),sp)
+! ... attributes
+      CALL ADD_NCATT(g%hybi, 'long_name'                              &
+           ,vs='hybrid-B-coefficients at layer interfaces')
+      CALL ADD_NCATT(g%hybi, 'units', vs='1')
+      g%ranges(4,1) = 0.0_dp
+      g%ranges(4,2) = 1.0_dp
+
+! SURFACE PRESSURE
+      g%ps%name  = 'ps'
+      g%ps%id    = NULL_VARID
+      g%ps%xtype = NF90_FLOAT
+! ... dimensions
+      g%ps%ndims = 2
+      ALLOCATE(g%ps%dim(g%ps%ndims), STAT=status)
+      CALL ERRMSG('INTERFACE_GEOHYBGRID',status,5)
+      g%ps%dim(1) = g%lonm%dim(1)
+      g%ps%dim(2) = g%latm%dim(1)
+! ... data
+      CALL INIT_NARRAY(g%ps%dat, g%ps%ndims                  &
+           ,(/g%ps%dim(1)%len, g%ps%dim(2)%len/) &
+           ,VTYPE_REAL)
+      IF (ASSOCIATED(aps)) THEN
+         DO i=1, g%ps%dim(1)%len
+            DO j=1, g%ps%dim(2)%len
+               g%ps%dat%vr(POSITION((/g%ps%dim(1)%len, g%ps%dim(2)%len/)  &
+                    ,(/i,j/)))                           &
+!qqq
+!           = aps(i,j)
+                    = 101325.0
+            END DO
+         END DO
+      ELSE
+         DO i=1, g%ps%dim(1)%len
+            DO j=1, g%ps%dim(2)%len
+               g%ps%dat%vr(POSITION((/g%ps%dim(1)%len, g%ps%dim(2)%len/)  &
+                    ,(/i,j/)))                           &
+                    = 101325.0
+            END DO
+         END DO
+      END IF
+! ... attributes
+      CALL ADD_NCATT(g%ps, 'long_name', vs='surface pressure')
+      CALL ADD_NCATT(g%ps, 'units', vs='Pa')
+
+! REFERENCE PRESSURE ...
+      g%p0%name  = 'p0'
+      g%p0%id    = NULL_VARID
+      g%p0%xtype = NF90_FLOAT
+! ... dimensions
+      g%p0%ndims = 0
+! ... data
+      CALL INIT_NARRAY(g%p0%dat, 1, (/ 1 /), VTYPE_REAL)
+      g%p0%dat%vr(1) = 1.0
+! ... attributes
+      CALL ADD_NCATT(g%p0, 'long_name', vs='reference pressure')
+      CALL ADD_NCATT(g%p0, 'units', vs='Pa')
+
+! TIME (MID) ...
+      g%timem%name  = 'time'
+      g%timem%id    = NULL_VARID
+      g%timem%xtype = NF90_FLOAT
+! ... dimensions
+      g%timem%ndims = 1
+      ALLOCATE(g%timem%dim(g%timem%ndims), STAT=status)
+      CALL ERRMSG('INTERFACE_GEOHYBGRID',status,6)
+      g%timem%dim(1)%name  = 'time'
+      g%timem%dim(1)%id    = NULL_DIMID
+      g%timem%dim(1)%len   = 1
+      g%timem%dim(1)%fuid  = .true.
+      g%timem%dim(1)%varid = NULL_VARID
+! ... data
+      CALL INIT_NARRAY(g%timem%dat, g%timem%ndims, (/g%timem%dim(1)%len/) &
+           ,VTYPE_DOUBLE)
+! TIME: SECONDS SINCE MODEL START
+      CALL TIME_SPAN_D(dts   &
+           , YEAR_START, MONTH_START, DAY_START &
+           , HOUR_START, MINUTE_START, SECOND_START  &
+           , YEAR, MONTH, DAY, HOUR, MINUTE, SECOND)
+      g%timem%dat%vd(1) = dts * 86400.0_dp  ! days -> seconds
+! ... attributes
+      CALL ADD_NCATT(g%timem, 'long_name'                              &
+           ,vs='time in seconds since model start')
+      WRITE(tunit, &
+           '("sec since ",I4.4,"-",I2.2,"-",I2.2," ",I2.2,":",I2.2,":",I2.2)') &
+           YEAR_START, MONTH_START, DAY_START &
+           , HOUR_START, MINUTE_START, SECOND_START
+      CALL ADD_NCATT(g%timem, 'units', vs=TRIM(tunit))
+
+! CALCULATE INTs from MIDs
+      CALL COMPLETE_GEOHYBGRID(g)
+
+! INTERFACE OK
+      ok = .true.
+
+    END SUBROUTINE DEFINE_BASEMODEL_GEOHYBGRID
+! -------------------------------------------------------------------------
+
+
+# 1113
+
+!COSMO
+
+# 1747
+
+!CESM1
+
+!ICON
+# 2215
+
+!ICON
+
+# 2647
+
+
+# 2665
+
+
+  END SUBROUTINE main_grid_init_memory
+! ---------------------------------------------------------------------------
+
+
+! ---------------------------------------------------------------------------
+  SUBROUTINE main_grid_read_restart
+
+    USE messy_main_grid_def_bi, ONLY: main_grid_def_read_restart
+
+    IMPLICIT NONE
+
+     CALL main_grid_def_read_restart
+
+  END SUBROUTINE main_grid_read_restart
+! ---------------------------------------------------------------------------
+
+# 2695
+
+! ---------------------------------------------------------------------------
+  SUBROUTINE main_grid_global_start
+
+    USE messy_main_grid_def_bi, ONLY: main_grid_def_global_start
+
+    IMPLICIT NONE
+
+    CALL main_grid_def_global_start
+
+  END SUBROUTINE main_grid_global_start
+! ---------------------------------------------------------------------------
+
+! ---------------------------------------------------------------------------
+  SUBROUTINE main_grid_local_start
+
+    USE messy_main_grid_def_bi, ONLY: main_grid_def_local_start
+
+    IMPLICIT NONE
+
+    CALL main_grid_def_local_start
+
+  END SUBROUTINE main_grid_local_start
+! ---------------------------------------------------------------------------
+
+! ---------------------------------------------------------------------------
+  SUBROUTINE main_grid_radiation
+
+    USE messy_main_grid_def_bi, ONLY: main_grid_def_radiation
+
+    IMPLICIT NONE
+
+    CALL main_grid_def_radiation
+
+  END SUBROUTINE main_grid_radiation
+! ---------------------------------------------------------------------------
+
+! ---------------------------------------------------------------------------
+  SUBROUTINE main_grid_vdiff
+
+# 2741
+
+
+  END SUBROUTINE main_grid_vdiff
+! ---------------------------------------------------------------------------
+
+!----------------------------------------------------------------------------
+  SUBROUTINE main_grid_free_memory
+
+    USE messy_main_blather_bi,      ONLY: ERROR_BI
+    USE messy_main_grid_def_mem_bi, ONLY: BASEGRID_ID
+    USE messy_main_grid_def_bi,     ONLY: main_grid_def_free_memory
+    USE messy_main_grid,            ONLY: GRID_ERROR           &
+                                        , CLEAN_GEOHYBGRID_LIST
+    USE messy_main_grid_trafo_scrp, ONLY: CLEAN_SCRIPDATA_LIST &
+                                        , CLEAN_SCRIPGRID_LIST
+
+    IMPLICIT NONE
+
+! LOCAL
+    CHARACTER(LEN=*), PARAMETER :: substr = 'main_grid_free_memory'
+    INTEGER                     :: status
+
+    CALL main_grid_def_free_memory
+
+    CALL CLEAN_SCRIPDATA_LIST(status)
+    IF (status /= 0) CALL ERROR_BI(grid_error(status), substr)
+    CALL CLEAN_SCRIPGRID_LIST(status)
+    IF (status /= 0) CALL ERROR_BI(grid_error(status), substr)
+    CALL CLEAN_GEOHYBGRID_LIST(status)
+    IF (status /= 0) CALL ERROR_BI(grid_error(status), substr)
+
+    DEALLOCATE(BASEGRID_ID)
+
+  END SUBROUTINE main_grid_free_memory
+!----------------------------------------------------------------------------
+# 2803
+
+!******************************************************************************
+END MODULE messy_main_grid_bi
+!******************************************************************************

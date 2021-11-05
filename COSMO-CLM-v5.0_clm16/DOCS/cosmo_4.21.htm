@@ -1,0 +1,501 @@
+<!DOCTYPE html 
+     PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+     "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xml:lang="en" lang="en">
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="GENERATOR" content="Mozilla/4.7C-SGI [en] (X11; I; IRIX64 6.5 IP27) [Netscape]">
+   <title>Changes in the COSMO-Model 4.21</title>
+<style type="text/css">
+  body { font-family:       Arial;
+         font-size:         12pt;
+         background-repeat: no-repeat; 
+         margin:            1em; }
+
+  tt   { font-size:         12pt;}
+
+  li   { margin-top:         5pt;
+         margin-bottom:      5pt }
+
+  th   { border:           1px solid black;
+         padding:          3pt;
+         vertical-align:   top;
+         background-color: lightblue;}
+
+  td   { border:           1px solid black;
+         padding:          3pt;
+         vertical-align:   top;}
+
+  td.middl   { border:           1px solid black;
+               padding:          3pt;
+               vertical-align:   middle;}
+
+  td.hilit       { border:           1px solid black;
+                   padding:          1pt;
+                   vertical-align:   top;
+                   background-color: lightblue;}
+
+  td.clean       { padding:          0pt;
+                   border-style:     none;
+                   vertical-align:   top;}
+
+  td.notes       { padding:          3pt;
+                   border-style:     none;
+                   vertical-align:   top;}
+
+  td.nomid       { padding:          3pt;
+                   border-style:     none;
+                   vertical-align:   middle;}
+
+  table.note     { border-width:     0pt;
+                   border-style:     none;
+                   margin-left:      5pt;
+                   margin-top:       1pt;
+                   margin-bottom:    1pt;
+                   cell-padding:     5pt;
+                   vertical-align:   top;
+                   text-align:       left;}
+  
+  table.atte     { border-width:     0pt;
+                   border-style:     none;
+                   margin-left:      5pt;
+                   margin-top:       1pt;
+                   margin-bottom:    1pt;
+                   cell-padding:     5pt;
+                   vertical-align:   top;
+                   text-align:       left;
+                   background-color: red;}
+  
+  table.namelist { border-width:  2pt;
+                   border-style:  groove;
+                   border-color:  black;
+                   width:         90%;
+                   text-align:    left;
+                   margin-top:    1pt;
+                   margin-bottom: 1pt;
+                   padding:       3pt;
+                   align:         center;}
+  
+  tr.headings    { text-align:       left;
+                   vertical-align:   top;
+                   border-width:     1pt;
+                   border-style:     groove;
+                   border-color:     grey;
+                   padding:          2pt;
+                   font-weight:      bold;}
+
+  .rot           { background-color: red;}
+</style>
+
+</head>
+  <body text="#000000" bgcolor="#FFFFFF" link="#0000EE" vlink="#551A8B" alink="#FF0000">
+
+<center>
+<h1>
+<a NAME="begin">Documentation of the Changes in the COSMO-Model <br /> Version 4.21</a>
+</h1>
+<h3>
+06.12.2011
+</h3>
+</center>
+
+<p>
+This version fixes a problem that occured with 4.20, that the amount
+of precipitation was much too low. Reasons for that were within the latent
+heat nudging, but also within the microphysics.
+Besides that, the Smagorinsky diffusion for u and v has been implemented.
+</p>
+
+<h4><a NAME="content">Contents:</a></h4>
+
+<ol>
+<li><a href="#chanmic">Changes in the Microphysics</a></li>
+<li><a href="#chanlhn">Changes in the Latent Heat Nudging</a></li>
+<li><a href="#smagori">Smagorinsky Diffusion</a></li>
+<li><a href="#windgus">Computation of Wind Gusts</a></li>
+<li><a href="#bugfixe">Bug Fixes</a></li>
+<li><a href="#technic">Some Technical Modifications</a></li>
+<li><a href="#results">Changes of Results</a></li>
+<li><a href="#namelis">Changes to the Namelists</a></li>
+</ol>
+<p>
+<hr>
+
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="chanmic">1. Changes in the Microphysics</a></h3>
+  <h4>(by Axel Seifert, Uli Blahak)</h4>
+
+Introduction of a tuning factor <tt>rain_n0_factor</tt> in NL group <tt>/TUNING/</tt>:
+With this factor the intercept parameter <tt>n<sub>0</sub></tt> in the rain drop size distribution
+can be modified. This factor has to be set depending on the grid scale
+precipitation scheme used (<tt>hydci_pp</tt> or <tt>hydci_pp_gr</tt>) and the value of <tt>mu_rain</tt>.
+The following values are recommended:
+
+<ul>
+ <li>Setting for <tt>hydci_pp</tt> (COSMO_EU like applications without graupel scheme)
+     <table cellspacing="3" class="note">
+      <tbody>
+        <tr>
+          <td class="notes"><tt>mu_rain</tt></td>
+          <td class="notes"><tt>0.0</tt></td>
+        </tr>
+        <tr>
+          <td class="notes"><tt>rain_n0_factor</tt></td>
+          <td class="notes"><tt>1.0</tt></td>
+        </tr>
+      </tbody>
+     </table></li>
+ <li>Setting for <tt>hydci_pp_gr</tt> (COSMO_DE like applications)
+     <table cellspacing="3" class="note">
+      <tbody>
+        <tr>
+          <td class="notes"><tt>mu_rain</tt></td>
+          <td class="notes"><tt>0.5</tt></td>
+        </tr>
+        <tr>
+          <td class="notes"><tt>rain_n0_factor</tt></td>
+          <td class="notes"><tt>0.1</tt></td>
+        </tr>
+      </tbody>
+     </table></li>
+</ul>
+
+Explanation: <br />
+The parameter <tt>mu_rain</tt> generalizes the up to now assumed exponential
+size distribution for rain drops <tt>N(D)</tt> (with <tt>D</tt> = drop diameter) to a gamma-distribution
+
+<center>
+<tt>N(D) = N0(lambda) * D<sup>mu_rain</sup> * EXP(-lambda*D).</tt>
+</center>
+
+(For <tt>mu_rain = 0.0</tt>, the old exponential distribution is recovered).
+The physically meaningful parameter range for <tt>mu_rain</tt> is about <tt>0.0 - 5.0</tt>.
+
+However, because the cloud microphysics is a one-moment-parameterization, only one of the 3
+parameters of <tt>N(D)</tt> is actually prognostic, which we choose to be lambda (the "shape" parameter).
+For the others, we choose to set <tt>mu_rain</tt> (the "shape" parameter) fixed
+and to assume a certain dependence of <tt>N0</tt> on <tt>lambda</tt> (the "slope" parameter, 
+<tt>[m<sup>-1</sup>]</tt>), as suggested
+by drop size distribution measurements. Here the relation of Ulbrich (1983) is used, which reads
+
+<center>
+<tt>N0 = N00 * EXP(3.2 * lambda)</tt>
+</center>
+
+with <tt>N00 = 8e6 m<sup>-4</sup></tt>.
+
+In this way, the equation system is closed.
+
+However, because on average, the parameterization of the frozen-phase growth processes
+in the current graupel scheme seems to be too inefficient to produce "enough" precipitation sized
+particles, we artificially reduce the evaporation of raindrops to get the "correct" rain amount at
+the surface, by tuning the <tt>N00</tt> parameter with a factor <tt>rain_n0_factor (<= 1)</tt>,
+
+<center>
+<tt>N00_tuned = N00 * rain_n0_factor</tt>.
+</center>
+
+By this measure, the mean drop size is increased and
+larger drops evaporate less efficiently than smaller drops.
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+
+<p>
+</p>
+
+<p align="right"><a href="#content">Back to Contents</a>
+
+<hr>
+
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="chanlhn">2. Changes in the Latent Heat Nudging</a></h3>
+  <h4>(by Klaus Stephan)</h4>
+
+<!---------------------------------------------------------------------------->
+
+<p>
+In order to correct quickly for the negative impact of the bug fix in
+4.20 and nevertheless a better accounting for blacklist information and
+bright band detection the check of those flags has been moved from
+Subroutine <tt>lhn_obs_prep</tt> to Subroutine <tt>lhn_pr_ana</tt>.
+In the case that the observation is blacklisted or detected as bright
+band the analysed precipitation rate is set to the modelled
+precipitation rate. As the analysed precipitation rate will be used for
+comparison with the modelled precipitation rate further on, no LHN will
+take place at those grid points.
+</p>
+
+<p>
+This will be a temporally change until the approach is redesigned in a
+more sophisticated way.
+</p>
+
+<p>
+Changes in diagnostics:<br />
+<tt>numblack = SUM(blacklist(:,:))</tt> instead of counting it during a loop.
+</p>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+
+<p align="right"><a href="#content">Back to Contents</a>
+
+<hr>
+
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="smagori">3. Smagorinsky Diffusion</a></h3>
+  <h4>(by Michael Baldauf)</h4>
+
+<!---------------------------------------------------------------------------->
+
+<p>
+Sometimes the COSMO-Model aborts due to horizontal shear instabilities. 
+Some of these crashes can be avoided by the 4<sup>th</sup> order <i>artificial horizontal
+diffusion</i> with a prescribed constant diffusion coefficient. 
+But in rare events this diffusion is not strong enough and a more physically
+based diffusion mechanism is necessary.
+</p>
+
+<p>
+The nonlinear Smagorinsky diffusion (Smagorinsky (1963) MWR) determines the
+diffusion coefficient by the horizontal shear (and tension) strain and
+therefore acts in particular to reduce too strong horizontal shear.
+</p>
+
+<p>
+It is switched on by the new <tt>DYNCTL</tt> namelist parameter  
+<tt>l_diff_Smag=.TRUE.</tt> (otherwise it has no impact to the results).
+(Default is <tt>.FALSE.</tt>)
+</p>
+
+<p>
+An internal parameter, the Smagorinsky constant, is currently set to  <tt>c_smag=0.03</tt>.
+This value is chosen to prevent shear instabilities in COSMO-DE applications,
+but otherwise to influence as less as possible the verification scores.
+</p>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+
+<p align="right"><a href="#content">Back to Contents</a>
+
+<hr>
+
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="windgus">4. Computation of Wind Gusts</a></h3>
+  <h4>(by Jan-Peter Schulz)</h4>
+
+<!---------------------------------------------------------------------------->
+
+<p>
+Another option was added for computing the maximal wind gusts
+(<tt>itype_diag_gust=4</tt>), where the gust factor weakly depends on the mean
+wind speed at 10 meters. This method is also used in GME.
+</p>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+
+<p align="right"><a href="#content">Back to Contents</a>
+
+<hr>
+
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="bugfixe">5. Bug Fixes</a></h3>
+
+<!---------------------------------------------------------------------------->
+
+<p>
+<ul>
+ <li><tt>src_advection_rk.f90; lmorg.f90</tt>: (reported by Oli Fuhrer)<br />
+   In the calls to <tt>exchg_boundaries</tt> within the <tt>ifdef POLLEN</tt> loops,
+   the argument <tt>num_compute</tt> was missing.
+   </li>
+ <li><tt>src_lheat_nudge.f90</tt>: (reported by Oliver Fuhrer)<br />
+   The variables <tt>numlast</tt>, <tt>numnext</tt> were not used and have been eliminated.
+   </li>
+ <li><tt>src_obs_proc_cdf.f90</tt>: (reported by Oliver Fuhrer)<br />
+   In two print statements, the variables had a wrong order.
+   </li>
+ <li><tt>src_output.f90, SR calc_sdi</tt>: (reported by Oliver Fuhrer)<br />
+   Variable <tt>izerror</tt> was not initialized.
+   </li>
+ <li><tt>src_output.f90</tt>: (reported by Uli Blahak)<br />
+   There were bugs in the calls to the subroutine <tt>radar_lm_ray</tt>: This routine
+   requires hydrometeor densities (kg/m<sup>3</sup>), not specific values (kg/kg),
+   so added necessary multiplications with density <tt>rho</tt>.
+   </li>
+ <li><tt>src_output.f90, SR p_int</tt>: (reported by Uli Blahak)<br />
+   Bug fixes for linear vertical interpolation (<tt>itype_vertint=2</tt>):
+   <ul>
+    <li>monotonically increasing (dummy) p-values are also required below the
+        surface for routine <tt>lininterp2D_xinter1D_vec()</tt>.</li>
+    <li>error in field dimension when calling <tt>lininterp2D_xinter1D_vec</tt>
+      (-> model crashes) was corrected.</li>
+   </ul>
+   </li>
+ <li><tt>pp_utilities.f90, SR cal_conv_ind</tt>:<br />
+    Fixed allocation/deallocation of <tt>zsli</tt>: it has also to be computed in case of
+    derivation of swiss12-Index even when optional input parameter <tt>sli</tt> is not present.
+    </li>
+ <li><tt>pp_utilities.f90, SR calhzero</tt>: (reported by Daniel Leuenberger)<br />
+    If no 0-degree isotherm can be found, the height of this isotherm was set to about 8000 meters. 
+    That no isotherm can be found can have two reasons:
+    <ol>
+     <li>in the unlikely case that the 0-degree isotherm really is above 8000 meter</li>
+     <li>or if the 0-degree height is below model topography, what of course will happen in winter time.</li>
+    </ol>
+   The height of the 0-degree isotherm is now set to a missing value (-999.0), if this is the case.
+    </li>
+</ul>
+</p>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+
+<p align="right"><a href="#content">Back to Contents</a>
+
+<hr>
+
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="technic">6. Some Technical Modifications</a></h3>
+
+<!---------------------------------------------------------------------------->
+
+<p>
+<ul>
+  <li><tt>organize_physics.f90</tt><br />
+      Added some more debug output.
+    </li>
+  <li><tt>pp_utilities.f90, SR radar_lm_ray</tt>: (by Uli Blahak)<br />
+   <p>
+   This subroutine has been updated to reflect recent changes in the microphysics
+   (SR <tt>hydci_pp</tt> and <tt>hydci_pp_gr</tt>, provided by Axel Seifert. The reflectivities of
+   cloud ice and cloud droplets have been added to <tt>radar_lm_ray</tt>, based on a
+   monodisperse size distribution with <tt>D_i = 200</tt> (cloud ice) and <tt>D_i = 20</tt> (cloud
+   droplets) microns.
+   </p>
+   <p>
+   A bug has been fixed: A factor involving <tt>N0_snow</tt> (<tt>n0s<sup>(1-p_s)</sup></tt>) was doubled
+   and lead to underestimation of <tt>dbz_snow</tt> of <tt>40-50 dB</tt>. This has been corrected.
+   </p>
+    </li>
+  <li><tt>src_flake.f90</tt> (by Dmitrii Mironov)<br />
+   Technical changes in few subroutines to allow for inlining and vectorization
+   on the NEC SX systems.
+    </li>
+</ul>
+</p>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+
+<p align="right"><a href="#content">Back to Contents</a>
+
+<hr>
+
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="results">7. Changes of Results</a></h3>
+
+<p>
+The changes in the microphysics and the Latent Heat Nudging again do change 
+the results slightly. 
+</p>
+<p>
+Also the Smagorinsky diffusion does change the results, if it is switched on.
+If the new option for the wind gust computation is activated, the wind gusts will change.
+</p>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+
+<p align="right"><a href="#content">Back to Contents</a>
+
+<hr>
+
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="namelis">8. Changes to the Namelists</a></h3>
+
+<p>There were the following changes for the Namelist variables:</p>
+
+<p>
+<center>
+<table border="1" cellspacing="3" class="namelist">
+ <tbody>
+   <tr>
+     <th>Group</th>
+     <th>Name</th>
+     <th>Meaning</th>
+     <th align="center", width="5%">Default</th>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td class="hilit" rowspan="1"><tt>/DYNCTL/</tt></td>
+     <td><tt>l_diff_Smag</tt></td>
+     <td class="middl" rowspan="1">to switch on/off the Smagorinsky diffusion</td>
+     <td class="middl" align="center" rowspan="1"><tt>.FALSE.</tt></td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td class="hilit" rowspan="2"><tt>/TUNING/</tt></td>
+     <td><tt>rain_n0_factor</tt></td>
+     <td class="middl" rowspan="1">to reduce the evaporation of raindrops<br />
+              (<tt>0.0 &le; rain_n0_factor &le; 1.0</tt>)</td>
+     <td class="middl" align="center" rowspan="1"><tt>1.0</tt></td>
+   </tr>
+   <tr>
+     <td><tt>mu_rain</tt><br /><br />
+         <span class="rot">Changed default value!</span></td>
+     <td class="middl" rowspan="1">shape parameter of the rain drop size distribution<br />
+              (<tt>0.0 &le; mu_rain &le; 5.0</tt>)<br />
+              <span class="rot">New default value is 0.0</span></td>
+     <td class="middl" align="center" rowspan="1"><tt>0.0</tt></td>
+<!---------------------------------------------------------------------------->
+ </tbody>
+</table>
+</center>
+</p>
+
+<p>
+The namelist parameter <tt>mu_rain</tt> can now also be used for the subroutine <tt>hydci_pp</tt>,
+which is used in coarser grid applications. Because these applications are still
+in the majority, we decided to set the default of <tt>mu_rain</tt> for these applications,
+which is 0.0! For higher resolutions, which do use the graupel scheme (subroutine
+<tt>hydci_pp_gr</tt>), a value of <tt>mu_rain=0.5</tt> is recommended and has to be changed in the
+namelists!!!
+</p>
+
+
+<p>
+</p>
+
+<p align="right"><a href="#content">Back to Contents</a>
+
+</body>
+</html>

@@ -1,0 +1,215 @@
+// -*- kpp -*- kpp mode for emacs
+
+// Replacement files allow you to modify gas.eqn. Please note: If you apply
+// any *.rpl files to the reaction mechanism, you do so at your own risk.
+// The files provided here are mostly under development. For more
+// information, please contact the authors mentioned in the *.rpl files.
+
+// IMPORTANT: When adding a new reaction, please assign a PRELIMINARY
+// reaction number by adding your initials as a suffix, e.g. John Doe could
+// use "<G0001JD>".
+
+// Syntax of this replacement file is similar to kpp syntax, but...
+// - Only the commands "#REPLACE" and "#ENDREPLACE" are allowed.
+// - Comments must start with "//", curly braces ("{}") cannot be used here.
+
+// known limitation:
+// - The reaction number (e.g. "<G9876>") in the input equation file
+//   (gas.eqn) must be the first (non-whitespace) item in the line. If it is
+//   preceded by a comment in curly braces, replace.awk will not be able to
+//   find it.
+
+// here, reaction G4110 is replaced by a modified reaction:
+//#REPLACE <G4110>
+//<a> CO + OH = HO2 + CO2 : {%StTrG} 1.57E-13 + cair*3.54E-33; {&1628}
+//#ENDREPLACE
+
+// reaction numbers in the replacement (<a>, <b>, ...) will be added as a suffix
+// to the original reaction number, i.e.:
+// <a> --> <G4101a>
+// <b> --> <G4101b>
+
+// to add a new reaction, specify an empty reaction number
+// in the "#REPLACE" command ("<>"), and give a complete
+// reaction number in the replacement ("<G9876>"):
+
+// replace the comprehensive organic chemistry by mim1:
+//#include mim1
+
+// TEMPERATURE: use temp for temp_ion and temp_ec:
+#include EDIth-temp
+
+#REPLACE <G2101>
+<a>  H    + O3       = OH + O2 + 0.08*OHv6 + 0.17*OHv7 + 0.27*OHv8 + 0.48*OHv9 {+ 119. kJmol}   : {%UpStG}   1.4E-10{§1.1}*EXP(-470./temp); {&2626}
+#ENDREPLACE
+#REPLACE <G2106>
+<G0202>  HO2  + O3P      = 0.52*OHv0+0.34*OHv1+0.13*OHv2+0.01*OHv3 + OH + O2   {+ 225. kJmol}     : {%UpStG}   3.E-11{§1.05}*EXP(200./temp); {&2626}
+#ENDREPLACE
+#REPLACE <G2107>
+<G0203>  HO2  + O3       = OHv0 + OH + 2* O2 {+ 119. kJmol} : {%UpStG} 1.E-14{§1.15}*EXP(-490./temp); {&2626}
+#ENDREPLACE
+#REPLACE <>
+<G0205>  OHv0   + H2       = H2     : {%UpStTrG} 2.8E-12{§1.05}*EXP(-1800./temp); {&2626}
+#ENDREPLACE
+#REPLACE <>
+<G0214a> OHv0   + OHv0       =    : {%UpG} 4.20E-12*EXP(-240./temp); {&1555}
+#ENDREPLACE
+#REPLACE <>
+<G0204> OHv0   + O3     = O3    : {%UpStG} 1.7E-12{§1.15}*EXP(-940./temp); {&2626}
+#ENDREPLACE
+#REPLACE <>
+<G0206> HO2  + OHv0       = HO2   : {%UpStG} 4.8E-11{§1.15}*EXP(250./temp); {&2626}
+#ENDREPLACE
+#REPLACE <>
+<G0112>  H2O2 + OHv0       = H2O2  : {%UpStTrG} 1.8E-12{§1.15};{&2626}
+#ENDREPLACE
+#REPLACE <>
+<G0202>  NO2  + OHv0  {+M} = NO2          : {%UpStTrGN} k_3rd(temp,cair,1.8E-30,3.0,2.8E-11,0.,0.6){§1.3}; {&2626}
+#ENDREPLACE
+#REPLACE <G3201>
+<G0301>  NO   + HO2      = NO2   + OH  + OHv0  {+ 33.8 kJmol} : {%UpStTrGN} 3.3E-12*EXP(270./temp){§1.15}; {&2626}
+#ENDREPLACE
+#REPLACE <J2100a>
+<J0200a> H2O     + hv = H + OH + OHv0    : {%UpStGJ}   jx(ip_H2O){§}; {&&}
+#ENDREPLACE
+#REPLACE <J2101>
+<J0201>  H2O2    + hv = 2* OH + 2* OHv0       : {%UpStTrGJ} jx(ip_H2O2);{§} {&&}
+#ENDREPLACE
+#REPLACE <>
+<G0410>  CO      + OHv0      = CO          : {%UpStTrG}  (1.57E-13+cair*3.54E-33); {&1628}
+#ENDREPLACE
+#REPLACE <>
+<G0406>  HNO3 + OHv0       =  HNO3   : {%StTrGN} k_HNO3_OH; {&&2626}
+#ENDREPLACE
+//#REPLACE <>
+//<G2203a>  OHv0   + O3P      = O3P    : {%UpStG}   1.8E-11*EXP(180./temp); {&2626}
+//#ENDREPLACE
+#REPLACE <>
+<G2203a> OHv0 + O3P       = O3P   : {%UpStG} 3.9E-11; {&&}
+<G2203b> OHv1 + O3P       = O3P   : {%UpStG} 10.5E-11;{&&}
+<G2203c> OHv2 + O3P       = O3P   : {%UpStG} 25.0E-11;{&&}
+<G2203d> OHv3 + O3P       = O3P   : {%UpStG} 25.0E-11;{&&}
+<G2203e> OHv4 + O3P       = O3P   : {%UpStG} 25.0E-11;{&&}
+<G2203f> OHv5 + O3P       = O3P   : {%UpStG} 25.0E-11;{&&}
+<G2203g> OHv6 + O3P       = O3P   : {%UpStG} 25.0E-11;{&&}
+<G2203h> OHv7 + O3P       = O3P   : {%UpStG} 25.0E-11;{&&}
+<G2203i> OHv8 + O3P       = O3P   : {%UpStG} 25.0E-11;{&&}
+<G2203j> OHv9 + O3P       = O3P   : {%UpStG} 25.0E-11;{&&}
+#ENDREPLACE
+#REPLACE <>
+<G2204a> OHv9 + O2        = OHv8 + O2    : {%UpStG} 170.0E-13;{&&}
+<G2204b> OHv8 + O2        = OHv7 + O2    : {%UpStG} 98.0E-13;{&&}
+<G2204c> OHv7 + O2        = OHv6 + O2    : {%UpStG} 54.0E-13;{&&}
+<G2204d> OHv6 + O2        = OHv5 + O2    : {%UpStG} 30.0E-13;{&&}
+<G2204e> OHv5 + O2        = OHv4 + O2    : {%UpStG} 17.0E-13;{&&}
+<G2204f> OHv4 + O2        = OHv3 + O2    : {%UpStG} 8.8E-13;{&&}
+<G2204g> OHv3 + O2        = OHv2 + O2    : {%UpStG} 5.2E-13;{&&}
+<G2204h> OHv2 + O2        = OHv1 + O2    : {%UpStG} 2.7E-13;{&&}
+<G2204i> OHv1 + O2        = OHv0 + O2    : {%UpStG} 1.3E-13;{&&}
+#ENDREPLACE
+#REPLACE <>
+<G2205a> OHv8 + O2        = OHv9 + O2    : {%UpStG} 170.0E-13*EXP(-3221./temp);{&&}
+<G2205b> OHv7 + O2        = OHv8 + O2    : {%UpStG} 98.0E-13*EXP(-3475./temp);{&&}
+<G2205c> OHv6 + O2        = OHv7 + O2    : {%UpStG} 54.0E-13*EXP(-3722./temp);{&&}
+<G2205d> OHv5 + O2        = OHv6 + O2    : {%UpStG} 30.0E-13*EXP(-3962./temp);{&&}
+<G2205e> OHv4 + O2        = OHv5 + O2    : {%UpStG} 17.0E-13*EXP(-4198./temp);{&&}
+<G2205f> OHv3 + O2        = OHv4 + O2    : {%UpStG} 8.8E-13*EXP(-4431./temp);{&&}
+<G2205g> OHv2 + O2        = OHv3 + O2    : {%UpStG} 5.2E-13*EXP(-4665./temp);{&&}
+<G2205h> OHv1 + O2        = OHv2 + O2    : {%UpStG} 2.7E-13*EXP(-4901./temp);{&&}
+<G2205i> OHv0 + O2        = OHv1 + O2    : {%UpStG} 1.3E-13*EXP(-5140./temp);{&&}
+#ENDREPLACE
+#REPLACE <>
+<G2206a> OHv9 + N2        = OHv8 + N2   : {%UpStG} 48.E-14;{&&}
+<G2206b> OHv8 + N2        = OHv7 + N2   : {%UpStG} 27.E-14;{&&}
+<G2206c> OHv7 + N2        = OHv6 + N2   : {%UpStG} 16.E-14;{&&}
+<G2206d> OHv6 + N2        = OHv5 + N2   : {%UpStG} 9.1E-14;{&&}
+<G2206e> OHv5 + N2        = OHv4 + N2   : {%UpStG} 5.2E-14;{&&}
+<G2206f> OHv4 + N2        = OHv3 + N2   : {%UpStG} 3.0E-14;{&&}
+<G2206g> OHv3 + N2        = OHv2 + N2   : {%UpStG} 1.7E-14;{&&}
+<G2206h> OHv2 + N2        = OHv1 + N2   : {%UpStG} 1.0E-14;{&&}
+<G2206i> OHv1 + N2        = OHv0 + N2   : {%UpStG} 0.58E-14;{&&}
+#ENDREPLACE
+#REPLACE <>
+<G2207a> OHv8 + N2        = OHv9 + N2   : {%UpStG} 48.E-14*EXP(-3221./temp);{&&}
+<G2207b> OHv7 + N2        = OHv8 + N2   : {%UpStG} 27.E-14*EXP(-3475./temp);{&&}
+<G2207c> OHv6 + N2        = OHv7 + N2   : {%UpStG} 16.E-14*EXP(-3722./temp);{&&}
+<G2207d> OHv5 + N2        = OHv6 + N2   : {%UpStG} 9.1E-14*EXP(-3962./temp);{&&}
+<G2207e> OHv4 + N2        = OHv5 + N2   : {%UpStG} 5.2E-14*EXP(-4198./temp);{&&}
+<G2207f> OHv3 + N2        = OHv4 + N2   : {%UpStG} 3.0E-14*EXP(-4431./temp);{&&}
+<G2207g> OHv2 + N2        = OHv3 + N2   : {%UpStG} 1.7E-14*EXP(-4665./temp);{&&}
+<G2207h> OHv1 + N2        = OHv2 + N2   : {%UpStG} 1.0E-14*EXP(-4901./temp);{&&}
+<G2207i> OHv0 + N2        = OHv1 + N2   : {%UpStG} 0.58E-14*EXP(-5140./temp);{&&}
+#ENDREPLACE
+// Einstein Coefficients
+#REPLACE <>
+<G0898> OHv9  =   OHv8  : {%UpStG}  23.72;{&&}
+<G0897> OHv9  =   OHv7  : {%UpStG}  148.9;{&&}
+<G0896> OHv9  =   OHv6  : {%UpStG}  78.64;{&&}
+<G0895> OHv9  =   OHv5  : {%UpStG}  19.94;{&&}
+<G0894> OHv9  =   OHv4  : {%UpStG}  4.053;{&&}
+<G0893> OHv9  =   OHv3  : {%UpStG}  0.620;{&&}
+<G0887> OHv8  =   OHv7  : {%UpStG}  8.60;{&&}
+<G0886> OHv8  =   OHv6  : {%UpStG}  154.3;{&&}
+<G0885> OHv8  =   OHv5  : {%UpStG}  59.98;{&&}
+<G0884> OHv8  =   OHv4  : {%UpStG}  12.68;{&&}
+<G0883> OHv8  =   OHv3  : {%UpStG}  2.007;{&&}
+<G0882> OHv8  =   OHv2  : {%UpStG}  0.230;{&&}
+<G0876> OHv7  =   OHv6  : {%UpStG}  2.34;{&&}
+<G0875> OHv7  =   OHv5  : {%UpStG}  145.1;{&&}
+<G0874> OHv7  =   OHv4  : {%UpStG}  42.91;{&&}
+<G0873> OHv7  =   OHv3  : {%UpStG}  7.165;{&&}
+<G0872> OHv7  =   OHv2  : {%UpStG}  0.847;{&&}
+<G0871> OHv7  =   OHv1  : {%UpStG}  0.063;{&&}
+<G0865> OHv6  =   OHv5  : {%UpStG}  4.00;{&&}
+<G0864> OHv6  =   OHv4  : {%UpStG}  125.6;{&&}
+<G0863> OHv6  =   OHv3  : {%UpStG}  27.94;{&&}
+<G0862> OHv6  =   OHv2  : {%UpStG}  3.479;{&&}
+<G0861> OHv6  =   OHv1  : {%UpStG}  0.274;{&&}
+<G0860> OHv6  =   OHv0  : {%UpStG}  0.010;{&&}
+<G0854> OHv5  =   OHv4  : {%UpStG}  11.05;{&&}
+<G0853> OHv5  =   OHv3  : {%UpStG}  99.42;{&&}
+<G0852> OHv5  =   OHv2  : {%UpStG}  15.88;{&&}
+<G0851> OHv5  =   OHv1  : {%UpStG}  1.315;{&&}
+<G0850> OHv5  =   OHv0  : {%UpStG}  0.051;{&&}
+<G0843> OHv4  =   OHv3  : {%UpStG}  20.30;{&&}
+<G0842> OHv4  =   OHv2  : {%UpStG}  69.77;{&&}
+<G0841> OHv4  =   OHv1  : {%UpStG}  7.191;{&&}
+<G0840> OHv4  =   OHv0  : {%UpStG}  0.299;{&&}
+<G0832> OHv3  =   OHv2  : {%UpStG}  28.12;{&&}
+<G0831> OHv3  =   OHv1  : {%UpStG}  40.33;{&&}
+<G0830> OHv3  =   OHv0  : {%UpStG}  2.032;{&&}
+<G0821> OHv2  =   OHv1  : {%UpStG}  30.43;{&&}
+<G0820> OHv2  =   OHv0  : {%UpStG}  15.42;{&&}
+<G0810> OHv1  =   OHv0  : {%UpStG}  22.74;{&&}
+#ENDREPLACE
+// From here on: reactions needed for O2 airglow
+#REPLACE <G1000>
+<a>  O2   + O1D      = O3P + 0.23*O2 + 0.77*O21s  {+ 189. kJmol} : {%UpStTrG} 3.3E-11{§1.1}*EXP(55./temp); {&2626}
+#ENDREPLACE
+#REPLACE <J1001a>
+<b> O3      + hv = O1D + O2 + O21d          : {%UpStTrGJ} jx(ip_O1D){§}; {&&}
+#ENDREPLACE
+// new reactions
+#REPLACE <>
+//JPL2010
+<G0900> O21d + O2    = O2 + O2            : {%UpStG} 3.6E-18*EXP(-220./temp); {&&}
+<G0905> O21s + CO2  = O21d + CO2          : {%UpStG} 2.0E-20; {&&}
+<G0906> O21s + O3   = O21d + O3           : {%UpStG} 3.5E-11*EXP(-135./temp); {&&}
+<G0907> O21s + O3P  = O21d + O3P          : {%UpStG} 8.0E-14; {&&}
+<G0908> O21s + O2   = O21d + O2           : {%UpStG} 3.9E-17; {&&}
+//JPL1992 Mlynczak
+<G0901> O21d + N2    = O2 + N2            : {%UpStG} 1.0E-20; {&&}
+<G0902> O21d + O3P   = O2 + O3P           : {%UpStG} 1.3E-16; {&&}
+<G0903> O21d = O2                         : {%UpStG} 2.58E-04; {&&}
+<G0904> O21s + N2   = O21d + N2           : {%UpStG} 2.1E-15; {&&}
+<G0909> O21s    =  O2                     : {%UpStG} 0.0758; {&&}
+#ENDREPLACE
+
+// to delete a reaction, specify an empty replacement:
+//#REPLACE <G4200>
+//#ENDREPLACE
+
+// an error message is given if the specified reaction does not exist:
+//#REPLACE <G9999>
+//<a> CO + OH = HO2 + CO2 : {%StTrG} 1.57E-13 + cair*3.54E-33; {&1628}
+//#ENDREPLACE

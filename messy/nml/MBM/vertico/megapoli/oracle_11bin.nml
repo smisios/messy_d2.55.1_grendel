@@ -1,0 +1,124 @@
+! -*- f90 -*-                   
+!
+&CTRL
+                                ! <--- ORACLE general options
+NFFPOA  = 11,                   !number of Primary OA species from Fossil Fuel emissions
+NBBPOA  = 4,                    !number of Primary OA species from Biomass Burning emissions
+NFFsSOA = 6,                    !number of Secondary OA species from the oxidation of FFPOA with csat <  1000 (NFFOA(with csat<1000) -1)
+NBBsSOA = 1,                    !number of Secondary OA species from the oxidation of BBPOA with csat <  1000 (NBBOA(with csat<1000) -1)
+NFFiSOA = 4,                    !number of Secondary OA species from the oxidation of FFPOA with csat >= 1000 (NFFOA-1)
+NBBiSOA = 3,                    !number of Secondary OA species from the oxidation of BBPOA with csat >= 1000 (NBBOA-1)
+NBvSOA  = 4,                    !number of Secondary OA species from the oxidation of traditional biogenic VOCs
+NBvOSOA = 3,                    !number of Secondary OA species from the further oxidation of biogenic SOA    (NBvSOA-1)
+NAvSOA  = 4,                    !number of Secondary OA species from the oxidation of traditional biogenic VOCs 
+NAvOSOA = 3,                    !number of Secondary OA species from the further oxidation of biogenic SOA    (NAvSOA-1)
+NSOAP   = 43,                   !sum of NFFPOA,NBBPOA,NFFsSOA,NBBsSOA,NFFiSOA,NBBiSOA,NBvSOA,NBvOSOA,NAvSOA,NAvOSOA
+!aermod='gmxe',                  !aerosol module for inorganic aerosols
+nmode   = 1,                    !number of modes used for organic aerosols (1 to 3)
+tmode(1)= 3,                !type of modes (2=KS, 3=AS, 4=CS)
+!tmode(2)= 3                !type of modes (2=KS, 3=AS, 4=CS)
+!tmode(3)= 4                !type of modes (2=KS, 3=AS, 4=CS)
+
+mwsoap   (1:11) = 250.d0,250.d0,250.d0,250.d0,250.d0,250.d0,250.d0,250.d0,250.d0,250.d0,250.d0,  !mwsoap(1:NFFPOA)   : molecular weights of FFCG/FFPOA species (g/mol)
+csat     (1:11) = 1.d-5, 1.d-3, 1.d-2, 1.d-1, 1.d0, 1.d1, 1.d2, 1.d3, 1.d4, 1.d5,1.d6,    !csat(1:NFFPOA)     : saturation concentrations of FFCG/FFPOA species (ug/m3)
+cstemp   (1:11) = 300.d0,300.d0,300.d0,300.d0,300.d0,300.d0,300.d0,300.d0,300.d0,300.d0,300.d0,  !cstemp(1:NFFPOA)   : temperatures corresponding to csat
+deltah   (1:11) = 0.d3,118.d3,112.d3,106.d3,100.d3,94.d3,88.d3,82.d3,76.d3,70.d3,64.d3,    !deltah(1:NFFPOA)   : enthalpy of vaporization of FFCG/FFPOA species (kJ/mol)
+flagsoap (1:11) = 1,1,1,1,1,1,1,1,1,1,1,                      !flagsoap(1:NFFPOA) : set to 1 if FFCG/FFPOA species forms solutions; 0 if not
+!
+                                               !n1=NFFPOA+1 n2=NBBPOA+NFFPOA 
+mwsoap   (12:15) = 250.d0,250.d0,250.d0,250.d0,  !mwsoap(n1:n2)   : molecular weights of BBCG/BBPOA species (g/mol)
+csat     (12:15) = 1.d-1, 1.d1,  1.d3,  1.d5,    !csat(n1:n2)     : saturation concentrations of BBCG/BBPOA species (ug/m3)
+cstemp   (12:15) = 300.d0,300.d0,300.d0,300.d0,  !cstemp(n1:n2)   : temperatures corresponding to csat
+deltah   (12:15) = 106.d3,94.d3, 82.d3, 70.d3,   !deltah(n1:n2)   : enthalpy of vaporization of BBCG/BBPOA species (kJ/mol)
+flagsoap (12:15) = 1,1,1,1,                      !flagsoap(n1:n2) : set to 1 if BBCG/BBPOA species forms solutions; 0 if not
+!
+                          !n3=n2+1 n4=n2+NFFsSOA
+mwsoap   (16:21) = 250.d0,250.d0,250.d0,250.d0,250.d0,250.d0,  !mwsoap(n3:n4)   : molecular weights of FFsCG/FFsSOA species (g/mol)
+csat     (16:21) = 1.d-3,1.d-2,1.d-1,1.d0,1.d1,1.d2,           !csat(n3:n4)     : saturation concentrations of FFsCG/FFsSOA species (ug/m3)
+cstemp   (16:21) = 300.d0,300.d0,300.d0,300.d0,300.d0,300.d0,  !cstemp(n3:n4)   : temperatures corresponding to csat
+deltah   (16:21) = 118.d3,112.d3,106.d3,100.d3,94.d3,88.d3     !deltah(n3:n4)   : enthalpy of vaporization of FFsCG/FFsSOA species (kJ/mol)
+flagsoap (16:21) = 1,1,1,1,1,1,                                !flagsoap(n3:n4) : set to 1 if FFsCG/FFsSOA species forms solutions; 0 if not
+!
+                            !n5=n4+1 n6=n4+NBBsSOA 
+mwsoap   (22:22) = 250.d0,  !mwsoap(n5:n6)   : molecular weights of BBsCG/BBsSOA species (g/mol)
+csat     (22:22) = 1.d-1,   !csat(n5:n6)     : saturation concentrations of BBsCG/BBsSOA species (ug/m3)
+cstemp   (22:22) = 300.d0,  !cstemp(n5:n6)   : temperatures corresponding to csat
+deltah   (22:22) = 106.d3,  !deltah(n5:n6)   : enthalpy of vaporization of BBsCG/BBsSOA species (kJ/mol)
+flagsoap (22:22) = 1,       !flagsoap(n5:n6) : set to 1 if BBsCG/BBsSOA species forms solutions; 0 if not
+!
+                                          !n7=n6+1 n8=n6+NFFiSOA 
+mwsoap   (23:26) = 250.d0,250.d0,250.d0!,250.d0,  !mwsoap(n7:n8)   : molecular weights of FFiCG/FFiSOA species (g/mol)
+csat     (23:26) = 1.d3,1.d4,1.d5!,1.d6,          !csat(n7:n8)     : saturation concentrations of FFiCG/FFiSOA species (ug/m3)
+cstemp   (23:26) = 300.d0,300.d0,300.d0!,300.d0,  !cstemp(n7:n8)   : temperatures corresponding to csat
+deltah   (23:26) = 82.d3,76.d3,70.d3!,64.d3       !deltah(n7:n8)   : enthalpy of vaporization of FFiCG/FFiSOA species (kJ/mol)
+flagsoap (23:26) = 1,1,1,!1,                      !flagsoap(n7:n8) : set to 1 if FFiCG/FFiSSOA species forms solutions; 0 if not
+!
+                                          !n9=n8+1 n10=n8+NBBiSOA
+mwsoap   (27:29) = 250.d0,250.d0,250.d0,  !mwsoap(n9:n10)   : molecular weights of BBiCG/BBiSOA species (g/mol)
+!csat     (27:29) = 1.d-1, 1.d1,  1.d3,    !csat(n9:n10)     : saturation concentrations of BBiCG/BBiSOA species (ug/m3) ! overlap with BBsCG/BBsSOA bins
+csat     (27:29) = 1.d1, 1.d3,  1.d5,     !csat(n9:n10)     : saturation concentrations of BBiCG/BBiSOA species (ug/m3)
+cstemp   (27:29) = 300.d0,300.d0,300.d0,  !cstemp(n9:n10)   : temperatures corresponding to csat
+deltah   (27:29) = 106.d3,94.d3, 82.d3,   !deltah(n9:n10)   : enthalpy of vaporization of BBiCG/BBiSOA species (kJ/mol)
+flagsoap (27:29) = 1,1,1,
+!
+                            !n11=n10+1 n12=n10+NBvSOA
+mwsoap   (30:33) = 180.d0,180.d0,180.d0,180.d0,    !mwsoap(n11:n12)   : molecular weights of BvCG/BvSOA species (g/mol)
+csat     (30:33) = 1.d0,  1.d1,  1.d2,  1.d3,      !csat(n11:n12)     : saturation concentrations of BvCG/BvSOA species (ug/m3)
+cstemp   (30:33) = 300.d0,300.d0,300.d0,300.d0,    !cstemp(n11:n12)   : temperatures corresponding to csat
+deltah   (30:33) = 30.d3, 30.d3, 30.d3, 30.d3,     !deltah(n11:n12)   : enthalpy of vaporization of BvCG/BvSOA species (kJ/mol)
+flagsoap (30:33) = 1,1,1,1,                        !flagsoap(n11:n12) : set to 1 if BvCG/BvSOA species forms solutions; 0 if not
+! 
+                            !n13=n12+1 n14=n12+NBvOSOA
+mwsoap   (34:36) = 180.d0,180.d0,180.d0,           !mwsoap(n13:n14)   : molecular weights of BvOCG/BvOSOA species (g/mol)
+csat     (34:36) = 1.d0,  1.d1,  1.d2,             !csat(n13:n14)     : saturation concentrations of BvoCG/BvOSOA species (ug/m3)
+cstemp   (34:36) = 300.d0,300.d0,300.d0,           !cstemp(n13:n14)   : temperatures corresponding to csat
+deltah   (34:36) = 30.d3, 30.d3, 30.d3,            !deltahn(n13:n14)   : enthalpy of vaporization of BvOCG/BvOSOA species (kJ/mol)
+flagsoap (34:36) = 1,1,1,                          !flagsoap(n13:n14) : set to 1 if BvOCG/BvOSOA species forms solutions; 0 if not
+!
+                            !n15=n14+1 n16=n14+NAvSOA
+mwsoap   (37:40) = 150.d0,150.d0,150.d0,150.d0,    !mwsoap(n15:n16)   : molecular weights of AvCG/AvSOA species (g/mol)
+csat     (37:40) = 1.d0,  1.d1,  1.d2,  1.d3,      !csat(n15:n16)     : saturation concentrations of AvCG/AvSOA species (ug/m3)
+cstemp   (37:40) = 300.d0,300.d0,300.d0,300.d0,    !cstemp(n15:n16)   : temperatures corresponding to csat
+deltah   (37:40) = 30.d3, 30.d3, 30.d3, 30.d3,     !deltah(n15:n16)   : enthalpy of vaporization of AvCG/AvSOA species (kJ/mol)
+flagsoap (37:40) = 1,1,1,1,                        !flagsoap(n15:n16) : set to 1 if AvCG/AvSOA species forms solutions; 0 if not
+! 
+                            !n17=n16+1 n18=n16+NAvOSOA
+mwsoap   (41:43) = 150.d0,150.d0,150.d0,           !mwsoap(n17:n18)   : molecular weights of AvOCG/AvOSOA species (g/mol)
+csat     (41:43) = 1.d0,  1.d1,  1.d2,             !csat(n17:n18)     : saturation concentrations of AvoCG/AvOSOA species (ug/m3)
+cstemp   (41:43) = 300.d0,300.d0,300.d0,           !cstemp(n17:n18)   : temperatures corresponding to csat
+deltah   (41:43) = 30.d3, 30.d3, 30.d3,            !deltahn(n17:n18)   : enthalpy of vaporization of AvOCG/AvOSOA species (kJ/mol)
+flagsoap (41:43) = 1,1,1,                          !flagsoap(n15:n16) : set to 1 if AvOCG/AvOSOA species forms solutions; 0 if not
+/
+
+&CPL
+!name of emission channel
+Cemis_channel = 'mxl',              !
+!names of organic carbon channel elements
+!emis_OC_sol   = 'OC_sum_sol',          ! organic carbon mass soluble
+!emis_OC_insol = 'OC_sum_insol',        ! organic carbon mass insoluble
+init_OA_bg    = 'OA_bg',               ! background organic aerosol concentration 
+!
+! emission setup (new way)
+! for each emission flux one EMIS_CASK should be filled
+! all possible fluxes are listed in the messy_ORACLE_e5.f90
+! in the subroutine ORACLE_emis_init_e5
+! certain characteristics of the fluxes are defined there as well
+! emis_casks - array: 
+!                    1st entry: name (used for identification in the 
+!                               list of the e5 file section emis_init)
+!                    2nd entry: channel name of the emission flux
+!                    3rd entry: name of the mass emission flux object
+!                    4th entry: name of the corresponding number 
+!                               emission flux object (If it does not exist a 
+!                               number is calculated from the mass)
+!                    5th entry: ";" separated list of tracers which should 
+!                               receive emissions from this flux
+!                    6th entry: ";" separated list of fractions of this emission
+!                               flux for all the tracers defined in entry 5
+! WARNING: In case the 1st entry from a cask is not matching any of the fluxes in the list
+!          it is ignored
+!
+
+ EMIS_CASK(1,:)= 'oc_mass_ff_as'  ,'offemis' ,'OC_area'    ,''            ,'FFPOA01_as;FFPOA02_as;FFPOA03_as;FFPOA04_as;FFPOA05_as;FFPOA06_as;FFPOA07_as;FFCG08;FFCG09;FFCG10;FFCG11','0.0;0.01;0.02;0.06;0.09;0.14;0.18;0.30;0.40;0.50;0.80'
+ EMIS_CASK(2,:)= 'oc_mass_ff_as'  ,'offemis' ,'OC_point'   ,''            ,'FFPOA01_as;FFPOA02_as;FFPOA03_as;FFPOA04_as;FFPOA05_as;FFPOA06_as;FFPOA07_as;FFCG08;FFCG09;FFCG10;FFCG11','0.0;0.01;0.02;0.06;0.09;0.14;0.18;0.30;0.40;0.50;0.80'
+/

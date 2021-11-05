@@ -1,0 +1,86 @@
+! -*- f90 -*-
+&CTRL
+!! ### KIE values for isotopologues
+!! ### SYNTAX:
+!! ###    KIE_*    = A, B, 
+!! ### with KIE(T) = A * exp(B/T)
+!! ### temperature independent for B = 0._dp
+!! ###
+!! ### Reference KIE values:
+!! ### Carbon 13 and D kinetic isotope effects in the reactions of CH4
+!! ### with O1(D) and OH: New laboratory measurements and their
+!! ### implications for the isotopic composition of stratospheric
+!! ### methane
+!! ### G. Saueressig, J. Crowley, P. Bergamaschi, C. Bruehl, 
+!! ### C.A.M. Brenninkmeijer and H. Fischer 
+!! ### [2001] Journal of Geosphysical Research
+KIE_CH4_13C_OH  = 1.0039, 0.0,
+KIE_CH4_13C_O1D = 1.013 , 0.0,
+KIE_CH4_13C_CL  = 1.043 , 6.455,
+KIE_CH4_13C_jval = 1.0 , 0.0,
+KIE_CH4_D1_OH   = 1.097 , 49.0,
+KIE_CH4_D1_O1D  = 1.060 , 0.0,
+KIE_CH4_D1_CL   = 1.278 , 51.31,
+KIE_CH4_D1_jval = 1.0, 0.0,
+!
+/
+!
+!! ####################################################### 
+&CPL
+!! ### feed back H2O tendency (= -2 * CH4-tendency) into specfic humidity?
+!! ### (0: no feedback; 1: feedback from GP; 2: feedback from LG)
+i_H2O_feedback = 0,
+!! ### grid-point calculation
+L_GP = T,
+! L_LG = T,
+!! ### educts and photolysis rate
+c_gp_OH   = 'import_grid', 'QCTM_OH',
+c_gp_O1D  = 'import_grid', 'QCTM_O1D',
+c_gp_Cl   = 'import_grid', 'QCTM_Cl',
+c_gp_jCH4 = 'jval_gp',     'J_CH4',
+!
+! flag for empirical formula of R. Eichinger
+!!$l_ef_re = T,
+!
+! #######################################################
+! ### ADDITIONAL SECTION FOR EMISSION AND AGE CLASSES ###
+! #######################################################
+!
+! ### n emission x m age classes
+!i_gp_nclass_emis_age = 1, 1,  ! CAREFUL: If age / emis classes are changed 
+                              ! here, the tracer.nml must be updated 
+                              ! apropriately!
+                              ! For emissions check offemis.nml,too
+! ### age class duration [days] (only for ageing method 1)
+!r_gp_age_cll = 1.0, 1.0, 1.0, 1.0,          ! for testing
+!r_gp_age_cll = 30.44, 30.44, 30.44,30.44,  ! default
+! ### adjust tendencies to sum tracer (default: true)
+!l_gp_adj_tend = F,
+! ### ageing method (0: monthly in one step, 1: continuous (default),
+! ###                2: monthly, not TENDENCY conform)
+!i_gp_ageing = 1,
+!!$ i_gp_ageing = 2,
+!
+! ### n emission x m age classes
+! i_lg_nclass_emis_age = 6, 4,
+ ! ### age class duration [days] (only for ageing method 1)
+!r_lg_age_cll = 1.0, 1.0, 1.0, 1.0,          ! for testing
+!r_lg_age_cll = 30.44, 30.44, 30.44,30.44,   ! 
+! ### adjust tendencies to sum tracer (default: true)
+!l_lg_adj_tend = T,
+! ### ageing method (0: monthly in one step, 1: continuous (default),
+! ###                2: monthly, not TENDENCY conform)
+!i_lg_ageing = 1,
+! i_lg_ageing = 2,
+!
+! ############################################
+! ### ADDITIONAL SECTION FOR ISOTOPOLOGUES ###
+! ############################################
+!
+! ### Switch for isotopologues (GP)
+l_gp_iso_C = .TRUE.
+l_gp_iso_H = .TRUE.
+! ### Switch for isotopologues (LG)
+! l_lg_iso_C = .TRUE.
+! l_lg_iso_H = .TRUE.
+/

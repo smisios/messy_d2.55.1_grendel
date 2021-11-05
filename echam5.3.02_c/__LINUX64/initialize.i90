@@ -1,0 +1,179 @@
+# 1 "../src/initialize.f90"
+SUBROUTINE initialize
+
+! Description:
+!
+! Set up constants in various modules.
+!
+! Method:
+!
+! This subroutine initializes all the variables and arrays
+! in modules.
+!
+! *initialize* is called from *control*
+!
+! Authors:
+!
+! M. Jarraud, ECMWF, February 1982, original source
+! R.G AND M.J, ECMWF, December 1982, changed
+! U. Schlese, DKRZ, in 1994, and 1995, changed
+! L. Kornblueh, MPI, May 1998, f90 rewrite
+! U. Schulzweida, MPI, May 1998, f90 rewrite
+!
+! for more details see file AUTHORS
+!
+
+  USE mo_io,           ONLY: IO_init
+# 28
+
+  USE mo_time_control, ONLY: lfirst_cycle, init_manager, init_events, init_times
+# 32
+
+  USE mo_nudging_init, ONLY: NudgingInit, NDG_INI_IO, NDG_INI_STREAM
+# 40
+
+  USE m_alloc_mods,    ONLY: alloc_mods ! module subroutine
+# 44
+
+  USE mo_control,      ONLY: lvctch, nlev, nlevp1, nvclev, vct
+
+  USE mo_echam_yaxt,   ONLY: yaxt_initialize, add_yaxt_gp_nlevs, yaxt_init_gp_coords
+  USE mo_mpi,          ONLY: p_all_comm
+  USE mo_control,      ONLY: lyaxt_transposition, nlev
+  IMPLICIT NONE
+
+!  External subroutines
+! op_pj_20130407+
+# 58
+
+# 61
+
+  EXTERNAL inidoc, inictl, setdyn !!$, setphys !!$, setgws ! op_pj_20160617
+
+
+! op_pj_20130407-
+
+!  Executable statements
+
+
+!-- 1. Set control variables
+
+!-- 1.1 Set general control variables and time stepping
+!--     Set i/o units and buffer indices
+
+  CALL inictl
+
+!-- 1.2 Initialize netCDF IO
+
+
+  CALL messy_setup(1)
+
+  CALL IO_init
+
+! mz_pj_20080418+
+! Do not move to IO_init! This will create circular dependencies
+! (at least in E5301):
+! mo_geoloc -> mo_o3clim -> mo_io -> messy_main_channel_bi
+! op_pj_20140328+
+!!$CALL messy_channel_init_restart
+  CALL messy_setup(2) ! -> main_channel_setup -> channel_init_restart_bi
+! op_pj_20140328-
+! mz_pj_20080418-
+
+
+!-- 1.2 Preset constants in *mo_doctor*
+
+# 101
+
+
+  CALL alloc_mods
+
+!-- 1.4 Preset constants in *mo_doctor*
+
+  CALL inidoc
+
+  IF (lfirst_cycle) CALL init_manager
+
+  CALL NudgingInit(NDG_INI_IO)
+
+  CALL init_times
+
+!-- 2. Compute decomposition
+
+! mz_ab_20100503+
+# 120
+
+! op_pj_20140328+
+  CALL messy_setup(3) ! -> main_decomp_setup
+! op_pj_20140328-
+
+! mz_ab_20100503-
+
+# 133
+
+
+  CALL NudgingInit(NDG_INI_STREAM)
+
+# 141
+
+
+!-- 3. Preset, modify and derive values needed in the
+!      dynamics and the initialisation and call helmo the first time.
+
+  CALL setdyn
+
+!-- 4. Preset, modify and derive values needed in the physics.
+
+# 152
+
+
+!-- 5. Preset, modify and derive values needed in the radiation.
+
+! op_pj_20130406+
+# 161
+
+! op_pj_20130406-
+
+# 169
+
+
+!-- 6. Preset, modify and derive values needed in the gwspectrum param.
+
+! mz_ab_20100829
+# 176
+
+
+!-- 7. Prepare greenhouse gas scenario
+
+# 182
+
+
+
+! um_ak_20090604+
+! +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+  CALL messy_initialize
+! +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+! um_ak_20090604-
+
+
+!-- final event evaluation
+
+  CALL init_events
+
+!--    Initialize submodels
+
+# 200
+
+
+!-- Preset values for tracer transport
+
+# 206
+
+! mz_pj_20040329+
+! +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+  CALL messy_new_tracer
+! +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+! mz_pj_20040329-
+
+
+END SUBROUTINE initialize

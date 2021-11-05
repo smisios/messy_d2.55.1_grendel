@@ -1,0 +1,293 @@
+TO DO LIST FOR FUTURE RELEASES:
+-------------------------------
+* implement handling of "invalid data"
+
+-----------------------------------------------------
+changes from v1.4b to v1.5b
+-----------------------------------------------------
+* messy_ncregrid_geohyb.f90: bug-fix in subroutine 
+  SORT_GEOHYBGRID_NCVAR for sorting data along axes
+* messy_ncregrid_netcdf.f90: bug fix in IMPORT_NCATT
+* messy_ncregrid_tools.f90: new conversion routine
+  RGTOOL_CONVERT_DAT2VAR
+* messy_ncregrid_tools.f90: bug fix in subroutine RGTOOL_G2C),
+  rank corrections for latm, lati, lonm, loni
+* messy_ncregrid_geohyb.f90: extensions for curvilinear ocean grids
+  (for A2O, encapsulated in pre-processor directive _A2O)
+  by Bastian Kern, July 2009
+* messy_ncregrid_netcdf.f90: INQUIRE removed from 
+  import routines to allow for usage of OPeNDAP-client
+  library (urls cannot be inquired ...);
+  for netCDF files, the status of nf90_open is tested anyway
+* messy_ncregrid_netcdf.f90 (EXPORT_NCATT): allow
+  character attributes of length 1
+* messy_ncregrid_base.f90, messy_ncregid_control.f90:
+  write ERROR.ncregrid<.[rank]> file on error
+* ncregrid.f90, messy_ncregrid_control.f90:
+  optional MPI parallelisation (distribute variables)
+* bug-fix in messy_main_ncregrid_base.f90:
+  the recursive sort-routines had been destroyed by
+  previous changes
+* function QTYPE_NARRAY eliminated and replaced by
+  additional type information in narray-structure
+* messy_ncregrid_control.f90: axes construction moved
+  behind grid-balancing
+* messy_ncregrid_netcdf.f90 (IDX2FRAC_NCVAR)
+  initialize vfvec(:) = 0
+
+-----------------------------------------------------
+changes from v1.3b to v1.4b
+-----------------------------------------------------
+* messy_ncregrid_geohyb.f90, messy_ncregrid_base.f90,
+  messy_ncregrid_tools.f90:
+  alternative experimental (!!!) code for NEC-SX6 vector
+  included (selected by _SX preprocessor directive)
+* messy_ncregrid_geohyb.f90 (SUBROUTINE
+  SORT_GEOHYBGRID): bug fix in surface pressure
+  sort algorithm
+* messy_ncregrid_geohyb.f90 (SUBROUTINE
+  CHECK_GEOHYBGRID): improved check of variable
+  dimensions of length 1
+* bug fix in IMPORT_GEOHYBGRID
+  (messy_ncregrid_geohyb.f90)
+* several changes to fix memory leaks
+* NULLIFY pointers after DEALLOCATE
+
+-----------------------------------------------------
+changes from v1.2b to v1.3b
+-----------------------------------------------------
+* Makefile: inlcude ../specific.mk
+
+-----------------------------------------------------
+changes from v1.1b to v1.2b
+-----------------------------------------------------
+* executable renamed to 'ncregrid.exe' according
+  to MESSy boxmodel standard
+* messy_ncregrid_control.f90: optional parameter MSG
+  removed from SUBROUTINE REGRID_CONTROL
+* messy_ncregrid_interface.f90: new SUBROUTINE
+  NCREGRID_SET_MESSAGEMODE for setting the
+  debug-level
+* mo_mz_regrid* renamed to messy_ncregrid*
+  since ncregrid is now essential part of the
+  Modular Earth Submodel System (MESSy)
+  (http://www.messy-interface.org)
+  Note: The stand-alone NCREGRID is not affected!
+* mo_mz_regrid_nc.f90: bug fix in EXPORT_NCATT for
+  string/character attributes of length 0
+* mo_mz_regrid_diag.f90: some minor changes
+* mo_mz_regrid_control.f90, mo_mz_regrid_geohyb.f90:
+  simplified TIME-balancing (SUBROUTINE
+  BALANCE_GEOHYBGRID_TIME in mo_mz_regrid_geohyb.f90)
+* mo_mz_regrid_geohyb.f90: (SUBROUTINE BALANCE_GEOHYBGRID):
+  bug fix in time-balancing, in case infile and/or grdfile
+  do(es) not contain time axis
+* mo_mz_regrid_geohyb.f90: (SUB-SUBROUTINE RNGADJ_NARRAY)
+  bug-fix for range correction of monotonic coordinate
+  variables with dimension length 1 (mids, i.e.,
+  2 interfaces)
+* all local pointers initialized with NULLIFY(...) or
+  => NULL()
+* mo_mz_regrid_control.f90, mo_mz_regrid_geohyb.f90:
+  several bug-fixes for correct usage of the namelist
+  variable 'infile_time'
+* mo_mz_regrid_geohyb.f90: bug-fixes for grid-checking
+  of surface pressure; those are needed if
+  longitude or latitude are omitted form the grdfile
+  description
+  Notes: - if both g_lon?, and g_lat? are omitted from
+           the namelsit, NCREGRID works
+         - if only one of g_lon? or g_lat is omitted,
+           regridding is not possible
+           -> DEPENDENCY MISMATCH !
+  
+
+-----------------------------------------------------
+changes from v1.0b to v1.1b
+-----------------------------------------------------
+* mo_mz_regrid_base.f90: get kind-parameter via
+  'USE typesizes', instead of hard-wired
+* mo_mz_regrid_control.f90 (SUBROUTINE REGRID_CONTROL):
+  bug-fix to exclude non-grid-conform variables from
+  RGT(:), RGTstr(:), in case 'var' is not specified in the
+  namelist
+* mo_mz_regrid_nc.f90: (LEN=*) for file in
+  SUBROUTINE SCAN_NCVAR
+* mo_mz_regrid_base.f90: preprocessor directives for
+  NEC-SX fortran-90 compiler
+* mo_mz_regrid_control.f90, mo_mz_regrid_geohyb.f90,
+  mo_mz_regrid_nc.f90:
+  user specified time axis gets implicit 'unlimited'
+  (netCDF-)attribute
+* mo_mz_regrid_geohyb.f90:
+  calculations of MIDS to INTERFACES or vice versa
+  are now allowed for INTEGER values (conversion to
+  DOUBLE PRECISION)
+* mo_mz_regrid_nc.f90:
+  netCDF-no-unlimited ID = -1 internally converted to
+  NULL_DIMID  
+* mo_mz_regrid_tools.f90:
+  changed RGMSG-level of 'non-active RGT-events' from
+  'warning' to 'information' and introduced
+  'info' for 'active RGT-events'
+* STOP statement in SUBROUTINE REGRID_CONTROL
+  (mo_mz_regrid_control.f90) replaced
+* STOP and GOTO statements in
+  SUBROUTINE IMPORT_NCATT (mo_mz_regrid_nc.f90)
+  replaced
+
+-----------------------------------------------------
+changes from v0.9a1.10 to v1.0b
+-----------------------------------------------------
+* minor bug fixes + better f90/f95 standard conformance
+* Bug fix in SUBROUTINE BALANCE_GEOHYBGRID_NCVAR
+  (mo_mz_regrid_geohyb.f90): Additional paprameter 'lint'
+  for adjusting the time dimension of the variables in case
+  'input_time = .false.' is specified in the namelist!
+* Balancing of the surface pressure time dimension in
+  SUBROUTINE BALANCE_GEOHYBGRID (mo_mz_regrid_geohyb.f90)
+  works now also with non-unlimited time axes.
+* The maximum lenght of RGTEVENT-names (NCCNTMAXNLEN) is now
+  20 instead of 10 characters (mo_mz_regrid_tools.f90).
+* Fields of regridding-type IXF (index-fraction) and IDX (index)
+  are not longer renamed with suffix '_f' and/or '_i'
+  (SUBROUTINE IDX2FRAC_NCVAR and SUBROUTINE MAXFRAC2IDX_NCVAR
+  in mo_mz_regrid_nc.f90)!
+* The error messages of SUBROUTINE IMMI_NARRAY (mo_mz_regrid_geohyb.f90)
+  have been improved.
+* Improved time stepping control: The defaults are now
+  i_t(:) = (/ 1, 1, 0, 0 /)
+  g_t(:) = (/ 1, 1, 0 /)
+  o_t(:) = (/ 1, 1, 0 /)
+  with the following automatic (internal) corrections:
+  1) ?_t(2) are reset to 1, if the user specifies 0
+  2) if i_t(3) == 0 then i_t(3) = i_t(1) (for tmax respectively)
+  3) if i_t(4) == 0 then i_t(4) = i_t(1) (for tret respectively)
+* Enhanced checking of time control parameters specified in
+  namelist (i_t, g_t, o_t) and/or at call of REGRID_CONTROL
+  (tmin, tstep, tmax, tret), for example:
+   - NCREGRID in interface mode now stops,
+     if i_t(1) <= i_t(4) <= i_t(3) in the namelist, or
+     tmin <= tret <= tmax on subroutine call of REGRID_CONTROL,
+     respectively, is not fulfilled
+     (SUBROUTINE REGRID_CONTROL, mo_mz_regrid_control.f90).
+   - All parameters must be non-negative.
+* Bug fix: NCREGRID no longer crashes in case you have 
+  2 spatial dimensions of equal length and specify
+  only the 'interfaces' of one of those
+  (mo_mz_regrid_geohyb.f90, SUBROUTINE CHECK_NCVAR_ON_GEOHYBGRID).
+* Feature: For spatial dimensions of length 1 it is
+  now checked whether the 'range' (?_????r) is
+  specified in the namelist, in case only the mids are
+  given
+  (mo_mz_regrid_geohyb.f90, SUBROUTINE CHECK_GEOHYBGRID).
+
+-----------------------------------------------------
+changes from v0.9a1.09 to v0.9a1.10 (15 November 2002)
+-----------------------------------------------------
+* Increase of performance: Surface pressure pre-regridding is
+  skipped if the input grid is 2-D (lat x lon)
+  (mo_mz_regrid_geohyb.f90: SUBROUTINE BALANCE_GEOHYBGRID_PS).
+* New module in examples/tools (mo_mz_regrid_tools.f90)
+  for using NCREGRID in interface-mode contains:
+    SUBROUTINE RGTOOL_CONVERT
+      converts a netCDF-variable into a 4D array
+      with choosable order of indices
+      (default: 'xyzn' where x is longitude, y latitude,
+      z level, and n the parameter-dimension).
+    SUBROUTINE RGTOOL_READ_NCVAR
+      regrids one time slice of a netCDF-variable from
+      a namelist file and returns a 4D array with choosable
+      order of indices
+      (default: 'xyzn' where x is longitude, y latitude,
+      z level, and n the parameter-dimension).
+    SUBROUTINE RGTOOL_READ_NCFILE 
+      regrids one time slice of a netCDF-file from a
+      namelist file and returns a 4D array with choosable
+      order of indices
+      (default: 'xyzn' where x is longitude, y latitude,
+      z level, and n the number of variables).
+    SUBROUTINE RGTOOL_G2C
+      converts grid-structure into 1D (hyam, hybm, hyai, hybi,
+      p0, latm, lonm, loni, lati) and 2D (ps) arrays.
+    TYPE NCRGCNT
+      provides a structure for storage of counter information.
+    SUBROUTINE RGTOOL_NCRGCNT_RST
+      controls I/O of counter information (for restart).
+* Bug fix: In mo_mz_regrid_geohyb.f90
+  (SUBROUTINE BALANCE_GEOHYBGRID_PS) the balancing of the
+  horizontal grid has been removed and the 'time axis'
+  balancing has been corrected.
+* Workaround for a number of compilers:
+  Overloading the ASSIGNMENT OPERATOR (=) has been replaced
+  by direct calls of SUBROUTINE COPY_???(...).
+* Minor bug fix: In 'interface-mode' output time stepping
+  is equal to input time stepping (in case of
+  'input_time=.true.'), or equal to the interface time
+  stepping (in case of 'input_time=.false.').
+* A new option has been introduced for
+  SUBROUTINE regrid_control(...), which can be used 
+  to control the output messages:
+  MSG = MSGMODE_S   -> only ERROR MESSAGES
+  MSG = MSGMODE_V   -> ERROR MESSAGES + MINIMUM VERBOSE
+  MSG = MSGMODE_W   -> ERROR + MIN.V. + WARNING
+  MSG = MSGMODE_I   -> ERROR + MIN.V. + WARNING + INFO
+* Minor bug fix ('i/g_hyar = a1, an' in namelist):
+  The hybrid-A-coefficients are not longer (wrongly) treated
+  as monotonic; the order of the two real values in the
+  namelist determine the upper range ('a1' = highest grid level,
+  corresponding to the smallest hybrid-B-coefficient) and the
+  lower range ('an' = lowest grid level, corresponding to
+  the largest hybrid-B-coefficient).
+* Output of INFO/WARNING/ERROR messages completely
+  reorganized
+* Bug fix in SUBROUTINE NREGRID (mo_mz_regrid_base.f90)
+  for regridding of EXT-Type fields
+* New installation procedure: A configure-script has
+  been added. Editing the Makefile(s) is now obsolete.
+* Workaround for the IBM-AIX compiler (Internal compiler
+  error, if runtime-checking is enabled):
+  Temporal storage of INTEGER FUNCTION POSITION(...)-
+  RESULTS in integer variables.
+  (mo_mz_regrid_geohyb.f90 (SUBROUTINE H2PSIG)).
+
+-----------------------------------------------------
+changes from v0.9a1.08 to v0.9a1.09 (16 October 2002)
+-----------------------------------------------------
+* mo_mz_regrid_control.f90:
+  Time step control: i_t(2), g_t(2), and o_t(2) are
+  automatically reset to 1 if specified as 0
+  in the namelist.
+* mo_mz_regrid_control.f90:
+  A new control option has been introduced
+  for SUBROUTINE regrid_control(...):
+  RG_CTRL = RG_STOP
+  This can be used in interface mode to terminate
+  ncregrid correctly (i.e., including memory cleaning)
+  on conditions from within an endless DO-loop, already
+  before the end of the namelist-file is reached.
+* mo_mz_regrid_base.f90: improved initialization
+  of type-structs
+* mo_mz_regrid_nc.f90: improved initialization
+  of type-structs
+* mo_mz_regrid_geohyb.f90: 3 unused variables deleted
+
+-------------------------------------------------
+changes from v0.9a1.07 to v0.9a1.08 (August 2002)
+-------------------------------------------------
+* Major bug fix in the SUBROUTINE NREGRID
+  (mo_mz_regrid_base.f90): In previous versions,
+  invariant dimensions have not been handled correctly
+  in all cases.
+* Bug fix in SUBROUTINE BALANCE_GEOHYBGRID_PS
+  (mo_mz_regrid_geohyb.f90) to allow for invariant
+  horizontal dimensions in 3-D regridding.
+* A number of bug fixes for usage of NCREGRID in
+  'interface-mode'.
+* Improved NREGRID STATISTICS.
+
+----------------------------------------------
+changes from v0.8bR* to v0.9a1.07 (Jul 2002)
+----------------------------------------------
+* The code has been completely rewritten!
+  Older versions (0.8bR?) are NOT LONGER SUPPORTED!

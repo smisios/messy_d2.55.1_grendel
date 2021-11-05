@@ -1,0 +1,108 @@
+! -*- f90 -*-
+&CPL_EXTDATA
+!slf_file='${INPUTDIR_COSMO_BND[$i]}/laf20070701000000.nc'
+slf_file='${INPUTDIR_COSMO_EXT[$i]}/COSMO_EU_0.44_138x128.nc'
+slf_name='FR_LAND'
+lon_name='rlon'
+lat_name='rlat'
+/ 
+! LOCCOUPLE(:)='component name','send location', 'receive location','mask'
+!   'send location' = 'subroutine name : B / E : order send/receive'
+!  B:= begin of entry point calls
+!  E:=   end of entry point calls
+!  1 / 2 order of send /receive 
+!  mask: mask for coupling e.g. land model => land mask
+!        0: all point are taken into account (default)
+!        1: land mask
+!        2:  sea mask
+!
+&CPL
+!LOCCOUPLE(1)='cosmo04','messy_init_loop:B:1','messy_init_loop:B:2',0,
+LOCCOUPLE(1)='echam','messy_init_loop:B:1','messy_init_loop:B:2',0,
+LOCCOUPLE(2)='clm05','messy_convec:B:1','messy_convec:B:2',1,
+! location in organize_physics
+! LOCCOUPLE(4)='clmXX','messy_init_loop:B:2','messy_init_loop:B:1'
+
+! SOURCE FIELDS
+! SFIELD(:) = 'oasisnamcouple name', 'channel name', 'object name', 'oasaxis','levelstr'
+! - oasaxis: string: DEFINES HOW TO INTERPRET THE OASIS MULTI-LEVEL INFORMATION
+!             FORMAT:  'Z;N:nnum;T:tlev' => respective order is important !
+!                      'Z' can be without specifier => nlev
+! - levelstr: SPECIFIES LEVELs of variable , enables rank reduction
+!             FORMAT: 'Z:zn;N:nn;T:tn'
+!             specific: T:  nnow: tn= -1 ; nnew: tn=-2 
+!             specific: Z:  top: zn = -1 , zsurface: n= 0 
+!!SFIELD(1) = 'O3COS1', 'grid_def', 'philon_2d'  
+!SFIELD(1)  = 'LONC1', 'grid_def', 'philon_2d', ' ', ' ',  
+!SFIELD(2)  = 'LATC1', 'grid_def', 'philat_2d', ' ', ' ',  
+!SFIELD(3)  = 'COSTEMPE' , 'COSMO_ORI', 'tm1', ' ', 'Z:0',
+SFIELD(3)  = 'CO2TEMPE' ,'COSMO_ORI', 'T',   ' ', 'Z:0;T:-1',
+SFIELD(4)  = 'CO2UWIND' ,'COSMO_ORI', 'U', ' ', 'Z:0;T:-1',
+SFIELD(5)  = 'CO2VWIND' ,'COSMO_ORI', 'V', ' ', 'Z:0;T:-1',
+SFIELD(6)  = 'CO2SPWAT' ,'tracer_gp_m1', 'QV', ' ',  'Z:0',
+SFIELD(7)  = 'CO2THICK' ,'scalc',    'hlowlev', ' ', ' ',
+SFIELD(8)  = 'CO2PRESS' ,'COSMO',    'press', ' ', 'Z:0',
+SFIELD(9)  = 'CO2DIRSW' ,'COSMO_ORI','SWDIR_S', ' ', ' ',
+SFIELD(10) = 'CO2DIFSW' ,'COSMO_ORI','SWDIFD_S', ' ', ' ',
+SFIELD(11) = 'CO2LONGW' ,'COSMO_ORI','LWD_S', ' ', ' ',
+!SFIELD(12) = 'COSCVRAI' ,'COSMO_ORI','PRR_CON', ' ', ' ',
+!SFIELD(13) = 'COSCVSNW' ,'COSMO_ORI','PRS_CON', ' ', ' ',
+!SFIELD(14) = 'COSGSRAI' ,'COSMO_ORI','PRR_GSP', ' ', ' ',
+!SFIELD(15) = 'COSGSSNW' ,'COSMO_ORI','PRS_GSP', ' ', ' ',
+!SFIELD(16) = 'COSGRAUP' ,'COSMO_ORI','PRG_GSP', ' ', ' ',
+SFIELD(17) = 'CO2CVPRE' ,'scalc',   'PR_CON', ' ', ' ',
+SFIELD(18) = 'CO2GSPRE' ,'scalc',   'PR_GSP', ' ', ' ',
+!!$!SFIELD(1) = 'EMACLON' ,'geoloc',   'philon', ' ', ' ',
+
+!SFIELD(19)  = 'COSCO2PP', 'tracer_gp','CO2',' ', 'Z:0',
+
+!
+!
+! - 'OASIS' as channel name indicates, that the submodel should create the
+!     channel object. In this case the representation is required.
+! - lcreate = T => create if channel object does not exist, in this case the 
+!     representation is required.
+! - mask field: 0 use all points, 1 use only landpoint, 2 only sea points
+! - postproc: postprocessing string: non-empty variable needs specific treatment
+!    - ABS      use absolute value
+!    - x:fac    multiply by "fac", e.g. "-1"
+!    - +:const  add constant 
+!    - GT:limit=number  ie. if (x > limit) x = number
+!    - GE, LT,LE similar
+! - oasaxis: string: DEFINES HOW TO INTERPRET THE OASIS MULTI-LEVEL INFORMATION
+!             FORMAT:  'Z;N:nnum;T:tlev' => respective order is important !
+!                      'Z' can be without specifier => nlev
+! - levelstr: SPECIFIES LEVELs of variable , enables rank reduction
+!             FORMAT: 'Z:zn;N:nn;T:tn'
+!             specific: T:  nnow: tn= -1 ; nnew: tn=-2 
+!             specific: Z:  lower most model layer : zn= 0 
+! - representation string for channel object creation 
+
+!
+!RFIELD(1) = 'O3COS2', 'tracer_gp', 'O3',T,'GP_3D_MID'  
+!RFIELD(1) = 'O3COS2', 'oasis3mct', 'lono3c1',T,'GP_2D_HORIZONTAL'  
+!!$RFIELD(1)  = 'COSTAUX', 'oasis3mct','UMFL_S',  T,1,'x:-1',' ',' ','GP_2D_HORIZONTAL'  
+!!$RFIELD(2)  = 'COSTAUY', 'oasis3mct','VMFL_S',  T,1,'x:-1',' ',' ','GP_2D_HORIZONTAL'  
+!!$RFIELD(3)  = 'COSLATEN','oasis3mct','LHFL_S',  T,1,'x:-1',' ',' ','GP_2D_HORIZONTAL'  
+!!$RFIELD(4)  = 'COSSENSI','oasis3mct','SHFL_S',  T,1,'x:-1',' ',' ','GP_2D_HORIZONTAL'  
+RFIELD(1)  = 'CO2TAUX', 'COSMO_ORI','UMFL_S',  T,1,'ABS',' ',' ','GP_2D_HORIZONTAL'  
+RFIELD(2)  = 'CO2TAUY', 'COSMO_ORI','VMFL_S',  T,1,'ABS',' ',' ','GP_2D_HORIZONTAL'  
+RFIELD(3)  = 'CO2LATEN','COSMO_ORI','LHFL_S',  T,1,' ',' ',' ','GP_2D_HORIZONTAL'  
+RFIELD(4)  = 'CO2SENSI','COSMO_ORI','SHFL_S',  T,1,' ',' ',' ','GP_2D_HORIZONTAL'  
+! sigma =  5.6697E-8_wp (Boltzmann) ; ctalb = 0.004_wp  
+! tg (nnew) =   (fld / sigma / (1.-ctalb))** 0.25
+!           = (fld / (5,6697e-8 * 0.996) ) **0.25
+!           = (fld *17708451,3159) **0.25
+RFIELD(5)  = 'CO2INFRA','COSMO_ORI','T_G',   T,1,'x:17708451,3159;EXP:0.25;',' ','T:-2 ','GP_3D_HORIZ_T' 
+!RFIELD(5)  = 'COSINFRA','oasis3mct','INFRA',   T,1,'x:17708451,3159;EXP:0.25',' ','T:-2 ','GP_3D_HORIZ_T' 
+!RFIELD(5)  = 'COSINFRA','oasis3mct','INFRA',   T,1,' ',' ',' ','GP_2D_HORIZONTAL' 
+! ETH version
+!RFIELD(6)  = 'COSALBED','oasis3mct','ALB_RAD',T,1,'GT:0.99=0.4',' ',' ','GP_2D_HORIZONTAL'  
+!RFIELD(7)  = 'COSALBEI','oasis3mct','ALB_RAD2',T,1,'LT:0.99=0.4',' ',' ','GP_2D_HORIZONTAL'  
+
+RFIELD(6)= 'CO2ALBED','COSMO_ORI','ALB_RAD',   T,1,'GT:0.99=0.4','','','GP_2D_HORIZONTAL'
+!ToDo RFIELD(7)= 'COSALBEI','COSMO_ORI','ALB_RAD_DIF',T,1,'GT:0.99=0.4','','','GP_2D_HORIZONTAL'
+ 
+
+RFIELD(17)  = 'COSMOLON', 'oasis3mct','EMACLON',T,1,'',' ',' ','GP_2D_HORIZONTAL' 
+/

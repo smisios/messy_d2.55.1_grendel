@@ -1,0 +1,88 @@
+#! /bin/tcsh -f
+
+### CHECK f90 FILES FOR MESSy-CONFORMITY:
+### 05: _mem - FILES MUST BE USED AT LEAST TWICE
+###     BUT NOT ONLY BY SMCL- AND CORRESPONDING SMIL FILE
+###
+### Author: Patrick Jöckel, MPICH, Mainz, Germany, Apr 2004
+
+if ($# != 2) then
+   echo "USAGE: `basename $0` <BASEMODEL> <f90-file>"
+   exit 1
+endif
+
+set BASEMODEL = $1
+set file = $2
+set checkid = 05
+
+### BASEMODEL SETTINGS
+if ( -r messy/$BASEMODEL/messy_setup != 0 ) then
+   source messy/$BASEMODEL/messy_setup
+else
+   echo "ERROR: MESSY SETUP messy/$BASEMODEL/messy_setup IS UNREADABLE\!"
+   exit 1
+endif
+
+set messypath = `dirname $file`
+
+# SET SUBMODEL
+set smodel = `echo $file | awk -F '_' '{print tolower($2)}' | sed 's|\.f90||g'`
+
+# CHECK IF mem -FILE ("*_mem.f90" or "*_mem_$SMILEXT.f90")
+set suffix1 = `echo $file | awk '{l=length($0); print substr($0,l-7)}'`
+set sel = `echo $SMILEXT | awk '{print length($0)+8}'`
+set suffix2 = `echo $file | awk '{l=length($0); print substr($0,l-'$sel')}'`
+if (($suffix1 != "_mem.f90") && ($suffix2 != "_mem_$SMILEXT.f90")) then
+   exit 0
+endif
+
+set filename = `basename $file .f90`
+
+# LIST OF MODULES WHICH USE THIS FILE
+set flist = `find messy/smcl -name '*.f90'`
+set flist = ($flist `find messy/$BASEDIR -name '*.f90'`)
+set q_use = `grep -iE "^ *USE *$filename" $flist | sed 's|[\,:]| |g' | awk '{print tolower($1)}' | sort | uniq `
+
+
+#######################################
+### EXCLUDE AUTOMATICALLY GENERATED FILES
+set index = `echo $file | awk '{print index($0,"kpp")}'`
+if ($index > 0) then
+     exit 0
+endif
+###
+
+set n = ${#q_use}
+
+switch($n)
+case 0:
+case 1:
+    echo '-----------------------------------------------------'
+    echo 'SUBMODEL: '$smodel
+    echo 'CHECK-ID: '$checkid
+    echo 'FILE    : '$file
+    echo '  _mem - FILE USED LESS THAN TWO TIMES!'
+    echo ${q_use} | tr ' ' '\n'
+    echo '-----------------------------------------------------'
+    breaksw;
+case 2:
+    set u1h = `echo $q_use[1] | sed 's|_$SMILEXT||g'`
+    set u1  = `basename $u1h`
+    set u2  = `basename $q_use[2]`
+    if ($u1 == $u2) then
+    echo '-----------------------------------------------------'
+    echo 'SUBMODEL: '$smodel
+    echo 'CHECK-ID: '$checkid
+    echo 'FILE    : '$file
+    echo '  _mem - FILE MOST PROBABLY NOT REQUIRED!'
+    echo ${q_use} | tr ' ' '\n'
+    echo '-----------------------------------------------------'
+    endif
+    breaksw;
+default:
+    # OK
+    breaksw;
+endsw
+#######################################
+
+exit 0

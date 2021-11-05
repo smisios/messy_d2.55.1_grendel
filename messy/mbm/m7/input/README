@@ -1,0 +1,56 @@
+ >>> INPUT FILE FORMAT FOR THE M7 BOX MODEL <<<
+
+   Swen Metzger, Max Planck Institute for Chemistry, Mainz, Germany
+   questions/suggestions: metzger@mpch-mainz.mpg.de
+
+   To provide input for the calculation of generalized aerosol dynamics
+   with M7, provide a tab/space-delimited data file (e.g. from Excel,
+   or any ordinary text editor) containing e.g. data from a meassurement
+   campaign or arbitrary data to test the submodel.
+
+   The format of the tab/space delimited (Excel) data file needs to be:
+
+   1. One header line (e.g. describing the data columns)
+   2. The number of input data to be read in (rows without header) and
+      a scaling factor, f (see below).
+   3. The actual data with 9 columns for date, time, temperature [deg. C],
+      relative humidity [%], pressure [hPa], number of aerosol particles [N cm-3],
+      sulfate [molecules cm-3] and BC, OC, SS and DU [ug m-3 (air)].
+
+   Example:
+   ____________________________________________________________________________________________________________________________________
+        Date    Time     T [C], RH [%] P [hPa], SO4 [molecules cm-3],   BC,    OC,    SS,     DU   [ug m-3 (air)],  N_cs [N cm-3 (air)]
+5 1
+     01.07.2001 12.00    26.0    71     993.0        10.5               1.0    1.0    1.0     1.0                     10.
+     02.07.2001 12.00    28.0    66    1003.0        20.5               2.0    2.1    2.2     2.3                     20.
+     03.07.2001 12.00    23.0    86     953.0        30.5               3.0    3.1    3.2     3.3                     15.
+     04.07.2001 12.00    32.0    45    1013.0        40.5               4.0    4.1    4.2     4.3                     30.
+     05.07.2001 12.00    21.0    95     973.0        50.5               5.0    5.1    5.2     5.3                      5.
+_______________________________________________________________________________________________________________________________________
+
+   The given aerosol number and mass must be provided for each mode, i.e.:
+
+              NS=1,     KS=2,     AS=3,     CS=4,     KI=5,     AI=6,     CI=7
+
+  ! MODE:           |         |         |         |         |
+  !         nucl.   | aitk.   | acc.    | coar.   | aitk.   | acc.    | coar.   |
+  !         soluble | soluble | soluble | soluble | insol.  | insol.  | insol.  |
+
+   from which the corresponding number and mass for the nucleation, aitken, and
+   accumulation mode can be scaled with the scaling factor, f = 1000, 100, 10, respectively,
+   i.e.:
+   N_ns = N_cs * 1000, mi_ns = mi_cs / 1000
+   N_ks = N_cs * 100,  mi_ks = mi_cs / 100
+   N_as = N_cs * 10,   mi_as = mi_cs / 10
+   N_cs = N_cs * 1,    mi_as = mi_cs / 1
+   in case the of using the same input files for the sake of simplicity.
+   Note that SO4 is treated as N as, since the unit is [molecules cm-3].
+
+   To choose between different sets of input files, link m7_input_?.txt accordingly, e.g.:
+
+   cd input
+   ln -s  test_1.txt m7_input_1.txt
+   ....
+
+   The input file will be logged to the model output directory (output) together with the model output.
+

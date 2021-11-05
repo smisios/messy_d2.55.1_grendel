@@ -1,0 +1,374 @@
+#! /bin/tcsh -f 
+# Time-stamp: <2018-07-03 19:17:26 joec_pa>
+
+##############################################################################
+
+set BASEMODEL = $1
+#  op_pj_20120118+
+if ( -d $BASEMODEL == 0 ) then
+   exit 0
+endif
+#  op_pj_20120118-
+### BASEMODEL SETTINGS
+if ( -r messy/$BASEMODEL/messy_setup != 0 ) then
+   source messy/$BASEMODEL/messy_setup
+else
+   echo "ERROR: MESSY SETUP messy/$BASEMODEL/messy_setup IS UNREADABLE\!"
+   exit 1
+endif
+
+# define hline string
+set hline = "#######################################"
+set hline = "$hline$hline"
+
+set tmpfile  = tmp_`date +"%y%m%d%H%M%S"`
+set tmpfile2 = tmp_2_`date +"%y%m%d%H%M%S"`
+
+set logfile = validate_$BASEMODEL.log
+echo $hline > $logfile
+echo "logfile for gmake validate" >> $logfile
+
+# complete list of include files
+set filelist_inc = (`find . -name '*.inc' -print`)
+#echo $filelist_inc
+
+# complete list of namelist files
+set filelist_nml = \
+    "messy/nml/*/*.nml messy/nml/*/*/*.nml"
+#echo $filelist_nml
+
+# complete list of $BASEMODEL/MESSy f90 files
+set filelist_f90 = \
+    "messy/smcl/*.f90 messy/$BASEMODEL/bmil/*f90 messy/smil/*.f90"
+foreach dir ($BMLSRCDIRS)
+    set filelist_f90 = ($filelist_f90 $dir/*.f90)
+end
+#echo $filelist_f90
+
+set binpath = ./messy/util
+
+# so far, no warnings or errors have been found
+unset anywarning
+unset anyerror
+
+##############################################################################
+
+# identify user and the files that he/she is in charge of
+if ( "$2" == "" ) then
+  set username = "$user"
+else
+  set username = "$2"
+  set echeckin
+endif
+
+# define submodels of each developer
+switch ("$username")
+  case "ALL":
+    set submodels = `grep -iE "logical.*use_" messy/smcl/messy_main_switch.f90 | awk '{print tolower($3)}' | sed 's|use_||g' `
+    set submodels = ($submodels "main")
+    breaksw
+  case "akerkweg":
+    set submodels = ("cam" "drydep" "m7" "mecca1" "mecca1_aero" "mecca" "mecca_aero" "onlem" "sedi")
+    breaksw
+  case "chb":
+    set submodels = ("h2o" "photo")
+    breaksw
+  case "joeckel":
+    set submodels = ("advect" "attila" "d14co" "dradon" "h2o" "lggp" "lgtmix" "lgvflux" "lnox" "offlem" "ptrac" "qbo" "scout" "s4d" "tnudge" "trexp" "tropop" "viso" "main")
+    breaksw
+  case "pozzer":
+    set submodels = ("airsea")
+    breaksw
+  case "sander":
+  case "rsander":
+    set submodels = ("chemglue" "cloudj" "jval" "mecca")
+    breaksw
+  case "steil":
+    set submodels = ("hetchem" "psc" "rad4all")
+    breaksw
+  case "tost":
+    set submodels = ("cloud" "convect" "cvtrans" "scav")
+    breaksw
+  default:
+    set submodels = ""
+    set username = "NEW"
+    echo "WARNING: $2 is not yet a registered MESSy submodel maintainer\!"
+    breaksw
+endsw
+
+echo "$hline" >> $logfile
+if ("$submodels" != "") then
+  echo "User $username is responsible for these submodels:" |& tee -a $logfile
+  echo "$submodels" |& tee -a $logfile
+else
+  echo "User $username is not responsible for any submodel." >> $logfile
+endif
+if ("$username" == "ALL") then
+  set filelist = "messy/smcl/messy_*.f90 messy/$BASEMODEL/*/messy_*.f90"
+else
+  set filelist = ""
+  foreach submodel ($submodels)
+    set filelist = "$filelist messy/smcl/messy_$submodel*.f90"
+    set filelist = "$filelist messy/smil/messy_$submodel*.f90"
+    set filelist = "$filelist messy/smcl/messy_$submodel*.inc"
+    set filelist = "$filelist messy/smil/messy_$submodel*.inc"
+  end
+endif
+echo "$hline" >> $logfile
+if ("$filelist" != "") then
+  echo "User $username is responsible for these files:" |& tee -a $logfile
+  ls -1 $filelist |& tee -a $logfile
+else
+  echo "User $username is not responsible for any files." >> $logfile
+endif
+
+##############################################################################
+
+echo $hline >> $logfile
+echo -n "Checking for TABs...               " |& tee -a $logfile
+unset taberror
+grep "	" $filelist_f90                 > $tmpfile
+grep "	" $filelist_nml                >> $tmpfile
+grep "	" $filelist_inc                >> $tmpfile
+grep "	" messy/mbm/caaba/mecca*/*.eqn >> $tmpfile
+if ( -s $tmpfile != 0 ) then
+  echo "ERROR" |& tee -a $logfile
+  set anyerror
+  set taberror
+  echo "The following lines contain TABs:" >> $logfile
+  echo "------------------ start of TAB listing -----------------" >> $logfile
+  cat $tmpfile >> $logfile
+  echo "------------------  end of TAB listing  -----------------" >> $logfile
+else
+  echo "OK" |& tee -a $logfile
+endif
+
+##############################################################################
+
+echo $hline >> $logfile
+echo -n "Checking for long lines...         " |& tee -a $logfile
+unset longlineerror
+# check for any lines that are too long:
+# grep '^.\{133,\}' $filelist_f90 > $tmpfile
+# check only for non-comments that are too long:
+grep '^[^\!]\{133,\}' $filelist_f90 > $tmpfile
+if ( -s $tmpfile != 0 ) then
+  echo "ERROR" |& tee -a $logfile
+  set anyerror
+  set longlineerror
+  echo "The following lines in f90 files have more than" >> $logfile
+  echo "132 characters (comments are not counted here):" >> $logfile
+  echo "--------------- start of long line listing --------------" >> $logfile
+  cat $tmpfile >> $logfile
+  echo "---------------  end of long line listing  --------------" >> $logfile
+else
+  echo "OK" |& tee -a $logfile
+endif
+
+##############################################################################
+
+echo $hline >> $logfile
+echo -n "Checking for dead links...         " |& tee -a $logfile
+unset deadlinkerror
+find . -xtype l | xargs ls -la > $tmpfile
+if ( -s $tmpfile != 0 ) then
+  echo "ERROR" |& tee -a $logfile
+  set anyerror
+  set deadlinkerror
+  echo "The following links are dead:" >> $logfile
+  echo "--------------- start of dead link listing --------------" >> $logfile
+  cat $tmpfile >> $logfile
+  echo "---------------  end of dead link listing  --------------" >> $logfile
+else
+  echo "OK" |& tee -a $logfile
+endif
+
+##############################################################################
+
+echo $hline >> $logfile
+echo -n "Checking for MESSy conformity...   " |& tee -a $logfile
+unset messyconformerror
+echo -n > $tmpfile # create empty $tmpfile
+
+# # loop through personal fortran files
+foreach f90file ($filelist)
+  #echo "  messy_check_* for $f90file"
+  $binpath/messy_check_01 $BASEMODEL $f90file >> $tmpfile
+  $binpath/messy_check_02 $BASEMODEL $f90file >> $tmpfile
+  $binpath/messy_check_03 $BASEMODEL $f90file >> $tmpfile
+  $binpath/messy_check_04 $BASEMODEL $f90file >> $tmpfile
+  $binpath/messy_check_05 $BASEMODEL $f90file >> $tmpfile
+  $binpath/messy_check_07 $BASEMODEL $f90file >> $tmpfile
+  $binpath/messy_check_08 $BASEMODEL $f90file >> $tmpfile
+end
+
+# # loop through personal submodels
+foreach submodel ($submodels)
+  #echo "  messy_check_06 for $submodel"
+  $binpath/messy_check_06 $BASEMODEL $submodel >> $tmpfile
+end
+
+# do all messy checks for all files (own submodels and others)
+# $binpath/messy_check_all $BASEMODEL >> $tmpfile
+
+if ( -s $tmpfile != 0 ) then
+  echo "ERROR" |& tee -a $logfile
+  set anyerror
+  set messyconformerror
+  cat $tmpfile >> $logfile
+else
+  echo "OK" |& tee -a $logfile
+endif
+
+##############################################################################
+
+echo $hline >> $logfile
+echo -n "Checking if forcheck was run...    " |& tee -a $logfile
+set fckfile = "$BASEMODEL/fchk_summary.txt"
+unset fckerror1
+unset fckerror2
+
+# first test if forcheck was run at all
+if (! -e $fckfile) then
+  echo "ERROR" |& tee -a $logfile
+  set anyerror
+  set fckerror1
+else
+  # now test if forcheck was run after the last changes in f90 files
+  @ fcktime = -M $fckfile #seconds since the epoch
+  echo -n > $tmpfile # create empty $tmpfile
+  foreach f90file ($filelist_f90)
+    @ f90filetime = -M $f90file #seconds since the epoch
+    if ($f90filetime>$fcktime) then
+      echo "Error: $f90file was changed after gmake check." >> $tmpfile
+    endif
+  end
+  if ( -s $tmpfile != 0 ) then
+    echo "ERROR" |& tee -a $logfile
+    set anyerror
+    set fckerror2
+    cat $tmpfile >> $logfile
+  else
+    echo "OK" |& tee -a $logfile
+  endif
+  echo $hline >> $logfile
+  echo -n "Checking forcheck output...        " |& tee -a $logfile
+  unset fckerror3
+  unset fckerror4
+  echo -n > $tmpfile # create empty $tmpfile
+  # loop through personal fortran files
+  foreach f90file ($filelist)
+    set mybasename = `basename $f90file`
+    sed -n "/$mybasename (START)/,/$mybasename (END)/p" $fckfile >> $tmpfile
+  end
+  if ( -s $tmpfile != 0 ) then
+    # search for unacceptable errors
+    if ( "`fgrep '[ 96 W]' $tmpfile`" != "" ) then
+      echo "[ 96 W]: obsolescent Fortran feature" >> $tmpfile2
+    endif
+    if ( "`fgrep '[557 I]' $tmpfile`" != "" ) then
+      echo "[557 I]: dummy argument not used" >> $tmpfile2
+    endif
+    if ( "`fgrep '[631 E]' $tmpfile`" != "" ) then
+      echo "[631 E]: illegal argument data-type length for intrinsic procedure" >> $tmpfile2
+    endif
+    if ( "`fgrep '[644 I]' $tmpfile`" != "" ) then
+      echo "[644 I]: none of the entities, imported from the module, is used" >> $tmpfile2
+    endif
+    if ( "`fgrep '[651 E]' $tmpfile`" != "" ) then
+      echo "[651 I]: already imported from module" >> $tmpfile2
+    endif
+    if ( "`fgrep '[674 I]' $tmpfile`" != "" ) then
+      echo "[674 I]: procedure, program unit, or entry not referenced" >> $tmpfile2
+    endif
+    if ( "`fgrep '[675 I]' $tmpfile`" != "" ) then
+      echo "[675 I]: named constant not used" >> $tmpfile2
+    endif
+    if ( "`fgrep '[681 I]' $tmpfile`" != "" ) then
+      echo "[681 I]: not used" >> $tmpfile2
+    endif
+    if ( -s $tmpfile2 != 0 ) then
+      echo "ERROR" |& tee -a $logfile
+      set anyerror
+      set fckerror4
+      echo "Please repair the code to remove these forcheck messages:" >> $logfile
+      cat $tmpfile2 >> $logfile
+    else
+      # if there are no unacceptable errors,
+      # it is okay if files contain only infos but no warnings/errors
+      grep -E "\[[ 0-9]+ E\]" $tmpfile >  $tmpfile2
+      grep -E "\[[ 0-9]+ W\]" $tmpfile >> $tmpfile2
+      if ( -s $tmpfile2 != 0 ) then
+        echo "WARNING" |& tee -a $logfile
+        set anywarning
+        set fckerror3
+      endif
+    endif
+    echo "$hline" >> $logfile
+    echo "List of errors, warnings, and infos found by forcheck:" >> $logfile
+    cat $tmpfile >> $logfile
+  endif
+  if ((! ${?anywarning}) && (! ${?anyerror})) then
+    echo "OK" |& tee -a $logfile
+  endif
+endif
+
+##############################################################################
+
+echo $hline >> $logfile
+rm -f $tmpfile $tmpfile2
+echo ""
+
+if (${?taberror}) then
+  echo "- Please remove all TABs\!"
+endif
+if (${?longlineerror}) then
+  echo "- Please reduce the line lengths\!"
+endif
+if (${?deadlinkerror}) then
+  echo "- Please check the dead links\!"
+endif
+if (${?changelogerror}) then
+  echo "- Please list your changes in CHANGELOG\!"
+endif
+if (${?messyconformerror}) then
+  echo "- Please make your code MESSy conform\!"
+endif
+if (${?sxerror}) then
+  echo "- Please compile for sx with the xecham script\!"
+endif
+if (${?fckerror1}) then
+  echo "- Please run forcheck with gmake check\!"
+endif
+if (${?fckerror2}) then
+  echo "- Please run gmake check again\!"
+endif
+if (${?fckerror3}) then
+  echo "- Please correct all errors and warnings found by forcheck\!"
+endif
+if (${?fckerror4}) then
+  echo "- Please correct all unacceptable code found by forcheck\!"
+endif
+echo ""
+
+if (${?anyerror}) then
+  echo "Sorry, your code is not ready for check-in."
+else
+  if (${?anywarning}) then
+    echo "Your code is temporarily acceptable for check-in."
+  else
+    echo "Your code is ready for check-in\!"
+  endif
+  if (! $?echeckin) then
+    echo "Add a short summary of all changes to CHANGELOG,"
+    echo "then run 'gmake zip'"
+  endif
+endif
+
+echo ""
+echo "Please read $logfile for details\!"
+echo ""
+
+exit
+
+##############################################################################

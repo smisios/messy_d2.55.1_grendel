@@ -1,0 +1,150 @@
+! -*- f90 -*-
+
+&CPL
+ L_GP      = T  ! EMISSIONS FOR GRIDPOINT TRACERS
+ L_LG      = T  ! EMISSIONS FOR LAGRANGIAN TRACERS
+ L_CL      = T  ! EMISSIONS FOR LAGRANGIAN TRACERS
+! l_lg_tend = T  ! LAGRANGIAN TRACER TENDENCY AS CHANNEL OBJECT ?
+! l_cl_tend = T  ! LAGRANGIAN TRACER TENDENCY AS CHANNEL OBJECT ?
+! ### SYNTAX:
+!     (SPECIFIERS MUST BE UPPERCASE !)
+! ###         GP=    Gridpoint  Emission Method (0,1,2) (SURFACE ONLY)
+!                    1: 2D (SURFACE EM.) -> lowest layer
+!                       3D (VOLUME  EM.) -> emission ON
+!                       Nx2D (MULTI LEVEL EM.) -> internally converted to 3D
+!                    SURFACE EMISSIONS ONLY:
+!                    2: lower boundary condition for flux
+!
+! ###         LG=    Lagrangian Emission Method (0,1,2,3,4)
+!                    1: 2D (SURFACE EM.)       -> into CELLs in lowest layer
+!                       3D (VOLUME  EM.)       -> emission ON
+!                       Nx2D (MULTI LEVEL EM.) -> internally converted to 3D
+!                    SURFACE EMISSIONS ONLY:
+!                    2: into lowest CELLs within boundary layer
+!                    3: into all CELLs in boundary layer (vertical gradient)
+!                    4: into all CELLs in boundary layer (no vertical gradient)
+!
+!NOTEs:  (1) Surface emission fluxes (2D) must be in  molecules m-2 s-1.
+!        (2) Volume emissions (3D)        must be in  molecules m-3 s-1.
+!        (3) Multi level emissions (Nx2D) must be in  molecules m-2 s-1.
+!        (4) For volume emissions (3D), the corresponding channel object
+!            must be in the GP_3D_MID representation
+!        (5) The trigger for multi level emissions (Nx2D) is the presence
+!            of the channel object attribute heights
+!
+! EMISSION: TRACER NAME, TRACER SUBNAME, CHANNEL NAME, CHANNEL OBJECT,
+!           EMISSION METHOD
+!
+! LOWER BOUNDARY CONDITIONS (SEE tnudge.nml)
+!
+! ###########################################
+! DIRECT EMISSIONS
+! ###########################################
+!
+! FRONTAIR related synthetic tracers
+EMIS_IN(302) = 'SRG00_05',    'import_grid', 'SYNTF_SRG00','GP=1;LG=4;CL=4',
+EMIS_IN(303) = 'SRG00_25',    'import_grid', 'SYNTF_SRG00','GP=1;LG=4;CL=4',
+EMIS_IN(304) = 'SRG00_50',    'import_grid', 'SYNTF_SRG00','GP=1;LG=4;CL=4',
+EMIS_IN(305) = 'SRG00_90',    'import_grid', 'SYNTF_SRG00','GP=1;LG=4;CL=4',
+EMIS_IN(307) = 'SRG01_05',    'import_grid', 'SYNTF_SRG01','GP=1;LG=4;CL=4',
+EMIS_IN(308) = 'SRG01_25',    'import_grid', 'SYNTF_SRG01','GP=1;LG=4;CL=4',
+EMIS_IN(309) = 'SRG01_50',    'import_grid', 'SYNTF_SRG01','GP=1;LG=4;CL=4',
+EMIS_IN(310) = 'SRG01_90',    'import_grid', 'SYNTF_SRG01','GP=1;LG=4;CL=4',
+EMIS_IN(312) = 'SRG02_05',    'import_grid', 'SYNTF_SRG02','GP=1;LG=4;CL=4',
+EMIS_IN(313) = 'SRG02_25',    'import_grid', 'SYNTF_SRG02','GP=1;LG=4;CL=4',
+EMIS_IN(314) = 'SRG02_50',    'import_grid', 'SYNTF_SRG02','GP=1;LG=4;CL=4',
+EMIS_IN(315) = 'SRG02_90',    'import_grid', 'SYNTF_SRG02','GP=1;LG=4;CL=4',
+EMIS_IN(317) = 'SRG03_05',    'import_grid', 'SYNTF_SRG03','GP=1;LG=4;CL=4',
+EMIS_IN(318) = 'SRG03_25',    'import_grid', 'SYNTF_SRG03','GP=1;LG=4;CL=4',
+EMIS_IN(319) = 'SRG03_50',    'import_grid', 'SYNTF_SRG03','GP=1;LG=4;CL=4',
+EMIS_IN(320) = 'SRG03_90',    'import_grid', 'SYNTF_SRG03','GP=1;LG=4;CL=4',
+EMIS_IN(322) = 'SRG04_05',    'import_grid', 'SYNTF_SRG04','GP=1;LG=4;CL=4',
+EMIS_IN(323) = 'SRG04_25',    'import_grid', 'SYNTF_SRG04','GP=1;LG=4;CL=4',
+EMIS_IN(324) = 'SRG04_50',    'import_grid', 'SYNTF_SRG04','GP=1;LG=4;CL=4',
+EMIS_IN(325) = 'SRG04_90',    'import_grid', 'SYNTF_SRG04','GP=1;LG=4;CL=4',
+EMIS_IN(327) = 'SRG05_05',    'import_grid', 'SYNTF_SRG05','GP=1;LG=4;CL=4',
+EMIS_IN(328) = 'SRG05_25',    'import_grid', 'SYNTF_SRG05','GP=1;LG=4;CL=4',
+EMIS_IN(329) = 'SRG05_50',    'import_grid', 'SYNTF_SRG05','GP=1;LG=4;CL=4',
+EMIS_IN(330) = 'SRG05_90',    'import_grid', 'SYNTF_SRG05','GP=1;LG=4;CL=4',
+EMIS_IN(332) = 'SRG06_05',    'import_grid', 'SYNTF_SRG06','GP=1;LG=4;CL=4',
+EMIS_IN(333) = 'SRG06_25',    'import_grid', 'SYNTF_SRG06','GP=1;LG=4;CL=4',
+EMIS_IN(334) = 'SRG06_50',    'import_grid', 'SYNTF_SRG06','GP=1;LG=4;CL=4',
+EMIS_IN(335) = 'SRG06_90',    'import_grid', 'SYNTF_SRG06','GP=1;LG=4;CL=4',
+EMIS_IN(337) = 'SRG07_05',    'import_grid', 'SYNTF_SRG07','GP=1;LG=4;CL=4',
+EMIS_IN(338) = 'SRG07_25',    'import_grid', 'SYNTF_SRG07','GP=1;LG=4;CL=4',
+EMIS_IN(339) = 'SRG07_50',    'import_grid', 'SYNTF_SRG07','GP=1;LG=4;CL=4',
+EMIS_IN(340) = 'SRG07_90',    'import_grid', 'SYNTF_SRG07','GP=1;LG=4;CL=4',
+EMIS_IN(342) = 'SRG08_05',    'import_grid', 'SYNTF_SRG08','GP=1;LG=4;CL=4',
+EMIS_IN(343) = 'SRG08_25',    'import_grid', 'SYNTF_SRG08','GP=1;LG=4;CL=4',
+EMIS_IN(344) = 'SRG08_50',    'import_grid', 'SYNTF_SRG08','GP=1;LG=4;CL=4',
+EMIS_IN(345) = 'SRG08_90',    'import_grid', 'SYNTF_SRG08','GP=1;LG=4;CL=4',
+EMIS_IN(347) = 'SRG09_05',    'import_grid', 'SYNTF_SRG09','GP=1;LG=4;CL=4',
+EMIS_IN(348) = 'SRG09_25',    'import_grid', 'SYNTF_SRG09','GP=1;LG=4;CL=4',
+EMIS_IN(349) = 'SRG09_50',    'import_grid', 'SYNTF_SRG09','GP=1;LG=4;CL=4',
+EMIS_IN(350) = 'SRG09_90',    'import_grid', 'SYNTF_SRG09','GP=1;LG=4;CL=4',
+EMIS_IN(352) = 'SRG10_05',    'import_grid', 'SYNTF_SRG10','GP=1;LG=4;CL=4',
+EMIS_IN(353) = 'SRG10_25',    'import_grid', 'SYNTF_SRG10','GP=1;LG=4;CL=4',
+EMIS_IN(354) = 'SRG10_50',    'import_grid', 'SYNTF_SRG10','GP=1;LG=4;CL=4',
+EMIS_IN(355) = 'SRG10_90',    'import_grid', 'SYNTF_SRG10','GP=1;LG=4;CL=4',
+EMIS_IN(357) = 'SRG11_05',    'import_grid', 'SYNTF_SRG11','GP=1;LG=4;CL=4',
+EMIS_IN(358) = 'SRG11_25',    'import_grid', 'SYNTF_SRG11','GP=1;LG=4;CL=4',
+EMIS_IN(359) = 'SRG11_50',    'import_grid', 'SYNTF_SRG11','GP=1;LG=4;CL=4',
+EMIS_IN(360) = 'SRG11_90',    'import_grid', 'SYNTF_SRG11','GP=1;LG=4;CL=4',
+EMIS_IN(362) = 'SRG12_05',    'import_grid', 'SYNTF_SRG12','GP=1;LG=4;CL=4',
+EMIS_IN(363) = 'SRG12_25',    'import_grid', 'SYNTF_SRG12','GP=1;LG=4;CL=4',
+EMIS_IN(364) = 'SRG12_50',    'import_grid', 'SYNTF_SRG12','GP=1;LG=4;CL=4',
+EMIS_IN(365) = 'SRG12_90',    'import_grid', 'SYNTF_SRG12','GP=1;LG=4;CL=4',
+!
+EMIS_IN(570) = 'SRG00y1_00',  'import_grid', 'SYNTFy1_SRG00', 'GP=1;LG=4;CL=4',
+EMIS_IN(571) = 'SRG00y2_00',  'import_grid', 'SYNTFy2_SRG00', 'GP=1;LG=4;CL=4',
+EMIS_IN(572) = 'SRG00y3_00',  'import_grid', 'SYNTFy3_SRG00', 'GP=1;LG=4;CL=4',
+!
+EMIS_IN(573) = 'SRG01y1_00',  'import_grid', 'SYNTFy1_SRG01', 'GP=1;LG=4;CL=4',
+EMIS_IN(574) = 'SRG01y2_00',  'import_grid', 'SYNTFy2_SRG01', 'GP=1;LG=4;CL=4',
+EMIS_IN(575) = 'SRG01y3_00',  'import_grid', 'SYNTFy3_SRG01', 'GP=1;LG=4;CL=4',
+!
+EMIS_IN(576) = 'SRG02y1_00',  'import_grid', 'SYNTFy1_SRG02', 'GP=1;LG=4;CL=4',
+EMIS_IN(577) = 'SRG02y2_00',  'import_grid', 'SYNTFy2_SRG02', 'GP=1;LG=4;CL=4',
+EMIS_IN(578) = 'SRG02y3_00',  'import_grid', 'SYNTFy3_SRG02', 'GP=1;LG=4;CL=4',
+!
+EMIS_IN(579) = 'SRG03y1_00',  'import_grid', 'SYNTFy1_SRG03', 'GP=1;LG=4;CL=4',
+EMIS_IN(580) = 'SRG03y2_00',  'import_grid', 'SYNTFy2_SRG03', 'GP=1;LG=4;CL=4',
+EMIS_IN(581) = 'SRG03y3_00',  'import_grid', 'SYNTFy3_SRG03', 'GP=1;LG=4;CL=4',
+!
+EMIS_IN(582) = 'SRG04y1_00',  'import_grid', 'SYNTFy1_SRG04', 'GP=1;LG=4;CL=4',
+EMIS_IN(583) = 'SRG04y2_00',  'import_grid', 'SYNTFy2_SRG04', 'GP=1;LG=4;CL=4',
+EMIS_IN(584) = 'SRG04y3_00',  'import_grid', 'SYNTFy3_SRG04', 'GP=1;LG=4;CL=4',
+!
+EMIS_IN(585) = 'SRG05y1_00',  'import_grid', 'SYNTFy1_SRG05', 'GP=1;LG=4;CL=4',
+EMIS_IN(586) = 'SRG05y2_00',  'import_grid', 'SYNTFy2_SRG05', 'GP=1;LG=4;CL=4',
+EMIS_IN(587) = 'SRG05y3_00',  'import_grid', 'SYNTFy3_SRG05', 'GP=1;LG=4;CL=4',
+!
+EMIS_IN(588) = 'SRG06y1_00',  'import_grid', 'SYNTFy1_SRG06', 'GP=1;LG=4;CL=4',
+EMIS_IN(589) = 'SRG06y2_00',  'import_grid', 'SYNTFy2_SRG06', 'GP=1;LG=4;CL=4',
+EMIS_IN(590) = 'SRG06y3_00',  'import_grid', 'SYNTFy3_SRG06', 'GP=1;LG=4;CL=4',
+!
+EMIS_IN(591) = 'SRG07y1_00',  'import_grid', 'SYNTFy1_SRG07', 'GP=1;LG=4;CL=4',
+EMIS_IN(592) = 'SRG07y2_00',  'import_grid', 'SYNTFy2_SRG07', 'GP=1;LG=4;CL=4',
+EMIS_IN(593) = 'SRG07y3_00',  'import_grid', 'SYNTFy3_SRG07', 'GP=1;LG=4;CL=4',
+!
+EMIS_IN(594) = 'SRG08y1_00',  'import_grid', 'SYNTFy1_SRG08', 'GP=1;LG=4;CL=4',
+EMIS_IN(595) = 'SRG08y2_00',  'import_grid', 'SYNTFy2_SRG08', 'GP=1;LG=4;CL=4',
+EMIS_IN(596) = 'SRG08y3_00',  'import_grid', 'SYNTFy3_SRG08', 'GP=1;LG=4;CL=4',
+!
+EMIS_IN(597) = 'SRG09y1_00',  'import_grid', 'SYNTFy1_SRG09', 'GP=1;LG=4;CL=4',
+EMIS_IN(598) = 'SRG09y2_00',  'import_grid', 'SYNTFy2_SRG09', 'GP=1;LG=4;CL=4',
+EMIS_IN(599) = 'SRG09y3_00',  'import_grid', 'SYNTFy3_SRG09', 'GP=1;LG=4;CL=4',
+!
+EMIS_IN(600) = 'SRG10y1_00',  'import_grid', 'SYNTFy1_SRG10', 'GP=1;LG=4;CL=4',
+EMIS_IN(601) = 'SRG10y2_00',  'import_grid', 'SYNTFy2_SRG10', 'GP=1;LG=4;CL=4',
+EMIS_IN(602) = 'SRG10y3_00',  'import_grid', 'SYNTFy3_SRG10', 'GP=1;LG=4;CL=4',
+!
+EMIS_IN(603) = 'SRG11y1_00',  'import_grid', 'SYNTFy1_SRG11', 'GP=1;LG=4;CL=4',
+EMIS_IN(604) = 'SRG11y2_00',  'import_grid', 'SYNTFy2_SRG11', 'GP=1;LG=4;CL=4',
+EMIS_IN(605) = 'SRG11y3_00',  'import_grid', 'SYNTFy3_SRG11', 'GP=1;LG=4;CL=4',
+!
+EMIS_IN(606) = 'SRG12y1_00',  'import_grid', 'SYNTFy1_SRG12', 'GP=1;LG=4;CL=4',
+EMIS_IN(607) = 'SRG12y2_00',  'import_grid', 'SYNTFy2_SRG12', 'GP=1;LG=4;CL=4',
+EMIS_IN(608) = 'SRG12y3_00',  'import_grid', 'SYNTFy3_SRG12', 'GP=1;LG=4;CL=4',
+!
+/

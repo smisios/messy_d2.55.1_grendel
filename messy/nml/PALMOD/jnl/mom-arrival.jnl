@@ -1,0 +1,82 @@
+ ! NOAA/PMEL TMAP
+ ! FERRET v6.842  
+ ! Linux 2.6.32-279.19.1.el6.x86_64 64-bit - 02/01/13
+ ! 11-Nov-15 22:42     
+
+
+ cda
+ let exps = { "mom-09_ht", "mom-09", "mom-09_240_start", "mom-09_240", "mom-09_320", "mom-09_320a", "mom-09_640", "mom-09_480mi" } ! _320
+ let tits = { "MOM09_64ht", "MOM09_128", "MOM09_240_start", "MOM09_240_cont", "MOM09_320", "MOM09_320a", "MOM09_640", "MOM09_480mi " }
+
+ if `$1%0%` then
+ ! refresh data
+   rep/ran=1:`exps,r=iend`/name=ie (\
+     de sy ie = `ie` ;\
+     de sy exp = `exps[i=($ie)]` ;\
+     let a = spawn("cd ($exp); n2m 0_qtimer") ;\
+     list a; \
+   )
+ endif
+
+ let mnn = {"jan","feb","mar","apr","may","jun","jul","aug","sep","oct","nov","dec"}
+
+ de sy qe = `exps,r=iend`
+ rep/ran=1:($qe)/name=ie (\
+   de sy ie = `ie` ;\
+   de sy exp = `exps[i=($ie)]` ;\
+   use "($exp)/0_qtimer.des" ;\
+   let syr = strfloat(substring("`..operating_date_time`",1,4));\
+   let smo = strfloat(substring("`..operating_date_time`",5,2));\
+   let sda = strfloat(substring("`..operating_date_time`",7,2));\
+   let shr = strfloat(substring("`..operating_date_time`",10,2));\
+   let smi = strfloat(substring("`..operating_date_time`",12,2));\
+   let sse = strfloat(substring("`..operating_date_time`",14,2));\
+   de sy smo=`smo`; de sy smo=`mnn[i=($smo)]`; \
+   if `shr lt 10` then de sy shr=0`shr` else de sy shr=`shr` ;\
+   if `smi lt 10` then de sy smi=0`smi` else de sy smi=`smi` ;\
+   if `sse lt 10` then de sy sse=0`sse` else de sy sse=`sse` ;\
+   if `sse eq 0` then de sy sse=00 ;\
+   de sy sst="`sda`-($smo)-`syr` ($shr):($smi):($sse)"; \
+   de ax/t0=($sst)/unit=seconds rtax_($ie) = wall[l=@rsu,i=@ave]*(nstep[l=2]-nstep[l=1]); \
+   let rt_($ie) = t[gt=rtax_($ie)] ;\
+   )
+
+ let pr0 = 2012+nstep*dt/(60*60*24*365.25)
+
+ ca sy pr_tits
+ rep/ran=1:($qe)/name=ie (\
+   de sy ie = `ie` ;\
+   de sy exp = `exps[i=($ie)]` ;\
+   de sy tit = `tits[i=($ie)]` ;\
+   let/title="@SR($exp) arrival"/units="wall minutes"  arw_($ie) = wall[l=@rsu,i=@ave]/60 ;\
+   let/title="@SR($tit) performance"/units="simulated year" pr_($tit) = pr0[d=($ie),gt=rtax_($ie)@asn] ;\
+   de sy pr_tits = ($pr_tits)pr_($tit) ;\
+   if `($ie) lt ($qe)` then (de sy pr_tits = ($pr_tits),) else ();\
+ )
+
+! projected 320
+   let/title="@SRMOM09_320 (proj.) performance"/units="simulated year" \
+     proj_pr_MOM09_320 = pr_MOM09_240_start[l=1]+(pr_MOM09_240_start-pr_MOM09_240_start[l=1])/240*320 ;\
+
+!   li syr, smo, sda, shr, smi, sse
+
+!g _tics -1
+
+
+ sp rm $0.ps; se mo me:$0.ps
+
+ g _linecolors
+ se wi/as=1.5
+
+ ppl color 6,80,80,80
+!ppl AXLINT,4, ! freq. of large tics
+ ppl AXLINT,2, !
+ ppl AXNSIG,0, ! 0 dig precision
+ ppl AXNMTC,5, ! no of small tics
+!ppl TXNMTC,0 ! T axis large tics freq
+!ppl TXLINT,hour,
+!ppl TXLABP,-1
+ pl/tr/vlim="12-nov-2015":"17-nov-2015"/hlim=2013:2015:0.5/grat=(line,col=6)/li ($pr_tits),proj_pr_MOM09_320
+
+ ca mo me
+!sp rm $0.gif; frame/file=$0.gif

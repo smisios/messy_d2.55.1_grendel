@@ -1,0 +1,94 @@
+! -*- f90 -*-
+&CTRL
+/
+
+&CPL
+L_GP = T ! SWITCH FOR GRIDPOINT REPRESENTATION
+L_LG = F ! SWITCH FOR LAGRANGIAN REPRESENTATION
+!
+I_FEEDBACK = 1  ! 1: FEEDBACK FROM GP-H2O; 2: FEEDBACK FROM LG-H2O
+!
+!!# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!# IMPORTANT NOTE FOR I_H2O_TENDENCY > -2:                    !!!
+!!# DO NOT FORGET TO INITIALISE THE TRACER 'H2O' IN tracer.nml !!!
+!!# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!I_H2O_TENDENCY = -2 ! ZERO CHEMICAL TEND. (NO FEEDBACK, NO INITIALIZATION)
+!I_H2O_TENDENCY = -1 ! ZERO CHEMICAL TEND. (NO FEEDBACK)
+I_H2O_TENDENCY =  0 ! USE H2O TENDENCIES CALC. BY OTHER SM
+!!#                  ! (USE FOR FEEDBACK FROM CHMISTRY MODULE)
+!I_H2O_TENDENCY =  1 ! ADD CLIMATOLOGICAL TENDENCY TO THOSE CALC. BY OTHER SM
+!#                  ! (USE ONLY WITHOUT CHEMISTRY MODULE) 
+!I_H2O_TENDENCY =  2 ! ADD CLIMATOLOGICAL TENDENCY EXCLUSIVELY
+!!#                  ! (USE WITH CHEMISTRY MODULE FOR QUASI-CTM MODE)
+!
+L_MODINI_QZAV   = F ! MODULATE 2D INITIAL H2O CLIMATOLOGY WITH Q/Q(zonal av.)
+!
+/
+
+&RGTEVENTS
+!!$RG_TRIG(1) = 1,'months','first',0,  'A', 1, 1, 12, $START_MONTH, 'CH4_H',
+!!$RG_TRIG(2) = 1,'months','first',0,  'B', 1, 1, 12, $START_MONTH, 'CH4OH',
+!!$RG_TRIG(3) = 1,'months','first',0,  'C', 1, 1, 12, $START_MONTH, 'CH4O1D',
+!!$RG_TRIG(4) = 1,'months','first',0,  'D', 1, 1, 12, $START_MONTH, 'CH4CL',
+/
+
+!!$&regrid
+!!$!outfile  =         "ncrg_${ECHAM5_HRES}_halch4_hall12.nc",
+!!$infile    = "$INPUTDIR_MESSY/h2o/halch4_hall12.nc",
+!!$i_latm    = "LAT",          ! name of latitude axis in input file
+!!$i_latr    = -90.0,90.0,     ! range of latitude axis in input file
+!!$i_lonm    = "XHELP"         ! name of longitude axis in input file
+!!$i_lonr    = 0., 360.,       ! range of longitude axis in input file
+!!$i_timem   = "THELP",        ! name of time axis in input file
+!!$i_hyai    = "PRESSedges",   ! name of hybrid A coefficients in input file
+!!$i_hyam    = "PRESS",        ! name of hybrid A coefficients in input file
+!!$i_hyar     = 0.01, 1013.25, ! extends pressure range from input file
+!!$i_p0      = "100. Pa",      ! necessary for hPa to Pa conversion
+!!$pressure  = T,              ! vert. regridding in press. coordinates
+!!$var       = "CH4_H",        ! name of input variable
+!!$/
+!!$
+!!$&regrid
+!!$!outfile  =         "ncrg_${ECHAM5_HRES}_mm_zonalm_89_sp48_77.nc"
+!!$infile    = "$INPUTDIR_MESSY/h2o/mm_zonalm_89_sp48_77.nc"
+!!$i_latm    = "LAT",          ! name of latitude axis in input file
+!!$i_latr    = -90.0,90.0,     ! range of latitude axis in input file
+!!$i_lonm    = "LON",          ! name of longitude axis in input file
+!!$i_lonr    = 0., 360.,       ! range of longitude axis in input file
+!!$i_timem   = "TIME",
+!!$i_hyam    = "HYAM",
+!!$i_p0      = "1.0 Pa",
+!!$i_hybm    = "HYBM",
+!!$i_ps      = "100000. Pa",
+!!$var       = "CH4OH",
+!!$/
+!!$
+!!$&regrid
+!!$!outfile  =         "ncrg_${ECHAM5_HRES}_mm_zonalm_91_sp48_77.nc"
+!!$infile    = "$INPUTDIR_MESSY/h2o/mm_zonalm_91_sp48_77.nc"
+!!$i_latm    = "LAT",          ! name of latitude axis in input file
+!!$i_latr    = -90.0,90.0,     ! range of latitude axis in input file
+!!$i_lonm    = "LON",          ! name of longitude axis in input file
+!!$i_lonr    = 0., 360.,       ! range of longitude axis in input file
+!!$i_timem   = "TIME",
+!!$i_hyam    = "HYAM",
+!!$i_p0      = "1.0 Pa",
+!!$i_hybm    = "HYBM",
+!!$i_ps      = "100000. Pa",
+!!$var       = "CH4O1D",
+!!$/
+!!$
+!!$&regrid
+!!$!outfile  =         "ncrg_${ECHAM5_HRES}_mm_zonalm_93_sp48_77.nc"
+!!$infile    = "$INPUTDIR_MESSY/h2o/mm_zonalm_93_sp48_77.nc"
+!!$i_latm    = "LAT",          ! name of latitude axis in input file
+!!$i_latr    = -90.0,90.0,     ! range of latitude axis in input file
+!!$i_lonm    = "LON",          ! name of longitude axis in input file
+!!$i_lonr    = 0., 360.,       ! range of longitude axis in input file
+!!$i_timem   = "TIME",
+!!$i_hyam    = "HYAM",
+!!$i_p0      = "1.0 Pa",
+!!$i_hybm    = "HYBM",
+!!$i_ps      = "100000. Pa",
+!!$var       = "CH4CL",        ! THE CONTRIBUTION OF Cl (Year 2000) CAN BE
+!!$/                           ! DOWNSCALED (SEE NCREGRID SYNTAX)

@@ -1,0 +1,55 @@
+#! /bin/tcsh -f
+# Time-stamp: <2015-06-23 12:13:23 sander>
+# xdoxygen
+
+##############################################################################
+
+echo
+echo "Run doxygen? [y|n|q, default=y]"
+set inputstring = "$<"
+if ( "$inputstring" == "q" ) exit 1
+if ( "$inputstring" != "n" ) then
+  doxygen caaba_doxygen.cfg
+  echo ; echo "q&d fix for doxygen cite bug:" ; echo
+  cd latex
+  foreach filename (*.tex)
+    cp $filename $filename~
+    sed 's|cite{qqq|cite{|g' $filename~ > $filename
+    diff $filename~ $filename
+  end
+  cd -
+endif
+
+##############################################################################
+
+echo
+echo "Run pdflatex? [y|n|q, default=y]"
+set inputstring = "$<"
+if ( "$inputstring" == "q" ) exit 1
+if ( "$inputstring" != "n" ) then
+  cd latex
+  pdflatex refman.tex
+  bibtex refman.aux
+  pdflatex refman.tex
+  pdflatex refman.tex
+  mv refman.pdf ../caaba_doxygen.pdf
+  cd -
+  evince caaba_doxygen.pdf >& /dev/null &
+endif
+
+##############################################################################
+
+echo
+echo "Complete cleanup? [y|n|q, default=n]"
+set inputstring = "$<"
+if ( "$inputstring" == "q" ) exit 1
+if ( "$inputstring" == "y" ) then
+  rm caaba_doxygen.log
+  rm -fr latex html
+endif
+
+##############################################################################
+
+exit
+
+##############################################################################

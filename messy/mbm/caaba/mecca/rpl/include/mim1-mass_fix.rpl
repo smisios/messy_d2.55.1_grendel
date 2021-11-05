@@ -1,0 +1,93 @@
+// -*- kpp -*- kpp mode for emacs
+
+// author: S.Gromov [MPIC, 2018-2020]
+// mass conservation fix for mim1 chemistry
+// apply after mim1.rpl
+
+#REPLACE <G4102>
+<>  CH3OH   + OH      = HCHO + HO2 + H2O  : {%TrG}    2.9E-12{§1.10}*EXP(-345./temp); {&2626}
+#ENDREPLACE
+
+#REPLACE <G4206>
+<>  C2H5O2  + CH3O2   = .75 HCHO + HO2 + .75 CH3CHO + .25 CH3OH {+.25EtOH} + 0.5 LCARBON : {%TrG} 1.6E-13*EXP(195./temp); // The product \chem{C_2H_5OH}, which reacts only with OH, is substituted by its degradation products $\approx$ 0.1 \kpp{HOCH2CH2O2} + 0.9 \kpp{CH3CHO} + 0.9 \kpp{HO2}.
+#ENDREPLACE
+
+#REPLACE <G4211a>
+<> CH3CO3  + HO2     = CH3CO3H + O2       : {%TrG}  4.3E-13{§}*EXP(1040./temp)/(1.+1./37.*EXP(660./temp)); {&1613}
+#ENDREPLACE
+
+#REPLACE <G4216>
+<>  CH3CO3  + C2H5O2  = .82 CH3O2 + CH3CHO + .82 HO2 + .18 CH3CO2H + 0.82 LCARBON : {%TrG}  4.9E-12*EXP(211./temp); {&1207, 1632}
+#ENDREPLACE
+
+#REPLACE <G4222>
+<>  C2H2    + OH      = CH3O2 + LCARBON    : {%TrG}  k_3rd(temp,cair,5.5e-30,0.0,8.3e-13,-2.,0.6){§1.1}; {&2626}
+#ENDREPLACE
+
+#REPLACE <G4300>
+<>  C3H8    + OH      = .82 IC3H7O2 + .18 C2H5O2 + H2O + 0.18 LCARBON : {%TrG}  1.65E-17*temp*temp*EXP(-87./temp); {&1627}
+#ENDREPLACE
+
+#REPLACE <G4301>
+<>  C3H6    + O3      = .57 HCHO + .47 CH3CHO + .33 OH + .26 HO2 + .07 CH3O2 + .06 C2H5O2 + .23 CH3CO3 + .04 MGLYOX + .06 CH4 + .31 CO + .22 HCOOH + .03 CH3OH + 0.1 LCARBON : {%TrG}  6.5E-15{§1.15}*EXP(-1900./temp); {&2626}
+#ENDREPLACE
+
+#REPLACE <G4303>
+<>  C3H6    + NO3     = 0.75 LC4H9NO3        : {%TrG}    4.6E-13*EXP(-1155./temp); {&1207}
+#ENDREPLACE
+
+#REPLACE <G4309>
+<>  LHOC3H6O2  + NO      = .98 CH3CHO + .98 HCHO + .98 HO2 + .98 NO2 + .015 LC4H9NO3                  : {%TrG}   4.2E-12*EXP(180./temp); {&803}
+#ENDREPLACE
+
+#REPLACE <G4401>
+<>  LC4H9O2  + CH3O2   = .88 MEK + .68 HCHO + 1.23 HO2 + .12 CH3CHO + .12 C2H5O2 + .18 CH3OH + 0.14 LCARBON : {%TrG} k_PrO2_CH3O2; // Same value as for G4306
+#ENDREPLACE
+
+#REPLACE <G4405>
+<>  MVK     + O3      = .45 HCOOH + .9 MGLYOX + .1 CH3CO3 + .19 OH + .22 CO + .32 HO2 + 0.43 LCARBON   : {%TrG}  .5*(1.36E-15*EXP(-2112./temp)+7.51E-16*EXP(-1521./temp)); {&1614}
+#ENDREPLACE
+
+#REPLACE <G4408>
+<>  MVKO2   + NO      = NO2 + .25 CH3CO3 + .25 ACETOL + .75 HCHO + .25 CO + .75 HO2 + .5 MGLYOX + 0.25 LCARBON : {%TrG}   2.54E-12*EXP(360./temp); {&1614}
+#ENDREPLACE
+
+#REPLACE <G4410>
+<>  MVKO2   + CH3O2   = .5 MGLYOX + .375 ACETOL + .125 CH3CO3 + 1.125 HCHO + .875 HO2 + .125 CO + .25 CH3OH + 0.625 LCARBON : {%TrG}  2.E-12; {&1612}
+#ENDREPLACE
+
+#REPLACE <G4411>
+<>  MVKO2   + MVKO2   = ACETOL + MGLYOX + .5 CO + .5 HCHO + HO2 + CO2            : {%TrG} 2.E-12; {&1614}
+#ENDREPLACE
+
+#REPLACE <G4418>
+<>  MPAN    + OH      = ACETOL + NO2 + LCARBON  : {%TrG}    3.2E-11; {&1629}
+#ENDREPLACE
+
+#REPLACE <G4500>
+<>  C5H8  + O3        = .28 HCOOH + .65 MVK + .1 MVKO2  + .1 CH3CO3 + .14 CO + .58 HCHO + .09 H2O2 + .08 CH3O2 + .25 OH + .25 HO2 + 0.72 LCARBON : {%TrG}  7.86E-15*EXP(-1913./temp); {&1614}
+#ENDREPLACE
+
+#REPLACE <G4505>
+<>  ISO2  + CH3O2     = .5 MVK + 1.25 HCHO + HO2 + .25 MGLYOX + .25 ACETOL + .25 CH3OH + LCARBON : {%TrG}  2.E-12; {&1612}
+#ENDREPLACE
+
+#REPLACE <G4506>
+<>  ISO2  + ISO2      = 2 MVK + HCHO + HO2 + LCARBON : {%TrG}   2.E-12; {&1614}
+#ENDREPLACE
+
+#REPLACE <G4507>
+<>  ISOOH + OH        = MVK + OH  + LCARBON         : {%TrG}    1.E-10; {&1614}
+#ENDREPLACE
+
+#REPLACE <J4407>
+<>  MPAN        + hv = ACETOL + NO2 + LCARBON      : {%TrGJ} jx(ip_PAN); // It is assumed that J(\kpp{MPAN}) is the same as J(\kpp{PAN}).
+#ENDREPLACE
+
+#REPLACE <G9400a>
+<> DMS + OH = CH3SO2 + HCHO + H2O : {%TrG} 1.13E-11*EXP(-253./temp); {&1610} // For the abstraction path, the assumed reaction sequence (omitting \chem{H_2O} and \chem{O_2} as products) according to \citet{243} is: \begin{eqnarray*} \chem{DMS} + \chem{OH} & \TO & \chem{CH_3SCH_2}\\ \chem{CH_3SCH_2} + \chem{O_2} & \TO & \chem{CH_3SCH_2OO}\\ \chem{CH_3SCH_2OO} + \chem{NO} & \TO & \chem{CH_3SCH_2O} + \chem{NO_2}\\ \chem{CH_3SCH_2O} & \TO & \chem{CH_3S} + \chem{HCHO}\\ \chem{CH_3S} + \chem{O_3} & \TO & \chem{CH_3SO}\\ \chem{CH_3SO} + \chem{O_3} & \TO & \chem{CH_3SO_2}\\ \hline \chem{DMS}+\chem{OH}+\chem{NO}+2\chem{O_3} & \TO & \chem{CH_3SO_2}+\chem{HCHO}+\chem{NO_2} \end{eqnarray*} Neglecting the effect on \chem{O_3} and \chem{NO_x}, the remaining reaction is: $$\chem{DMS} + \chem{OH} + \chem{O_3} \TO \chem{CH_3SO_2} + \chem{HCHO}$$.
+#ENDREPLACE
+
+#REPLACE <G9402>
+<> DMSO + OH = .6 H2O + .6 SO2 + HCHO + .6 CH3O2 + .4 HO2 + .4 CH3SO3H : {%TrG} 1.E-10{1.0+/-0.3}; {&746}
+#ENDREPLACE

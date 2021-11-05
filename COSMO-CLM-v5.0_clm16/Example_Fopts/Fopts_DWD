@@ -1,0 +1,75 @@
+#########
+#  NEC SX
+#########
+#
+# SX-9
+F90          = sxmpif90 -clear -c -EP -w -f2003                                                               \
+               -I $(SRCDIR) -I/usr/local/pkg-sx9/include  -I/e/uhome/uschaett/include                         \
+               -I /usr/local/pkg-sx9/grib_api/1.11.0/include                                                  \
+               -Wf"-pvctl neighbors vr256 noassume loopcnt=2000000 vwork=stack                                \
+                          vworksz=100M novlchk noverrchk chgpwr nomsg"                                        \
+               -Wf,"-K a -M setall flovf inv zdiv"                                                            \
+               -Wf"-L fmtlist transform summary mrgmsg"                                                       \
+               -Wf,"-O nomsg"                                                                                 \
+               -DNECSX -DNUDGING -DNETCDF -DGRIBDWD -DRTTOV9   -DGRIBAPI
+#              -DNECSX -DNUDGING -DNETCDF -DGRIBDWD -DRTTOV10
+#              -Wf"-s -msg o"                                                                                 \
+#              -Wf"-L fmtlist transform summary mrgmsg"                                                       \
+#              -Wf,"-O nomsg -init stack=nan heap=nan"                                                        \
+#              -Wf,"-O nomsg"                                                                                 \
+#
+# loader call
+LDPAR        = sxmpif90
+LDSEQ        =
+#
+PROGRAM      = lmparbin
+#
+# options used for compilation
+#COMFLG1      = -eC -Pstack                                                                                            
+COMFLG1      = -Cvopt  -Pstack                                                                                           \
+               -Wf,"-i noerrchk -O move" -Wf,"-pvctl cond_mem_opt ifopt loopfusion outerstrip"                          \
+               -pi auto exp=udsdx,udsdx_up5_xy,coe_th,cu_cond,flake_radflux,flake_driver,flake_buoypar                  \
+                   -pi  exp=flake_snowdensity,flake_snowheatconduct,SfcFlx_rhoair                                       \
+                 expin=../src/numeric_utilities_rk.f90                                                                  \
+                 expin=../src/src_flake.f90                                                                             \
+                 expin=../src/numeric_utilities.f90                                                                     \
+                       noexp=mean_over_box,mean_cov_over_box,vert_avg,interpol_sl_trilin,lap_2,lap_4am,lap_4aml         \
+                 expin=../src/src_radiation.f90                                                                         \
+                 expin=../src/utilities.f90                                                                             \
+                 expin=../src/src_flake.f90                                                                             \
+                 expin=../src/src_flake_sfcflx.f90
+COMFLG2      = -Cvopt  -Pstack                                                                                           \
+               -pi auto exp=udsdx,udsdx_up5_xy,coe_th,cu_cond                                                           \
+                 expin=../src/numeric_utilities_rk.f90                                                                  \
+                 expin=../src/numeric_utilities.f90 noexp=mean_over_box,mean_cov_over_box,vert_avg,interpol_sl_trilin   \
+                 expin=../src/src_radiation.f90                                                                         \
+                 expin=../src/utilities.f90
+COMFLG3      = -Cvsafe -Pstack -Wf,"-pvctl noneighbors"
+COMFLG4      = $(COMFLG3)
+#
+# options for debugging or profiling
+# profiling: add -ftrace
+#COMFLG2     = -g -eC -Wf"-init stack=nan heap=nan"
+#
+# options used for linking
+#LDFLG       =                
+LDFLG        =                                    # for ftrace analysis
+#LDFLG        = -Wl,"-d -m -sum" -Wl,"-f nan"      # more debug options
+#LDFLG        = -sx8r                              # for SX-8R binaries
+#
+# Archive maintainer
+AR          = sxar
+#
+# Libraries for SX-9
+#LIB          = /usr/local/pkg-sx9/libdwd/lib/libgrib1.a                    \
+#               /usr/local/pkg-sx9/libdwd/lib/libmisc.a                     
+LIB          = /e/uhome/uschaett/lib/DWD-libgrib1_110128/libgrib1.a        \
+               /usr/local/pkg-sx9/grib_api/1.11.0/lib/libgrib_api_f90.a  \
+               /usr/local/pkg-sx9/grib_api/1.11.0/lib/libgrib_api.a      \
+               /usr/local/pkg-sx9/lib/libnetcdf.a                        \
+               /usr/local/pkg-sx9/for0adm/lib/librttov_ifc.a               \
+               /usr/local/pkg-sx9/for0adm/lib/librttov9.3.a                \
+               /usr/local/pkg-sx9/for0adm/lib/librttov9.3_parallel.a
+#              /usr/local/pkg-sx9/for0adm/lib/libRTTOV7_synsat_vector.a    \
+#              /usr/local/pkg-sx9/for0adm/lib/libradiance10.2.a            \
+#              /usr/local/pkg-sx9/for0adm/lib/librttov10.2.a               

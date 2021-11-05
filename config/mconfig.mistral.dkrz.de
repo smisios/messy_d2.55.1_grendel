@@ -1,0 +1,436 @@
+# -*- Makefile -*-
+###############################################################################
+##### PLATFORM SPECIFIC SETTINGSFOR mistral @ DKRZ ############################
+###############################################################################
+ARCH       = LINUX64
+
+###########################################################################
+### DEFAULTS
+###########################################################################
+#### DEFAULT COMPILE MODE
+if test -z "$RUNMODE" ; then
+   RUNMODE=PRODUCTION
+fi
+
+#### SET DEFAULT PROFILING MODE
+if test -z "$PROFILEMODE" ; then
+   PROFILEMODE=NONE
+fi
+
+##### TOOLS
+#AR       = ar
+#ARFLAGS  = cvr
+#NMFLAGS  =
+
+##### F95 EXTENSIONS
+DEFOPT   = -D
+MODOPT   = -I
+
+     #########################################################################
+     ### pitbull / mistral at DKRZ
+     #########################################################################
+
+     ##############################
+     ### detect mpi environment ###
+     ##############################
+     CENV=`echo $LOADEDMODULES | tr ':' '\n' | grep mpi | awk -F '/' '{print $1}'`
+     case $CENV in
+       bullxmpi_mlx*)
+	  ### ### NOTE: need to load modules in this order:
+	  ### ### (1) INTEL: intel/17.0.2 mxm/3.4.3082 fca/2.5.2431 ...
+	  ### ###            ... bullxmpi_mlx/bullxmpi_mlx-1.2.9.2
+	  ENVOPT=1
+	  MPIF90=mpif90
+	  MPICC=mpicc
+	  zMPICXX=mpicxx
+	  LIBCXX  = -lstdc++ -lmpi_cxx
+	    ;;
+       openmpi)
+	  ### ### (2) INTEL: intel/18.0.2      openmpi/2.0.2p2_hpcx-intel14
+	  ### ### (2) GNU:   gcc/6.4.0         openmpi/2.0.2p2_hpcx-gcc64
+	  ### ### (2) NAG:   gcc/6.4.0 nag/7.0 openmpi/2.0.2p2_hpcx-nag62
+	  ENVOPT=2
+	  MPIF90=mpif90
+	  MPICC=mpicc
+	  zMPICXX=mpicxx
+	  LIBCXX  = -lstdc++ -lmpi_cxx
+	    ;;
+       intelmpi)
+	  ### ### (3) INTEL: intel intelmpi
+	  ### ### (3) PGI:   pgi/17.7 intelmpi/5.1.2.150
+	  ENVOPT=3
+	  ### check for PGI
+	  TMPPGI=`echo $LOADEDMODULES | tr ':' '\n' | grep pgi | awk -F '/' '{print $1}'`
+	  case $TMPPGI in
+	       pgi*)
+		 MPIF90=mpipgf64
+		 MPICC=pgcc
+		 zMPICXX=pgc++
+		 LIBCXX  =  -lstdc++
+		;;
+	      *)
+		### assume intel to be default
+		MPIF90=mpiifort
+		MPICC=mpiicc
+		zMPICXX=mpiicpc
+		LIBCXX  = -lstdc++
+		;;
+	 esac
+	 ;;
+      *)
+	  ERRSTR='Error: MPI module could not be determined'
+	  ;;
+     esac
+
+     #######################
+     ### detect compiler ###
+     #######################
+     TMPF90=`$MPIF90 -show | awk '{print $1}' | awk -F '/' '{print $NF}'`
+     case $TMPF90 in
+	  ifort*)
+	    COMPILER=INTEL
+	    ;;
+	  gfortran*)
+	    COMPILER=GFORTRAN
+	    ;;
+	  nagfor*)
+	    COMPILER=NAG
+	    ;;
+	  pgf*)
+	    COMPILER=PGI
+	    ;;
+	  *)
+	    ERRSTR='Error: no matching mpi module loaded!'
+	    ;;
+     esac
+
+     case $COMPILER in
+
+      INTEL)
+	 ### ------------------------------------------------------------
+	 CXX      = g++
+	 CC       = $MPICC
+	 #
+	 case $ENVOPT in
+	  1)
+	    NETCDFFVERS = 4.4.2-intel14
+	    ;;
+	  2)
+	    NETCDFFVERS = 4.4.3-parallel-openmpi2-intel14
+	    ;;
+	  3)
+	    NETCDFFVERS = 4.4.3-parallel-impi-intel14
+	    ;;
+	 esac
+	 ###
+	 CFLAGS   = -g -O -Df2cFortran -xCORE-AVX2 `/sw/rhel6-x64/netcdf/netcdf_fortran-${NETCDFFVERS}/bin/nf-config --cflags`
+	 ###
+	 F90 = `which $MPIF90`
+	 F90VERS  = `$F90 --version | awk '{if (NR == 1) print}'`
+	 ##### F95 EXTENSIONS
+	 DEFOPT   = -D
+	 MODOPT   = -I
+	 ##### F95 COMPILER FLAG TO OBTAIN DOUBLE PRECISION
+	 F90R8    = -autodouble
+	 ##### F77 OPTIONS
+	 FFLAGS   = -g -fpp -O2 -fp-model strict -xCORE-AVX2
+	 ##### OpenMP options
+	 F90OMP    = -qopenmp -heap-arrays
+	 F90OMPLIB = -qopenmp -heap-arrays
+	 ##### MPI C++ compiler, flags and libs (for GUESS)
+	 MPICXX  = $zMPICXX
+	 ###
+	 MPIROOT    =
+	 MPI_LIB    =
+	 NETCDFROOT =
+	 ## For some strange reason (file system synchronisation)
+	 ## the corresponding tests in configure fail; thus these two
+	 ## variables need to be set explicitely:
+	 FORT_INTEGER_LEN=4
+	 FORT_REAL_LEN=4
+	 #
+	 ### mistral ###
+	 case $ENVOPT in
+	  1)
+	    SPEC_NETCDF_INC = `/sw/rhel6-x64/netcdf/netcdf_fortran-${NETCDFFVERS}/bin/nf-config --fflags | sed 's|-I||g'`
+	    SPEC_NETCDF_LIB = `/sw/rhel6-x64/netcdf/netcdf_fortran-${NETCDFFVERS}/bin/nf-config --flibs`
+	    PNETCDFROOT = /sw/rhel6-x64/netcdf/parallel_netcdf-1.6.0-bullxmpi-intel14
+	    YAXTROOT = /sw/rhel6-x64/dkrz/yaxt-0.4.5-bullxmpi-intel14
+	    ;;
+	  2)
+	    SPEC_NETCDF_INC = `/sw/rhel6-x64/netcdf/netcdf_fortran-${NETCDFFVERS}/bin/nf-config --fflags | sed 's|-I||g'`
+	    SPEC_NETCDF_LIB = `/sw/rhel6-x64/netcdf/netcdf_fortran-${NETCDFFVERS}/bin/nf-config --flibs`
+	    PNETCDFROOT = /sw/rhel6-x64/netcdf/parallel_netcdf-1.6.1-openmpi2-intel14
+	    YAXTROOT = /sw/rhel6-x64/dkrz/yaxt-0.6.0-openmpi2-intel14
+	    ;;
+	  3)
+	    SPEC_NETCDF_INC = `/sw/rhel6-x64/netcdf/netcdf_fortran-${NETCDFFVERS}/bin/nf-config --fflags | sed 's|-I||g'`
+	    SPEC_NETCDF_LIB = `/sw/rhel6-x64/netcdf/netcdf_fortran-${NETCDFFVERS}/bin/nf-config --flibs`
+	    PNETCDFROOT = /sw/rhel6-x64/netcdf/parallel_netcdf-1.6.1-impi-intel14/
+	    YAXTROOT = /sw/rhel6-x64/dkrz/yaxt-0.5.1-impi2017-intel14/
+	    ;;
+	 esac
+	 ###
+	 BLASROOT   =
+	 BLAS_LIB   =
+	 LAPACKROOT =
+	 LAPACK_LIB =
+	 #SPEC_LABLA_LIB =
+	 SPEED = -DBULL -I/sw/rhel6-x64/sys/bullxlib-1.0.0/include -L/sw/rhel6-x64/sys/bullxlib-1.0.0/lib -Wl,-rpath,/sw/rhel6-x64/sys/bullxlib-1.0.0/lib -lbullxMATH
+	 SYSLIB = `gcc -print-file-name=libstdc++.so | sed 's|/libstdc++.so||g'`
+	 SPEC_LIB   = $SPEED -Wl,-rpath,$SYSLIB
+	 ###
+	 case $RUNMODE in
+	    DEBUG)
+	       #F90FLAGS = -sox -g -traceback -debug all -check all -fpp -O0 -fp-model strict -align all -save-temps $SPEED -no-wrap-margin
+	    # in current INTEL versions the check for temporarily created
+	    # arrays does not only produce a warning during compilation, but
+	    # causes run time errors. To be able to use INTEL with other checks,
+	    # "-check all" was changed to "-check all,noarg_temp_created"
+	       F90FLAGS = -sox -g -xCORE-AVX2 -traceback -debug all -check all,noarg_temp_created -fpp -O0 -fp-model strict -align all -save-temps $SPEED -no-wrap-margin
+# -Bstatic
+# -fno-alias -no-ansi-alias
+# -static
+	       MPICXXFLAGS = -std=c++0x -g -xCORE-AVX2 -traceback -O0 -DDEBUG -fp-model strict
+	       ;;
+	    DEBUGOPT)
+	       F90FLAGS = -sox -g -traceback -debug all -check all -fpp -O2 -xCORE-AVX2 -fp-model strict -align all -save-temps $SPEED -no-wrap-margin
+#-Bstatic
+# -fno-alias -no-ansi-alias
+# -static
+	       MPICXXFLAGS = -std=c++0x -O2 -xCORE-AVX2 -DDEBUG -fp-model strict -fp-model source -fp-speculation=off -fno-alias -no-fma -fimf-arch-consistency=true -align -fno-alias -lpthread
+	       ;;
+	    PRODUCTION)
+	       F90FLAGS = -sox -fpp -g -O2 -xCORE-AVX2 -fp-model strict -align all -save-temps $SPEED -no-wrap-margin
+# -qopt-report-per-object
+#
+# -Bstatic
+# -no-prec-sqrt
+# -qlargepage -blpdata
+# -fno-alias -no-ansi-alias
+# -static
+	       MPICXXFLAGS = -std=c++0x -O2 -xCORE-AVX2 -DNODEBUG -fp-model strict -fp-model source -fp-speculation=off -fno-alias -no-fma -fimf-arch-consistency=true -align -fno-alias -lpthread
+	       ;;
+	    *)
+	       ERRSTR='Error: wrong run-time mode selected! To solve ./configure [options] RUNMODE=DEBUG|PRODUCTION'
+	       ;;
+	 esac
+	 ;;
+
+      GFORTRAN)
+	 ### ------------------------------------------------------------
+	 CXX      = g++
+	 CC       = mpicc
+	 CFLAGS   = -O -Df2cFortran `/sw/rhel6-x64/netcdf/netcdf_fortran-4.4.3-parallel-openmpi2-gcc64/bin/nf-config --cflags`
+	 F90      = `which $MPIF90`
+	 F90VERS  = `$F90 --version | awk '{if (NR == 1) print}'`
+	 ##### F95 EXTENSIONS
+	 DEFOPT   = -D
+	 MODOPT   = -I
+	 ##### F95 COMPILER FLAG TO OBTAIN DOUBLE PRECISION
+	 F90R8    = -fdefault-real-8
+	 ##### F77 OPTIONS
+	 FFLAGS   = -fno-second-underscore -ffree-line-length-none -fno-range-check
+	 ##### OpenMP options
+	 F90OMP    =
+	 F90OMPLIB =
+	 ##### MPI C++ compiler, flags and libs (for GUESS)
+	 MPICXX = $zMPICXX -std=c++1y
+	 #####
+	 SPEC_NETCDF_INC = `/sw/rhel6-x64/netcdf/netcdf_fortran-4.4.3-parallel-openmpi2-gcc64/bin/nf-config --fflags | sed 's|-I||g'`
+	 SPEC_NETCDF_LIB = `/sw/rhel6-x64/netcdf/netcdf_fortran-4.4.3-parallel-openmpi2-gcc64/bin/nf-config --flibs`
+	 PNETCDFROOT = /sw/rhel6-x64/netcdf/parallel_netcdf-1.6.1-openmpi2-gcc64
+	 YAXTROOT = /sw/rhel6-x64/dkrz/yaxt-0.5.1-openmpi2-gcc64
+	 BLASROOT   =
+	 BLAS_LIB   =
+	 LAPACKROOT =
+	 LAPACK_LIB =
+	 #SPEC_LABLA_LIB =
+	 SPEED = -DBULL -I/sw/rhel6-x64/sys/bullxlib-1.0.0/include -L/sw/rhel6-x64/sys/bullxlib-1.0.0/lib -Wl,-rpath,/sw/rhel6-x64/sys/bullxlib-1.0.0/lib -lbullxMATH
+	 SPEC_LIB   =
+#$SPEED
+
+	 case $RUNMODE in
+	    DEBUG)
+	       ### for debugging:
+	       F90FLAGS = -cpp -D__linux__ -fno-second-underscore -ffree-line-length-none -fno-range-check -fbacktrace -fbounds-check -g -O0 -Wall
+#$SPEED
+	       # -pedantic
+	       # -DNOENDIANCONVERT
+	       # -std=f95
+	       MPICXXFLAGS = -O0 -DNDEBUG
+	       ;;
+	    DEBUGOPT)
+	       ### for debugging:
+	       F90FLAGS = -cpp -D__linux__ -fno-second-underscore -ffree-line-length-none -fno-range-check -O2 -fbacktrace -fbounds-check -g -Wall
+#$SPEED
+	       MPICXXFLAGS = -O2 -DNDEBUG -Wuninitialized -fno-common
+	       ;;
+	    PRODUCTION)
+	       ### fast, optimized model run:
+	       F90FLAGS = -cpp -D__linux__ -fno-second-underscore -ffree-line-length-none -fno-range-check -O3 -g
+#$SPEED
+	       MPICXXFLAGS = -O2 -DNDEBUG -Wuninitialized -fno-common
+	       ;;
+	    *)
+	       ERRSTR='Error: wrong run-time mode selected! To solve ./configure [options] RUNMODE=DEBUG|PRODUCTION'
+	       ;;
+	 esac
+	 ;;
+
+### QQQ+++ NAG SECTION UNDER CONSTRUCTION
+      NAG)
+	 ### ------------------------------------------------------------
+	 CXX      = g++
+	 CC       = mpicc
+	 CPP      = mpicc -E
+	 nfroot=/sw/rhel6-x64/netcdf/netcdf_fortran-4.4.2-static-nag60
+	 CFLAGS   = -O -DNAGf90Fortran `$nfroot/bin/nf-config --cflags`
+	 F90      = `which $MPIF90`
+	 F90VERS  = `$F90 -V 2>&1 | awk '{if (NR == 1) { major=$5 ; minor=$7; sub("\\\\(.*$","",major) ; print major "." minor}}'`
+	 ##### F95 EXTENSIONS
+	 DEFOPT   = -D
+	 MODOPT   = -I
+	 WLPOPT=-Wl,-Wl,,-rpath,,
+	 ##### F95 COMPILER FLAG TO OBTAIN DOUBLE PRECISION
+	 F90R8    = -r8
+	 ##### F77 OPTIONS
+	 FFLAGS   = -132
+	 ##### MPI C++ compiler, flags and libs (for GUESS)
+	 MPICXX      = $zMPICXX
+	 #####
+	 SPEC_NETCDF_INC = `$nfroot/bin/nf-config --fflags | sed 's|-I||g'`
+	 SPEC_NETCDF_LIB = `$nfroot/bin/nf-config --flibs`
+	 PNETCDFROOT =
+	 YAXTROOT = /sw/rhel6-x64/dkrz/yaxt-0.6.0-openmpi2-nag62
+	 BLASROOT   =
+	 BLAS_LIB   =
+	 LAPACKROOT =
+	 LAPACK_LIB =
+	 #SPEC_LABLA_LIB =
+	 SPEED =
+	 SPEC_LIB  =
+	 MISMATCHS = -wmismatch=mpi_allgather,mpi_allgatherv,mpi_allreduce,mpi_alltoall,mpi_alltoallv,mpi_bcast,mpi_free_mem,mpi_gather,mpi_gatherv,mpi_get,mpi_get_address,mpi_isend,mpi_irecv,mpi_sendrecv,mpi_op_create,mpi_pack,mpi_recv,mpi_reduce,mpi_rget,mpi_scatter,mpi_scatterv,mpi_send,MPI_RSEND,MPI_IRSEND,mpi_type_commit,mpi_type_extent,mpi_type_struct,mpi_unpack,mpi_win_create,mpibcast,nf_get_att_double,nf_put_att_double,nf_def_var,nf_get_att_int,nf_put_att_int,nf_put_vara_int,nf_get_vara_int,nf_put_vara_double,NF_GET_VAR_DOUBLE,NF_PUT_VAR_DOUBLE,NF_GET_ATT_REAL,NF_PUT_VARA_REAL,xt_slice_c_loc,util_stride_1d,util_stride_2d,DGEMM -w=uep
+	commonopt = -fpp -D__linux__ -Wc=$(which gcc) -Wc,-pipe -ieee=full
+	commonopt = $commonopt $MISMATCHS
+	### for overall "mismatch" option:
+	#commonopt = $commonopt -mismatch
+	 case $RUNMODE in
+	    DEBUG)
+	       ### for debugging:
+	       F90FLAGS = $commonopt -C=all -O0 -Wc,-g -gline -g -float-store -nan
+	       ### Note: -Call is quite expensive, consider going for
+	       ###       "-C" only or possibly for some specific checks
+	       #F90FLAGS = $commonopt -O0 -Wc,-g -float-store -nan -gline -g -C=all
+	       ### Note: -mtrace=all is quite expensive, better set up with
+	       ###       specific list
+	       #F90FLAGS = $commonopt -C=all -O0 -Wc,-Og -gline
+	       #
+	       # -pedantic
+	       # -DNOENDIANCONVERT
+	       # -std=f95
+	       MPICXXFLAGS =
+	       ;;
+	    DEBUGOPT)
+	       ### for debugging:
+	       F90FLAGS = $commonopt -C=all -g -O2 -Wc,-O2
+#$SPEED
+	       MPICXXFLAGS =
+	       ;;
+	    PRODUCTION)
+	       ### fast, optimized model run:
+	       F90FLAGS = $commonopt -O3
+#$SPEED
+	       MPICXXFLAGS =
+	       ;;
+	    *)
+	       ERRSTR='Error: wrong run-time mode selected! To solve ./configure [options] RUNMODE=DEBUG|PRODUCTION'
+	       ;;
+	 esac
+	 ;;
+### QQQ--- NAG SECTION UNDER CONSTRUCTION
+
+
+      PGI)
+	 ### ------------------------------------------------------------
+	 CXX      = pgc++
+	 CC       = $MPICC
+	 #
+	 ###
+#         CFLAGS   =  -O0 -g -DpgiFortran -DHAVE_LIBNETCDF -DHAVE_NETCDF4 -DHAVE_NETCDF -DHAVE_LIBSZ
+	 CFLAGS   = -g -O  -Df2cFortran
+	 ###
+	 F90 = `which $MPIF90`
+	 F90VERS  = `$F90 -v 2>/dev/null | awk '{if (NR == 1) print}'`
+	 F90ADDOPT= -liomp5
+	 ##### F95 EXTENSIONS
+	 DEFOPT   = -D
+	 MODOPT   = -I
+	 ##### F95 COMPILER FLAG TO OBTAIN DOUBLE PRECISION
+	 F90R8    =  -r8
+	 ##### F77 OPTIONS
+	 #FFLAGS   = -O0 -g -Mpreprocess -Mrecursive
+	 #FFLAGS = -Mpreprocess -O2  -Kieee $F90ADDOPT
+	 FFLAGS = -Mpreprocess -O2  -Kieee
+	 ##### F95 COMPILER FLAG TO OBTAIN DOUBLE PRECISION
+	 ##### OpenMP options
+	 F90OMP    =
+	 F90OMPLIB =
+	 ##### MPI C++ compiler, flags and libs (for GUESS)
+	 MPICXX  = $zMPICXX
+	 ###
+	 MPIROOT    =/sw/rhel6-x64//intel/impi/5.1.2.150/compilers_and_libraries/linux/mpi/intel64
+	 MPI_LIB    = $WLFLAG,--disable-new-dtags -L$MPIROOT/lib/release_mt $WLFLAG,-rpath,$MPIROOT/lib/release_mt -L$MPIROOT/lib $WLFLAG,-rpath,$MPIROOT/lib -lmpifort -lmpi -lmpigi -ldl -lrt -lpthread -lmpipgf
+	 NETCDFROOT = /sw/rhel6-x64/netcdf/netcdf_fortran-4.4.3-pgi16
+	 #NETCDFROOT = /sw/rhel6-x64/netcdf/netcdf_c-4.4.0-gcc48
+	 ## For some strange reason (file system synchronisation)
+	 ## the corresponding tests in configure fail; thus these two
+	 ## variables need to be set explicitely:
+	 FORT_INTEGER_LEN=4
+	 FORT_REAL_LEN=4
+	 #
+	 ### mistral ###
+	 SPEC_NETCDF_INC = `/sw/rhel6-x64/netcdf/netcdf_fortran-4.4.3-pgi16/bin/nf-config --fflags | sed 's|-I||g'`
+	 SPEC_NETCDF_LIB = `/sw/rhel6-x64/netcdf/netcdf_fortran-4.4.3-pgi16/bin/nf-config --flibs`
+	 PNETCDFROOT = /sw/rhel6-x64/netcdf/parallel_netcdf-1.6.1-impi-intel14/
+	 YAXTROOT = /sw/rhel6-x64/dkrz/yaxt-0.5.1-impi2017-intel14/
+	 ###
+	 BLASROOT   =
+	 BLAS_LIB   =
+	 LAPACKROOT =
+	 LAPACK_LIB =
+	 #SPEC_LABLA_LIB =
+	 SPEED = -DBULL -I/sw/rhel6-x64/sys/bullxlib-1.0.0/include -L/sw/rhel6-x64/sys/bullxlib-1.0.0/lib -Wl,-rpath,/sw/rhel6-x64/sys/bullxlib-1.0.0/lib -lbullxMATH
+	 SPEC_LIB   = $SPEED
+	 ###
+	 case $RUNMODE in
+	    DEBUG)
+	       #F90FLAGS = -O0 -g -Mpreprocess -Mrecursive
+	       F90FLAGS =  -g -traceback -C -Mpreprocess -O0 -Kieee -lpthread
+	       MPICXXFLAGS =
+	       ;;
+	    DEBUGOPT)
+	       #F90FLAGS = -O0 -g -Mpreprocess -Mrecursive
+	       F90FLAGS =  -g -traceback -C -Mpreprocess -O2 -Kieee  -lpthread
+	       MPICXXFLAGS =
+	       ;;
+	    PRODUCTION)
+	       #F90FLAGS = -O0 -g -Mpreprocess -Mrecursive -Mallocatable=03
+	       #F90FLAGS = -Mpreprocess -O2 -lpthread -Kieee $F90ADDOPT
+	       F90FLAGS = -Mpreprocess -O2 -lpthread -Kieee
+	       MPICXXFLAGS =
+	       ;;
+	    *)
+	       ERRSTR='Error: wrong run-time mode selected! To solve ./configure [options] RUNMODE=DEBUG|PRODUCTION'
+	       ;;
+	 esac
+	 ;;
+
+      *)
+	 ERRSTR='Error: no or wrong compiler suite selected! To solve ./configure [options] COMPILER=INTEL|GFORTRAN|NAG|PGI'
+	 ;;
+     esac
+
+##########################################################################
+##########################################################################
+##########################################################################

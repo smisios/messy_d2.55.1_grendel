@@ -1,0 +1,48 @@
+! -*- f90 -*-
+
+&CPL
+L_GP       = T  ! EMISSIONS FOR GRIDPOINT TRACERS
+L_LG       = F  ! EMISSIONS FOR LAGRANGIAN TRACERS
+l_lg_tend  = F  ! LAGRANGIAN TRACER TENDENCY AS CHANNEL OBJECT ?
+! ### SYNTAX:
+!     (SPECIFIERS MUST BE UPPERCASE !)
+! ###         GP=    Gridpoint  Emission Method (0,1,2) (SURFACE ONLY)
+!                    1: 2D (SURFACE EM.) -> lowest layer
+!                       3D (VOLUME  EM.) -> emission ON
+!                       Nx2D (MULTI LEVEL EM.) -> internally converted to 3D
+!                    SURFACE EMISSIONS ONLY:
+!                    2: lower boundary condition for flux
+!
+! ###         LG=    Lagrangian Emission Method (0,1,2,3,4)
+!                    1: 2D (SURFACE EM.)       -> into CELLs in lowest layer
+!                       3D (VOLUME  EM.)       -> emission ON
+!                       Nx2D (MULTI LEVEL EM.) -> internally converted to 3D
+!                    SURFACE EMISSIONS ONLY:
+!                    2: into lowest CELLs within boundary layer
+!                    3: into all CELLs in boundary layer (vertical gradient)
+!                    4: into all CELLs in boundary layer (no vertical gradient)
+!
+!NOTEs:  (1) Surface emission fluxes (2D) must be in  molecules m-2 s-1.
+!        (2) Volume emissions (3D)        must be in  molecules m-3 s-1.
+!        (3) Multi level emissions (Nx2D) must be in  molecules m-2 s-1.
+!        (4) For volume emissions (3D), the corresponding channel object 
+!            must be in the GP_3D_MID representation
+!        (5) The trigger for multi level emissions (Nx2D) is the presence
+!            of the channel object attribute heights
+!
+! EMISSION: 'TRACER[_SUBNAME][,scaling];...', CHANNEL NAME, CHANNEL OBJECT, 
+!           EMISSION METHOD
+!
+! LOWER BOUNDARY CONDITIONS (SEE tnudge.nml)
+!
+!
+! synthetic tracers
+!
+EMIS_IN(1) = 'AOA_NH',   'import_grid', 'SYNT1_vemis',     'GP=1',  ! 3D
+!EMIS_IN(2) = 'AOA_CCMI', 'import_grid', 'SYNT1_vemis',     'GP=1',  ! 3D
+!EMIS_IN(3) = 'CO_25',    'import_grid', 'SYNT2_CO_flux',   'GP=1',
+!EMIS_IN(4) = 'CO_50',    'import_grid', 'SYNT2_CO_flux',   'GP=1',
+!EMIS_IN(5) = 'SF6_CCMI', 'import_grid', 'SYNT3_SF6_flux',  'GP=1',
+
+!
+/

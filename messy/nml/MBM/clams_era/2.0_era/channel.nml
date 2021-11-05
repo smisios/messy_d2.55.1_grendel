@@ -1,0 +1,132 @@
+! -*- f90 -*-
+&CTRL
+! ---------------------------------------------------------------------
+! EXPERIMENT NAME
+! ---------------------------------------------------------------------
+EXP_NAME='$EXP_NAME',
+I_VERBOSE_LEVEL=2
+! ---------------------------------------------------------------------
+! # FLUSH I/O BUFFER IN EVERY TIME STEP (DEFAULT: T (true))
+! # NOTE: F (false) might increase the overall performance
+!L_FLUSH_IOBUFFER = F,
+! ---------------------------------------------------------------------
+! # ADD NEW OUTPUT CHANNELS (MAX. 50)
+! ---------------------------------------------------------------------
+!ADD_CHANNEL(1)   = 'clamsmix',
+! ---------------------------------------------------------------------
+! # ADD NEW CHANNEL OBJECT REFERENCES (MAX. 500)
+! # NOTES: 
+! #  - SOURCE OBJECT NAME MAY CONTAIN WILDCARDS '?' AND '*'
+! #    (in this case, target object name is ignored)
+! #  - TARGET CHANNEL NAME MAY CONTAIN WILDCARDS '?' AND '*'
+! #  - TARGET OBJECT NAME SET TO SOURCE OBJECT NAME, IF ''
+! ---------------------------------------------------------------------
+
+ADD_REF(51)       = 'clams', 'JULTIME', 'dissoc', '',
+
+!ADD_REF(61)       = 'clamstracer', '*',     'clams',''
+
+ADD_REF(71)       = 'clamsdeepconv','*', 'clams',''
+
+! ---------------------------------------------------------------------
+! # SET DEFAULT OUTPUT AND RESTART HANDLING
+!      - ''
+!      - OUTPUT-FILETYPE, RERUN-FILETYPE, NO. OF STEPS PER OUTPUT-FILE,
+!      - RERUN, IGNORE, INST, AVE, STD, MIN, MAX, CNT, CAV, RANGE(2)
+! # NOTES:
+! #    IGNORE = T  FORCES THE MODEL TO IGNORE POTENTIAL lrestreq FLAGS
+! #                FOR PSEUDO-INITIAL RUNS FROM RESTART FILES
+! ---------------------------------------------------------------------
+OUT_DEFAULT     = '', 2, 2, 1, F,F, F,F,F,F,F, F,F, , ,
+! ---------------------------------------------------------------------
+! # OUTPUT PRECISION (ASCII, (P)NETCDF, (P)NETCDF, GRIB, HDF4, HDF5)
+! # NOTES: - ONLY (P)NETCDF CURRENTLY IMPLEMENTED;
+! #        - (P)NETCDF: 1=NF(90)_FLOAT; 2=NF(90)_DOUBLE
+!OUT_PREC = 1, 1, 1, 1, 1, 1   ! for production
+!OUT_PREC = 1, 2, 2, 1, 1, 1   ! for tests
+OUT_PREC = 1, 2, 2, 1, 1, 1   ! for trajectory output 
+! ---------------------------------------------------------------------
+! # SET CHANNEL SPECIFIC DEFAULT OUTPUT AND RESTART HANDLING (MAX. 500)
+!      - channel-name
+!      - OUTPUT-FILETYPE, RERUN-FILETYPE, NO. OF STEPS PER OUTPUT-FILE,
+!      - RERUN, IGNORE, INST, AVE, STD, MIN, MAX, CNT, CAV, RANGE(2)
+! # NOTE: IF NO. OF STEPS PER OUTPUT-FILE <= 0, THE EVENT TRIGGER
+!         (CPL-NAMELIST, TIMER_TNF BELOW) CONTROLS THE FILE CONTENT
+! ---------------------------------------------------------------------
+! MESSy STANDARD
+! GRIDPOINT TRACER OUTPUT
+!OUT_CHANNEL( 12)   = 'tracer_gp',      2, 2, -1, F,F, T,F,F,F,F, F,F, , ,
+!OUT_CHANNEL( 13)   = 'tracer_gp_te',   2, 2, -1, F,F, F,F,F,F,F, F,F, , ,
+!OUT_CHANNEL( 14)   = 'tracer_gp_m1',   2, 2, -1, F,F, F,F,F,F,F, F,F, , ,
+!OUT_CHANNEL( 15)   = 'tracer_gp_x*',   2, 2, -1, F,F, F,F,F,F,F, F,F, , ,
+!OUT_CHANNEL( 16)   = 'tracer_pdef_gp', 2, 2, -1, F,F, F,T,F,F,F, F,F, , ,
+!
+! MESSy SUBMODELS
+OUT_CHANNEL(101)  = 'CLAMS',              2, 2, -1, T,F, T,F,F,F,F, F,F, , ,
+OUT_CHANNEL(201)  = 'clams',              2, 2, -1, T,F, T,F,F,F,F, F,F, , ,
+OUT_CHANNEL(202)  = 'clamssedi',          2, 2,  1, T,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL(203)  = 'clamstraj',          2, 2,  1, T,F, T,F,F,F,F, F,F, , ,
+OUT_CHANNEL(204)  = 'winddata',           2, 2, -1, T,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL(205)  = 'clamschem_RATES',    2, 2, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL(206)  = 'clamschem_CONST',    2, 2, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL(207)  = 'clamschem_HETPARAM', 2, 2, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL(211)  = 'clamstracer',        2, 2, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL(212)  = 'dissoc',             2, 2, -1, F,F, F,F,F,F,F, F,F, , ,
+
+!
+! ---------------------------------------------------------------------
+! # SET CHANNEL OBJECT SPECIFIC OUTPUT AND RESTART HANDLING (MAX. 1000)
+!      - channel-name
+!      - object-name
+!      - RERUN, IGNORE, INST, AVE, STD, MIN, MAX, CNT, CAV, RANGE(2)
+! ---------------------------------------------------------------------
+! --------------------------------------------------------------------------
+!OUT_OBJECT(1)  = 'tracer_pdef_gp', 'MC*',    F,F, F,F,F,F,F, F,F, , ,
+! --------------------------------------------------------------------------
+!OUT_OBJECT(2)  = 'submod1', 's01',           F,F, T,T,T,F,F, F,F, , ,
+! --------------------------------------------------------------------------
+OUT_OBJECT(1)    = 'clams',     'JULSEC',     F,F, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(2)    = 'clams',     'JULTIME',    F,F, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(3)    = 'clams',     '*_OLD',      F,F, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(4)    = 'clams',     '*_OLD_MIX',  F,F, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(401)  = 'dissoc',    'DISSOC_*',   F,F, F,F,F,F,F, F,F, , ,
+/
+! #########################################################################
+&CPL
+! --------------------------------------------------------------------------
+! ENABLE ADDITIONAL ECHAM5 STANDARD STREAM OUTPUT ?
+! (e.g, needed for GRIB-template generation)
+! -> OUTPUT TIME INTERVAL => PUTDATA in ECHAM5.nml
+!L_BM_ORIG_OUTPUT = T,
+! --------------------------------------------------------------------------
+!===========================================================================
+! --------------------------------------------------------------------------
+! SET OUTPUT INTERVALS FOR ALL CHANNELS (DEFAULT + INDIVIDUAL)
+! NOTE: CHANNEL OUTPUT OF tdiag, tdiag_gp, nudg, nudg_gp
+!       WILL BE SYNCHRONIZED TO THE SHORTEST OUTPUT INTERVAL (IF PRESENT !)
+! NOTE: First match (wildcard) counts 
+! --------------------------------------------------------------------------
+TIMER_DEFAULT    = '',     24, 'hours',  'first', 0,
+!TIMER_DEFAULT    = '',     1, 'days',  'first', 0,
+!TIMER_DEFAULT    = '',     1, 'months', 'last', 0, 
+!TIMER_DEFAULT    = '',     5, 'hours',  'exact', 0,
+!TIMER_DEFAULT    = '',     15, 'minutes',  'first', 0,
+! --------------------------------------------- 
+!TIMER_CHANNEL( 1) = 'qtimer', 1, 'steps',   'first', 0,
+!TIMER_CHANNEL( 2) = 'clams',    6, 'hours',   'first', 0,
+TIMER_CHANNEL( 3) = 'clamstraj', 6, 'hours',   'first', 0,
+!TIMER_CHANNEL( 4) = 'clamssedi', 6, 'hours',   'first', 0,
+!TIMER_CHANNEL( 5) = 'clamstracer', 6, 'hours',   'first', 0,
+!---------------------------------------------------------------------------
+!TIMER_CHANNEL( 2) = 'g3b', 30, 'minutes',   'first', 0,
+!===========================================================================
+!---------------------------------------------------------------------------
+! SET TIMER EVENTS FOR NEW FILENAMES
+! (IF NO. OF STEPS PER OUTPUT-FILE <= 0 ABOVE !!!)
+! NOTE: First match (wildcard) counts 
+!---------------------------------------------------------------------------
+TIMER_TNF_DEFAULT = '', 24, 'hours', 'last', 0,
+!---------------------------------------------------------------------------
+!TIMER_TNF_CHANNEL( 1) = 'qtimer', 1, 'days', 'first', 0
+!---------------------------------------------------------------------------
+/

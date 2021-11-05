@@ -1,0 +1,123 @@
+! -*- f90 -*-
+
+! **********************************************************************
+! plumegas.nml
+!        Coupling and internal control namelists for the MESSy submodel
+!        PLUMEGAS
+! **********************************************************************
+
+! ---------------------------------------------------------------------
+! Submodel interface layer (SMIL)
+! ---------------------------------------------------------------------
+!
+&CPL
+!
+! If l_decouple is set to T, the tendencies of
+! external tracers are not modified (default: F).
+l_decouple=F
+! In this case (l_decouple=T), NOx sources have to be
+! emitted both into the background NOx tracer and the corresponding
+! plume NOx tracers called 'plume_NOx_'//TRIM(name_pl_ty(:)) (e.g.
+! plume_NOx_aviation, see below) through entries in offlem.nml and
+! corresponding NCREGRID namelist files.
+! If l_decouple=T then the NOx emissions from the inventories need to
+! be assigned both to the background NOx and also to the plume NOx for
+! each plume type.
+!
+! If l_decouple=F, then as_NOx_NO sets the procedure for assigning NOx
+! increments to NO and NO2:
+! * 'gridbox' assigns according to the gridbox NO/NOx molar ratio, if
+!   NOx is zero it assigns everything to NO;
+! * 'exhaust' assigns according to the emission ratio emi_ra (CTRL);
+! * 'only_NO' assigns everything to NO;
+! The default is 'gridbox'.
+as_NOx_NO ='gridbox'
+!
+/
+! ---------------------------------------------------------------------
+
+
+! ---------------------------------------------------------------------
+! Submodel core layer (SMCL)
+! ---------------------------------------------------------------------
+!
+&CTRL
+!
+! A maximum of 20 different plume types may be set below (see the
+! examples for aviation engines and ship engines). In order to exclude
+! a plume type from the model simulation, the name of the plume type
+! has to be equal to '' (empty string), so the corresponding line
+! simply needs to be commented to make the plume type void.
+!
+!......................................................................
+!
+! Plume type: AVIATION ENGINES
+!
+! The name(s) may not be longer than 8 characters each (default: 8
+! blank spaces) and if the name is empty (as it is by default), the
+! plume type is void:
+name_pl_ty(1)='aviation',
+!
+! Note: NOx sources have to be emitted into corresponding plume NOx
+!       tracers called 'plume_NOx_'//TRIM(name_pl_ty(:)) (e.g.
+!       plume_NOx_aviation) through entries in offlem.nml and
+!       corresponding NCREGRID namelist files.
+!
+! For tau, give values in seconds:
+tau(1)       =54000., ! (seconds)
+! tau = 15 h in Cariolle et al. (2009), p. 8
+!
+! For beta_1 (day) and beta_0 (night), give values between 0. and 1.:
+beta_1(1)    =0.06,
+! beta_1 = 0.06 in Cariolle et al. (2009), p. 7
+!
+beta_0(1)    =0.20,
+! beta_2 = 0.2  in Cariolle et al. (2009), p. 7
+!
+! For emi_ra (NO2/NOx ratio in exhaust), give values between 0. and 1.:
+emi_ra(1)    =0.0,
+! emi_ra = 0. in Cariolle et al. (2009), p. 9
+!
+! For keff, give values in molecules-1 s-1 cm3:
+keff(1)      =3.0E-18,
+! keff = 3.0E-18 molecules-1 s-1 cm3 in Cariolle et al. (2009), p. 9
+!
+!......................................................................
+!......................................................................
+!
+! Plume type: SHIP ENGINES
+!
+! The name(s) may not be longer than 8 characters each (default: 8
+! blank spaces) and if the name is empty (as it is by default), the
+! plume type is void:
+!name_pl_ty(2)='shipping',
+!
+! Note: NOx sources have to be emitted into corresponding plume NOx
+!       tracers called 'plume_NOx_'//TRIM(name_pl_ty(:)) (e.g.
+!       plume_NOx_shipping) in the NCREGRID namelist files specified
+!       in the offlem.nml namelist file.
+!
+! For tau, give values in seconds:
+tau(2)       =3000.,
+! tau = 50 min in Huszar et al. (2009), p. 26761
+!
+! For beta_1 (day) and beta_0 (night), give values between 0. and 1.:
+beta_1(2)    =0.,
+!
+!
+beta_0(2)    =0.,
+!
+!
+! For emi_ra, give values between 0. and 1.:
+emi_ra(2)    =0.1,
+! emi_ra = 0.1   in Huszar et al. (2009), p. 26747
+!
+! For keff, give values in molecules-1 s-1 cm3:
+keff(2)      =7.0E-19,
+! keff = 7.0E-19 molecules-1 s-1 cm3 in Huszar et a. (2009), p. 26761
+!
+!......................................................................
+/
+! ---------------------------------------------------------------------
+
+! **********************************************************************

@@ -1,0 +1,95 @@
+!
+! DEFINE ORBIT PARAMETRS FROM netCDF GLOBAL ATTRIBUTES FOR DEFAULT DATASET
+!
+! Version: 1.0a
+! Author: Patrick Jöckel, June 2008
+!
+! USAGE:
+!    set data ...
+!    go sorbit_init
+!
+
+! the following line returns always the DEFAULT dataset, which MUST contain
+! a time axis ...
+define symbol dname = `T[l=1],return=dsetpath`
+define symbol dnum  = `T[l=1],return=dsetnum`
+
+! check if nc or mc file ...
+let n = STRLEN("($dname)")-1
+define symbol ext = `SUBSTRING("($dname)",n,2)`
+cancel variable n
+
+! in case of mc, get information from first nc file in list
+IF ($ext%|mc>TRUE|*>FALSE%) THEN 
+  let nclist = {spawn: "grep s_filename ($dname) | sed 's|s_filename    =||g'"}
+  let n = STRLEN(nclist[i=1])-1
+  define symbol dname = `SUBSTRING(nclist[i=1],1,n)`
+  cancel variable n
+  cancel variable nclist
+ENDIF
+cancel symbol ext
+
+! -------------------------------
+
+let q_sorbit_lteq_hour        = \
+    {spawn: "ncdump -h ($dname) | grep sorbit_lteq_hour | sed 's|:sorbit_lteq_hour =||g' | sed 's|;||g' | sed 's| ||g'"}
+let/d=($dnum) sorbit_lteq_hour = `STRFLOAT(q_sorbit_lteq_hour)`
+cancel variable q_sorbit_lteq_hour
+
+! -------------------------------
+
+let q_sorbit_lteq_minute      = \
+    {spawn: "ncdump -h ($dname) | grep sorbit_lteq_minute | sed 's|:sorbit_lteq_minute =||g' | sed 's|;||g' | sed 's| ||g'"}
+let/d=($dnum) sorbit_lteq_minute = `STRFLOAT(q_sorbit_lteq_minute)`
+cancel variable q_sorbit_lteq_minute
+
+! -------------------------------
+
+let q_sorbit_dt          = \
+    {spawn: "ncdump -h ($dname) | grep sorbit_dt | sed 's|:sorbit_dt =||g' | sed 's|;||g' | sed 's| ||g'"}
+let/d=($dnum) sorbit_dt = `STRFLOAT(q_sorbit_dt)`
+cancel variable q_sorbit_dt
+
+! -------------------------------
+
+let q_sorbit_inclination = \
+    {spawn: "ncdump -h ($dname) | grep sorbit_inclination | sed 's|:sorbit_inclination =||g' | sed 's|;||g' | sed 's| ||g'"}
+let/d=($dnum) sorbit_inclination = `STRFLOAT(q_sorbit_inclination)`
+cancel variable q_sorbit_inclination
+
+! -------------------------------
+
+let q_sorbit_direction   = \
+    {spawn: "ncdump -h ($dname) | grep sorbit_direction | sed 's|:sorbit_direction =||g' | sed 's|;||g' | sed 's| ||g'"}
+define symbol sorbit_direction = `q_sorbit_direction`
+cancel variable q_sorbit_direction
+
+IF ($sorbit_direction%|"ascending">TRUE|*>FALSE%) THEN 
+   let/d=($dnum) sorbit_direction = +1  ! ascending
+ELSE
+   let/d=($dnum) sorbit_direction = -1  ! descending
+ENDIF
+cancel symbol sorbit_direction
+
+! -------------------------------
+
+! LOCAL TIME DEFINITION
+let pi = 4*atan(1)    ! Pi
+let d2r = pi/180      ! degrees -> radian
+
+! NOTE: LATITUDE AXIS lat MUST BE DEFINED
+define/d=($dnum) variable/title="local solar time"/unit="hour of day" lst = \
+     sorbit_lteq_hour + sorbit_lteq_minute/60 + \
+     sorbit_direction * \
+     asin(tan(Y[gy=lat]*d2r)/tan(sorbit_inclination*d2r)) * 24/(2*pi)
+
+! -------------------------------
+
+cancel symbol dname
+cancel symbol dnum
+
+! -------------------------------
+
+show variables
+
+! -------------------------------

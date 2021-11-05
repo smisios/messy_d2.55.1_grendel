@@ -1,0 +1,292 @@
+% work areas are denoted by #####
+%
+%
+%new intro chapter starting 31/05/01
+
+%$Source: /server/cvs/mpiom1/mpi-om/doc/tecdoc_mpiom/Attic/c3.tex,v $\\
+%$Revision: 1.1.2.1.4.2.2.2.2.3.2.1 $\\
+%$Date: 2006/03/07 14:50:43 $\\
+%$Name: mpiom_1_2_0 $\\
+
+
+%\pagenumbering{arabic}
+\thispagestyle{empty}
+ 
+\chapter[Creating a New Setup]
+{\Large{\bf Creating a New Setup}\label{ch:setup}}
+
+\section[Creating the Grid]
+{\Large{\bf Creating the Grid}\label{ch:setup:grid}}
+
+\subsection{anta}
+
+Step one is the creation of the latitudes and longitudes of the new Arakawa C-grid.
+We will need this file during the rest of the grid generation procedure.
+The job script to create a new bipolar grid for MPI-OM is called "mk\_anta-etopo2.job".
+Users need to adjust position and size of the two poles as well as the grid resolution.
+The program should be run at double precision.
+The example below is for the GROB60 test-setup.
+
+\begin{footnotesize}
+\begin{verbatim}
+#INPUT PARAMETERS TO BE EDIT BY THE USER
+#####################################
+#name of the grid
+grid=GR60
+
+#1st pole positions
+rlat1=72.
+rlon1=-40.
+
+#phi determines size of 1st pole
+#phi=pi/2 gives no hole
+#phi smaller than pi/2 gives increasingly larger hole
+#note: size of second pole adjusted with parameter je
+phi=1.49
+
+#2nd pole Eurasia
+rlat2=-84.
+rlon2=60.
+
+#horizontal dimensions
+ie=60
+je=50
+######################################
+\end{verbatim}
+\end{footnotesize}
+
+
+
+INPUT/OUTPUT:
+\begin{enumerate}
+
+\item \textbf{INPUT: etopo2.ext} \newline
+ETOPO-5 dataset (Digital relief of the
+Surface of the Earth) in big endian extra format.
+
+\item \textbf{OUTPUT: anta} \newline
+Grid file with lat's  and lon's from the Arakawa C-grid. This file is
+needed during the rest of the procedure, e.g. generation of initial and forcing data)
+
+\item \textbf{OUTPUT: topo} \newline
+Ocean topography in ASCII format. 
+For coarse resolution setups this file usually needs to be "corrected"
+by hand to get a proper representation of the ocean topography,
+e.g. Bering Strait or Panama etc. All important sill depth should be
+checked, e.g. Drake Passage or Denmark Strait.
+\end{enumerate}
+
+
+\subsection{arcgri}
+
+Step two is the creation of the grid distances of the new grid.
+The job script to create the second grid description file for MPI-OM 
+is called "mk\_arcgri.job".
+The file contains the grid distances dlxp, dlxp, dlxu, dlyu, dlyu and dlyv of
+the scalar and vector points of the Arakawa C-grid as well as the
+local coriolis parameter f.
+Users need to change the dimensions ie and je accordingly. The 
+program should be run at double precision.
+
+INPUT/OUTPUT:
+\begin{enumerate}
+
+\item \textbf{INPUT: anta} \newline
+The grid file with lat's  and lon's from the Arakawa C-grid
+in big endian extra format.
+
+\item \textbf{OUTPUT: arcgri} \newline
+Grid file with distances dlxp, dlxp, dlxu, dlyu, dlyu and dlyv of
+the scalar and vector points of the Arakawa C-grid as well as the
+local coriolis parameter in big endian extra format.
+
+\end{enumerate}
+
+
+\subsection{BEK}
+
+Step three is the creation of BEK file for the new grid. 
+The job script to create the BEK file for MPI-OM 
+is called "mk\_BEK.job".
+The file stores the information on the ocean basins which is of importance for 
+the diagnostic output. Users need to change the dimensions ie and je 
+in the script accordingly. 
+
+INPUT/OUTPUT:
+\begin{enumerate}
+
+\item \textbf{INPUT: anta} \newline
+The grid file with lat's  and lon's from the Arakawa C-grid
+in big endian extra format.
+
+\item \textbf{INPUT: topo} \newline
+Ocean topography in ASCII format.
+
+\item \textbf{OUTPUT: BEK} \newline
+Ocean basin information in ASCII format.
+
+\item \textbf{OUTPUT: ibek.ext} \newline
+Ocean basin information in EXTRA format.
+
+\end{enumerate}
+
+{\bf Attention:} The generated BEK file has to be modified by hand afterwards and
+some diagnostic output requires modifications in the source code!
+
+
+\section[Creating the Input]
+{\Large{\bf Creating the Input}\label{ch:setup:input}}
+
+\subsection{INISAL and INITEM}
+
+In step four we generate the initial value data sets for temperature and salinity 
+by interpolating a global ocean climatology onto the model grid.
+Two global hydrographic climatologies are available. First, the "PHC" climatology
+with improved arctic ocean information from \citet{Steele:2001} and second, 
+the new global hydrography from \citet{Gouretski:2004}.
+The job script to create the files from the \citet{Steele:2001} climatology is called
+"mk\_phc.job", the script to create them from the \citet{Gouretski:2004} climatology is called
+"mk\_sac.job". The user has to specify the dimensions ie and je and the vertical resolution.
+The following example is from "mk\_phc.job":
+\begin{footnotesize}
+\begin{verbatim}
+foreach code ( temp salt )
+foreach time ( an )   # opton : mon
+
+if $version == GR60 then
+set me=60
+set ne=50
+set lev2=20
+endif
+\end{verbatim}
+\end{footnotesize}
+
+INPUT/OUTPUT:
+\begin{enumerate}
+
+\item \textbf{INPUT: anta} \newline
+The grid file with lat's  and lon's from the Arakawa C-grid
+in big endian extra format.
+
+\item \textbf{INPUT:PAC or SAC file} \newline
+Ocean climatology in EXTRA format.
+
+\item \textbf{OUTPUT: INISAL, INITEM} \newline
+Ocean initial values for temperature and salinity.
+
+\end{enumerate}
+
+\subsection{SURSAL and SURTEM}
+
+The surface restoring maps, SURSAL and SURTEM, have to be extracted from the 3-D INISAL, INITEM
+by selecting the first level (CDO or EXTRA tools, "sellevel"). A monthly climatology is only available 
+for \citet{Steele:2001}.
+
+\subsection{runoff\_obs and runoff\_pos}
+
+Positions of river discharge are stored with latitudes and longitudes. Their referring grid points are 
+assigned during runtime. Nevertheless, to make sure the positions fit to the grid runoff\_obs 
+and runoff\_pos have to be specifically created for each setup. 
+The job script to create the files is called "mk\_runoff.job".
+
+INPUT/OUTPUT:
+\begin{enumerate}
+
+\item \textbf{INPUT: anta} \newline
+The grid file with lat's  and lon's from the Arakawa C-grid
+in big endian extra format.
+
+\item \textbf{INPUT: runoff.nc} \newline
+Global runoff in NetCDF format from the OMPI project.
+
+\item \textbf{INPUT: land\_sea\_mask.ECMWF.ext4} \newline
+The ECMWF land-sea mask in EXTRA format. 
+
+\item \textbf{INPUT: ibek.ext} \newline
+Ocean basin information in EXTRA format.
+
+\item \textbf{OUTPUT: runoff\_obs} \newline
+ Monthly mean river discharge data (currently for 53 positions) in EXTRA format.
+
+\item \textbf{OUTPUT: runoff\_pos} \newline
+ Longitudes and latitudes of the river discharge positions in EXTRA format.
+
+\end{enumerate}
+
+\section[Interpolate the Forcing]
+{\Large{\bf Interpolate the Forcing}\label{ch:setup:forcing}}
+
+Now that all grid information is available we need to provide the daily mean surface fields
+of heat, freshwater and momentum fluxes (see also.\ref{sec:using:forcing}).
+A popular choice is the climatological OMIP forcing as discussed in \ref{sec:numeric:omip}.
+The job script to interpolate the forcing from the OMIP climatology 
+to the choosen model grid is called
+"forcing\_omip.job". The user has to specify the dimensions ie and je.
+
+INPUT/OUTPUT:
+\begin{enumerate}
+
+\item \textbf{INPUT: anta} \newline
+The grid file with lat's  and lon's from the Arakawa C-grid
+in big endian extra format.
+
+\item \textbf{INPUT:OMIP climatology data} \newline
+2m\_dewpoint\_temperature.nc,
+east\_west\_stress.nc,
+north\_south\_stress.nc,
+scalar\_wind.nc,
+total\_precipitation.nc,
+2m\_temperature.nc,
+mean\_sea\_level\_pressure.nc,
+total\_cloud\_cover.nc and
+total\_solar\_radiation.nc 
+in NetCDF format. 
+
+\item \textbf{INPUT: land\_sea\_mask.ECMWF.ext4} \newline
+The ECMWF land-sea mask in EXTRA format. 
+
+\item \textbf{OUTPUT: surface forcing fields} \newline
+Total cloud cover: GICLOUD \newline
+Precipitation: GIPREC \newline
+Solar radiation: GISWRAD \newline
+Dew point temperature: GITDEW \newline
+Surface temperature: GITEM \newline
+10 m wind speed: GIU10 \newline
+zonal wind stress: GIWIX \newline
+meridional wind stress: GIWIY \newline
+All files in EXTRA format.
+\end{enumerate}
+
+Also available is a forcing compiled from the NCEP/NCAR reanalysis (section \ref{sec:numeric:ncep}).
+The script is called "forcing\_ncep.job". The NCEP/NCAR reanalysis provides the same input fields as the 
+OMIP project. The only difference is that "forcing\_ncep.job" has to consider the leap years.
+
+\section[Modifications in the Source]
+{\Large{\bf Modifications in the Source}\label{ch:setup:source}}
+The generation of a new grid requires some modifications in the source code,
+encapsulated with an appropriate CPP switch (see \ref{ch:using:compiling:conditional}).
+The new grid has to be defined in the following subroutines:
+\begin{enumerate}
+
+\item \textbf{mo\_param1.f90} \newline
+Define new global model dimensions.
+
+\item \textbf{diag\_ini.f90} \newline
+Define new diagnostic locations for timeseries output.
+
+\item \textbf{mo\_commodiag.f90} \newline
+Define different variables for grid types with different orientation, 
+because the through-flows are different.
+
+\item \textbf{diagnosis.f90} \newline
+Grid types are taken into account 
+when calculating the diagnostic output.
+
+\end{enumerate}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\clearpage
+
+
+
+  

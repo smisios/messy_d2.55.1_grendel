@@ -1,0 +1,97 @@
+! -*- f90 -*-
+&CTRL
+! ---------------------------------------------------------------------
+! EXPERIMENT NAME
+! ---------------------------------------------------------------------
+EXP_NAME='TEST',
+! ---------------------------------------------------------------------
+! # FLUSH I/O BUFFER IN EVERY TIME STEP (DEFAULT: T (true))
+! # NOTE: F (false) might increase the overall performance
+!L_FLUSH_IOBUFFER = F,
+! ---------------------------------------------------------------------
+! # ADD NEW OUTPUT CHANNELS (MAX. 50)
+! ---------------------------------------------------------------------
+ADD_CHANNEL(1)   = 'diag',
+! ...
+! ---------------------------------------------------------------------
+! # ADD NEW CHANNEL OBJECT REFERENCES (MAX. 500)
+! # NOTES: 
+! #  - TARGET CHANNEL NAME MAY CONTAIN WILDCARDS '?' AND '*'
+! #  - TARGET OBJECT NAME SET TO SOURCE OBJECT NAME, IF ''
+! ---------------------------------------------------------------------
+ADD_REF(1)        = 'submodel',    'f01',      'diag',         '',
+! ...
+! ---------------------------------------------------------------------
+! # SET DEFAULT OUTPUT AND RESTART HANDLING
+!      - ''
+!      - OUTPUT-FILETYPE, RERUN-FILETYPE, NO. OF STEPS PER OUTPUT-FILE,
+!      - RERUN, IGNORE, INST, AVE, STD, MIN, MAX, CNT, CAV, RANGE(2)
+! # NOTES:
+! #    IGNORE = T  FORCES THE MODEL TO IGNORE POTENTIAL lrestreq FLAGS
+! #                FOR PSEUDO-INITIAL RUNS FROM RESTART FILES
+! ---------------------------------------------------------------------
+OUT_DEFAULT     = '', 2, 2, 10, F,F, T,F,F,F,F, F,F, , ,
+! ---------------------------------------------------------------------
+! # OUTPUT PRECISION (ASCII, (P)NETCDF, (P)NETCDF, GRIB, HDF4, HDF5)
+! # NOTES: - ONLY (P)NETCDF CURRENTLY IMPLEMENTED;
+! #        - (P)NETCDF: 1=NF(90)_FLOAT; 2=NF(90)_DOUBLE
+OUT_PREC = 1, 1, 1, 1, 1, 1
+! ---------------------------------------------------------------------
+! # SET CHANNEL SPECIFIC DEFAULT OUTPUT AND RESTART HANDLING (MAX. 500)
+!      - channel-name
+!      - OUTPUT-FILETYPE, RERUN-FILETYPE, NO. OF STEPS PER OUTPUT-FILE,
+!      - RERUN, IGNORE, INST, AVE, STD, MIN, MAX, CNT, CAV, RANGE(2)
+! # NOTE: IF NO. OF STEPS PER OUTPUT-FILE <= 0, THE EVENT TRIGGER
+!         (CPL-NAMELIST, TIMER_TNF BELOW) CONTROLS THE FILE CONTENT
+! ---------------------------------------------------------------------
+!
+OUT_CHANNEL(  1)   = 'submodel', 2, 2, 10, F,F, T,F,F,F,F, F,F, , ,
+OUT_CHANNEL(  2)   = 'diag',     2, 2, 10, F,F, F,F,F,F,F, F,F, , ,
+! ...
+! ---------------------------------------------------------------------
+! # SET CHANNEL OBJECT SPECIFIC OUTPUT AND RESTART HANDLING (MAX. 1000)
+!      - channel-name
+!      - object-name
+!      - RERUN, IGNORE, INST, AVE, STD, MIN, MAX, CNT, CAV, RANGE(2)
+! ---------------------------------------------------------------------
+!
+OUT_OBJECT(  1)  = 'submodel','f01',       F,F, T,T,T,F,F, F,F, , ,
+OUT_OBJECT(  2)  = 'diag',    'f01',       F,F, F,F,F,F,F, T,T, 0.5, 1.0,
+! ...
+! ---------------------------------------------
+/
+! #########################################################################
+
+&CPL
+! --------------------------------------------- 
+! SET OUTPUT FREQUENCY FOR ALL CHANNELS (DEFAULT + INDIVIDUAL)
+! NOTE: First match (wildcard) counts 
+! --------------------------------------------- 
+TIMER_DEFAULT    = '',     1,
+! --------------------------------------------- 
+!TIMER_CHANNEL(  1) = 'base'    , 2,
+TIMER_CHANNEL(  2) = 'submodel', 3,
+TIMER_CHANNEL(  3) = 'diag', 5,
+! ...
+!---------------------------------------------------------------------------
+!===========================================================================
+!---------------------------------------------------------------------------
+! SET TIMER EVENTS FOR NEW FILENAMES
+! (IF NO. OF STEPS PER OUTPUT-FILE <= 0 ABOVE !!!)
+! NOTE: First match (wildcard) counts 
+!---------------------------------------------------------------------------
+TIMER_TNF_DEFAULT = '', 10,
+!---------------------------------------------------------------------------
+TIMER_TNF_CHANNEL( 1) = 'submodel', 5,
+! ...
+!---------------------------------------------------------------------------
+/
+
+
+&CTRL_PNETCDF
+!---------------------------------------------------------------------------
+!MPI_IO_HINT(1) = 'IBM_largeblock_io','true',
+!MPI_IO_HINT(2) = 'IBM_io_buffer_size','2949120',
+!MPI_IO_HINT(3) = 'IBM_sparse_access','true',
+!---------------------------------------------------------------------------
+/

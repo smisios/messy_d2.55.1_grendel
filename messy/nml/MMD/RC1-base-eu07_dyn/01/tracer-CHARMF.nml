@@ -1,0 +1,137 @@
+! -*- f90 -*-
+&CTRL
+L_FAMILY     = F, !# USE TRACER FAMILIES (SEE CTRL_FAMILY BELOW)
+L_PDEF       = T, !# SWITCH TRACER SUB-SUBMODEL PDEF (SEE CPL/CTRL_PDEF BELOW)
+!
+TPROP(1) = 'gp', 'PCH4', 'molarmass', '16.05',
+TPROP(2) = 'gp', 'LPCH4', 'molarmass', '16.05',
+!
+/
+
+&CPL
+L_TRACER_INIT = T, !# SWITCH ON(T)/OFF(F) TRACER INITIALISATION
+L_CONV_LG2GP =  F, !# ONLY IF LAGRANGIAN TRACERS PRESENT 
+!
+! basemodel, prognostic variable, input variable, specific method
+ini_pvar(1) = 'ECHAM5','q','H2O',1,
+!
+/
+
+&CTRL_FAMILY
+l_verbose = F,   !# diagnostic output
+i_diag_pe = 0,   !# ... for this p_pe
+i_diag_jrow = 1, !# ... and this jrow
+!#
+!# NOTES:
+!#    - MAX. NUMBER OF FAMILIES: 50
+!#    - FAMILY-TYPE = 1: FAMILY = SUM OF TRACERS, TRACER = FRACTION OF FAMILY
+!#                                - TRACER FRACTIONS NOT TRANSPORTED
+!#                                - PROCESS SPECIFIC CONVERSION
+!#                                - switch is meaningless for type 1
+!#    -             = 2: FAMILY = SUM OF TRACERS, TRACER REMAINS
+!#                                - TRACER TRANSPORTED
+!#                                - RESCALED TO SUM AFTER TRANSPORT
+!#                                - switch = .FALSE.: no re-scaling,
+!#                                                    only summation
+!#                                -        = .TRUE. (default): re-scaling ON
+!#    - FAMILY TRACER MUST NOT EXIST
+!#    - FIRST VALID TRACER IN FAMILY SPECIFIES ATTRIBUTES OF TRACER FAMILY
+!#    - nadvect=nconvect=nvdiff = ON FOR FAMILIES WITH FAMILY-TYPE = 1
+!#    - EACH TRACER CAN BE MEMBER OF ZERO OR ONE TRACER FAMILY
+!#    - THE DEFAULT WEIGHT FOR EACH TRACER IS 1.0
+!# SYNTAX:
+!#    tracer-set, family-type, switch, family-name, family-subname,
+!#    LIST OF TRACERS ...
+!#    ... ('name' OR 'name_subname' OR 'name:weight' OR 'name_subname:weight')
+!# EXAMPLES:
+!
+!TF(1) = 'gp',1, ,'ClOX','','Cl','ClO','HOCl','OClO','Cl2O2:2.0','Cl2:2.0',!94*''
+!TF(2) = 'gp',1, ,'BrOX','','Br','BrO','HOBr','BrCl','Br2:2.0',!95*''
+!TF(3) = 'gp',1, ,'NOX','','N','NO','NO2','NO3','N2O5:2.0',!95*''
+!TF(4) = 'gp',1, ,'HOx','','H','OH','HO2',!97*''
+!TF(5) = 'gp',1, ,'Ox','','O1D','O3P','O3',!97*''
+!
+/
+
+
+&CTRL_PDEF
+!# diagnostic output ?
+L_DIAGOUT = F,
+!# SYNTAX: set-name, tracer-name, subname,
+!#         reset to zero?, stop on exceed?, relative tolerance
+TPD_DEFAULT(1) = 'gp',   '',     '',    T, F, 0.01,
+TPD_DEFAULT(2) = 'lg',   '',     '',    T, F, 0.01,
+TPD_DEFAULT(3) = 'lggp', '',     '',    F, F, 0.01,
+!
+!TPD(1)         = 'gp',   'HNO3', 'nat', T, F,     ,
+!TPD(2)         = 'gp',   'N',    '',    T, F,     ,
+!
+/
+
+&regrid
+infile = "$INPUTDIR_MESSY/tracer/SC1SD-base-01__CH4_clim2007-2016_01-12.nc"
+!infile = "$INPUTDIR_MESSY/tracer/SC1SD-base-02__CH4_clim2007-2016_01-12.nc"
+i_latm    = "lat",          ! name of latitude axis in input file
+i_latr    = -90.0,90.0,     ! range of latitude axis in input file 
+i_lonm    = "lon",          ! name of longitude axis in input file 
+i_lonr    = 0.0,360.0,      ! range of longitude axis in input file 
+i_timem   = "time",         ! name of time axis in input file
+i_hyai    = "hyai",        ! name of hybrid A coefficients in input file
+i_hyam    = "hyam",         ! name of hybrid A coefficients in input file
+i_hybi    = "hybi",        ! name of hybrid B coefficients in input file
+i_hybm    = "hybm",         ! name of hybrid B coefficients in input file
+! i_ps      = "aps",
+i_ps      = "101325.0 Pa",
+i_p0      = "1. Pa",        ! value of reference pressure in input file
+pressure  = F,
+!
+var = "CH4_fx;"
+!
+! select time step
+i_t       = $START_MONTH,
+!
+/
+
+&regrid
+infile    =
+"$INPUTDIR_MESSY/MISC/QCTM/SC1SD-base-01_clim2007-2016_4QCTM_01-12.nc"
+i_latm    = "lat",          ! name of latitude axis in input file
+i_latr    = -90.0,90.0,     ! range of latitude axis in input file
+i_lonm    = "lon",          ! name of longitude axis in input file
+i_lonr    = 0.0,360.0,      ! range of longitude axis in input file
+i_timem   = "time",         ! name of time axis in input file
+!i_hyai    = "hyai",     ! name of hybrid A coefficients in input file
+i_hyam    = "hyam",     ! name of hybrid A coefficients in input file
+!i_hybi    = "hybi",     ! name of hybrid B coefficients in input file
+i_hybm    = "hybm",     ! name of hybrid B coefficients in input file
+! i_ps      = "aps",
+i_ps      = "101325.0 Pa",
+i_p0      = "1. Pa",        ! value of reference pressure in input file
+pressure  = F,
+var       = "H2O=H2O_ave;",
+/
+
+
+!!$&regrid
+!!$infile = "$ESCIMO/SC1SD-base-02/tr_hycarbs/SC1SD-base-02__${START_YEAR}${START_MONTH}_tr_hycarbs.nc"
+!!$i_latm    = "lat",          ! name of latitude axis in input file
+!!$i_latr    = -90.0,90.0,     ! range of latitude axis in input file 
+!!$i_lonm    = "lon",          ! name of longitude axis in input file 
+!!$i_lonr    = 0.0,360.0,      ! range of longitude axis in input file 
+!!$i_timem   = "time",         ! name of time axis in input file
+!!$!i_hyai    = "hyai",        ! name of hybrid A coefficients in input file
+!!$i_hyam    = "hyam",         ! name of hybrid A coefficients in input file
+!!$!i_hybi    = "hybi",        ! name of hybrid B coefficients in input file
+!!$i_hybm    = "hybm",         ! name of hybrid B coefficients in input file
+!!$! i_ps      = "aps",
+!!$i_ps      = "101325.0 Pa",
+!!$i_p0      = "1. Pa",        ! value of reference pressure in input file
+!!$pressure  = F,
+!!$!
+!!$var = "CH4_fx=CH4;"
+!!$!
+!!$! select time step
+!!$!time2yyyymmdd_hhmm.tcsh $ESCIMO/SC1SD-base-02/tr_hycarbs/SC1SD-base-02__201504_tr_hycarbs.nc | tr ' ' '\n' | awk '{print NR" "$0}' | grep 20150426
+!!$i_t       = 121,   ! 121 20150426_0059
+!!$!
+!!$/

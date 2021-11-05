@@ -1,0 +1,171 @@
+# -*- Makefile -*- Time-stamp: <2019-02-11 14:46:45 joec_pa>
+###############################################################################
+##### PLATFORM SPECIFIC SETTINGS (LINUX64) ####################################
+###############################################################################
+ARCH       = LINUX64
+
+###########################################################################
+### DEFAULTS
+###########################################################################
+#### DEFAULT COMPILE MODE
+if test -z "$RUNMODE" ; then
+   RUNMODE=PRODUCTION
+fi
+
+#### SET DEFAULT PROFILING MODE
+if test -z "$PROFILEMODE" ; then
+   PROFILEMODE=NONE
+fi
+
+##### TOOLS
+#AR       = ar
+#ARFLAGS  = cvr
+#NMFLAGS  = 
+
+##### F95 EXTENSIONS
+DEFOPT   = -D
+MODOPT   = -I
+
+
+  #########################################################################
+  ### FZJ: JURECA at JSC
+  #########################################################################
+
+  # module load intel-para 
+  # module load netCDF-Fortran
+  # module load Scalasca
+
+  ##### SPECIAL SETTINGS FOR PROFILING
+  case $PROFILEMODE in
+	NONE*)
+        # default: no profiling (nothing to do)
+        PREF90 =
+        ;;
+     SCALASCA*)
+        # corresponding module must be loaded
+        PREF90 = scorep
+        ;;
+     VAMPIR*)
+        # corresponding module must be loaded
+        PREF90 = vtf90 -vt:mpi -vt:f90
+        ;;
+     *)
+        ERRSTR='Error: unknown profiling mode selected! To solve ./configure [options] PROFILEMODE=SCALASCA|VAMPIR'
+        ;;
+  esac
+
+  TMPF90=`mpif90 -show | awk '{print $1}'`
+  case $TMPF90 in
+    ifort*)
+      COMPILER=INTEL
+      ;;
+    gfortran*)
+      COMPILER=GFORTRAN
+      ;;
+    *)
+      ERRSTR='Error: no openmpi module loaded!'
+      ;;
+  esac
+
+  case $COMPILER in
+
+   INTEL)
+
+     CXX      = 
+     CC       = gcc
+     CFLAGS   = -O  -Df2cFortran 
+     F90      = $PREF90 mpif90
+     F90VERS  = `$F90 --version | awk '{if (NR == 1) print}'`
+     ##### F95 EXTENSIONS
+     DEFOPT   = 
+     MODOPT   = 
+     ##### F95 COMPILER FLAG TO OBTAIN DOUBLE PRECISION
+     F90R8    = -autodouble
+     ##### F95 COMPILER FLAGS
+     case $RUNMODE in
+        DEBUGOPT*)
+           F90FLAGS = -g -check bounds -check all -fpe0 -traceback
+           ;;
+        DEBUG*)
+           F90FLAGS = -g -check bounds -check all -fpe0 -traceback
+           ;;
+        PRODUCTION*)
+           F90FLAGS = -O2 -fpp 
+           ;;
+     esac
+
+     ;;
+
+   GFORTRAN)
+
+     CXX      = 
+     CC       = mpicc
+     CFLAGS   = -O  -Df2cFortran 
+     F90      = mpif90
+     F90VERS  = `$F90 --version | awk '{if (NR == 1) print}'`
+     ##### F95 EXTENSIONS
+     DEFOPT   = 
+     MODOPT   = 
+     ##### F95 COMPILER FLAG TO OBTAIN DOUBLE PRECISION
+     F90R8    =  -fdefault-real-8
+     ##### F95 COMPILER FLAGS
+     case $RUNMODE in
+        DEBUGOPT*)
+           F90FLAGS = -cpp -g -fcheck=all -fbacktrace
+           ;;
+        DEBUG*)
+           F90FLAGS = -cpp -g -fcheck=all -fbacktrace
+           ;;
+        PRODUCTION*)
+           F90FLAGS = -cpp -O2 -fno-second-underscore -ffree-line-length-none -fno-range-check 
+           ;;
+     esac
+
+     ;;
+
+   esac
+
+     ### (1) MESSAGE PASSING INTERFACE (options a and b are exclusive!)
+     ####    a) use mpi-compiler wrappers (preferable!) and keep
+     ####       MPIROOT and MPI_LIB unset.
+     ####    b) set MPIROOT and MPI_LIB (e.g. for MPI-1 
+     ###        MPI_LIB = mpichf90nc mpich)
+     MPIROOT    =
+     MPI_LIB    = 
+     ### (2) NETCDF LIBRARY (options a and b are exclusive!)
+     ###     a) set NETCDFROOT (must contain lib/libnetcdf.a and
+     ###        include/netcdf.inc) (for necdf-3)
+     ###     b) set SPEC_NETCDF_INC to include path and
+     ###        SPEC_NETCDF_LIB to ld-options (-L ...  -l...)
+     NETCDFROOT =
+     SPEC_NETCDF_INC = ${EBROOTNETCDFMINFORTRAN}/include
+     SPEC_NETCDF_LIB = -lnetcdff -lnetcdf -lhdf5_hl -lhdf5 -lz
+     ###
+     ### (3) BLAS and LAPACK LIBRARIES (options a, b and are exclusive)
+     ###     a) keep all entries empty -> blas/lapack contained in 
+     ###        distribution will be compiled and used
+     ###     b) specify *ROOT (path to library) and
+     ###        and *_LIB (name of library without "-llib" and ".a",
+     ###        e.g., BLASROOT=/usr/lib and BLAS_LIB=blas for
+     ###        /usr/lib/libblas.a)
+     ###     c) specifiy SPEC_LABLA_LIB with full ld options)
+     BLASROOT   =
+     BLAS_LIB   =
+     LAPACKROOT =
+     LAPACK_LIB =
+     SPEC_LABLA_LIB =
+     ### (4) EMOS and SPHERE LIBRARIES (for INTERA only); 
+     ###     a) keep empty, if not available
+     ###     b) similar as option b) for BLAS/LAPACK
+     EMOSROOT   =
+     EMOS_LIB   =
+     SPHEREROOT =
+     SPHERE_LIB = 
+     ### (5) ADDITONAL LIBRARIES REQUIRED FOR LINKING (full ld options)
+     SPEC_LIB   =
+     ### (6) SPECIAL LIBRARIES FOR FORCHECK
+     FCKLIBS    =     
+
+###########################################################################
+###########################################################################
+###########################################################################

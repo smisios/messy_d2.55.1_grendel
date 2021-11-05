@@ -1,0 +1,377 @@
+% work areas are denoted by #####
+%
+%
+%new intro chapter starting 31/05/01
+
+%$Source: /server/cvs/mpiom1/mpi-om/doc/tecdoc_mpiom/Attic/c6.tex,v $\\
+%$Revision: 1.1.2.1.4.2.2.2.2.3.2.1 $\\
+%$Date: 2006/03/07 14:50:43 $\\
+%$Name: mpiom_1_2_0 $\\
+
+
+%\pagenumbering{arabic}
+\thispagestyle{empty}
+ 
+\chapter[Sea Ice Model]
+{\Large{\bf Sea Ice Model}}
+\label{ch:ice}
+
+The sea ice model in routine \texttt{ocice.f90} and its subroutines \texttt{growth.f90}, 
+\texttt{budget.f90} and \texttt{obudget.f90} consists of three parts:
+the dynamics of sea ice circulation, the thermodynamics of sea ice growth and melt and 
+the thermohaline coupling to the ocean model (brine rejection).
+The following description is mostly identical to \citet{Marsland:2003}
+and very similar to the {HOPE} model description by \citet{wolff97}.
+
+
+\section{Sea Ice Dynamics}
+\label{ch:ice:dynamics}
+
+Sea ice motion is determined by a two-dimensional momentum balance equation.
+\begin{equation}
+\label{eqn:icemomentum}
+{d{\vec{v}_i} \over {dt}} + f(\vec{k}\times\vec{v}_i) =
+- g\vec{\nabla}\zeta + {\vec{\tau_{a}}\over {\rho_i{h_i}}}
++ {\vec{\tau}_o \over {\rho_i h_i}} + \vec{\nabla}\cdot\sigma_{\mathit{mn}}
+\end{equation}
+Here $f$, $\vec{k}$, $\zeta$, $g$, and $t$ are as in Eqn~\ref{eqn:mom}.
+Sea ice of thickness $h_i$ and density $\rho_i$
+has a velocity $\vec{v}_i$ which responds to wind stress $\vec{\tau_{a}}$,
+ocean current stress $\vec{\tau_{o}}$,
+and an internal ice stress
+represented by the two dimensional stress tensor $\sigma_{\mathit{mn}}$.
+It is noted that inclusion of the nonlinear (advective) terms 
+in Eqn~\ref{eqn:icemomentum}
+considerably reduces the model time-step.
+For the standard \mbox{MPI-OM} setup considered in Section~\ref{ch:numeric:curvilinear} the time-steps
+with and without the advective terms are 15 and 36 minutes respectively.
+To reduce computational expenditure the nonlinear terms were therefore neglected
+in the simulations considered here.
+In Eqn.~\ref{eqn:icemomentum} the stress terms are in units of \mbox{N m$^{-2}$}.
+From above $\vec{\tau_a}$ is taken as prescribed forcing,
+while from below $\vec{\tau_o}$ is parameterized as
+\begin{equation}
+\label{eqn:icestress}
+{\vec{\tau_o}}  = \rho_w C_W 
+|\vec{v}_1 - \vec{v}_i| (\vec{v}_1 - \vec{v}_i)
+\end{equation}
+where 
+$\vec{v}_1$ is the upper ocean layer velocity
+and
+the constant coefficient of bulk momentum exchange is given by $C_W$.
+Currently no turning angles are employed for the atmosphere and ocean/ice stress terms.
+
+The choice of sea ice rheology $\sigma_{\mathit{mn}}$ determines 
+the way in which ice flows, cracks, ridges, rafts and deforms.
+Following Hibler (1979) internal sea ice stress is modeled
+in analogy to  a nonlinear viscous compressible fluid obeying
+the constitutive law
+\begin{equation}
+\label{eqn:constitutivelaw}
+\sigma_{\mathit{mn}}=2\eta\dot\epsilon_{\mathit{mn}} +
+\left\{(\xi -\eta)(\dot\epsilon_{11} + \dot\epsilon_{22}) -
+{P_i\over{2}}\right\}
+\delta_{\mathit{mn}}
+\end{equation}
+where $\dot\epsilon_{\mathit{mn}}$ is the strain rate tensor
+and $\delta_{\mathit{mn}}$ 
+($m,n \in \{1,2\}$) 
+is the Kronecker delta.
+The internal sea ice pressure $P_i$ 
+is a function of 
+sea ice thickness $h_i$
+and subgridscale areal fractional sea ice compactness
+\begin{equation}
+\label{eqn:hibpress}
+P_i = P^*h_i e^{-C(1-I)}
+\end{equation}
+where $P^*$ and $C$ are empirically derived constants.
+% with values ($5000 Nm^{-1}$ and 20 respectively)
+%taken from Hibler (1979).
+The pressure is related to the nonlinear bulk $\xi$ and shear $\eta$ viscosities according to:
+\begin{equation}\label{eqn:etazeta}
+\xi = {P_i\over{2\Delta}} \hspace*{.1cm};\hspace*{.1cm} \eta = {\xi \over{e^2}}
+\end{equation}
+\begin{equation}\label{eqn:hibdelta}
+\Delta = \left[ \left(\dot\epsilon_{11}^2 +
+\dot\epsilon_{22}^2\right)\left(1+{1\over{e^2}}\right)
++4{\dot\epsilon_{12}^2\over{e^2}} +
+2 \dot\epsilon_{11}\dot\epsilon_{22}\left(1-{1\over{e^2}}\right)
+\right]^{\frac{1}{2}}
+\end{equation}
+Here $e$ is the ratio of the lengths
+of the principal axes of the yield ellipse
+(these correspond to the principal components in stress space,
+i.e.\ $\sigma_{11}$ and $\sigma_{22}$ from Eqn~\ref{eqn:constitutivelaw}).
+The yield ellipse discriminates between linear-viscous (internal)
+and plastic (boundary) points in stress space, 
+while exterior points cannot be reached.
+Numerical problems arise when the strain rates are small.
+Then the $\Delta$ in Eqn~\ref{eqn:hibdelta} approaches zero,
+and the viscosities in Eqn~\ref{eqn:etazeta} approach infinity.
+%rev%The problem is avoided by choosing the viscosities to be a maximum of their
+%rev%function value given in Eqn~\ref{eqn:etazeta}, 
+%rev%and an empirically chosen maximum value corresponding to
+%rev%the function value when \mbox{$\Delta = \Delta_{\mathit{min}} = 2.0 \times 10^{-9}$}.
+Following Hibler (1979), \nocite{hibler79}
+the problem is avoided by choosing the viscosities to be a maximum of their
+function value given in Eqn~\ref{eqn:etazeta},
+and an empirically chosen maximum value corresponding to
+the function value when 
+\mbox{$\Delta = \Delta_{\mathit{min}} = 2.0 \times 10^{-9} s^{-1}$}.
+
+\section{Sea Ice Thermodynamics}
+\label{ch:ice:thermodynamics}
+
+Thermodynamics of sea ice involves the determination
+of the local growth or melt rate at the base of the sea ice and the local
+melt rate at the surface. 
+To allow for the prognostic treatment of the subgridscale fractional sea ice cover
+the surface heat balance is solved separately for the ice covered and ice free areas.
+That is,
+the net atmospheric heat flux $Q_{a}$ is weighted according to the
+open water heat flux $Q_{w}$ and heat
+flux over sea ice (or sea ice and snow) $Q_{i}$.
+\begin{equation}
+\label{eqn:icethermo}
+Q_{a} = (1 - I)Q_{w} + IQ_{i}
+\end{equation}
+ 
+%% iterative solution of sea ice/snow layer surface temperature
+A thermodynamic equilibrium is sought at the interface between
+the atmosphere and the sea ice/snow layer.
+An initial solution $T_{\mathit{srf}}^{\ast}$
+is found for the sea ice/snow layer
+surface temperature
+$T_{\mathit{srf}}$
+from the energy balance equation
+\begin{equation}
+\label{eqn:icesurf}
+Q_i + Q_{\mathit{cond}} = 0.
+\end{equation}
+The conductive heat flux $Q_{\mathit{cond}}$ within the sea ice/snow layer is assumed to be
+directly proportional to the temperature gradient across
+the sea ice/snow layer and inversely proportional to the
+thickness of that layer (i.e.\ the so-called zero-layer formulation of Semtner, 1976).\nocite{semtner76}
+\begin{equation}
+\label{cond1}
+Q_{\mathit{cond}} = k_i \frac{(T_{\mathit{freeze}} - T_{\mathit{srf}})}{\tilde{h}_i}
+\end{equation}
+Here $k_i$ is the thermal conductivity of sea ice,
+$T_{\mathit{freeze}}$ the freezing temperature of sea water
+and $\tilde{h}_i$ the effective thermodynamic sea ice thickness of
+the sea ice/snow layer.
+This effective thickness is defined to be
+\begin{equation}
+\label{cond2}
+\tilde{h}_i = \frac{1}{I}\left(h_i + h_s \frac{k_i}{k_s}\right)
+\end{equation}
+where $h_s$ is the snow layer thickness
+and $k_s$ is the thermal conductivity of the snow.
+The ratio of the thermal conductivity of sea ice with respect to
+that of snow
+%,$\frac{k_i}{k_sn}$, 
+is approximately 7.
+This means that snow is seven times more effective as an insulator against
+oceanic heat loss to the atmosphere than sea ice.
+Hence, even a relatively thin snow cover will result
+in a much increased effective sea ice thickness.
+Atmospheric precipitation is converted to snow fall when
+$T_{a}$ is below 0$^{\circ}$C\@.
+Snow loading on the sea ice may result in the
+submerging of the sea ice/snow interface.
+In such cases the thickness of the snow draft is converted to sea ice.
+Since the heat of fusion of snow is slightly greater than the heat of fusion
+of sea ice this process results in a net heat gain to the sea ice/snow layer.
+To close the heat balance of the conversion process a small additional
+amount of snow is also melted.
+
+When the initial solution $T_{\mathit{srf}}^{\ast}$ in Eqn~\ref{cond1}
+is greater than 0$^{\circ}$C
+the left-hand side of Eqn~\ref{eqn:icesurf} is recalculated with
+$T_{\mathit{srf}}$ replaced by 0$^{\circ}$C and the resultant
+energy  is used to melt snow and then sea ice from above.
+In the case where the entire sea ice/snow layer is melted from
+above any remaining heat is added to $Q_w$ in
+Eqn~\ref{eqn:icethermo}.
+
+%update of oceanic surface temperature
+To complete the sea ice thermodynamic evolution a heat balance
+equation must also be applied at
+the ocean/sea ice and ocean/atmosphere interfaces.
+The balance equation takes the form
+\begin{equation}
+\label{iceundersurf}
+\rho_w c_w \Delta{z}_{1}^{\prime}{\partial{\hat{\theta}_1} \over{\partial t}} =
+(1-I) Q_w + I(Q_{\mathit{cond}} - h_i \rho_i L_i)
+\end{equation}
+and is solved for an interim upper layer oceanic temperature $\hat{\theta}_1$.
+Here $c_w$ is the specific heat capacity of sea water,
+$L_i$ is the latent heat of fusion of sea ice
+and $\Delta{z}_{1}^{\prime}$ is the thickness of the upper ocean layer,
+given by
+\begin{equation}
+\label{eqn:draft}
+\Delta{z}_{1}^{\prime} = \Delta{z}_{1} + \zeta - h_{\mathit{draft}}
+\end{equation}
+where $\Delta{z}_{1}$ is the defined constant thickness of the ocean model's upper layer.
+The draft of the sea ice/snow layer $h_{\mathit{draft}}$ is given by
+\begin{equation}
+\label{eqn:draft2}
+h_{\mathit{draft}} = \frac{1}{\rho_w}
+\left( \rho_ih_i + \rho_sh_s \right).
+\end{equation}
+where $\rho_i$ and $\rho_s$ are the densities
+of the sea ice and snow layers respectively.
+Note that the treatment of a sea ice draft is purely for thermodynamic considerations,
+and that the ocean momentum balance is not effected.
+The embedding of sea ice into the upper ocean layer,
+as opposed to allowing sea ice to exist in multiple ocean layers,
+is for computational convenience.
+However, such treatment introduces an upperbound to the sea thickness.
+In \mbox{MPI-OM} the sea ice draft is not allowed to remain above a local
+maximum sea ice draft specified as
+\begin{equation}
+\label{eqn:maxice}
+h_{\mathit{maxdraft}} = 0.7 (\Delta{z}_{1} + \zeta).
+\end{equation}
+Any additional sea ice draft is converted to water
+in a salt (but currently not heat) conserving way.
+It is noted that this critical sea ice thickness is never reached in
+simulations using the standard grid of \mbox{MPI-OM} (Section~\ref{ch:numeric:curvilinear})
+forced with OMIP (Section~\ref{sec:numeric:omip}) or NCEP (Section~\ref{sec:numeric:ncep}) surface forcing.
+For the sea ice
+undersurface to be in thermal equilibrium with the upper ocean it is
+required that $T_{\mathit{melt}} \le \theta_1 \le T_{\mathit{freeze}}$.
+To maintain this inequality
+sea ice/snow is melted when the solution for $\hat{\theta}_1$ from
+Eqn~\ref{iceundersurf} is above $T_{\mathit{melt}}$
+and new sea ice is formed
+when $\hat{\theta}_1$ is below $T_{\mathit{freeze}}$.
+For the purposes of this study the effect of salinity on the freezing
+and melting temperatures is ignored
+and constant values of $T_{\mathit{freeze}}$
+and $T_{\mathit{melt}}$ are used.
+The model upper layer ocean temperature $\theta_1$
+is only allowed to rise above $T_{\mathit{melt}}$ when all of
+the sea ice/snow layer has been melted within a grid cell.
+Then the new upper ocean temperature $\theta_1$
+and the change in sea ice thickness $\Delta h_i$
+are given by 
+\begin{equation}
+\label{melt1}
+\theta_1 = \hat{\theta}_1 -
+\min\left\{\frac{h_i{\rho_i}L_f}{\rho_w{c_w}\Delta{z}^{\prime}_1},
+\hat{\theta}_1 - T_{\mathit{freeze}}\right\}
+\end{equation}
+\begin{equation}
+\label{melt2}
+\Delta{h_i} = \max\left\{ (T_{\mathit{freeze}} - \hat{\theta}_1)
+\frac{\rho_w{c_w}\Delta{z}^{\prime}_1}{{\rho_i}L_f},0 \right\}  .
+\end{equation}
+For freezing conditions, 
+the upper ocean temperature and the sea ice thickness change are
+\begin{equation}
+\label{freeze0}
+\theta_1 = T_{\mathit{freeze}}
+\end{equation}
+\begin{equation}
+\label{freezing}
+\Delta h_i = \frac{\hat{\theta}_1 - T_{\mathit{freeze}}}{\rho_i L_f}
+{\rho_w}c_w\Delta{z}^{\prime}_1 .
+\end{equation}
+
+
+%thermodynamic lead opening/closing
+Subgridscale thermodynamic processes of sea ice growth and melt are assumed
+to effect the sea ice compactness within a grid cell in the
+following ways.
+When freezing occurs over open water areas the sea ice compactness
+increases (i.e.\ leads concentration decreases) at a rate given by
+\begin{equation}
+\label{eqn:leads-freeze}
+\Delta I^{\mathit{thin}} = \max\left\{\frac{\Delta
+h_i^{\mathit{thin}}(1 - I)}{h_o \Delta t},0\right\}
+\end{equation}
+where $\Delta t$ is the model time-step,
+$\Delta h_i^{\mathit{thin}} = \Delta t Q_w/(\rho_i L_f)$ is thermohaline coupling to the ocean model
+the thickness of new sea ice formed and 
+$h_o$ is an arbitrary demarcation thickness
+(taken to be 0.5~m following Hibler, 1979).\nocite{hibler79}
+When melting of thick sea ice occurs the sea ice compactness
+decreases (i.e.\ leads concentration increases) at a rate given by
+\begin{equation}
+\label{eqn:leads-melt}
+\Delta I^{\mathit{thick}} = \min \left\{\frac{\Delta h_i^{\mathit{thick}}
+I}{2 h_i \Delta t},0\right\}
+\end{equation}
+where $\Delta h_i^{\mathit{thick}}$ is the change in sea ice
+thickness due to the melting.
+This formulation is based on the assumption that sea ice
+thickness within a grid cell has a uniform distribution between $0$
+and $2 h_i$.
+The change in compactness of sea ice due to thermodynamic lead
+opening and closing is then calculated as the sum of both these
+terms.
+\begin{equation}
+{\partial I \over {\partial t}} =
+\Delta I^{\mathit{thin}} + \Delta I^{\mathit{thick}}
+\end{equation}
+
+
+\section{Update of Salinity (Brine Rejection)}
+\label{ch:ice:brine}
+%update of salinity (brine rejection}
+Completion of the sea ice thermohaline coupling to the ocean model
+requires consideration of salt and fresh water exchanges during
+sea ice growth and melt.
+Sea ice is assumed to have a constant salinity independent of it's age
+and denoted by $S_{\mathit{ice}}$.
+While multi-year Arctic sea ice has a salinity of around 3~psu,
+thinner ice in both hemispheres has a much higher salinity \citep{cox74,eicken92}.
+For the simulations with the standard grid (Section~\ref{ch:numeric:curvilinear}) an intermediate value of 5~psu 
+representing this global diversity has been chosen.
+The ocean model's upper layer salinity S$_1$ is changed by an amount
+$\Delta S$ due to the surface fresh water flux (modified by snow fall
+which accumulates on top of the sea ice) and due to sea ice growth or melt,
+according to:
+\begin{equation}
+\label{eqn:icesalt}
+\left( S_1 + \Delta S \right) \Delta z^{\prime \mathit{old}}
++ \frac{\rho_i h_i^{\mathit{old}}}{\rho_w} S_{\mathit{ice}}
+=
+S_1 \Delta z^{\prime \mathit{new}}
++ \frac{\rho_i h_i^{\mathit{new}}}{\rho_w} S_{\mathit{ice}}
+\end{equation}
+Here $\Delta z^{\prime \mathit{old}}$ is the
+upper ocean layer thickness accounting for sea surface
+elevation and sea ice draft as in Eqn~\ref{eqn:draft},
+and also for the atmospheric precipitation minus evaporation.
+$\Delta z^{\prime \mathit{new}}$ is $\Delta z^{\prime \mathit{old}}$
+modified by the new sea ice draft due to melt or growth,
+and $h_i^{\mathit{new}} - h_i^{\mathit{old}}$ is the amount of
+sea ice growth (if positive) or melt (if negative).
+
+\section{Subroutines}
+\label{ch:ice:subroutines}
+\begin{itemize}
+\item
+Subroutine \texttt{growth.f90} calculates the ice thickness, compactness, snow depth, upper ocean
+temperature and salinity due to atmospheric heat and freshwater fluxes.
+\item
+ Subroutine \texttt{budget.f90} calculates the growth rates for the ice covered part of a grid
+cell with standard bulk formulas. First, the snow or ice skin temperature and the surface residual heat flux
+at the interface to the atmosphere and at the bottom are computed. Second, surface melt of snow or ice 
+and bottom ablation or aggregation are deduced.        
+\item
+ Subroutine \texttt{obudget.f90} calculates growth rates of new ice in the ice free part of a grid
+cell with bulk formulas or the net atmospheric heat flux at the water-atmosphere interface.
+      
+\end{itemize}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\clearpage
+
+
+
+  

@@ -1,0 +1,710 @@
+#! /bin/tcsh -f
+
+### nc2mc
+### =====
+### Creates from a set of netCDF files
+### (containing a split time-series)
+### a multi-netCDF metafile for ferret.
+###  
+### ... includes automatic post-processing on Linux-systems
+###
+### Author: Patrick Joeckel, MPI for Chemistry, Mainz, 2003-2008
+###         Andreas Baumgaertner, MPI for Chemistry, Mainz, 2008 
+###             > -a option added
+###         Christian Rodehacke, MPI for Meteorology, Hamburg, 2009
+###             > enable time axes for climatological data
+###             > -nc option to switch off calendar mode
+###         Hella Riede, MPI for Chemistry, Mainz, 2010
+###             > modifications for additional t0-format: YYYY-MM-DD and
+###               DD-MON-YYYY
+###         Patrick Joeckel, DLR, 2019
+###             > modifications for additional t0-format: 
+###               days since 1998-01-01T00:00:00Z
+###
+### VERSION 2.9b
+
+### FOR DEBUGGING
+#set echo verbose
+
+#alias awk gawk
+
+set script=`basename $0`
+### INIT ###################################################################
+set namefrag = ''
+set outpre = 'all.mc.pre'
+set out    = 'all.mc'
+set exclfrag = ()
+### maximum number of digits for delta-t output
+set digits = 10
+set directory = '.'
+### scaling factor for time intervals to get integer values
+set scale = 1
+set do_scale = 0
+### append to existing mc file 
+set append = 0
+### switch off calendar mode
+set no_cal = 0
+
+while ($# > 0)
+#while ($1 != '')
+    switch ($1)
+      case '-h':
+        echo "Usage: $script [-h] [-t0 <t0>] [-it] [-p] [-c] [-d <digits>]"
+        echo "       [-s <factor>] [-a] [-nc]"
+        echo "       [-dir <directory>] [-n <namefrag>] [-x <exclude>]"
+        echo " "
+        echo "  -h  : show this help and exit"
+        echo "  -t0 : set explicitely the origin of the time axis:"
+        echo '        <t0> has the format "DD-Mon-YYYY hh:mm:ss".'
+        echo "        If -t0 is omitted, <t0> is determined"
+        echo "        from the first netCDF file."
+        echo "  -it : increment time between netCDF files"
+        echo '  -p  : prepend path to netCDF-filename(s)'
+        echo '  -c  : correct for rounding error:'
+        echo '        This option should be tried, if'
+        echo '           ** unknown netCDF error code: -31'
+        echo '        is received when using the mc file.'
+        echo '  -d  : maximum number of <digits> for delta-t output'
+        echo '        (default: 10):'
+        echo '        This option should be tried, if'
+        echo '           ** unknown netCDF error code: -31'
+        echo '        is received when using the mc file.'
+        echo '  -s  : scaling <factor> for time intervals to get'
+        echo '        integer values (do NOT use with -d and/or -c)'
+        echo '  -dir: look in <directory> for netCDF-files'
+        echo '        Note: implies -p'
+        echo "  -n  : use netCDF files with <namefrag> in name"
+        echo '        Note: netCDF files must have the suffix ".nc"'
+        echo '  -x  : exclude netCDF files with <exclude> in name'
+        echo '        Note: multiple usage of -x is possible'
+        echo '  -a  : append to existing mc file'
+        echo '  -nc : switch off calendar mode'
+        echo " "
+        echo "Notes:"
+        echo "   + The resulting descriptor file is named"
+        echo "     <namefrag>.mc, if -n is specified, or "
+        echo "      all.mc, if -n is not specified."
+        echo "   + The descriptor files between Linux and non-Linux systems"
+        echo "     are not compatible to each other: Descriptor files"
+        echo "     for Ferret on Linux must be created with nc2mc on Linux,"
+        echo "     and can only be used by Ferret on Linux systems."
+        echo "     Descriptor files created with nc2mc on non-Linux systems,"
+        echo "     however, are compatible to each other."
+        echo "   + Within Ferret, the dataset is opened with:"
+        echo "        set data <descriptor-file>"
+        echo " "
+        echo "Author: Patrick Joeckel, MPI-C, Mainz, 2004-2009"
+        echo "        Patrick Joeckel, DLR, Oberpfaffenhofen, 2009-"
+        echo "        (http://www.pa.op.dlr.de/~PatrickJoeckel/nc2mc)"
+        echo " "
+        exit 1
+        breaksw
+      case '-t0':
+        shift 
+#      if (($# == 0) || (`echo $1 | awk '{print substr($1,1,1)}'` == "-")) then
+         if (("$1" == "") || \
+             (`echo $1 | awk '{print substr($1,1,1)}'` == "-")) then
+            echo 'Error: Argument <t0> missing\!'
+            echo "Use $script -h for more information\!"
+            exit 1
+        else
+            set t0 = "$1"
+            shift
+        endif
+        breaksw
+      case '-it':
+        set it = 1
+        shift
+        breaksw
+      case '-n':
+        shift 
+#      if (($# == 0) || (`echo $1 | awk '{print substr($1,1,1)}'` == "-")) then
+        if (("$1" == "") || \
+            (`echo $1 | awk '{print substr($1,1,1)}'` == "-")) then
+            echo 'Error: Argument <namefrag> missing\!'
+            echo "Use $script -h for more information\!"
+            exit 1
+        else
+            set namefrag = $1
+            set outpre = $1.mc.pre
+            set out = $1.mc
+            shift
+        endif
+        breaksw
+      case '-x':
+        shift 
+        if (("$1" == "") || \
+            (`echo $1 | awk '{print substr($1,1,1)}'` == "-")) then
+            echo 'Error: Argument <exclude> missing\!'
+            echo "Use $script -h for more information\!"
+            exit 1
+        else
+            set exclfrag = ($exclfrag $1)
+            shift
+        endif
+        breaksw
+      case '-p'
+        set wp = 1
+        shift
+        breaksw
+      case '-c'
+        set cre = 1
+        shift
+        breaksw
+      case '-d':
+        shift 
+        if (("$1" == "") || \
+            (`echo $1 | awk '{print substr($1,1,1)}'` == "-")) then
+            echo 'Error: Argument <digits> missing\!'
+            echo "Use $script -h for more information\!"
+            exit 1
+        else
+            set digits = $1
+            shift
+        endif
+        breaksw
+      case '-s':
+        shift 
+        if (("$1" == "") || \
+            (`echo $1 | awk '{print substr($1,1,1)}'` == "-")) then
+            echo 'Error: Argument <factor> missing\!'
+            echo "Use $script -h for more information\!"
+            exit 1
+        else
+            set scale = $1
+            set do_scale = 1
+            shift
+        endif
+        breaksw
+      case '-dir':
+        shift
+        if (("$1" == "") || \
+            (`echo $1 | awk '{print substr($1,1,1)}'` == "-")) then
+            echo 'Error: Argument <directory> missing\!'
+            echo "Use $script -h for more information\!"
+            exit 1
+        else
+            set directory = $1
+            shift
+            set wp = 1
+        endif
+        breaksw
+      case '-a':
+        set append = 1
+        shift
+        breaksw
+      case '-nc':
+        set no_cal = 1
+        shift
+        breaksw
+      default:
+        echo "Unknown option: $1"
+        echo "Use $script -h for more information\!"
+        exit 1
+        breaksw
+    endsw
+end
+
+### SET DIRECTORIES ########################################################
+#set workdir = `pwd`
+set workdir = $PWD
+set outpre  = $workdir/$outpre
+set out     = $workdir/$out
+cd $directory
+############################################################################
+
+### CHECK ncdump ###########################################################
+set ncdump = `which ncdump`
+if (( "$ncdump" == "" ) || (`basename "$ncdump"` != 'ncdump') ) then
+   echo 'Error: "ncdump" is not available\!'
+   exit 1
+endif 
+############################################################################
+
+### CHECK EXISTENCE OF MC FILE #############################################
+if (${append} == 1) then
+  if ( -f "$out" ) then
+    echo 'appending to '$out
+  else
+      echo 'append: '$out' file does not exist - creating new file\!'
+      set append = 0
+  endif
+endif
+
+### CHECK EXISTENCE OF FILES ###############################################
+set nonomatch
+set list0 = `echo *$namefrag*.nc`
+set empty = "*$namefrag*.nc"
+unset nonomatch
+
+if ( "$list0[1]" == "$empty[1]" ) then
+#    echo 'No *'$namefrag'*.nc files in '`pwd`' \!'
+    echo 'No *'$namefrag'*.nc files in '$PWD' \!'
+    exit 1
+endif
+
+### TAKE ONLY FILENAMES
+#if ( "$exclfrag" != "") then
+if (${#exclfrag} > 0) then
+   set list = ()
+   @ count = 1
+   while ($count <= ${#list0})
+     @ lex = 0
+     @ xcnt = 1
+     while ($xcnt <= ${#exclfrag})
+       if ( $list0[$count] =~ *$exclfrag[$xcnt]* ) then
+            set lex = 1
+       endif
+     @ xcnt++
+     end
+     if ($lex == 0) then
+        set list = ($list $list0[$count])
+     endif
+   @ count++
+   end
+else
+   set list = ( $list0 )
+endif
+
+### APPEND: REMOVE FILENAMES ALREADY IN MC FILE ############################
+if (${append} == 1) then
+  set origlist = ( $list )
+  set list = ()
+  foreach fname ($origlist)
+    if (`grep $fname $out` == "" ) then
+       set list = ($list $fname)
+    endif
+  end 
+endif
+
+if ( ${#list} < 1 ) then 
+   echo 'Empty netCDF filelist\!'
+   exit 1
+endif
+
+if ( ${#list} > 1 ) then 
+   set first = $list[1]     
+else
+   set first = $list
+endif
+############################################################################
+
+### GET NAME OF UNLIMITED DIM/VAR FROM FIRST FILE IN LIST ##################
+set ulim = `$ncdump -h $first | grep UNLIMITED`
+if ( ${#ulim} >= 1 ) then 
+   set tname = $ulim[1]
+else
+   echo 'ERROR: UNLIMITED DIMENSION CANNOT BE FOUND\!'
+   exit 2
+endif
+############################################################################
+
+### GET TIME INFORMATION AND TITLE #########################################
+#set tline = `$ncdump -h $first | grep $tname':units' | sed 's|'$tname':units =||g' | sed 's|[";]||g'`
+set tline = `$ncdump -h $first | awk '$1~/^'$tname':units/{print}' | tail -1 | sed 's|'$tname':units =||g' | sed 's|[";]||g'`
+
+if (! ${?tline}) then
+   echo 'ERROR: units-ATTRIBUTE OF '$tname' CANNOT BE FOUND\!'
+   exit 3
+endif
+
+switch (${#tline})
+case 1:
+   # special case
+   echo 'WARNING: FORMAT OF units-ATTRIBUTE OF '$tname' NOT RECOGNIZED: '$tline
+   set tline = ( "${tline}" "since" "0001-01-01" "00:00:00" )
+   echo '... using '${tline} 'instead.'
+   breaksw
+case 3:
+   set tline = `echo $tline | sed 's|T| |g' | sed 's|Z||g'`
+   breaksw
+case 4:
+   # OK, do nothing
+   breaksw
+default:
+   echo 'ERROR: FORMAT OF units-ATTRIBUTE OF '$tname' NOT RECOGNIZED: '$tline
+   exit 4
+   breaksw
+endsw
+
+if ${?t0} then
+    set t0time = "$t0"
+else
+    ### DETERMINE START OF TIME AXIS
+    set t0clock = $tline[4]
+    set t0date  = $tline[3]
+    set t0ymd = `echo $t0date | sed 's|-| |g'`
+    set t0y = $t0ymd[1]
+    set t0m = $t0ymd[2]
+    set t0d = $t0ymd[3]
+
+    switch ($t0m)
+
+    ### YYYY-MM-DD
+    case '01':
+    case '1':
+     set t0mstr = 'Jan'
+     breaksw
+    case '02':
+    case '2':
+     set t0mstr = 'Feb'
+     breaksw
+    case '03':
+    case '3':
+     set t0mstr = 'Mar'
+     breaksw
+    case '04':
+    case '4':
+     set t0mstr = 'Apr'
+     breaksw
+    case '05':
+    case '5':
+     set t0mstr = 'May'
+     breaksw
+    case '06':
+    case '6':
+     set t0mstr = 'Jun'
+     breaksw
+    case '07':
+    case '7':
+     set t0mstr = 'Jul'
+     breaksw
+    case '08':
+    case '8':
+     set t0mstr = 'Aug'
+     breaksw
+    case '09':
+    case '9':
+     set t0mstr = 'Sep'
+     breaksw
+    case '10':
+     set t0mstr = 'Oct'
+     breaksw
+    case '11':
+     set t0mstr = 'Nov'
+     breaksw
+    case '12':
+     set t0mstr = 'Dec'
+     breaksw
+
+    ### DD-MON-YYYY
+    case 'JAN':
+    case 'Jan':
+     set t0mstr = 'Jan'
+     set t0y = $t0ymd[3]
+     set t0m = 01
+     set t0d = $t0ymd[1]
+     breaksw
+    case 'FEB':
+    case 'Feb':
+     set t0mstr = 'Feb'
+     set t0y = $t0ymd[3]
+     set t0m = 02
+     set t0d = $t0ymd[1]
+     breaksw
+    case 'MAR':
+    case 'Mar':
+     set t0mstr = 'Mar'
+     set t0y = $t0ymd[3]
+     set t0m = 03
+     set t0d = $t0ymd[1]
+     breaksw
+    case 'APR':
+    case 'Apr':
+     set t0mstr = 'Apr'
+     set t0y = $t0ymd[3]
+     set t0m = 04
+     set t0d = $t0ymd[1]
+     breaksw
+    case 'MAY':
+    case 'May':
+     set t0mstr = 'May'
+     set t0y = $t0ymd[3]
+     set t0m = 05
+     set t0d = $t0ymd[1]
+     breaksw
+    case 'JUN':
+    case 'Jun':
+     set t0mstr = 'Jun'
+     set t0y = $t0ymd[3]
+     set t0m = 06
+     set t0d = $t0ymd[1]
+     breaksw
+    case 'JUL':
+    case 'Jul':
+     set t0mstr = 'Jul'
+     set t0y = $t0ymd[3]
+     set t0m = 07
+     set t0d = $t0ymd[1]
+     breaksw
+    case 'AUG':
+    case 'Aug':
+     set t0mstr = 'Aug'
+     set t0y = $t0ymd[3]
+     set t0m = 08
+     set t0d = $t0ymd[1]
+     breaksw
+    case 'SEP':
+    case 'Sep':
+     set t0mstr = 'Sep'
+     set t0y = $t0ymd[3]
+     set t0m = 09
+     set t0d = $t0ymd[1]
+     breaksw
+    case 'OCT':
+    case 'Oct':
+     set t0mstr = 'Oct'
+     set t0y = $t0ymd[3]
+     set t0m = 10
+     set t0d = $t0ymd[1]
+     breaksw
+    case 'NOV':
+    case 'Nov':
+     set t0mstr = 'Nov'
+     set t0y = $t0ymd[3]
+     set t0m = 11
+     set t0d = $t0ymd[1]
+     breaksw
+    case 'DEC':
+    case 'Dec':
+     set t0mstr = 'Dec'
+     set t0y = $t0ymd[3]
+     set t0m = 12
+     set t0d = $t0ymd[1]
+     breaksw
+
+    default:
+     echo 'ERROR: MONTH NOT RECOGNIZED\!'
+     exit 5
+     breaksw
+    endsw
+    #
+    set t0time = $t0d'-'$t0mstr'-'$t0y' '$t0clock
+endif
+
+### TIME UNIT
+set tunitstr  = `echo $tline[1] | awk '{print tolower($1)}'`
+switch ($tunitstr)
+ case 'second':
+ case 'seconds':
+  set tunit = 1.0
+  breaksw
+ case 'minute':
+ case 'minutes':
+  set tunit = 60.0
+  breaksw
+ case 'hour':
+ case 'hours':
+  set tunit = 3600.0
+  breaksw
+ case 'day':
+ case 'days':
+  set tunit = 86400.0
+  breaksw
+ default:
+  echo 'ERROR: UNIT '$tunitstr' NOT RECOGNIZED\!'
+  exit 6
+  breaksw
+endsw
+
+### APPLY SCALING
+  if (${do_scale} == 1) then
+     set tunit = `echo $tunit $scale | awk '{print($1/$2)}'`
+  endif
+
+### TITLE
+set title = `$ncdump -h $first | grep title | sed 's|[:,=";]||g' | sed 's|title||'`
+if (! ${?title}) then
+   set title = '   '
+endif
+
+### CALENDAR
+set calendar = `$ncdump -h $first | grep ":calendar" | sed 's|[:,=";]||g' | head -1 | cut -d" " -f 3 | tr '[a-z]' '[A-Z]'`
+if (! ${?calendar}) then
+   set calendar = ''
+endif
+
+if (${no_cal} == 1) then
+   set calendar = 'none'
+endif
+############################################################################
+
+rm -f $outpre
+echo 'Output to '$outpre' ...'
+
+# APPEND
+if (${append} == 0) then
+
+### OUTPUT INVARIANT FORMAT RECORD #########################################
+echo ' $FORMAT_RECORD' > $outpre
+echo '     D_TYPE               = '\''  MC'\'',' >> $outpre
+echo '     D_FORMAT             = '\''  1A'\'',' >> $outpre
+echo '     D_SOURCE_CLASS       = '\''MODEL OUTPUT'\'',' >> $outpre
+echo ' $END' >> $outpre
+############################################################################
+
+### OUTPUT BACKGROUND RECORD ###############################################
+echo ' $BACKGROUND_RECORD' >> $outpre
+echo '      D_EXPNUM             = '\''0001'\'',' >> $outpre
+echo '      D_TITLE              = '\'$title\'',' >> $outpre
+echo '      D_T0TIME             = '\'$t0time\'',' >> $outpre
+echo '      D_TIME_UNIT          = '$tunit',' >> $outpre
+echo '      D_TIME_MODULO        = .FALSE.,' >> $outpre
+if ( ${calendar} != '' ) then
+   echo '      D_CALTYPE            = '\'$calendar\'',' >> $outpre
+endif
+echo ' $END' >> $outpre
+############################################################################
+
+### OUTPUT INVRIANT MESSAGE_RECORD AND EXTRA_RECORD ########################
+echo ' $MESSAGE_RECORD' >> $outpre
+echo '      D_MESSAGE            = '\'' '\'',' >> $outpre
+echo '      D_ALERT_ON_OPEN      = F,' >> $outpre
+echo '      D_ALERT_ON_OUTPUT    = F,' >> $outpre
+echo ' $END' >> $outpre
+echo ' $EXTRA_RECORD' >> $outpre
+echo ' $END' >> $outpre
+############################################################################
+
+### APPEND: PASTE ORIGINAL #################################################
+else
+  @ numlines = `grep -n "END OF STEPFILES" $out | awk '{print $1}' | sed 's|:||g'` - 2
+  head -n $numlines $out > $outpre
+endif
+
+### LOOP OVER FILES AND PRODUCE STEPFILE_RECORD  ###########################
+@ count = 0
+foreach fname ($list)
+@ count ++
+
+set tlist = `$ncdump -v$tname $fname | awk '/'$tname' = [0-9,\-]/,/}/' | sed 's|'$tname' =||g' | sed 's|[;,}]||g'`
+
+### get number of timesteps
+set nt = ${#tlist}
+
+### skip 'empty' files
+if ($nt == 0) then
+   goto skip
+endif
+
+### set start time (= first time step)
+set t1 = `echo $tlist[1] | awk '{print $1}'`
+
+### set end time (= start time, if only one time step)
+if ( $nt == 1 ) then
+   set tn = `echo $t1 | awk '{print $1}'`
+else
+   set tn = `echo $tlist[$nt] | awk '{print $1}'`
+endif
+
+### set delta (= 1, if only one time step, difference t2-t1 else)
+if ( $nt == 1 ) then
+   set td = 1
+else
+   ### determine format
+   set strlen1 = `echo $tlist[1] | awk '{print length($1)}'`
+   set strlen2 = `echo $tlist[2] | awk '{print length($1)}'`
+   if ($strlen1 > $strlen2) then
+      set str = $tlist[1]
+   else
+      set str = $tlist[2]
+   endif
+   set format = `echo  $str | awk -F . '{if (length($2) > '$digits') {le='$digits'} else {le=length($2)} ; print "%"length($1)+le+1"."le"f"}'`
+   ### output delta-t
+   if ( ${?cre} ) then
+      set td =  `echo $tlist[1] $tlist[2] | awk '{printf("'$format'",$2-$1+1E-'$digits')}'`
+    else
+      set td =  `echo $tlist[1] $tlist[2] | awk '{printf("'$format'",$2-$1)}'`
+   endif
+endif
+
+### increment time
+if (${?it} && ($count > 1)) then
+    set ht1 = `echo $ht1 $tn $td | awk '{printf("'$format'",$1+$2+$3)}'`
+    set htn = `echo $ht1 $tn | awk '{printf("'$format'",$1+$2)}'`
+    set htd = $td
+else
+    set ht1 = $t1
+    set htn = $tn
+    set htd = $td
+endif
+
+### apply scaling
+if (${do_scale} == 1) then
+   set ht1 = `echo $ht1 $scale | awk '{printf("%i\n",$1*$2+0.5)}'`
+   set htn = `echo $htn $scale | awk '{printf("%i\n",$1*$2+0.5)}'`
+   # keep Dt=1, if only one time step is in file
+   if ( $nt > 1 ) then
+      set htd = `echo $htd $scale | awk '{printf("%i\n",$1*$2+0.5)}'`
+   endif
+endif
+
+### OUTPUT RESULT ('STEPFILE_RECORD')
+echo ' $STEPFILE_RECORD' >> $outpre
+if ( ${?wp} ) then
+#  echo '       s_filename           = '\'`pwd`'/'$fname\'',' >> $outpre
+  echo '       s_filename           = '\'$PWD'/'$fname\'',' >> $outpre
+else
+  echo '       s_filename           = '\'$fname\'',' >> $outpre
+endif
+echo '       S_START              = '$ht1',' >> $outpre
+echo '       S_END                = '$htn',' >> $outpre
+echo '       S_DELTA              = '$htd',' >> $outpre
+echo '       S_NUM_OF_FILES       = 1,' >> $outpre
+echo '       S_REGVARFLAG         = '\' \'',' >> $outpre
+echo ' $END' >> $outpre
+
+unset tlist
+unset nt
+
+skip:
+end
+### END LOOP OVER FILES AND PRODUCE STEPFILE_RECORD ########################
+
+### OUTPUT END RECORD ######################################################
+echo ' $STEPFILE_RECORD' >> $outpre
+echo '       s_filename           = '\''**END OF STEPFILES**'\' >> $outpre
+echo ' $END' >> $outpre
+############################################################################
+
+echo ' ... done.'
+
+############################################################################
+### SPECIAL POST-PROCESSING FOR LINUX-SYSTEMS
+set lsys = `uname -s`
+echo 'System detected is '$lsys' ...'
+switch ($lsys)
+  case 'Linux'
+    echo ' ... postprocessing required ...'
+    sed -e '/\*\*\*/d' -e '/^*/d' -e 's/\$/\&/g' -e 's#\&END#/#g' \
+        -e '/\* /d'          -e 's/        / /g' -e '/\-\-/d'     \
+        -e '/D_ADD_PARM/d' -e '/d_add_parm/d' $outpre >&! $out
+    rm -f $outpre
+    echo ' ... done.'
+    echo 'multi-netCDF descriptor file for FERRET (Linux only\!): '$out
+    breaksw
+  default:
+    echo ' ... no postprocessing required ...'
+    mv -f $outpre $out
+    echo ' ... done.'
+    echo 'multi-netCDF descriptor file for FERRET (not for Linux\!): '$out
+    breaksw
+endsw
+
+############################################################################
+
+############################################################################
+unset t1
+unset tn
+unset td
+unset ht1
+unset htn
+unset htd
+unset out
+unset outpre
+unset lsys
+############################################################################
+cd -
+############################################################################
+
+exit 0

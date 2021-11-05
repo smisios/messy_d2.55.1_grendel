@@ -1,0 +1,1135 @@
+*****************************************************************************
+**                                TIPS                                     **
+*****************************************************************************
+- If you want to copy a distribution directory to another place, please
+  do NOT use 'cp' directly. Use 'gmake zip' or 'gmake zipall' instead,
+  move the resulting zip-file to the destination, and unpack the zip-file
+  again (with unzip).
+  Reason: The MESSy-Distribution contains links which are essential!
+  Depending on your cp-settings, link targets might be copied as files
+  and replace the links.
+
+  =======================
+  === IMPORTANT TESTS ===
+  =======================
+- Before you start a production run, the following (restart-) test is
+  absolutely required:
+  1) Configure the model setup (code, namelists, input-files, etc.)
+     according to your desired simulation.
+  2) Set the floating point precision of the netCDF-output files to the
+     full (double) precision in channel.nml:
+	OUT_PREC = 1, 2, 2, 1, 1, 1 ! for restart test
+  3) Run the simulation for a short period (some time steps).
+  4) Repeat the simulation of the same period as in 2) with an additional
+     restart (1 CYLCE !) somewhere in the middle of the simulated period.
+  5) Compare the output files at the end of step 3) and 4) if they are
+     binary identical. Only if this is the case, your final results will be
+     independent on the restart-frequency you chose.
+     Ways to compare netCDF files directly are offererd by ncdiff (from the
+     netCDF operator (nco) suite) or by cdo (climate data operators).
+  6) Reset the floating point precision of the netCDF-output files to the
+     default (single) precision in channel.nml:
+	OUT_PREC = 1, 1, 1, 1, 1, 1 ! for production simulations
+  Known causes / probable solutions:
+     a) SM X requires a field (channel object) calculated in SM Y,
+	whereby X is calculated first.
+	- Then, the respective field in SM Y requires the switch
+	  "lrestreq=.TRUE.", or alternatively
+	- SM X needs to force the restart-output of the field in SM Y
+	  with the subroutine 'set_channel_object_restreq'
+     b) Within the SM diagnostic fields are calculated within the time loop,
+	however, only on a subset of indices that vary with time
+	(e.g. above the dynamical tropopause). These fields need to be
+	initialized (i.e., set to zero) at the beginning of the time step,
+	since otherwise values from the previous time step(s) at different
+	indices remain. If such arrays are passed to subroutines, the
+	corresponding formal parameters need to have the INTENT(INOUT)
+	attribute.
+- In a similar way, a test on parallel decomposition / blocking length
+  independence is required:
+  The same model setup simulated with different NPX, NPY and NVL
+  (runscript xmessy_mmd) must yield binary identical results (double
+  precision output, see above)! Exceptions are the output of:
+  - the decomposition information (decomp_gp_jp, decomp_gp_jr, decomp_gp_pe)
+    in ECHAM5
+  - the QTIMER output
+  - the TRACER_PDEF output (see below)
+
+  ======================================
+  === Running an MBM with xmessy_mmd ===
+  ======================================
+- Recipe for running a MBM (herafter named <mbm>) with xmessy_mmd:
+  - create messy/nml/MBM/<mbm> and put required namelists there
+  - in xmessy_mmd:
+     - set NML_SETUP=MBM/<mbm>
+     - set MINSTANCE[1]=<mbm>
+     - set SERIALMODE=.TRUE. and NPY[1]=NPX[1]=1 (if no MPI enabled MBM)
+  - start xmessy_mmd from workdir
+  NOTE: The automatic restart facility of xmessy_mmd will generate a
+	file MSH_NO in your working directory and xmessy_mmd will restart
+	itself  at the end of the <mbm>-simulation.
+	Unless the <mbm> does not create restart_* files, the 2nd job
+	will immediately terminate with an error-log, saying that no restart
+	files are present. This error message can be ignored!
+
+*****************************************************************************
+**                     BACKWARD COMPATIBILITY                              **
+*****************************************************************************
+
+- Restart with old restart files:
+  - With version 2.55.0 an incompatibility w.r.t. the IMPORT_GRID restart files
+    has been introduced. These restart files are not longer written as
+    ASCII files (*.rst), but as netCDF files as for any other channel as
+    well. (see issue #427)
+  - With version 2.3zx an incombatibility w.r.t. the NCREGRID-restart files
+    (*.rst) has been introduced, since longer event names are allowed now.
+  - With version 2.2z an incompatibility w.r.t. the 'tracer'-restart files
+    has been introduced. Before, tracer family members have been stored as
+    fractions, now they are stored as tracers.
+  - With version 2.52h an incompatibility w.r.t. restart files has been
+    introduced. See below (2.52h).
+  - With version d2.53.0.1 an incompatibility w.r.t. previous restart files
+    has been introduced, because the TIMER was converted to use
+    milliseconds internally. Accordingly the timestep (length) has been
+    changed from INTEGER TO REAL(DP). Thus, the global attribute of older
+    restart files need to be adjusted, e.g.,
+	:timestep = 720 ;  ==> :timestep = 720. ;
+    Use messy/util/update_restart_timeinfo.tcsh to update old restart files.
+  - With d2.53.0.6 older restart files of the submodel UBCNOX are not longer
+    usable.
+
+- Namelist and other incompatibilities with previous versions
+  (details see CHANGELOG):
+   - 2.55.0:
+     - for submodel namelist incompatibilites, see
+     http://www-extern.pa.op.dlr.de/wikis/messy/ModelSetups/changes_2p54_to_2p55
+     - configure --disable-MESSYGRID has been removed
+   - 2.53.0.26:
+      - configure --disable-MESSYTIMER option has been removed
+	(see MESSy2_CHANGELOG)
+  - 2.53.0.24:
+    - cloud.nml: additional namelists
+      - &CTRL_L10 (for cloud_param = 4, 6), and
+      - &CTRL_K14 (for cloud_param = 5) required
+  - 2.53.0.23:
+    - gwave.nml (gravity wave heat release is now per default switched ON now):
+      - l_gwheat = T in &CPL
+      - iheatcal = 1 in &CTRL_HINES
+  - 2.53.0.15:
+    - tagging.nml: due to an update with flexible tagging classes,
+      the namelist needs to be updated; to achieve the former default
+      the block
+	...
+	category_in(1)='str','stratosphere','1',
+	category_in(2)='lig','lightning','2',
+	category_in(3)='N2O','N2O degredation','3',
+	category_in(4)='soi','biogenic','4;6',
+	category_in(5)='CH4','CH4 degredation','5',
+	category_in(6)='ind','anth. non traffic','6',
+	category_in(7)='tra','land transport','6',
+	category_in(8)='shp','shipping','6',
+	category_in(9)='air','aviation','6',
+	category_in(10)='bio','biomass burning','6',
+	...
+     needs to be added to the &CTRL namelist.
+  - 2.53.0.11:
+    - ptrac.nml and tracer.nml:
+      species container (TPROP(.)) label 'henry' needs to be
+      replaced by 'pss'
+  - 2.52n:
+    - The atmosphere (EMAC) - ocean (MPIOM) coupling has been cleaned up
+      and is now entirely controlled via A2O. Thus, the &CPL namelist in
+      a2o.nml needs some updates according to the channel objects:
+       'ECHAM5', 'awust'   -> 'e5vdiff' , 'ustrw'
+       'ECHAM5', 'awvst'   -> 'e5vdiff' , 'vstrw'
+       'ECHAM5', 'aiust'   -> 'e5vdiff' , 'ustri'
+       'ECHAM5', 'aivst'   -> 'e5vdiff' , 'vstri'
+       'ECHAM5', 'aifre'   -> 'a2o',      'aifre'
+       'ECHAM5', 'awfre'   -> 'a2o',      'awfre'
+       'ECHAM5', 'aiqre'   -> 'ECHAM5',   'qres'
+       'ECHAM5', 'aicon'   -> 'ECHAM5',   'ahfice'
+       'ECHAM5', 'awhea'   -> 'a2o',      'awhea'
+       'ECHAM5', 'wind10w' -> 'e5vdiff' , 'wind10w'
+    - MPIOM is now available as MBM. Thus the &CTRL namelist in mpiom.nml
+      requires information about the parallel decomposition:
+       NPROCA  = $NPROCA
+       NPROCB  = $NPROCB
+    - MPIOM can now optionally been initialised from an external file, if in
+       mpiom.nml
+	 istart=4 in &OCECTL, and
+	 mpiom_init_file_name = ... in &INIT
+      are set accordingly.
+    - Due to the new sub-submodel IMPORT_LT for the central import of
+      lookup tables, each import*nml namelist file requires a
+      (possibly empty) &CTRL_LT namelist.
+  - 2.52k:
+    - Due to a more flexible container concept of the TRACER submodel,
+      PTRAC had to be completely revised. The namlist syntax changed
+      accordingly. A script ptrac_convert.tcsh is provided in messy/util
+      to perform the conversion of old namelist files.
+  - 2.52j:
+    - Due to an extension of AEROPT, namely the optional calculation
+      of aerosol optical properties for photolysis rates (JVAL), the CTRL
+      namelist had to be modified: position 13 of READ_AERO_SETS must
+      be either F (default) or T (to switch on this new feature).
+  - 2.52h:
+    - Due to the further modularisation of the ECHAM5 physics package,
+      several variables have been moved (from channels g3b and ECHAM5) to
+      new channels (rad, e5vdiff, orogw, mlocean).
+      See the list at the end of this file ...
+    - Therefore, restart files from simulations with version <= 2.52g
+      cannot be used directly (due to the modularisation of the ECHAM5
+      physics package). Use
+	 messy/util/update_restart.tcsh
+      to apply the required modifications after init_restart
+      (see header of update_restart.tcsh for a detailed recipe).
+    - OROGW needs to be switched on explicitely in switch.nml,
+      otherwise no orographic gravity wave drag is simulated
+    - In tendency.nml ssodrag needs to be replaced by orogw.
+    - In tendency.nml gwspect needs to be replaced by gwave.
+  - 2.52g:
+    - E5VDIFF needs to be switched on explicitely in switch.nml,
+      otherwise no vertial diffusion (vdiff) is simulated.
+    - In tendency.nml vdiff needs to be replaced by e5vdiff.
+  - 2.52f:
+    - SCALC: additional (integer) entry to determine when (where) calculation
+      is performed: 1: global_start, 2 (default): global_end, 3: both
+  - 2.50x6
+    - units in nudging output/restart files have been corrected;
+      to restart from older restart files the units attributes
+      need to be updated:
+	  OLD:                             NEW:
+	  NAPSFC:units = "ln(Pa)/s" ;      NAPSFC:units = "ln(Pa)" ;
+	  NATEMP:units = "K/s" ;           NATEMP:units = "K" ;
+	  NADIV:units = "1/s^2" ;          NADIV:units = "1/s" ;
+	  NAVOR:units = "1/s^2" ;          NAVOR:units = "1/s" ;
+  - 2.50w:
+    - (change of philosophy) in MMD2WAY interpolation flag for
+      INT2LM inherent fields are overwritten, if flags are given in the
+      client namelist
+    - messy_main_timer_bi.f90: correction of DAYOFYEAR (see CHANGELOG)
+      (affected submodels: CMAT, MMD2WAY, RADJIMT, MMDCLNT, SPACENOX)
+  - 2.50t: um1 and vm1 in ECHAM5 output are not longer multiplied by cos(lat)
+  - 2.50c:
+    - OFFEMIS: modified for emissions into multiple tracers
+      old: 'tracer-basename','tracer_subname', ...
+      new: 'tracer[_subname][,scaling];...'
+  - 2.42u:
+    - CH4: implementation for GP and LG
+  - 2.42r:
+    - AEROPT - RAD: channel objects for coupling are now in correct vertical
+      order, RAD flips the order according to the internal needs
+    - AEROPT: l_flip switch removed from READ_INPUT_SETS structure
+    - CLOUDOPT: radii of ice particles and droplets (radlp, radip) as
+      coupling parameters (number 6 and 7 in namelist); default
+      parameterisation as own channel objects (selected with channel = '#std')
+  - 2.42q:
+    - PTRAC: new integer containers (16, 27)
+  - 2.42p:
+    - TIMER: new parameter nmonth (default 0)
+    - ORBIT: parameter nmonth removed
+  - 2.42k:
+    - MLOCEAN, ECHAM5 MLO extension: only submodel MLOCEAN can be used
+      (due to modifications in SURFACE)
+    - ATTILA, RAD4ALL_FUBRAD
+    - LNOX: Scaling factors r_scal_ff from previous versions need to be
+	    modified by:
+	    - Grewe param. (i_ffcalc=2 or (i_ffcalc=9 and i_ff_cpl=2))
+		 [new] r_scal_ff(2) = [old] r_scal_ff * 60
+	    - Price&Rind param. (((i_ffcalc=1 or (i_ffcalc=9 and i_ff_cpl=1))
+	      AND i_scal=1):
+		 [new] r_scal_ff(1) = [old] r_scal_ff * rescal
+	      with rescal = 0.97241 *EXP(0.048203 * 360 * 180 / (#lon*#lat) )
+		   #lon = number of longitude points in grid
+		   #lat = number of latitude points in grid
+	      e.g., T42 #lon=128, #lat=64 => rescal = 1.424
+  - 2.42i:
+    - M7, ONEMIS
+
+- TRACER initialisation:
+  - from version 2.3zj on, tracers are initialised via tracer_init
+    according to the &REGRID namelists in tracer.nml; all submodel
+    specific namelist files '*_t.nml' are obsolete
+
+- MECCA: From version 2.50r to 2.50q only one master equation file
+	 (gas.eqn) is supported, which is based on MIM2. To re-recreate
+	 MIM1 mechanisms, mim1.rpl needs to be included in the replacement
+	 files.
+
+- MECCA1, MECCA:
+  - from version 2.3zp on, some species names have been changed to
+    be consistent with MCM:
+    - with primary emissions:
+      CH3COOH    -->  CH3CO2H
+      C4H10      -->  NC4H10
+      ISOP       -->  C5H8
+    - without primary emissions:
+      PAA        -->  CH3CO3H
+      CH3COCHO   -->  MGLYOX
+      EtO2       -->  C2H5O2
+      EtOOH      -->  C2H5OOH
+      PA         -->  CH3CO3
+      PrO2       -->  IC3H7O2
+      ONIT       -->  LC4H9NO3
+      PrOOH      -->  IC3H7OOH
+      PrONO2     -->  IC3H7NO3
+      ACETO2     -->  CH3COCH2O2
+      ACETP      -->  HYPERACET
+      C4H9O2     -->  LC4H9O2
+      C4H9OOH    -->  LC4H9OOH
+      MEKO2      -->  LMEKO2
+      MEKOOH     -->  LMEKOOH
+      MeCOCO     -->  BIACET
+      C3H6O2     -->  LHOC3H6O2
+      C3H6OOH    -->  LHOC3H6OOH
+    These files are shared between MIM1 and MIM2:
+     MECCA1: tracdef.tex, diagtrac.tex, gas.spc, aqueous.spc, aqueous.eqn
+     MECCA : gas.tex, diagtrac/*.tex, gas.spc, aqueous.spc, aqueous.eqn
+
+- JVAL, JVST:
+  From version d2.41i on, the photolysis calculations are internally
+  performed in single precision, only.
+
+- Differences between MESSy1 and MESSy2:
+  (see also http://www.geosci-model-dev.net/3/717/2010/
+   and      http://www.messy-interface.org)
+     =======================================================================
+     MESSy1                   | MESSy2
+     =======================================================================
+     ................. configuration script ................................
+      ./xecham                | ./messy/util/xconfig
+     ................. run-script ..........................................
+      ./messy/xmessy          | ./messy/util/xmessy_mmd
+			      | (can also be used to run MBMs; see TIPS above)
+     .................. chemical mechanism for MECCA .......................
+     (Note: MECCA1 is the same in MESSy1 and MESSy2!)
+      <not available>         | ./messy/mbm/caaba/mecca/batch/*.bat
+     .............. activate submodels in (see also ./messy/nml/README) ....
+      ./messy/xmessy          | ./messy/nml/*/switch.nml
+     ............... directory structure (see also DIRSTRUCT) ..............
+      ./data                  | ./workdir
+      ./messy/src             | ./messy/smcl
+      ./messy/e5/*_e5.f90     | ./messy/bmil/*_bi.f90        (common BMIL)
+			      | ./messy/smil/*_si.f90        (common SMIL)
+			      | ./messy/echam5/bmil/*_e5.f90 (specific BMIL)
+			      | ./messy/echam5/smil/*_e5.f90 (specific SMIL)
+    .................... output control ....................................
+      ECHAM5.nml              | channel.nml
+    ...................... time control ....................................
+      xmessy & ECHAM5.nml     | xmessy_mmd & timer.nml
+    ...............(gridded) data import into model ........................
+     partly OFFLEM, partly    |  all submodel input via IMPORT
+     in individual submodels  |  (not yet fully accomplished, work in
+			      |  progress!)
+    .............. (gridded) data export from model ........................
+     partly via streams,      |  all model output via CHANNEL
+     partly individually      |
+    ................. import of time series ................................
+       TOOLS (tseries)        | sub-submodel IMPORT_TS via CHANNEL
+    ................ emission / deposition submodels .......................
+      OFFLEM                  | OFFEMIS (+ IMPORT)  (see also ...
+      ONLEM                   | ONEMIS  (+ IMPORT)   generic
+      DRYDEP                  | DDEP    (+ IMPORT)   submodel IMPORT
+      TNUDGE (+ OFFLEM)       | TNUDGE  (+ IMPORT)   ...)
+    .................. initialise restart ...................................
+      <by hand>               | ./messy/util/init_restart
+    -------------------------------------------------------------------------
+   Notes:
+   - namelist files are in some (most?) cases not entirely compatible bewtween
+     MESSy1 and MESSy2 (see also messy/nml/README)
+
+*****************************************************************************
+**                      ARCHITECTURE and COMPILER ISSUES                   **
+*****************************************************************************
+
+- Architecture specific workarounds for compiler issues (e.g., reduced
+  optimisation and/or inlining) are coded as special gmake rules in:
+
+    % find . -name specific.mk -print
+
+- For debugging your code with the IBM mpxlf95_r compiler,
+  e.g., by utilising the configuration options RUNMODE=DEBUGOPT or
+  RUNMODE=DEBUG, it is highly recommended to switch OFF "nudging".
+  Otherwise some unresolved, maybe false alarms occur.
+
+- NEC-SX6: Due to a very aggressive optimization/vectorization of the
+  NEC-SX6 compiler, some submodels potentially produce unexpected output
+  compared to other systems (especially Linux). If you encounter such
+  problems, please contact us (see www.messy-interface.org).
+
+- for Lahey compiler lf95 on 32-bit linux:
+  --staticlink is necessary for lf95-6.2d, because then the
+  undefined reference to `__divdi3' will be resolved through
+  /usr/local/lf9562/lib/libfst.a
+  However, for lf95-6.2a, --staticlink must not be used!
+
+*****************************************************************************
+**                         BASE MODEL ECHAM5                                *
+*****************************************************************************
+
+- The only remaining ECHAM5 version is ECHAM5.3.02:
+  - The subdirectory echam5.3.02_c (cleaned up) contains the last version,
+    however, with all redundant and obsolete parts of ECHAM5 moved into
+    src and modules subdirectories OBSOLETE.
+    Note that echam5.3.02_c cannot be compiled with --disable-MESSY anymore.
+
+- If the MESSy 'physics'-submodels RAD, CLOUDOPT, AEROPT, CLOUD, SURFACE,
+  E5VFIFF, GWAVE, OROGW, CONVECT, ORBIT are not switched on, those
+  processes are not simulated at all. See messy/nml/README.txt for
+  further information.
+
+- T10: If configured with MESSy (see below), the triangular truncation T10
+  is now included (with the same parameters as for T21).
+  However, no physically realistic results can be expected for this
+  resolution (even the Jan78 initial files are for May97 !!!). It has been
+  implemented only for an efficient TESTING OF TECHNICAL ASPECTS of
+  the code, and might run only for a few time steps.
+
+- Fast Fourier Transformation (only ECHAM5.3.02):
+  In echam5.3.02/Makefile.in, currently FFT991 is set for all architectures.
+  In order to use FFT992, remove this statement and re-configure / re-compile.
+
+- CHANGES w.r.t. THE ORIGINAL ECHAM5.3.02:
+  A) CHANGES inactive with --disable-MESSY:
+     - vdiff.f90: correction for leap-frog
+       !!! obsolete with E5VDIFF submodel !!!
+     - memory management of scan-buffer
+     - mo_sst.f90: automatic reordering of SST and SIC fields
+       (from S->N (COARDS, AMIP) to N->S (ECHAM5))
+  B) CHANGES also active with --disable-MESSY:
+     - vectorization of nudging
+       (mo_nudging.f90, mo_nudging_buffer.f90, mo_nudging_constants.f90,
+	mo_nudging_init.f90, mo_nudging_io.f90, mo_nudging_pattern.f90,
+	mo_nudging_sst.f90, mo_nudging_utils.f90):
+       The nudging technique (ECHAM5 implementation by Ingo Kirchner) has been
+       made available for use with vector lengths other than the number of
+       longitudes (i.e. for nproma other than zero). Several minor
+       improvements have been implemented.
+     - several bug fixes
+     - positive definite convective tracer transport:
+      (cuasc.f90, cubasmc.f90, cuddraf.f90, cudlfs.f90, cudtdq.f90,
+       cuflx.f90, cuini.f90, cumastr.f90, cumastrh.f90, cumastrt.f90,
+       vdiff.f90)
+       !!! obsolete with E5VDIFF and CONVECT submodels !!!
+%
+*****************************************************************************
+*****************************************************************************
+*****************************************************************************
+**                           BASE MODEL MPIOM                              **
+*****************************************************************************
+- MPIOM version 2000 does not compile due to undefined references to cdi
+  library routines, despite the preprocessor option NOCDI
+%
+*****************************************************************************
+*****************************************************************************
+*****************************************************************************
+**                           MMD and friends ...                           **
+*****************************************************************************
+- Unfortunatly there is an inconsistency of the Earth radius between
+  ECHAM5 and COSMO. Thus each basemodel uses its own earth radius and the
+  MESSy submodels use the one defined in messy_main_constants_mem.f90
+
+- forcheck does currently not work, if the MMD-library is involved.
+
+- In 2.50w the philosophy changed: in MMD2WAY interpolation flag for
+  INT2LM inherent fields are overwritten, if flags are given in the
+  client namelist
+%
+*****************************************************************************
+**                                 MESSY                                   **
+*****************************************************************************
+
+- configure:
+  - If you switch between configure options
+	- --enable-<something> / --disable-<something>
+	- RUNMODE=...
+       etc.
+    in one distribution-directory, make sure you do a
+       'gmake distclean'
+    before you start 'configure' !!!
+    Otherwise, old objects are not compatible!
+  - 'configure --disable-MESSY': does NOT reset (in ECHAM5, see above)
+      - bug fixes
+      - SAVE, _DP, ...
+      - positive definite convective tracer transport ('Brinkop update')
+	!!! OBSOLETE WITH SM CVTRANS !!!
+
+- xmessy_mmd:
+  - xmessy_mmd for different JOB-SCHEDULING / QUEUING SYSTEMS:
+     - PBS Pro
+	* the embedded macros of NQSII must be commented out
+	  by '### ' at the beginning of the line, since NQSII and PBS Pro
+	  macros share the same syntax!
+	  Notes: - The PBS Pro macros have been deactivated!
+     - NQS
+	* the embedded NQS macros must be reactivated by replacing
+	  '#%$-' with '#@$-'.
+	  Notes: - The embedded NQS macros collide syntactically with
+		   the embedded LL (IBM) macros.
+		 - The NQS macros have been deactivated!
+	* copy xmessy_mmd to WORKDIR
+     - NQSII
+	* the embedded macros for PBS Pro must be commented out
+	  by '### ' at the beginning of the line, since NQSII and PBS Pro
+	  macros share the same syntax!
+	* NCPUS has to be set to the number of CPUs requested via the embedded
+	  NQSII-macros! Automatic detection is not supported!
+	* using WORKDIR is not supported! It is therefore recommended
+	  to copy the whole distribution to the working directory and to submit
+	  xmessy_mmd from the data-subdirectory with:
+	     qsub ../messy/util/xmessy_mmd
+  - xmessy_mmd log-file:
+    - The ranges for tracer values in the log-file (after initialization)
+      represent only the range on the I/O processor, and are therefore
+      dependent on the choice of NCPUS, NPROMA, NPROCA, NPROCB.
+    - Tracer masses of XTM1 in main_tracer_global_end represent
+      pre-time-filtered values and are therefore meaningless.
+
+- ECHAM5/MESSy does currently NOT support rerun files in HDF5!
+  Rerun files in HDF5 do NOT support the MESSy extensions!
+
+- messy_main_data_bi.f90:
+  - All channel objects must be checked for consistency with time
+    integration scheme! Use current values at your own risk!
+  - The 10 m wind speed wind10_2d is defined quite late and may be from
+    the previous time step (or not available in the first time step).
+
+- specific simulation setups (namelist file sets)
+  --> see messy/nml/README
+  --> see messy/nml/<setup>/README
+
+*****************************************************************************
+**                           MESSy-SUBMODELS                               **
+*****************************************************************************
+
+- A2O:
+  - implementation is only for 2D_HORIZONTAL representation
+  - babysteps decreased for interpolation independence on decomposition;
+    it works for all tested cases, however, a further decrease is probably
+    required
+  - the scrip library does not work correctly if nproca=1 and NPROCS>1,
+    due to the parallelisation/decomposition routines in MPIOM
+
+- AEROPT:
+
+- AIRSEA:
+
+- AIRTRAC:
+  - see TREXP
+
+- AIRTRAF:
+
+- ATTILA:
+  - With L_INI_PARALLEL = .TRUE. (default), the initial distribution of the
+    trajectory positions is dependent on the number of CPUs.
+  - Changing the method of random number generation after restart
+    is in general not possible, because the length of the state vectors
+    of different random number generators are different.
+  - Usage of restart files from different architectures is in general
+    not possible, if the F90-intrinsic random number generator has been
+    used. The length of the state vector might be different on different
+    architectures.
+  - Before a simulation with ATTILA is performed, it is highly
+    recommended to check the quality of the random numbers with
+    the messy basemodel 'random'.
+  - The convection redistributes the parcels without changing the number of
+    parcels per grid box.
+    However, the number of parcels per grid box with and without
+    convection differs, due to the different usage of the
+    random number sequence.
+  - The state vector of the Luxury random number generator is probably
+    not correctly saved/retrieved over restart, because the wrong variable
+    is used.
+
+- BIOBURN:
+
+- BUFLY:
+
+- CH4:
+
+- CHANNEL:
+
+- CLOUD:
+
+- CLOUDOPT:
+
+- CONTRAIL:
+  - see TREXP
+
+- CONVECT:
+  - Only convparam = 1 is positive definite for tracers with the
+   'Brinkop update', so use 'lpos_def = .true.'.
+  - The other conv_param values should be used only with CVTRANS to have
+    monotonic and positive definite tracers.
+  - For Zhang/Hack scheme there is no other transport mechanism implemented, so
+    you should use CVTRANS.
+  - For Zhang/Hack scheme there is no change in the winds as the routine
+    to calculate those is not available at the moment.
+  - addditional diagnostic (l_lgmc_diag) only implemented for Tiedtke convection
+
+- CVTRANS:
+  - With negative input values there can be no guarantee that the output
+    is correct.
+
+- D14CO:
+
+- DDEP:
+  - Loops over all AEROSOL modules found in tracer-meta information:
+    The AEROSOL module(s) need(s) to define channel objects
+    'densaer', 'wetradius' (rank 4), and 'sigma' (rank 1).
+  - The dry deposition velocity of aerosol in Lagrangian representation
+    is calculated for the average (LG-to-GP-transformed) radius! This is OK
+    for pseudo-aerosol modes with constant radius. However, it might be
+    systematically wrong for aerosol with prognostic radius.
+
+- DISSOC:
+
+- DIUMOD:
+
+- DRADON:
+
+- E4CHEM:
+  - E4CHEM is only included in CAABA, if CAABA is compiled via
+    'gmake mbm' from the $BASEDIR
+
+- E5VDIFF:
+   - is the modularised version of the original ECHAM5(.3.02) vdiff.
+     If it is not switched ON in switch.nml, no vertical diffusion is
+     simulated!
+
+- EC2COSMO:
+
+- GEC:
+
+- GMXE:
+
+- GWAVE:
+  - replaces ECHAM5 gravity waves; &GWSCTL becomes obsolete
+  - only relevant for middle atmosphere setups
+  - the (hidden) CTRL_HINES namelist option lfront=T has no effect,
+    if used with basemodel CESM1 (default is F anyway)
+
+- H2O:
+  - for I_H2O_TENDENCY > -2 the tracer H2O must be initialised in
+    tracer.nml, otherwise H2O and q are zero above 100 hPa
+  - this submodel is obsolete; use direct feedback to specific humidity
+    (q) in submodels MECCA, CH4, E4CHEM etc.
+
+- H2OISO:
+
+- HAMOCC:
+  - heavily under development; cannot be used without MPIOM
+  - only developed / tested for ECHAM5.3.02
+
+- HD:
+  - only developed / tested for ECHAM5.3.02
+
+- IMPORT:
+  - all import of gridded time series (IMPORT_GRID),
+    of 1D time-series (IMPORT_TS), and lookup tables (IMPORT_LT) into the
+    model should be performed via this generic submodel; for this some
+    extension are required (work in progress!)
+    - linear interpolation in time (IMPORT_GRID)
+
+- JVAL:
+  - The parameter iaer_ref is currently fixed to iaer_ref=5. This needs
+    to be adjusted according to the height of the boundary layer. This
+    is not MESSy-conform coding.
+
+- JVST:
+  - see JVAL
+
+- LGGP:
+  - In case tracers which are TYPE-1 FAMILY members (TRACER_FAMILY), the
+    output is the fraction of the family instead of tracer mixing ratio.
+    Workaround: Copy tracer to TYPE-2 FAMILY (without rescaling) tracer
+		and output this one.
+  - see TREXP
+
+- LGTMIX:
+  - not yet fully tested
+
+- LGVFLUX:
+  - not yet tested
+
+- LNOX:
+
+- M7:
+  - Changes in humidity (qm1, qte) are not fed back into base model.
+
+- MADE:
+  - not yet evaluated for production simulations
+
+- MADE3:
+  - heavily under construction, do NOT use
+
+- MECCA:
+  - Iodine chemistry is under construction. Don't use it yet!
+  - The 'error_output' feature can only be used in scalar-mode (kp4 or kpp).
+  - Do not use l_netflux (CPL_AERO).
+  - mechanism / solver selection:
+    - option 'Remove indirect indexing? = y' automatically also
+      comments all substep internal calls to Update_RCONST (only for ros-auto)
+    - *_mz solvers are highly experimental (for performance tuning);
+      Use with caution !
+      current modifications:
+       - no calls of Update_RCONST within substeps
+       - WAXPY, WSCAL, WCOPY replaced by F90 array operations
+       - forced positive definiteness in substeps
+  - these files are shared between MIM1 and MIM2:
+    gas.tex, diagtrac/*.tex, gas.spc, aqueous.spc, aqueous.eqn
+  - The simple MESSy Base Model (MBM) mecca can only deal with simple
+    gas phase mechanisms. Het and Aq reactions are not supported.
+
+- MEGAN:
+
+- MLOCEAN:
+   - MLOCEAN is a MESSy submodel replacing the ECHAM5 MLO extension;
+   - both methods should give identical results; the double implementation
+     is for testing; only one of both can be used in a simulation
+     Note: from 2.42k on, the ECHAM5 MLO extension cannot be used anymore,
+	   due to modifications in SURFACE; thus use the submodel instead!
+   - currently MLOCEAN reads the flux-correction file (netCDF) in the SMCL;
+     this needs to be changed for data import via IMPORT
+   - trflw, trfli, soflw, sofli are used from either rad01 or rad4all via
+     get_channel_object
+
+- MMD2WAY:
+  - CPLTIMER can only be set to steps, seconds, minutes, hours and days, as
+    the conversion of years and months to seconds is not unambiguous.
+
+- MMFORCE:
+  - The submodel is untested.
+
+- MPIOM:
+  - forcing ECHAM5 with MPIOM is switched with lcopule=.TRUE. in
+    ECHAM5.nml
+  - forcing MPIOM with ECHAM5 is switched with l_coupling=.TRUE. in
+    mpiom.nml
+  - compiled with lahey fortran with optimization option, MPIOM crashes
+    if UNCOUPLED
+  - only developed / tested for ECHAM5.3.02
+
+- MSBM:
+  - MSBM / MECCA_KHET includes all processes formerly in PSC / HETCHEM.
+    Use either combination only!
+    The difference is in the treatment of N2O5 + H2O on aerosols in the
+    troposphere ...
+  - For some unresolved reason, KinPar = T does NOT work with the
+    QCTM (Quasi-Chemistry-Transport-Model) mode. A hidden feedback to
+    the hydrological cycle remains. KinPar = F, however, can also be used
+    even if the coupled base case has been simulated with KinPar = T.
+
+- MTCHEM:
+
+- MTSKIP:
+  - currently only MECCA and JVAL are equipped with the option to
+    skip time steps
+  - you need to modify orbit.nml, if MTSKIP is used
+
+- MXL:
+  - only for MBM VERTICO
+
+- NCREGRID:
+
+- O3ORIG:
+
+- OFFEMIS:
+
+- ONEMIS:
+
+- ORACLE:
+
+- ORBIT:
+
+- OROGW:
+   - is the modularised version of the original ECHAM5(.3.02) ssodrag.
+     If it is not switched ON in switch.nml, no orographic gravoty wave drag is
+     simulated!
+
+- OTPHYSC:
+
+- PLUMEGAS:
+
+- PTRAC:
+
+- PTRACINI:
+
+- QBO:
+
+- QTIMER:
+  - In case statistical output (AVE, STD, MIN, MAX, CNT, CAV) of QTIMER
+    w.r.t. the output time interval is requested, and the number of CPUs
+    is changed after a restart, the restart_qtimer.nc file needs to be
+    removed and the lignore-flag in channel.nml for the QTIMER objects
+    needs to be set to T. Reason: One dimension of the QTIMER objects is
+    the number of CPUS.
+
+- RAD:
+  - For correct perpetual month simulations it is required to set
+     - l_orbvsop87 = F in orbit.nml, and
+     - 1 <= nmonth <= 12 in timer.nml (see also TIMER)
+
+- RELAX:
+
+- RND:
+  - The possibility to jump ahead (rnd_jump) does not work for the GAUSSian
+    distributions (an error message will occur!).
+  - The jump ahead possobility (rnd_jump), e.g. for parallelisation of
+    reproducible pseudo random number sequences is only efficiently implemented
+    for the Mersenne Twister pseudo random number generator. For the Fortran
+    intrinsic and Luxury generators jumping ahead ist simply implemented by
+    harvesting and throwing away the corresponding number of pseudo random
+    numbers. This does, however, not scale!
+
+- S4D:
+  - In case tracers which are TYPE-1 FAMILY members (TRACER_FAMILY), the
+    output is the fraction of the family instead of tracer mixing ratio.
+    Workaround: Copy tracer to TYPE-2 FAMILY (without rescaling) tracer
+		and output this one.
+  - Position files: In case position files (daily or monthly) contain
+    position information timed after the end of the day / month,
+    the respective output will not be produced, if a restart is triggered
+    within this period. Reason: After a restart, the file of the current
+    day / month is read.
+
+- SATSIMS:
+  - isccp_cldtau, isccp_cldemi, isccp_f are used via
+    get_channel_object (either from cloudopt01 or from rad4all)
+
+- SCALC:
+
+- SCAV:
+  - SCAV_EASY does not yet work properly for LG representation
+  - SCAV should only be used with CVTRANS
+  - vectorisation works only for ros3-auto
+
+- SCOUT:
+  - In case tracers which are TYPE-1 FAMILY members (TRACER_FAMILY), the
+    output is the fraction of the family instead of tracer mixing ratio.
+    Workaround: Copy tracer to TYPE-2 FAMILY (without rescaling) tracer
+		and output this one.
+
+- SEDI:
+  - Loops over all AEROSOL modules found in tracer-meta information:
+    The AEROSOL module(s) need(s) to define channel objects
+    'densaer', 'wetradius' (rank 4), and 'sigma' (rank 1).
+
+- SORBIT:
+  - In case tracers which are TYPE-1 FAMILY members (TRACER_FAMILY), the
+    output is the fraction of the family instead of tracer mixing ratio.
+    It is required to output also the corresponding FAMILY tracer.
+
+- SPACENOX:
+
+- SPE:
+
+- SURFACE:
+  - use submodel MLOCEAN instead of ECHAM5 MLO extension
+  - trflw, trfli, soflw, sofli are used from either rad01 or rad4all via
+    get_channel_object
+  - soiltemp: At lstart, tsoil (g3b) is initialised in initemp
+    (called from scan1). This should be moved to surface_global_start or
+    surface_initialize and removed from initemp (#ifdef MESSY).
+
+- TAGGING:
+
+- TBUDGET:
+
+- TENDENCY:
+  - ECHAM5: mo_spitfire.f90 and mo_semi_lagrangian.f90
+    (the two alternative advection schemes of ECHAM5 are NOT yet equipped
+    with the TENDENCY expansion. Only mo_tpcore.f90 (the FFSL scheme) is!
+
+- TIMER:
+
+- TIMEPOS:
+  - Note: The time in the output file is the current model time for
+    all points in the time interval between "current model time" and
+    "current model time + model time step".
+  - In case tracers which are TYPE-1 FAMILY members (TRACER_FAMILY), the
+    output is the fraction of the family instead of tracer mixing ratio.
+    Workaround: Copy tracer to TYPE-2 FAMILY (without rescaling) tracer
+		and output this one.
+  - In case tracers are sampled which are family members (TRACER_FAMILY),
+    the fraction of the family is output. Therefore, output of the family
+    tracer is required in addition.
+
+- TNUDGE:
+
+- TRACER:
+  - from version 2.3zj on tracers are initialised via tracer_init
+    according to the &REGRID namelists in tracer.nml; all submodel
+    specific namelist files '*_t.nml' are obsolete
+  - for tracer initialisation, L_TRACER_INIT must be set to T in tracer.nml
+
+- TRACER_FAMILY (see tracer.nml):
+  - The conversion from individual tracers to tracer families and vice
+    versa is currently implemented that individual tracers are present
+    within gpc (local_start, radiation, vdiff, convec, physc, local_end)
+    and tracer families (and fractions) elsewhere!
+  - Tracer sets, which are not complete w.r.t. the time filter
+    are silently ignored by the TRACAER_FAMILY conversions.
+
+- TRACER_PDEF (see tracer.nml):
+  - The mass of a tracer family (TYPE-1 and TYPE-2)
+    is not necessarily the sum of the masses of the family members:
+    - The molar mass of the first valid tracer in the family is used as
+      molar mass for the family.
+    - The family members might be weighted differently (see tracer.nml).
+    - The processes acting on families (advection) internally convert
+      family members into each other (not for TYPE-2 with inactive scaling).
+  - The summation of global tracer mass in parallel decomposition
+    is based on MPI_ALLREDUCE(...MPI_SUM...), which potentially causes
+    parallel decomposition dependent results for the sake of an increased
+    run-time performance.
+    For the purely diagnostic quantitiy 'global tracer mass',
+    which has no feedback to the dynamics, this approach might be justifiable.
+
+- TREXP:
+  - Simulations with TREXP should always apply the mass-wind-inconsistency
+    adjustment, i.e., NMWICFI = n in &RUNCTL (ECHAM5.nml), with n >=5.
+  - If the emissions in Lagrangian representation are transformed to gridpoint
+    space with the LGGP submodel, a time shift occurs, since trexp_global_end
+    is called after lggp_global_end. A modification of the order of calls
+    would be possible, but imply a time shift of the emission fields (and
+    others, e.g., from CLOUD) for AIRTRAC/CONTRAIL, since airtrac_global_end
+    and contrail_global_end must be called after trexp_global_end (to have
+    up-to-date fields transformed from GP to LG.
+
+- TROPOP:
+
+- TRSYNC:
+
+- UBCNOX:
+
+- VAHR:
+
+- VAXTRA:
+
+- VERTDIFF:
+  - only for CESM1
+
+- VERTEX:
+
+- VISO:
+
+- CLAMS*:
+
+*****************************************************************************
+**                           MESSy-BASEMODELS                              **
+*****************************************************************************
+
+- Some messy basemodels need to be run from within their sub-directories
+  (i.e., from within messy/mbm/* instead of ./bin/),
+  e.g., because they look in the current directory for a namelist file etc.
+
+*****************************************************************************
+**                           MESSy-TOOLS                                   **
+*****************************************************************************
+
+- Some tools need to be run from within their sub-directories
+  (i.e., from within messy/tools/* instead of ./bin/),
+  e.g., because they look in the current directory for a namelist file etc.
+
+- kpp: kpp does currently only compile on Linux, OSF1 and AIX; for other
+  systems you need to add a messy/tools/kpp/Makefile.defs.($SYSTEM),
+  where ($SYSTEM) is the output of uname.
+
+- prodloss:
+  - needs to be called with: ../../../bin/prodloss.exe < prodloss.nml
+  - in case the programm reports an error in an equation, copy
+    the equation file and place a space in between educt/product and '+'
+
+*****************************************************************************
+**                               INPUT DATA                                **
+*****************************************************************************
+
+- PRE-REGRIDDED INPUT (USE_PREREGRID=.true. in xmessy):
+  - NAMELISTS ARE MODIFIED BY copynml() in xmessy:
+    - 'i_lonr = ...' and 'i_latr = ...' are removed
+    - 'i_latr = -90.0,90.0,' is added
+      Reason: The pre-regridding of the data puts the fields onto the
+	      horizontal ECHAM5 grid with longitudes in the interval [0, 360]
+	      and latitudes in the interval [-90,90].
+	      During the data import (runtime) the namelist entries 'i_lonr'
+	      and 'i_latr' would force NCREGRID to assume again the probably
+	      wrong interval, e.g., [-180,180]. Since the ECHAM5 grid
+	      in latitudinal direction is not equidistant, and NCREGRID
+	      automatically completes the grid information from mids to
+	      interfaces, 'i_latr = -90.0,90.0,' is required after
+	      pre-regridding.
+    - :IXF is converted TO :INT
+  - !!! IMPORTANT NOTE !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    netCDF FILES in raw MUST CONTAIN VARIABLE ATTRIBUTES
+      RG_TYPE = "IDX"
+      RG_TYPE = "IXF"
+      RG_TYPE = "EXT"
+    for non-INTensive variables, respectively!
+   (see NCREGRID documentation for further information !)
+   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+*****************************************************************************
+
+============================================================================
+In a recent update (2.52h) several variables have been moved in the course of
+the further modularisation of the ECHAM5 physcis package.
+############################################################################
+# Notes:
+#  1) Redundant accumulated variables have been removed, because the
+#     time averaged output can be achieved via the CHANNEL output selectors
+#     (channel.nml).
+#  2) The radiation diagnostic objects have been moved to the rad, rad01, ...
+#     channels. Some of them, however, have become obsolete (e.g. those on
+#     specific levels), because they can easily be defined with the
+#     VISO submodel.
+#  3) Variables formerly defined as "accumulated" need to be output as
+#     time-averaged via the CHANNEL output selectors. Those are marked
+#     with '(_ave)' suuffix. Similar for minimum '(_min)' and maximum '(_max)'
+#     values.
+#  4) In order to use restart-files obtained with versions before,
+#     the script messy/util/update_restart.tcsh need to be applied.
+#     See script-header for a step-by-step recipe.
+############################################################################
+=============================================================================
+g3b               OBSOLETE    RAD     E5VDIFF   OROGW   MLOCEAN  ECHAM5
+=============================================================================
+ilev              x
+hyai              x
+hybi              x
+
+=============================================================================
+g3b               OBSOLETE    RAD     E5VDIFF   OROGW   MLOCEAN  ECHAM5
+=============================================================================
+tradl                         x
+sradl                         x
+trafl                         x
+srafl                         x
+albedo                        x
+srads                         x
+trads                         x
+srad0                         x
+trad0                         x
+srad0d                        x
+srafs                         x
+trafs                         x
+sraf0                         x
+traf0                         x
+srad0u                        x
+sradsu                        x
+tradsu                        x
+emter                         x
+trsol                         x
+emtef0                        x
+trsof0                        x
+emtef                         x
+trsof                         x
+trfliac           x (acc)
+trflwac           x (acc)
+trfllac           x (acc)
+sofliac           x (acc)
+soflwac           x (acc)
+sofllac           x (acc)
+
+=============================================================================
+g3b               OBSOLETE    RAD     E5VDIFF   OROGW   MLOCEAN  ECHAM5
+=============================================================================
+friac             x (acc)                                        icecov(_ave)
+ahfliac           x (acc)             ahfli(_ave)
+ahflwac           x (acc)             ahflw(_ave)
+ahfllac           x (acc)             ahfll(_ave)
+evapiac           x (acc)
+evapwac           x (acc)
+evaplac           x (acc)
+ahfsiac           x (acc)
+ahfswac           x (acc)
+ahfslac           x (acc)
+
+=============================================================================
+g3b               OBSOLETE    RAD     E5VDIFF   OROGW   MLOCEAN  ECHAM5
+=============================================================================
+ustri                                 ustri
+vstri                                 vstri
+ustrw                                 ustrw
+vstrw                                 vstrw
+ustrl                                 ustrl
+vstrl                                 vstrl
+az0i                                  az0i
+az0w                                  az0w
+az0l                                  az0l
+alsoi                                 alsoi
+alsow                                 alsow
+alsol                                 alsol
+vdis                                  vdis(_ave)
+ahfs                                  ahfs
+ahfl                                  ahfl
+wind10w                               wind10w
+temp2                                 temp2
+dew2                                  dew2
+az0hi                                 az0hi
+az0hw                                 az0hw
+az0hl                                 az0hl
+ahfli                                 ahfli
+ahflw                                 ahflw
+ahfll                                 ahfll
+t2max             (x)                 temp2(_max)
+t2min             (x)                 temp2(_max)
+wimax             (x)                 wind10(_max)
+tsurf             (x)                                            tsurf_2d
+wind10                                wind10(_ave)
+ustr                                  ustr(_ave)
+vstr                                  vstr(_ave)
+evap                                  evap
+tke                                   tke
+tkem                                  tkem
+tkem1                                 tkem1
+
+=============================================================================
+g3b               OBSOLETE    RAD     E5VDIFF   OROGW   MLOCEAN  ECHAM5
+=============================================================================
+ustrgw                                          ustrgw
+vstrgw                                          vstrgw
+vdisgw                                          vdisgw
+
+=============================================================================
+g3b               OBSOLETE    RAD     E5VDIFF   OROGW   MLOCEAN  ECHAM5
+=============================================================================
+amlcorr                                                 amlcorr
+amlcorac          (x)                                   amlcorr(_ave)
+amlheatac         (x)                                   amlheat(_ave)
+
+=============================================================================
+g3b               OBSOLETE    RAD     E5VDIFF   OROGW   MLOCEAN  ECHAM5
+=============================================================================
+runtoc             x
+runlnd             x
+rtype              x
+abso4              x
+so4nat             x
+so4all             x
+ao3                x
+tropo              x
+acvtype            x
+
+=============================================================================
+ECHAM5             OBSOLETE    RAD     E5VDIFF   OROGW   MLOCEAN  ECHAM5
+=============================================================================
+wet_tmp                                wet_tmp
+wind10                                 wind10(_ave)
+wind10w                                wind10w
+evapl_2d                               evapl_2d
+evapot_2d                              evapot_2d
+s_heatflux                             ahfs                        s_heatflux
+l_heatflux                             ahfl                        l_heatflux
+ahfsi                                  ahfsi
+ahfsw                                  ahfsw
+evapi                                  evapi
+evapw                                  evapw
+gworo_du                                         gworo_du
+gworo_dv                                         gworo_dv
+gworo_dt                                         gworo_dt
+gwlif_du                                         gwlif_du
+gwlif_dv                                         gwlif_dv
+gwlif_dt                                         gwlif_dt
+
+#############################################################################

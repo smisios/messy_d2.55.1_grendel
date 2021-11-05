@@ -1,0 +1,26 @@
+C=======================================================================
+C
+C *** ISORROPIA CODE II
+C *** INCLUDE FILE 'MAIN.INC'
+C *** THIS FILE CONTAINS THE DECLARATIONS OF THE GLOBAL CONSTANTS
+C     AND VARIABLES BELONGING TO THE MAIN DRIVER ROUTINE. 
+C
+C *** COPYRIGHT 1996-2008, UNIVERSITY OF MIAMI, CARNEGIE MELLON UNIVERSITY,
+C *** GEORGIA INSTITUTE OF TECHNOLOGY
+C *** WRITTEN BY ATHANASIOS NENES
+C *** UPDATED BY CHRISTOS FOUNTOUKIS
+C
+C=======================================================================
+C
+      CHARACTER INPFIL*256, OUTFIL*256, DATFIL*256, USRFIL*256, 
+     &          CNFFIL*256
+      LOGICAL   IFIL, OFIL, DFIL
+      INTEGER   METSTBLI
+      COMMON /DRVINP/ WI(8), RHI, TEMPI, IPROBI, METSTBLI, IACALCI,
+     &                NADJI
+     &       /DRVFIL/ INPFIL, OUTFIL, DATFIL, USRFIL, CNFFIL, IFIL, 
+     &                OFIL, DFIL, II, IC, ID, IO, IUSR
+     &       /DRVCNF/ DFLTC, DFLTT, DFLTR, DFLTU, DFLTP, INUNIT
+C
+C *** END OF INCLUDE FILE **********************************************
+C

@@ -1,0 +1,586 @@
+% Purpose: 
+% * gas_budgets_Butkovskaya.tex extended from gas_budgets.tex
+%   to diagnose HO2 + NO = HNO3 and related reactions
+% * added UBP diagnostics
+% * included Butkovskaya reactions
+% * combined NOy without NO, NO2, HNO3
+%   (NO3, N2O5, HONO, HNO4, NACA, PAN, MPAN, IC3H7NO3, LC4H9NO3, ISON, ClNO2,
+%    ClNO3, BrNO2, BrNO3, INO2, INO3)
+% * removed diagnostics of H2O2, HCHO, C3H8, C2H6, CH3COCH3, H2O2) 
+% * kept diagnostics of O3, CO, CH4, OH, HO2, NO, NO2, HNO3
+%
+% Author: Klaus Gottschaldt, op_kg_20110804
+%
+% WARNING: This replacement has not been thoroughly tested yet.
+%
+% Comments from example.tex: 
+% list diagnostic tracers to be added to RIGHT side of reactions
+% - a reaction number can be listed twice for two different diagnostic tracers
+% - a comment may contain curly braces {} without problems
+% - choice of diagtrac file appears in xmecca after choice of replacement
+%   file and of mechanism
+%
+% NOTE: For 3D model, add additional diagnostic tracers also to:
+%       - gas.tex
+%       - channel.nml
+%
+% FORMAT:
+% rcn number & diagnostic tracer added to right side & comment (optional)
+% op_kg_20110804-
+%
+% O3 production and loss
+<G1001>  &  PO3  & O2   + O3P {+M} = O3
+<G1002>  &  LO3  & O3   + O1D      = 2 O2
+<G1003>  &  LO3  & O3   + O3P      = 2 O2
+<G2101>  &  LO3  & H    + O3       = OH + O2
+<G2104>  &  LO3  & OH   + O3       = HO2
+<G2107>  &  LO3  & HO2  + O3       = OH
+<G3103>  &  LO3  & NO   + O3       = NO2 + O2
+<G3106>  &  LO3  & NO2  + O3       = NO3 + O2
+<G4201>  &  LO3  & C2H4 + O3       = HCHO + .22 HO2 + .12 OH + .23 CO + .54 HCOOH + .1 H2
+<G4211b> &  PO3  & CH3CO3   + HO2      = CH3CO2H + O3
+<G4301>  &  LO3  & C3H6 + O3       = .57 HCHO + .47 CH3CHO + .33 OH + .26 HO2 + ...
+<G4405>  &  LO3  & MVK  + O3       = .45 HCOOH + .9 MGLYOX + .1 CH3CO3 + .19 OH + .22 CO + .32 HO2
+<G4500>  &  LO3  & C5H8 + O3       = .28 HCOOH + .65 MVK + .1 MVKO2  + .1 CH3CO3 + .14 CO + .58 HCHO + .09 H2O2 + .08 CH3O2 + .25 OH + .25 HO2
+<G6100>  &  LO3  & Cl + O3         = ClO + O2
+<G7100>  &  LO3  & Br   + O3       = BrO + O2
+<G8100>  &  LO3  & I     + O3      = IO + O2
+<G9404>  &  LO3  & CH3SO2 + O3     = CH3SO3
+<J1001a> &  LO3  & O3      + hv    = O1D
+<J1001b> &  LO3  & O3      + hv    = O3P
+%
+% CO production and loss
+<G4108>  &      PCO  & HCHO    + OH      = CO + H2O + HO2
+<G4109>  &      PCO  & HCHO    + NO3     = HNO3 + CO + HO2
+<G4110>  &      LCO  & CO      + OH      = H + CO2
+<G4201>  & .23  PCO  & C2H4    + O3      = HCHO + .22 HO2 + .12 OH + .23 CO + .54 HCOOH + .1 H2
+<G4219>  &      PCO  & NACA    + OH      = NO2 + HCHO + CO 
+<G4301>  & .31  PCO  & C3H6    + O3      = .57 HCHO + .47 CH3CHO + .33 OH + .26 HO2 + ... + .31 CO + ...
+<G4317>  &      PCO  & MGLYOX + OH     = CH3CO3 + CO
+<G4405>  & .22  PCO  & MVK     + O3      = .45 HCOOH + .9 MGLYOX + .1 CH3CO3 + .19 OH + .22 CO + .32 HO2
+<G4408>  & .25  PCO  & MVKO2   + NO      = NO2 + .25 CH3CO3 + .25 ACETOL + .75 HCHO + .25 CO + .75 HO2 + .5 MGLYOX
+<G4410>  & .125 PCO  & MVKO2   + CH3O2   = .5 MGLYOX + .375 ACETOL + .125 CH3CO3 + 1.125 HCHO + .875 HO2 + .125 CO + .25 CH3OH
+<G4411>  & .5   PCO  & MVKO2   + MVKO2   = ACETOL + MGLYOX + .5 CO + .5 HCHO + HO2
+<G4500>  & .14  PCO  & C5H8  + O3        = .28 HCOOH + .65 MVK + .1 MVKO2  + .1 CH3CO3 + .14 CO + .58 HCHO + ...
+<G6401>  &      PCO  & Cl      + HCHO   = HCl + CO + HO2
+<G7400>  &      PCO  & Br   + HCHO     = HBr + CO + HO2
+<J4101a> &      PCO  & HCHO    + hv = H2 + CO 
+<J4101b> &      PCO  & HCHO    + hv = H + CO + HO2
+<J4102>  &      PCO  & CO2     + hv = CO + O3P
+<J4201>  &      PCO  & CH3CHO  + hv = CH3O2 + HO2 + CO 
+<J4203>  &      PCO  & NACA    + hv = NO2 + HCHO + CO 
+<J4303>  &      PCO  & MGLYOX + hv = CH3CO3 + CO + HO2
+<J4401>  &      PCO  & MVK     + hv = CH3CO3 + HCHO + CO + HO2
+<J4402>  & .25  PCO  & MVKOOH  + hv = OH + .5 MGLYOX + .25 ACETOL + .75 HCHO + .75 HO2 + .25 CH3CO3 + .25 CO 
+<J8400>  &      PCO  & CH2I2   + hv = 2 I + 2 HO2 + CO 
+<J8403>  &      PCO  & CH2ClI  + hv = I + Cl + 2 HO2 + CO 
+
+% CH4 production and loss
+<G4100>  &     LCH4  & CH4     + O1D     = .75 CH3O2 + .75 OH + .25 HCHO + .4 H + .05 H2
+<G4101>  &     LCH4  & CH4     + OH      = CH3O2 + H2O
+<G4301>  & .06 PCH4  & C3H6    + O3      = .57 HCHO + .47 CH3CHO + .33 OH + .26 HO2 + ... + .06 CH4 + .31 CO + .22 HCOOH + .03 CH3OH
+<G6400>  &     LCH4  & Cl      + CH4    = HCl + CH3O2
+
+% OH production and loss
+<G2101>  &      POH  & H    + O3       = OH + O2
+<G2102>  &      POH  & H2   + O1D      = H + OH 
+<G2103>  &      LOH  & OH   + O3P      = H
+<G2104>  &      LOH  & OH   + O3       = HO2
+<G2105>  &      LOH  & OH   + H2       = H2O + H
+<G2106>  &      POH  & HO2  + O3P      = OH 
+<G2107>  &      POH  & HO2  + O3       = OH 
+<G2108a> & 2    POH  & HO2  + H        = 2 OH 
+<G2109>  &      LOH  & HO2  + OH       = H2O + O2
+<G2111>  & 2    POH  & H2O  + O1D      = 2 OH 
+<G2112>  &      LOH  & H2O2 + OH       = H2O + HO2
+<G3200>  &      LOH  & NO   + OH {+M}  = HONO
+<G3201>  &      POH  & NO   + HO2      = NO2   + OH 
+<G3201a> &      POH  & NO + HO2 = NO2 + OH
+<G3201b> &      POH  & NO + HO2 = NO2 + OH
+<G3202>  &      LOH  & NO2  + OH  {+M} = HNO3
+<G3204>  &      POH  & NO3  + HO2      = NO2 + OH + O2
+<G3205>  &      LOH  & HONO + OH       = NO2 + H2O
+<G3206>  &      LOH  & HNO3 + OH       = H2O   + NO3
+<G3208>  &      LOH  & HNO4 + OH       = NO2   + H2O
+<G4100>  & .75  POH  & CH4     + O1D     = .75 CH3O2 + .75 OH + .25 HCHO + .4 H + .05 H2
+<G4101>  &      LOH  & CH4     + OH      = CH3O2 + H2O
+<G4102>  &      LOH  & CH3OH   + OH      = HCHO + HO2
+<G4107>  & .7   LOH  & CH3OOH  + OH      = .7 CH3O2 + .3 HCHO + .3 OH + H2O
+<G4108>  &      LOH  & HCHO    + OH      = CO + H2O + HO2
+<G4110>  &      LOH  & CO      + OH      = H + CO2
+<G4111>  &      LOH  & HCOOH   + OH      = HO2
+<G4200>  &      LOH  & C2H6    + OH      = C2H5O2 + H2O
+<G4201>  & .12  POH  & C2H4    + O3      = HCHO + .22 HO2 + .12 OH + .23 CO + .54 HCOOH + .1 H2
+<G4202>  &      LOH  & C2H4    + OH {+M} = .6666667 LHOC3H6O2
+<G4207>  & .3   LOH  & C2H5OOH   + OH      = .3 C2H5O2 + .7 CH3CHO + .7 OH 
+<G4208>  &      LOH  & CH3CHO  + OH      = CH3CO3 + H2O
+<G4210>  &      LOH  & CH3CO2H + OH {+O2}= CH3O2 + CO2 +H2O
+<G4218>  &      LOH  & CH3CO3H     + OH      = CH3CO3
+<G4219>  &      LOH  & NACA    + OH      = NO2 + HCHO + CO
+<G4220>  &      LOH  & PAN     + OH      = HCHO + NO2
+<G4222>  &      LOH  & C2H2    + OH      = CH3O2
+<G4300>  &      LOH  & C3H8    + OH      = .82 IC3H7O2 + .18 C2H5O2 + H2O
+<G4301>  & .33  POH  & C3H6    + O3      = .57 HCHO + .47 CH3CHO + .33 OH + ... + .06 CH4 + .31 CO + .22 HCOOH + .03 CH3OH
+<G4302>  &      LOH  & C3H6    + OH {+M} = LHOC3H6O2
+<G4307>  & .3   LOH  & IC3H7OOH   + OH      = .3 IC3H7O2 + .7 CH3COCH3 + .7 OH 
+<G4310>  & .5   LOH  & LHOC3H6OOH + OH      = .5 LHOC3H6O2 + .5 ACETOL + .5 OH + H2O
+<G4311>  &      LOH  & CH3COCH3 + OH     = CH3COCH2O2 + H2O
+<G4315>  & .3   LOH  & HYPERACET   + OH      = .3 CH3COCH2O2 + .7 MGLYOX + .7 OH 
+<G4316>  &      LOH  & ACETOL  + OH      = MGLYOX + HO2
+<G4317>  &      LOH  & MGLYOX + OH     = CH3CO3 + CO
+<G4318>  &      LOH  & MPAN    + OH      = ACETOL + NO2
+<G4320>  &      LOH  & IC3H7NO3  + OH      = CH3COCH3 + NO2
+<G4400>  &      LOH  & NC4H10   + OH      = LC4H9O2 + H2O
+<G4404>  & .15  LOH  & LC4H9OOH + OH      = .15 LC4H9O2 + .85 MEK + .85 OH + .85 H2O
+<G4405>  & .19  POH  & MVK     + O3      = .45 HCOOH + .9 MGLYOX + .1 CH3CO3 + .19 OH + .22 CO + .32 HO2
+<G4406>  &      LOH  & MVK     + OH      = MVKO2
+<G4412>  &      LOH  & MVKOOH  + OH      = MVKO2
+<G4413>  &      LOH  & MEK     + OH      = LMEKO2
+<G4416>  & .2   LOH  & LMEKOOH  + OH      = .8 BIACET + .8 OH + .2 LMEKO2
+<G4417>  &      LOH  & LC4H9NO3    + OH      = MEK + NO2 + H2O
+<G4500>  & .25  POH  & C5H8  + O3        = .28 HCOOH + .65 MVK + .1 MVKO2  + .1 CH3CO3 + .14 CO + .58 HCHO + ... + .25 OH + .25 HO2
+<G4501>  &      LOH  & C5H8  + OH        = ISO2
+<G4507>  &      LOH  & ISOOH + OH        = MVK + OH
+<G4508>  &      LOH  & ISON  + OH        = ACETOL + NACA
+<G6201b> &      POH  & Cl + HO2        = ClO + OH 
+<G6203>  &      LOH  & ClO + OH        = .94 Cl + .94 HO2 + .06 HCl + .06 O2
+<G6205>  &      LOH  & HCl + OH        = Cl  + H2O
+<G6206>  &      LOH  & HOCl+ OH        = ClO + H2O
+<G6402>  &      POH  & Cl      + CH3OOH = HCHO + HCl + OH 
+<G6405>  &      POH  & CH3Cl   + O1D    = OH + Cl {+...}
+<G6406>  &      LOH  & CH3Cl   + OH     = H2O + Cl {+...}
+<G6407>  &      POH  & CH3CCl3 + O1D    = OH + 3 Cl {+...}
+<G6408>  &      LOH  & CH3CCl3 + OH     = H2O + 3 Cl {+...}
+<G7202>  &      LOH  & HBr  + OH       = Br  + H2O
+<G7203>  &      POH  & HOBr + O3P      = OH  + BrO
+<G7204>  &      LOH  & Br2  + OH       = HOBr + Br
+<G7403>  &      LOH  & CH3Br + OH      = H2O + Br
+<G8202>  &      LOH  & HI    + OH    = I   + H2O
+<G8203>  &      LOH  & OIO   + OH    = HIO3
+<G8204>  &      LOH  & I2    + OH    = HOI + I
+<G8400>  &      LOH  & C3H7I + OH    = CH3O2 + I
+<G9200>  &      LOH  & SO2    + OH    = H2SO4 + HO2
+<G9400a> &      LOH  & DMS    + OH    = CH3SO2 + HCHO
+<G9400b> &      LOH  & DMS    + OH    = DMSO + HO2
+<G9402>  &      LOH  & DMSO   + OH    = .6 SO2 +  HCHO + .6 CH3O2 + .4 HO2 + .4 CH3SO3H
+<J2100>  &      POH  & H2O     + hv = H + OH
+<J2101>  & 2    POH  & H2O2    + hv = 2 OH
+<J3200>  &      POH  & HONO    + hv = NO + OH
+<J3201>  &      POH  & HNO3    + hv = NO2 + OH
+<J3202>  & .333 POH  & HNO4    + hv = .667 NO2 + .667 HO2 + .333 NO3 + .333 OH 
+<J4100>  &      POH  & CH3OOH  + hv = HCHO + OH + HO2
+<J4200>  &      POH  & C2H5OOH   + hv = CH3CHO + HO2 + OH 
+<J4202>  &      POH  & CH3CO3H     + hv = CH3O2 + OH 
+<J4300>  &      POH  & IC3H7OOH    + hv = CH3COCH3 + HO2 + OH 
+<J4304>  &      POH  & HYPERACET    + hv = CH3CO3 + HO2 + OH 
+<J4400>  &      POH  & LC4H9OOH + hv = OH + .67 MEK + .67 HO2 + .33 C2H5O2 + .33 CH3CHO
+<J4402>  &      POH  & MVKOOH  + hv = OH + .5 MGLYOX + .25 ACETOL + .75 HCHO + .75 HO2 + .25 CH3CO3 + .25 CO
+<J4404>  &      POH  & LMEKOOH  + hv = CH3CO3 + CH3CHO + OH 
+<J4500>  &      POH  & ISOOH   + hv = MVK + HCHO + HO2 + OH 
+<J6201>  &      POH  & HOCl    + hv = OH + Cl
+<J7200>  &      POH  & HOBr    + hv = Br + OH 
+<J8200>  &      POH  & HOI     + hv = I + OH 
+%
+% HO2 production and loss
+<G2100>  &      PHO2 & H    + O2 {+M}  = HO2 
+<G2104>  &      PHO2 & OH   + O3       = HO2 
+<G2106>  &      LHO2 & HO2  + O3P      = OH
+<G2107>  &      LHO2 & HO2  + O3       = OH
+<G2108a> &      LHO2 & HO2  + H        = 2 OH
+<G2108b> &      LHO2 & HO2  + H        = H2 + O2
+<G2108c> &      LHO2 & HO2  + H        = O3P + H2O
+<G2109>  &      LHO2 & HO2  + OH       = H2O + O2
+<G2110>  &    2 LHO2 & HO2  + HO2      = H2O2
+<G2112>  &      PHO2 & H2O2 + OH       = H2O + HO2 
+<G3201>  &      LHO2 & NO   + HO2      = NO2   + OH
+<G3201a> &      LHO2  & NO + HO2 = NO2 + OH
+<G3201aKG> &    LHO2  & NO + HO2 = HNO3
+<G3201b> &      LHO2  & NO + HO2 = NO2 + OH
+<G3201bKG> &    LHO2  & NO + HO2 = HNO3
+<G3203>  &      LHO2 & NO2  + HO2 {+M} = HNO4
+<G3204>  &      LHO2 & NO3  + HO2      = NO2 + OH + O2
+<G3207>  &      PHO2 & HNO4       {+M} = NO2   + HO2 
+<G4102>  &      PHO2 & CH3OH   + OH      = HCHO + HO2 
+<G4103>  &      LHO2 & CH3O2   + HO2     = CH3OOH + O2
+<G4104>  &      PHO2 & CH3O2   + NO      = HCHO + NO2 + HO2 
+<G4105>  &      PHO2 & CH3O2   + NO3     = HCHO + HO2 + NO2
+<G4106a> &    2 PHO2 & CH3O2   + CH3O2   = 2 HCHO + 2 HO2 
+<G4108>  &      PHO2 & HCHO    + OH      = CO + H2O + HO2 
+<G4109>  &      PHO2 & HCHO    + NO3     = HNO3 + CO + HO2 
+<G4111>  &      PHO2 & HCOOH   + OH      = HO2 
+<G4201>  &  .22 PHO2 & C2H4    + O3      = HCHO + .22 HO2 + .12 OH + .23 CO + .54 HCOOH + .1 H2 
+<G4203>  &      LHO2 & C2H5O2    + HO2     = C2H5OOH 
+<G4204>  &      PHO2 & C2H5O2    + NO      = CH3CHO + HO2 + NO2
+<G4205>  &      PHO2 & C2H5O2    + NO3     = CH3CHO + HO2 + NO2
+<G4206>  &      PHO2 & C2H5O2    + CH3O2   = .75 HCHO + HO2 + .75 CH3CHO + .25 CH3OH {+.25EtOH} 
+<G4211a> &      LHO2 & CH3CO3      + HO2     = CH3CO3H 
+<G4211b> &      LHO2 & CH3CO3      + HO2     = CH3CO2H + O3
+<G4215a> &      PHO2 & CH3CO3      + CH3O2   = HCHO + HO2 + CH3O2 + CO2 
+<G4216>  &  .82 PHO2 & CH3CO3      + C2H5O2    = .82 CH3O2 + CH3CHO + .82 HO2 + .18 CH3CO2H 
+<G4301>  &  .26 PHO2 & C3H6    + O3      = .57 HCHO + .47 CH3CHO + .33 OH + .26 HO2 + .07 CH3O2 + .06 C2H5O2 + .23 CH3CO3 + .04 MGLYOX + .06 CH4 + .31 CO + .22 HCOOH + .03 CH3OH 
+<G4304>  &      LHO2 & IC3H7O2    + HO2     = IC3H7OOH 
+<G4305>  &  .96 PHO2 & IC3H7O2    + NO      = .96 CH3COCH3 + .96 HO2 + .96 NO2 + .04 IC3H7NO3 
+<G4306>  &  .8  PHO2 & IC3H7O2    + CH3O2   = CH3COCH3 + .8 HCHO + .8 HO2 + .2 CH3OH 
+<G4308>  &      LHO2 & LHOC3H6O2  + HO2     = LHOC3H6OOH 
+<G4309>  &  .98 PHO2 & LHOC3H6O2  + NO      = .98 CH3CHO + .98 HCHO + .98 HO2 + .98 NO2 + .02 LC4H9NO3 
+<G4312>  &      LHO2 & CH3COCH2O2  + HO2     = HYPERACET 
+<G4314>  &  .3  PHO2 & CH3COCH2O2  + CH3O2   = .5 MGLYOX + .5 CH3OH + .3 CH3CO3 + .8 HCHO + .3 HO2 + .2 ACETOL 
+<G4316>  &      PHO2 & ACETOL  + OH      = MGLYOX + HO2 
+<G4401>  & 1.23 PHO2 & LC4H9O2  + CH3O2   = .88 MEK + .68 HCHO + 1.23 HO2 + .12 CH3CHO + .12 C2H5O2 + .18 CH3OH 
+<G4402>  &      LHO2 & LC4H9O2  + HO2     = LC4H9OOH 
+<G4403>  &  .56 PHO2 & LC4H9O2  + NO      = .84 NO2 + .56 MEK + .56 HO2 + .28 C2H5O2 + .84 CH3CHO + .16 LC4H9NO3 
+<G4405>  &  .32 PHO2 & MVK     + O3      = .45 HCOOH + .9 MGLYOX + .1 CH3CO3 + .19 OH + .22 CO + .32 HO2 
+<G4407>  &      LHO2 & MVKO2   + HO2     = MVKOOH 
+<G4408>  &  .75 PHO2 & MVKO2   + NO      = NO2 + .25 CH3CO3 + .25 ACETOL + .75 HCHO + .25 CO + .75 HO2 + .5 MGLYOX 
+<G4410>  & .875 PHO2 & MVKO2   + CH3O2   = .5 MGLYOX + .375 ACETOL + .125 CH3CO3 + 1.125 HCHO + .875 HO2 + .125 CO + .25 CH3OH 
+<G4411>  &      PHO2 & MVKO2   + MVKO2   = ACETOL + MGLYOX + .5 CO + .5 HCHO + HO2 
+<G4414>  &      LHO2 & LMEKO2   + HO2     = LMEKOOH 
+<G4500>  & .25  PHO2 & C5H8  + O3        = .28 HCOOH + .65 MVK + .1 MVKO2  + .1 CH3CO3 + .14 CO + .58 HCHO + .09 H2O2 + .08 CH3O2 + .25 OH + .25 HO2 
+<G4503>  &      LHO2 & ISO2  + HO2       = ISOOH 
+<G4504>  & .88  PHO2 & ISO2  + NO        = .88 NO2 + .88 MVK + .88 HCHO + .88 HO2 + .12 ISON 
+<G4505>  &      PHO2 & ISO2  + CH3O2     = .5 MVK + 1.25 HCHO + HO2 + .25 MGLYOX + .25 ACETOL + .25 CH3OH 
+<G4506>  &      PHO2 & ISO2  + ISO2      = 2 MVK + HCHO + HO2 
+<G6201a> &      LHO2 & Cl + HO2        = HCl + O2 
+<G6201b> &      LHO2 & Cl + HO2        = ClO + OH 
+<G6202>  &      PHO2 & Cl + H2O2       = HCl + HO2 
+<G6203>  & .94  PHO2 & ClO + OH        = .94 Cl + .94 HO2 + .06 HCl + .06 O2 
+<G6204>  &      LHO2 & ClO + HO2       = HOCl 
+<G6401>  &      PHO2 & Cl      + HCHO   = HCl + CO + HO2 
+<G6403>  &      PHO2 & ClO     + CH3O2  = HO2 + Cl + HCHO 
+<G7200>  &      LHO2 & Br   + HO2      = HBr + O2 
+<G7201>  &      LHO2 & BrO  + HO2      = HOBr + O2 
+<G7400>  &      PHO2 & Br   + HCHO     = HBr + CO + HO2 
+<G7402b> &      PHO2 & BrO  + CH3O2    = Br + HCHO + HO2 
+<G8200>  &      LHO2 & I     + HO2   = HI  + O2 
+<G8201>  &      LHO2 & IO    + HO2   = HOI + O2 
+<G8401>  &      PHO2 & CH3O2 + IO    = .4 I + .6 OIO + HCHO + HO2 
+<G9200>  &      PHO2 & SO2    + OH    = H2SO4 + HO2 
+<G9400b> &      PHO2 & DMS    + OH    = DMSO + HO2 
+<G9402>  & .4   PHO2 & DMSO   + OH    = .6 SO2 +  HCHO + .6 CH3O2 + .4 HO2 + .4 CH3SO3H 
+<G9405>  &      LHO2 & CH3SO3 + HO2   = CH3SO3H 
+<J3202>  & .667 PHO2 & HNO4    + hv = .667 NO2 + .667 HO2 + .333 NO3 + .333 OH 
+<J4100>  &      PHO2 & CH3OOH  + hv = HCHO + OH + HO2 
+<J4101b> &      PHO2 & HCHO    + hv = H + CO + HO2 
+<J4200>  &      PHO2 & C2H5OOH   + hv = CH3CHO + HO2 + OH 
+<J4201>  &      PHO2 & CH3CHO  + hv = CH3O2 + HO2 + CO 
+<J4300>  &      PHO2 & IC3H7OOH    + hv = CH3COCH3 + HO2 + OH 
+<J4302>  &      PHO2 & ACETOL   + hv = CH3CO3 + HCHO + HO2 
+<J4303>  &      PHO2 & MGLYOX + hv = CH3CO3 + CO + HO2 
+<J4304>  &      PHO2 & HYPERACET    + hv = CH3CO3 + HO2 + OH 
+<J4306>  &      PHO2 & IC3H7NO3   + hv = CH3COCH3 + NO2 + HO2 
+<J4400>  & .67  PHO2 & LC4H9OOH + hv = OH + .67 MEK + .67 HO2 + .33 C2H5O2 + .33 CH3CHO 
+<J4401>  &      PHO2 & MVK     + hv = CH3CO3 + HCHO + CO + HO2 
+<J4402>  & .75  PHO2 & MVKOOH  + hv = OH + .5 MGLYOX + .25 ACETOL + .75 HCHO + .75 HO2 + .25 CH3CO3 + .25 CO 
+<J4406>  & .67  PHO2 & LC4H9NO3    + hv = NO2 + .67 MEK + .67 HO2 + .33 C2H5O2 + .33 CH3CHO 
+<J4500>  &      PHO2 & ISOOH   + hv = MVK + HCHO + HO2 + OH 
+<J4501>  &      PHO2 & ISON    + hv = MVK + HCHO + NO2 + HO2 
+<J8400>  & 2    PHO2 & CH2I2   + hv = 2 I + 2 HO2 + CO 
+<J8403>  & 2    PHO2 & CH2ClI  + hv = I + Cl + 2 HO2 + CO 
+%
+% NO production and loss
+<G3100>  &   PNO  & N    + O2       = NO + O3P
+<G3102a> & 2 PNO  & N2O  + O1D      = 2 NO 
+<G3103>  &   LNO  & NO   + O3       = NO2 + O2
+<G3104>  &   LNO  & NO   + N        = O3P + N2
+<G3105>  &   PNO  & NO2  + O3P      = NO + O2
+<G3108>  &   LNO  & NO3  + NO       = 2 NO2
+<G3200>  &   LNO  & NO   + OH {+M}  = HONO
+<G3201>  &   LNO  & NO   + HO2      = NO2   + OH
+<G3201a> &   LNO  & NO + HO2 = NO2 + OH
+<G3201aKG> & LNO  & NO + HO2 = HNO3
+<G3201b> &   LNO  & NO + HO2 = NO2 + OH
+<G3201bKG> & LNO  & NO + HO2 = HNO3
+<G4104>  &   LNO  & CH3O2   + NO      = HCHO + NO2 + HO2
+<G4204>  &   LNO  & C2H5O2    + NO      = CH3CHO + HO2 + NO2
+<G4212>  &   LNO  & CH3CO3      + NO      = CH3O2 + NO2
+<G4305>  &   LNO  & IC3H7O2    + NO      = .96 CH3COCH3 + .96 HO2 + .96 NO2 + .04 IC3H7NO3
+<G4309>  &   LNO  & LHOC3H6O2  + NO      = .98 CH3CHO + .98 HCHO + .98 HO2 + .98 NO2 + .02 LC4H9NO3
+<G4313>  &   LNO  & CH3COCH2O2  + NO      = NO2 + CH3CO3 + HCHO
+<G4403>  &   LNO  & LC4H9O2  + NO      = .84 NO2 + .56 MEK + .56 HO2 + .28 C2H5O2 + .84 CH3CHO + .16 LC4H9NO3
+<G4408>  &   LNO  & MVKO2   + NO      = NO2 + .25 CH3CO3 + .25 ACETOL + .75 HCHO + .25 CO + .75 HO2 + .5 MGLYOX
+<G4415>  &   LNO  & LMEKO2   + NO      = .985 CH3CHO + .985 CH3CO3 + .985 NO2 + .015 LC4H9NO3
+<G4504>  &   LNO  & ISO2  + NO        = .88 NO2 + .88 MVK + .88 HCHO + .88 HO2 + .12 ISON
+<G6300>  &   LNO  & ClO   + NO       = NO2 + Cl
+<G7301>  &   LNO  & BrO  + NO       = Br  + NO2
+<G8302>  &   LNO  & IO    + NO    = I  + NO2
+<G8304>  &   LNO  & OIO   + NO    = NO2 + IO
+<J3101>  &   PNO  & NO2     + hv = NO + O3P
+<J3102>  &   LNO  & NO      + hv = N + O3P
+<J3103b> &   PNO  & NO3     + hv = NO 
+<J3200>  &   PNO  & HONO    + hv = NO + OH
+
+% NO2 production and loss
+<G3103>  &      PNO2 & NO   + O3       = NO2 + O2
+<G3105>  &      LNO2 & NO2  + O3P      = NO + O2
+<G3106>  &      LNO2 & NO2  + O3       = NO3 + O2
+<G3107>  &      LNO2 & NO2  + N        = N2O + O3P
+<G3108>  & 2    PNO2 & NO3  + NO       = 2 NO2 
+<G3109>  &      LNO2 & NO3  + NO2 {+M} = N2O5
+<G3110>  &      PNO2 & N2O5       {+M} = NO2 + NO3
+<G3201>  &      PNO2 & NO   + HO2      = NO2   + OH
+<G3201a> &      PNO2 & NO + HO2 = NO2 + OH
+<G3201b> &      PNO2 & NO + HO2 = NO2 + OH
+<G3202>  &      LNO2 & NO2  + OH  {+M} = HNO3
+<G3203>  &      LNO2 & NO2  + HO2 {+M} = HNO4
+<G3204>  &      PNO2 & NO3  + HO2      = NO2 + OH + O2
+<G3205>  &      PNO2 & HONO + OH       = NO2 + H2O
+<G3207>  &      PNO2 & HNO4       {+M} = NO2   + HO2
+<G3208>  &      PNO2 & HNO4 + OH       = NO2   + H2O
+<G4104>  &      PNO2 & CH3O2   + NO      = HCHO + NO2 + HO2
+<G4105>  &      PNO2 & CH3O2   + NO3     = HCHO + HO2 + NO2 
+<G4204>  &      PNO2 & C2H5O2    + NO      = CH3CHO + HO2 + NO2 
+<G4205>  &      PNO2 & C2H5O2    + NO3     = CH3CHO + HO2 + NO2 
+<G4212>  &      PNO2 & CH3CO3      + NO      = CH3O2 + NO2 
+<G4213>  &      LNO2 & CH3CO3      + NO2     = PAN
+<G4214>  &      PNO2 & CH3CO3      + NO3     = CH3O2 + NO2 
+<G4219>  &      PNO2 & NACA    + OH      = NO2 + HCHO + CO
+<G4220>  &      PNO2 & PAN     + OH      = HCHO + NO2 
+<G4221>  &      PNO2 & PAN     {+M}      = CH3CO3 + NO2 
+<G4305>  & .96  PNO2 & IC3H7O2    + NO      = .96 CH3COCH3 + .96 HO2 + .96 NO2 + .04 IC3H7NO3
+<G4309>  & .98  PNO2 & LHOC3H6O2  + NO      = .98 CH3CHO + .98 HCHO + .98 HO2 + .98 NO2 + .02 LC4H9NO3
+<G4313>  &      PNO2 & CH3COCH2O2  + NO      = NO2 + CH3CO3 + HCHO
+<G4318>  &      PNO2 & MPAN    + OH      = ACETOL + NO2 
+<G4319>  &      PNO2 & MPAN    {+M}      = MVKO2 + NO2 
+<G4320>  &      PNO2 & IC3H7NO3  + OH      = CH3COCH3 + NO2 
+<G4403>  & .84  PNO2 & LC4H9O2  + NO      = .84 NO2 + .56 MEK + .56 HO2 + .28 C2H5O2 + .84 CH3CHO + .16 LC4H9NO3
+<G4408>  &      PNO2 & MVKO2   + NO      = NO2 + .25 CH3CO3 + .25 ACETOL + .75 HCHO + .25 CO + .75 HO2 + .5 MGLYOX
+<G4409>  &      LNO2 & MVKO2   + NO2     = MPAN
+<G4415>  & .985 PNO2 & LMEKO2   + NO      = .985 CH3CHO + .985 CH3CO3 + .985 NO2 + .015 LC4H9NO3
+<G4417>  &      PNO2 & LC4H9NO3    + OH      = MEK + NO2 + H2O
+<G4504>  & .88  PNO2 & ISO2  + NO        = .88 NO2 + .88 MVK + .88 HCHO + .88 HO2 + .12 ISON
+<G6300>  &      PNO2 & ClO   + NO       = NO2 + Cl
+<G6301>  &      LNO2 & ClO   + NO2 {+M} = ClNO3
+<G6302>  &      PNO2 & ClNO3            = ClO + NO2 
+<G7301>  &      PNO2 & BrO  + NO       = Br  + NO2 
+<G7302>  &      LNO2 & BrO  + NO2 {+M} = BrNO3
+<G7303>  &      PNO2 & BrNO3           = BrO + NO2 
+<G8300>  &      LNO2 & I + NO2 {+M}  = INO2
+<G8301>  &      PNO2 & I     + NO3   = IO + NO2 
+<G8302>  &      PNO2 & IO    + NO    = I  + NO2 
+<G8303>  &      LNO2 & IO + NO2 {+M} = INO3
+<G8304>  &      PNO2 & OIO   + NO    = NO2 + IO
+<G8305>  &      PNO2 & INO2          = I + NO2 
+<G8306>  &      PNO2 & INO3          = IO + NO2 
+<G8308>  &      PNO2 & IO    + NO3   = OIO + NO2 
+<J3101>  &      LNO2 & NO2     + hv = NO + O3P
+<J3103a> &      PNO2 & NO3     + hv = NO2 + O3P
+<J3104>  &      PNO2 & N2O5    + hv = NO2 + NO3
+<J3201>  &      PNO2 & HNO3    + hv = NO2 + OH
+<J3202>  & .667 PNO2 & HNO4    + hv = .667 NO2 + .667 HO2 + .333 NO3 + .333 OH
+<J4203>  &      PNO2 & NACA    + hv = NO2 + HCHO + CO
+<J4204>  & .6   PNO2 & PAN     + hv = .6 CH3CO3 + .6 NO2 + .4 CH3O2 + .4 NO3 + .4 CO2
+<J4305>  &      PNO2 & MPAN     + hv = ACETOL + NO2 
+<J4306>  &      PNO2 & IC3H7NO3   + hv = CH3COCH3 + NO2 + HO2
+<J4406>  &      PNO2 & LC4H9NO3    + hv = NO2 + .67 MEK + .67 HO2 + .33 C2H5O2 + .33 CH3CHO
+<J4501>  &      PNO2 & ISON    + hv = MVK + HCHO + NO2 + HO2
+<J6300>  &      PNO2 & ClNO2   + hv = Cl + NO2 
+<J7300>  &      PNO2 & BrNO2   + hv = Br + NO2 
+<J7301>  & .71  PNO2 & BrNO3   + hv = 0.29 Br + 0.29 NO3 + 0.71 BrO + 0.71 NO2 
+<J8300>  &      PNO2 & INO2    + hv = I + NO2 
+%
+% NOy prod and loss (without NO, NO2, HNO3)
+% NO3
+<G3106>  &     PNOy  & NO2  + O3       = NO3 + O2
+<G3108>  &     LNOy  & NO3  + NO       = 2 NO2
+<G3109>  &     LNOy  & NO3  + NO2 {+M} = N2O5
+<G3110>  &     PNOy  & N2O5       {+M} = NO2 + NO3 
+<G3204>  &     LNOy  & NO3  + HO2      = NO2 + OH + O2
+<G3206>  &     PNOy  & HNO3 + OH       = H2O   + NO3 
+<G4105>  &     LNOy  & CH3O2   + NO3     = HCHO + HO2 + NO2
+<G4109>  &     LNOy  & HCHO    + NO3     = HNO3 + CO + HO2
+<G4205>  &     LNOy  & C2H5O2    + NO3     = CH3CHO + HO2 + NO2
+<G4209>  &     LNOy  & CH3CHO  + NO3     = CH3CO3 + HNO3
+<G4214>  &     LNOy  & CH3CO3      + NO3     = CH3O2 + NO2
+<G4303>  &     LNOy  & C3H6    + NO3     = LC4H9NO3
+<G4502>  &     LNOy  & C5H8  + NO3       = ISON
+<G6303>  &     PNOy  & ClNO3 + O3P      = ClO + NO3 
+<G6304>  &     PNOy  & ClNO3 + Cl       = Cl2 + NO3 
+<G7300>  &     PNOy  & Br   + BrNO3    = Br2 + NO3 
+<G8301>  &     LNOy  & I     + NO3   = IO + NO2
+<G8307>  &     LNOy  & I2    + NO3   = I + INO3
+<G8308>  &     LNOy  & IO    + NO3   = OIO + NO2
+<G8402>  &     LNOy  & CH3I + NO3 {+O2} = HNO3 + HCHO + IO
+<G9401>  &     LNOy  & DMS    + NO3   = CH3SO2 + HNO3 + HCHO  {-O3}
+<J3103a> &     LNOy  & NO3     + hv = NO2 + O3P
+<J3103b> &     LNOy  & NO3     + hv = NO
+<J3104>  &     PNOy  & N2O5    + hv = NO2 + NO3 
+<J3202>  &.333 PNOy  & HNO4    + hv = .667 NO2 + .667 HO2 + .333 NO3 + .333 OH
+<J4204>  &.4   PNOy  & PAN     + hv = .6 CH3CO3 + .6 NO2 + .4 CH3O2 + .4 NO3 + .4 CO2
+<J6301>  &     PNOy  & ClNO3   + hv = Cl + NO3 
+<J7301>  &.29  PNOy  & BrNO3   + hv = 0.29 Br + 0.29 NO3 + 0.71 BrO + 0.71 NO2
+<J8301>  &     PNOy  & INO3    + hv = I + NO3 
+% N2O5 prod and loss
+<G3109>  & 2   PNOy & NO3  + NO2 {+M} = N2O5 
+<G3110>  & 2   LNOy & N2O5       {+M} = NO2 + NO3
+<J3104>  & 2   LNOy & N2O5    + hv = NO2 + NO3
+<HET200> & 2   LNOy & N2O5 + H2O  = 2 HNO3
+<HET201> & 2   LNOy & N2O5        = 2 NO3m_cs + 2 Hp_cs
+<HET422> & 2   LNOy & N2O5  + HCl = ClNO2 + HNO3
+% HONO prod and loss
+<G3200>  &     PNOy & NO   + OH {+M}  = HONO
+<G3205>  &     LNOy & HONO + OH       = NO2 + H2O
+<J3200>  &     LNOy & HONO    + hv = NO + OH
+% HNO4 prod and loss
+<G3203>  &     PNOy & NO2  + HO2 {+M} = HNO4 
+<G3207>  &     LNOy & HNO4       {+M} = NO2   + HO2
+<G3208>  &     LNOy & HNO4 + OH       = NO2   + H2O
+<J3202>  &     LNOy & HNO4    + hv = .667 NO2 + .667 HO2 + .333 NO3 + .333 OH
+% NACA prod and loss
+<G4219>  &     LNOy & NACA    + OH      = NO2 + HCHO + CO
+<G4508>  &     PNOy & ISON  + OH        = ACETOL + NACA 
+<J4203>  &     LNOy & NACA    + hv = NO2 + HCHO + CO
+% PAN prod and loss
+<G4213>  &     PNOy & CH3CO3      + NO2     = PAN 
+<G4220>  &     LNOy & PAN     + OH      = HCHO + NO2
+<G4221>  &     LNOy & PAN     {+M}      = CH3CO3 + NO2
+<J4204>  &     LNOy & PAN     + hv = .6 CH3CO3 + .6 NO2 + .4 CH3O2 + .4 NO3 + .4 CO2
+% MPAN prod and loss
+<G4318>  &     LNOy & MPAN    + OH      = ACETOL + NO2
+<G4319>  &     LNOy & MPAN    {+M}      = MVKO2 + NO2
+<G4409>  &     PNOy & MVKO2   + NO2     = MPAN 
+<J4305>  &     LNOy & MPAN     + hv = ACETOL + NO2
+% IC3H7NO3 prod and loss
+<G4305>  & .04 PNOy & IC3H7O2    + NO      = .96 CH3COCH3 + .96 HO2 + .96 NO2 + .04 IC3H7NO3 
+<G4320>  &     LNOy & IC3H7NO3  + OH      = CH3COCH3 + NO2
+<J4306>  &     LNOy & IC3H7NO3   + hv = CH3COCH3 + NO2 + HO2
+% LC4H9NO3 prod and loss
+<G4303>  &      PNOy & C3H6    + NO3     = LC4H9NO3 
+<G4309>  & .02  PNOy & LHOC3H6O2  + NO      = .98 CH3CHO + .98 HCHO + .98 HO2 + .98 NO2 + .02 LC4H9NO3 
+<G4403>  & .16  PNOy & LC4H9O2  + NO      = .84 NO2 + .56 MEK + .56 HO2 + .28 C2H5O2 + .84 CH3CHO + .16 LC4H9NO3 
+<G4415>  & .015 PNOy & LMEKO2   + NO      = .985 CH3CHO + .985 CH3CO3 + .985 NO2 + .015 LC4H9NO3 
+<G4417>  &      LNOy & LC4H9NO3    + OH      = MEK + NO2 + H2O
+<J4406>  &      LNOy & LC4H9NO3    + hv = NO2 + .67 MEK + .67 HO2 + .33 C2H5O2 + .33 CH3CHO
+% ISON prod and loss
+<G4502>  &      PNOy & C5H8  + NO3       = ISON
+<G4504>  & .12  PNOy & ISO2  + NO        = .88 NO2 + .88 MVK + .88 HCHO + .88 HO2 + .12 ISON 
+<G4508>  &      LNOy & ISON  + OH        = ACETOL + NACA
+<J4501>  &      LNOy & ISON    + hv = MVK + HCHO + NO2 + HO2
+% ClNO2 prod and loss
+<J6300>  &     LNOy & ClNO2   + hv = Cl + NO2
+<HET422> &     PNOy & N2O5  + HCl = ClNO2 + HNO3
+% ClNO3 prod and loss
+<G6301>  &     PNOy & ClO   + NO2 {+M} = ClNO3 
+<G6302>  &     LNOy & ClNO3            = ClO + NO2
+<G6303>  &     LNOy & ClNO3 + O3P      = ClO + NO3
+<G6304>  &     LNOy & ClNO3 + Cl       = Cl2 + NO3
+<J6301>  &     LNOy & ClNO3   + hv = Cl + NO3
+<HET420> &     LNOy & ClNO3 + HCl = Cl2 + HNO3
+<HET421> &     LNOy & ClNO3 + H2O = HOCl + HNO3
+<HET540> &     LNOy & ClNO3 + HBr = BrCl + HNO3
+% BrNO2 prod and loss
+<J7300>  &     LNOy & BrNO2   + hv = Br + NO2
+% BrNO3 prod and loss
+<G7300>  &     LNOy & Br   + BrNO3    = Br2 + NO3
+<G7302>  &     PNOy & BrO  + NO2 {+M} = BrNO3 
+<G7303>  &     LNOy & BrNO3           = BrO + NO2
+<J7301>  &     LNOy & BrNO3   + hv = 0.29 Br + 0.29 NO3 + 0.71 BrO + 0.71 NO2
+<HET520> &     LNOy & BrNO3 + H2O = HOBr + HNO3
+<HET541> &     LNOy & BrNO3 + HCl = BrCl + HNO3
+% INO2 prod and loss
+<G8300>  &     PNOy & I + NO2 {+M}  = INO2 
+<G8305>  &     LNOy & INO2          = I + NO2
+<J8300>  &     LNOy & INO2    + hv = I + NO2
+% INO3 prod and loss
+<G8303>  &     PNOy & IO + NO2 {+M} = INO3 
+<G8306>  &     LNOy & INO3          = IO + NO2
+<G8307>  &     PNOy & I2    + NO3   = I + INO3 
+<J8301>  &     LNOy & INO3    + hv = I + NO3
+%
+% HNO3 prod and loss
+<G3201aKG> &   PHNO3 & NO + HO2 = HNO3
+<G3201bKG> &   PHNO3 & NO + HO2 = HNO3
+<G3202>  &     PHNO3 & NO2  + OH  {+M} = HNO3
+<G3206>  &     LHNO3 & HNO3 + OH       = H2O   + NO3
+<G4109>  &     PHNO3 & HCHO    + NO3     = HNO3 + CO + HO2
+<G4209>  &     PHNO3 & CH3CHO  + NO3     = CH3CO3 + HNO3
+<G8402>  &     PHNO3 & CH3I + NO3 {+O2} = HNO3 + HCHO + IO
+<G9401>  &     PHNO3 & DMS    + NO3   = CH3SO2 + HNO3 + HCHO  {-O3}
+<J3201>  &     LHNO3 & HNO3    + hv = NO2 + OH
+<HET200> & 2   PHNO3 & N2O5 + H2O  = 2 HNO3
+<HET202> &     LHNO3 & HNO3        = NO3m_cs + Hp_cs
+<HET420> &     PHNO3 & ClNO3 + HCl = Cl2 + HNO3
+<HET421> &     PHNO3 & ClNO3 + H2O = HOCl + HNO3
+<HET422> &     PHNO3 & N2O5  + HCl = ClNO2 + HNO3
+<HET520> &     PHNO3 & BrNO3 + H2O = HOBr + HNO3
+<HET540> &     PHNO3 & ClNO3 + HBr = BrCl + HNO3
+<HET541> &     PHNO3 & BrNO3 + HCl = BrCl + HNO3
+%
+% !mz_hr_20080605-
+% op_kg_20110601+ 
+% diagnose HO2+NO
+<G3201>    & LossG3201    & NO + HO2 = NO2 + OH
+% HO2+NO for Butkovskaya_dry.rpl
+<G3201a>   & LossG3201a   & NO + HO2 = NO2 + OH
+<G3201aKG> & LossG3201aKG & NO + HO2 = HNO3
+% diagnose HO2+NO for Butkovskaya_wet.rpl
+<G3201b>   & LossG3201b   & NO + HO2 = NO2 + OH
+<G3201bKG> & LossG3201bKG & NO + HO2 = HNO3
+% op_kg_20110601-
+% op_kg_20101108+ upper bound (for calculation of coefficients)
+<G3102a> & LossN2Oa & N2O + O1D = 2 NO
+<G3102b> & LossN2Ob & N2O + O1D = N2 + O2
+<G3102c> & LossN2O & N2O + O1D = 2 RNOy
+<G4100>  & LossCH4 & CH4 + O1D = .75 CH3O2 + .75 OH + .25 HCHO + .4 H + .05 H2
+<G4100b> & LossCH4 & CH4 + O1D = 2 RH2O
+<G4101>  & LossCH4OH & CH4 + OH  = CH3O2 + H2O
+<G4101b>  & LossCH4OH & CH4 + OH  = 2.5 RH2O
+<G6400>  & LossCH4Cl & Cl  + CH4 = HCl + CH3O2
+<G6404>  & LossCFC & CCl4    + O1D    = ClO + 3 Cl {+...}
+<G6404b>  & LossCFC & CCl4    + O1D    = 4 RCly
+<G6405>  & LossCFC & CH3Cl   + O1D    = OH + Cl {+...}
+<G6405b>  & LossCFC & CH3Cl   + O1D    = RCly
+<G6406>  & LossCFCOH & CH3Cl   + OH     = H2O + Cl {+...}
+<G6406b>  & LossCFCOH & CH3Cl   + OH     = RCly
+<G6407>  & LossCFC & CH3CCl3 + O1D    = OH + 3 Cl {+...}
+<G6407b>  & LossCFC & CH3CCl3 + O1D    = 3 RCly
+<G6408>  & LossCFCOH & CH3CCl3 + OH     = H2O + 3 Cl {+...}
+<G6408b} & LossCFCOH & CH3CCl3 + OH     = 3 RCly
+<G6500>  & LossCFC & CF2Cl2  + O1D    = ClO + Cl {+...}
+<G6500b>  & LossCFC & CF2Cl2  + O1D    = 2 RCly
+<G6501>  & LossCFC & CFCl3   + O1D    = ClO + 2 Cl {+...}
+<G6501b>  & LossCFC & CFCl3   + O1D    = 3 RCly
+<G7403>  & LossBrG & CH3Br + OH           = H2O + Br {+...}
+<G7403b>  & LossBrG & CH3Br + OH           = RBr
+<J7400>  & LossBrJ & CH3Br    + hv {+...} = Br + CH3O2
+<J7400b>  & LossBrJ & CH3Br    + hv {+...} = RBr
+<J7500>  & LossBrJ & CF3Br    + hv        = Br {+...}
+<J7500b>  & LossBrJ & CF3Br    + hv        = RBr
+<J7601>  & LossBrJ & CF2ClBr  + hv        = Br + Cl {+...}
+<J3100>  & LossN2OJ & N2O     + hv        = O1D {+...}
+<J3100b>  & LossN2OJ & N2O     + hv        = 2 RNOy
+<J4103>  & LossCH4J & CH4     + hv {+...} = CO + 0.31 H + 0.69 H2 + 1.155 H2O
+<J6400>  & LossCFCJ & CH3Cl   + hv {+...} = Cl + CH3O2
+<J6400b>  & LossCFCJ & CH3Cl   + hv {+...} = RCly
+<J6401>  & LossCFCJ & CCl4    + hv        = 4 Cl {+...}
+<J6401b>  & LossCFCJ & CCl4    + hv        = 4 RCly
+<J6402>  & LossCFCJ & CH3CCl3 + hv        = 3 Cl {+...}
+<J6402b>  & LossCFCJ & CH3CCl3 + hv        = 3 RCly
+<J6500>  & LossCFCJ & CFCl3   + hv        = 3 Cl {+...}
+<J6500b>  & LossCFCJ & CFCl3   + hv        = 3 RCly
+<J6501>  & LossCFCJ & CF2Cl2  + hv        = 2 Cl {+...}
+<J6501b>  & LossCFCJ & CF2Cl2  + hv        = 2 RCly
+<G3102aa> & LossN2Oa & N2O  + O1D      = 2 NO
+<G3102bb> & LossN2Ob & N2O  + O1D      = N2 + O2
+<G4100a>  & LossCH4 &  CH4  + O1D     = .75 CH3O2 + .75 OH + .25 HCHO + .4 H + .05 H2
+<G4101a>  & LossCH4OH &  CH4     + OH      = CH3O2 + H2O
+<G6400a>  & LossCH4Cl &  Cl      + CH4    = HCl + CH3O2
+<G6400b>  & LossCH4Cl & Cl  + CH4 = HCl + 1.5 RH2O
+<G6404a>  & LossCFC & CCl4    + O1D    = ClO + 3 Cl {+...}
+<G6405a>  & LossCFC & CH3Cl   + O1D    = OH + Cl {+...}
+<G6406a>  & LossCFCOH & CH3Cl   + OH     = H2O + Cl {+...}
+<G6407a>  & LossCFC & CH3CCl3 + O1D    = OH + 3 Cl {+...}
+<G6408a>  & LossCFCOH & CH3CCl3 + OH     = H2O + 3 Cl {+...}
+<G6500a>  & LossCFC & CF2Cl2  + O1D    = ClO + Cl {+...}
+<G6501a>  & LossCFC & CFCl3   + O1D    = ClO + 2 Cl {+...}
+<G7403a>  & LossBrG & CH3Br + OH      = H2O + Br
+<J3100a>  & LossN2OJ & N2O     + hv = O1D
+<J6400a>  & LossCFCJ & CH3Cl   + hv = Cl + CH3O2
+<J6401a>  & LossCFCJ & CCl4    + hv = 4 Cl
+<J6402a>  & LossCFCJ & CH3CCl3 + hv = 3 Cl
+<J6500a>  & LossCFCJ & CFCl3   + hv = 3 Cl
+<J6501a>  & LossCFCJ & CF2Cl2  + hv = 2 Cl
+<J7400a>  & LossBrJ & CH3Br   + hv = Br + CH3O2
+<J7601a>  & LossBrJ & CF2ClBr + hv = Br + Cl
+<J7601b>  & LossBrJ & CF2ClBr + hv = RBr + RCly
+% op_kg_20101108-
+

@@ -1,0 +1,53 @@
+// -*- kpp -*- kpp mode for emacs
+// see example.rpl for details about replacement files
+
+// Author: Patrick Joeckel (for REFC1-DLR-01, RC1-base-01, RC2-base-01)
+
+// replace the comprehensive organic chemistry by mim1:
+#include mim1
+
+// modifications for the ESCiMo base run:
+#include ESCiMo
+
+// O3s diagnostic:
+#REPLACE <>
+<G01Diag> O3s            = LO3s        : {%StTrG} k_O3s; {&1714}
+#ENDREPLACE
+
+
+
+// ##########################################
+// ### add sink reactions of acetonitrile ###
+// ##########################################
+// (tracer for biomass burning emissions)
+// Note: reaction products are ignored and reaction partners are
+//       unaffected (S => <S>implified
+
+#REPLACE <>
+
+// = NCCH2O2 + H2O 
+// <G42085aS> CH3CN + OH        = OH : {%TrG} 8.1E-13*EXP(-1080./temp)*0.40; {&1759, 3212} // Uncertainties on the kinetics at pressures $<$ 0.1 bar.
+
+// = OH + CH3CO + NO
+// <G42085bS> CH3CN + OH        = OH : {%TrG} 8.1E-13*EXP(-1080./temp)*(1.-0.40); {&1759, 3212} // Channel proposed by Hynes and Wine 1991, OH + HCHO + HOCN, could not be confirmed by \cite{3212}. There is no alternative mechanism at the moment. Products assumed to be OH + CH3CO3 + NO
+
+// <G42085aS> and <G42085bS> combined:
+<G42085abS> CH3CN + OH       = OH : {%TrG} 8.1E-13*EXP(-1080./temp) ; {&1759, 3212}
+
+// // = O3P + CH3CN (no sink of CH3CN)
+// <G42086aS> CH3CN + O1D       = O3P + CH3CN : {%TrG} 2.54E-10*EXP(-24./temp)*0.0269*EXP(137./temp); {&3197}
+
+// = 2 H + CO + HCN
+// <G42086bS> CH3CN + O1D       = O1D : {%TrG} 2.54E-10*EXP(-24./temp)*0.16; {&3197} // Assuming HCN is from channel 2h, HCO + H + HCN. HCO is replaced by H + CO.
+
+// = .5 CH3 + .5 NCO + .5 NCCH2O2 + .5 OH 
+// <G42086cS> CH3CN + O1D       = O1D : {%TrG} 2.54E-10*EXP(-24./temp)*(1.-(0.16+0.0269*EXP(137./temp))); {&3197} // Assuming exothermic channels 2b and 2d are equally important.
+
+// <G42086bS> and <G42086cS> combined:
+// --> 2.54E-10*EXP(-24./temp) * [0.16 + 1.-(0.16+0.0269*EXP(137./temp))]
+//   = 2.54E-10*EXP(-24./temp)*(1.-0.0269*EXP(137./temp))
+<G42086bcS> CH3CN + O1D       = O1D : {%TrG} 2.54E-10*EXP(-24./temp)*(1.-0.0269*EXP(137./temp)) ; {&3197}
+
+// = NCCH2O2 + HCl
+<G6416S>  Cl      + CH3CN  = Cl : {%TrG} 1.6E-11{§}*EXP(-2104./temp); {&3211, 3212, 3264}
+#ENDREPLACE

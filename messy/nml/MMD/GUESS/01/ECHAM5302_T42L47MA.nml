@@ -1,0 +1,75 @@
+! -*- f90 -*-
+
+&RUNCTL
+!# NOTES:
+!# 1. The following entries are meaningless, because they are overwritten
+!#    by TIMER (see timer.nml):
+!#    DT_START, DT_STOP, NO_DAYS, NO_STEPS, LRESUME, NO_CYCLES, PUTRERUN,
+!#    LABORT 
+!# 2. PUTDATA is only meaningful, if you switch L_BM_ORIG_OUTPUT = T
+!#    in channel.nml; all output is controlled in channel.nml
+!#
+!-  LRESUME      = $MSH_LRESUME        ! do not change; set by run-script
+  out_expname  = "$EXP_NAME"
+  out_filetype = 2                   ! GRIB=1, NetCDF=2
+! LTDIAG       = T                   ! tendency diagnostics
+! IADVEC       = 0                   ! no advection for quick runs
+  NMWICFI      = 8       ! number of mass-wind-inconsistency fixer iterations
+  LAMIP        = $ECHAM5_LAMIP
+  LNUDGE       = $LNUDGE             ! nudging 
+  LNMI         = $LNMI               ! normal mode filtering for nudging
+  LMIDATM      = $ECHAM5_LMIDATM     ! middle atmosphere setup
+  LCOUPLE      = $ECHAM5_LCOUPLE     ! Coupling of ECHAM and MPIOM
+!-  DT_START     = $START_YEAR,$START_MONTH,$START_DAY,0,0,0
+!-  DT_STOP      = $STOP_YEAR,$STOP_MONTH,$STOP_DAY,0,0,0
+!-  PUTDATA      = 5,'hours','first',0
+!-  TRIGFILES    = 1,'days','first',0
+!-  PUTRERUN     = 1,'months','last',0  ! default: 1,'months','last',0
+!-  NO_CYCLES    = 5,                  ! number of rerun cycles
+!-  LABORT       = F
+  NPROMA       = $NPROMA             ! change value in xmessy, not here
+  NPROCA       = $NPROCA             ! change value in xmessy, not here
+  NPROCB       = $NPROCB             ! change value in xmessy, not here
+/
+
+&DYNCTL
+  VCHECK=235.             ! activate for L90MA
+  SPDRAG=0.926E-4         ! activate for L90MA
+/
+
+&NMICTL
+/
+
+&NDGCTL
+!
+DT_NUDG_START =${START_YEAR},${START_MONTH},${START_DAY},${START_HOUR},0,0
+DT_NUDG_STOP  =${STOP_YEAR},${STOP_MONTH},${STOP_DAY},${STOP_HOUR},0,0
+LNUDGDBX      = F
+!LNUDGINI      = T
+LNUDGINI      = F
+NUDGTRUN      = 0
+LNUDGWOBS     = F
+LNUDGFRD      = F
+!
+NDG_FILE_VOR  = "$INPUTDIR_NUDGE/${FNAME_NUDGE}_vor"
+NDG_FILE_DIV  = "$INPUTDIR_NUDGE/${FNAME_NUDGE}_div"
+NDG_FILE_STP  = "$INPUTDIR_NUDGE/${FNAME_NUDGE}_stp"
+NDG_FILE_SST  = "$INPUTDIR_NUDGE/${FNAME_NUDGE}_sst"
+!
+!!# netCDF+
+!!# for usage of new nudging data in netCDF format
+!!# Notes: - SST/SIC usage from file <NDG_FILE_SST>.nc,
+!!#          but only if NSSTINC > 0 (default: 24 hours)
+!!#        - SIC usage only, if sic is available in <NDG_FILE_SST>.nc
+!!#        - INUDGFORMAT set via xmessy_mmd (ECHAM5_NUDGING_DATA_FORMAT)
+!!#          (0: old IEEE, 1: not used, 2: netCDF)
+!!#
+!!!NSSTINC     = 0
+NDG_FILE_NC  = "$INPUTDIR_NUDGE/${FNAME_NUDGE}.nc"
+INUDGFORMAT  = $ECHAM5_NUDGING_DATA_FORMAT 
+!!# netCDF-
+!
+! nudging weights: 
+!
+!
+/

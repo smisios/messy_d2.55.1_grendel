@@ -1,0 +1,1471 @@
+#! /bin/bash
+# Script to generate plots in Postscript from time series data by using
+#
+#   cdo  by Uwe Schulzweida (MPI)
+#
+#   and the GMT tools  gmtset, minmax, psbasemap, psxy, pstext
+#   by Paul Wessel and Walter H.F. Smith (http://gmt.soest.hawaii.edu/)
+#
+# Author: Frank Roeske
+# Date:   July/August 2007
+#
+# small modifications: Helmuth Haak November 2007  
+#
+##########################################################################
+LANG="C"
+
+tac mpiom.partab | grep CODE | sed 's/CODE=/ /g' > CODE
+
+tac mpiom.partab | grep UNIT | sed 's/UNITS=/ /g' | gawk ' { tt=$1 ;  printf "%s\n" , $tt } ' > UNIT
+
+tac mpiom.partab | grep ' NAME' | sed 's/NAME=/ /g' | gawk ' { tt=$1 ;  printf "%s\n" , $tt } ' > VAR
+
+tac mpiom.partab | grep ' LONG' | sed 's/LONG_NAME=/ /g' | gawk ' { tt=$1 ;  printf "%s\n" , $tt } '  > DESC
+
+paste CODE UNIT > TSUNIT
+paste CODE VAR > TSVAR
+paste CODE DESC > TSDESC
+
+
+## Paths for cdo and GMT tools ###########################################
+#set -x
+script=$0
+uname=`uname -s`
+
+CDO=cdo
+cdo=`which ${CDO} | grep "not found"`
+if [ "${cdo}" != "" ]
+then
+    echo "${cdo}"
+    exit
+fi
+
+#GMT=/home/m211054/SOFTWARE/GMT4.4.0/bin
+GMT=/client/bin
+GMTtool=${GMT}/gmtset
+gmt=`which ${GMTtool} | grep "not found"`
+if [ "${gmt}" != "" ]
+then
+    echo "${gmt}"
+    exit
+fi
+
+
+## GMT settings ##########################################################
+${GMT}/gmtset MEASURE_UNIT inch
+${GMT}/gmtset TIME_LANGUAGE us
+${GMT}/gmtset INPUT_DATE_FORMAT yyyy-mm-dd
+${GMT}/gmtset ANNOT_FONT_SIZE 10
+${GMT}/gmtset ANNOT_FONT_PRIMARY 0
+${GMT}/gmtset ANNOT_FONT_SIZE_SECONDARY 10
+${GMT}/gmtset ANNOT_OFFSET_PRIMARY 0.04i
+${GMT}/gmtset ANNOT_OFFSET_SECONDARY 0.02i
+${GMT}/gmtset PLOT_DATE_FORMAT o
+if [ "${uname}" = "Linux" ]
+then
+  ${GMT}/gmtset HEADER_OFFSET 0.03i
+elif [ "${uname}" = "AIX" ]
+then
+  ${GMT}/gmtset HEADER_OFFSET -0.07i
+fi
+${GMT}/gmtset HEADER_FONT 1
+${GMT}/gmtset HEADER_FONT_SIZE 12
+${GMT}/gmtset LABEL_FONT_SIZE 8
+${GMT}/gmtset TICK_LENGTH 0.04i
+${GMT}/gmtset X_ORIGIN 1i
+
+
+
+## Usage: ################################################################
+usage() {
+   b=\\033[1m  ; it=\\033[3m  ; u=\\033[4m ;  n=\\033[0m
+   printf "\n${b}NAME${n}\n\t`basename $0` - To plot time series\n" >&2
+   printf "${b}SYNOPSIS ${n}\n\t${b}`basename $0`${n} [${u}OPTIONS${n}] [${u}FILE(S)${n}]\n\n" >&2
+   printf "${b}DESCRIPTION ${n}\n\t${b}`basename $0`${n} generates xy-plots in ${u}PostScript${n} from MPIOM data by using GMT tools.\n\n" >&2
+   printf "\t${u}OPTIONS${n}\n" >&2
+   printf "\t--help,   -h         Print this text.\n" >&2
+   printf "\t--codes,  -c ${u}CODES${n}   Codes: Commas for lists and hyphens for ranges.\n" >&2
+   printf "\t                     No overlap.               (Default: '1')\n" >&2
+   printf "\t--resol,  -r ${u}RESOL${n}   Time resolution: 0 for yearly, 1 for monthly\n" >&2
+   printf "\t                     and 2 for daily.          (Default: '1')\n" >&2
+   printf "\t                     It is dependent on what the FILE(S) allow(s) for.\n" >&2
+   printf "\t--nplots, -n ${u}NPLOTS${n}  Number of plots per page  (Default: '2')\n" >&2
+   printf "\t--xticks, -x ${u}XTICKS${n}  Tickmarks on the x-axis   (Default: '10')\n" >&2
+   printf "\t--yticks, -y ${u}YTICKS${n}  Tickmarks on the y-axis   (Default: '10')\n" >&2
+   printf "\t--suppr,  -s         Suppress plotting variable names.\n" >&2
+   printf "\t--gaps ,  -g         Look for gaps.\n" >&2
+   printf "\t--vfile,  -v ${u}FILE${n}    File of variable names    (Default: 'TSVAR' is created from zeitser.partab)\n" >&2
+   printf "\t--dfile,  -d ${u}FILE${n}    File of description texts (Default: 'TSDESC' is created from zeitser.partab)\n" >&2
+   printf "\t--ufile,  -u ${u}FILE${n}    File of physical units    (Default: 'TSUNIT' is created from zeitser.partab)\n\n" >&2
+   printf "\t${u}FILE(S)${n}              Up to ten file(s) of time series data written in the\n" >&2
+   printf "\t                     EXTRA format. Names must include just one '_'.\n" >&2
+   printf "\t                                               (Default: 'ZEITSER.ext_').\n" >&2
+   printf "\t                     Characters after '_' are interpreted as experiment names.\n" >&2
+   printf "\t                     Experiment names may not contain \"_0\", \"_1\" or \"_2\".\n\n" >&2
+   printf "\tIf ${u}OPTIONS${n} are not given, ${b}`basename $0`${n} inquires them interactively\n" >&2
+   printf "\tand shows the information extracted from the files.\n" >&2
+   printf "\tAt least one ${u}OPTION${n} is necessary to run non-interactively.\n" >&2
+exit 1
+}
+
+
+## Declarations ##########################################################
+# The GMT tool 'minmax' yields minimum and maximum real values.
+# To build plots with reasonable y-coordinates new upper and
+# lower bounds and intervals are computed by using 'expr'.
+#
+# 'expr' can only handle integers. Therefore, the real minmax values
+# must be transformed to integers before.
+# Values lower than a given factor are multiplied by this factor
+# to get the significant digits in front of the comma by using 'gawk'.
+#
+# After having computed the new bounds and intervals by using 'expr'
+# the integers are transformed back to reals by dividing by this factor again.
+factor=1000000
+
+# To account for unchanging time series data (only a horizontal line)
+ydifffac=100
+
+# Width of plot (inches)
+width=9
+
+# Presettings for the options
+pre_codes=1
+pre_timeres=1
+pre_nplots=2
+pre_xticks=10
+pre_yticks=10
+pre_suppr=n
+pre_gaps=n
+pre_varfile=TSVAR
+pre_descfile=TSDESC
+pre_unitfile=TSUNIT
+
+# Define resolutions
+# 0:  yearly  (small  resolution)
+# 1:  monthly (medium resolution)
+# 2:  daily   (large  resolution)
+res[0]=yearly
+res[1]=monthly
+res[2]=daily
+
+# Define average procedures for cdo
+avg[0]=yearavg
+avg[1]=monavg
+
+# Maximum of number of files allowed.
+# Restraint is due to the legend of experiment names written in one row
+# behind each other and to the colors being defined by names (see pens below).
+nmaxfiles=10
+
+# Define colors
+pen[1]=black
+pen[2]=red
+pen[3]=gold
+pen[4]=green
+pen[5]=cyan
+pen[6]=blue
+pen[7]=purple
+pen[8]=brown
+pen[9]=grey
+pen[10]=pink
+## End of declarations ###################################################
+
+# Manage arguments:
+if [ "${uname}" = "Linux" ]
+then
+  args=`getopt -lcodes:,timeres:,nplots:,xticks:,yticks:,suppr:,gaps:,vfile:,dfile:,ufile:,help c:r:n:x:y:sgv:d:u:h $* 2> /dev/null` || {
+  usage
+}
+
+  set -- ${args}
+
+  while [ $1 != "--" ]
+  do
+    case $1 in
+      --help     | -h    ) usage ;;
+      --codes    | -c    ) codes=$2 ;;
+      --resol    | -r    ) timeres=$2 ;;
+      --nplots   | -n    ) nplots=$2 ;;
+      --xticks   | -x    ) xticks=$2 ;;
+      --yticks   | -y    ) yticks=$2 ;;
+      --suppr    | -s    ) suppr=y ;;
+      --gaps     | -g    ) gaps=y ;;
+      --vfile    | -v    ) varfile=$2 ;;
+      --dfile    | -d    ) descfile=$2 ;;
+      --ufile    | -u    ) unitfile=$2 ;;
+    esac
+    shift
+  done
+
+# Interactive only if no options are given
+  args1=`echo ${args} | gawk ' { print $1 } '`
+  args=`echo ${args} | sed s/" --"/"--"/g `
+  if [ "${args1}" != "--" ]
+  then
+    interactive=n
+  else
+    interactive=y
+  fi
+
+elif [ "${uname}" = "AIX" ]
+then
+     while getopts c:r:n:x:y:sgv:d:u:h a 2> /dev/null
+     do
+	   case $a in
+	  c)   codes=${OPTARG};;
+	  r)   timeres=${OPTARG};;
+	  n)   nplots=${OPTARG};;
+	  x)   xticks=${OPTARG};;
+	  y)   yticks=${OPTARG};;
+	  s)   suppr=y;;
+	  g)   gaps=y;;
+	  v)   varfile=${OPTARG};;
+	  d)   descfile=${OPTARG};;
+	  u)   unitfile=${OPTARG};;
+	  h | \?)      usage
+	     exit 2;;
+	  esac
+     done
+     shift `expr $OPTIND - 1`
+
+  if [ "${OPTIND}" -eq "1" ]
+  then
+    interactive=y
+  else
+    interactive=n
+  fi
+
+  args=`echo $* `
+  args1=
+fi
+
+
+# Working directory
+wrkdir=`pwd`
+
+# If not interactive, test option arguments.
+if [ "${interactive}" = "n" ]
+then
+  if [ "${codes}" = "" ] 
+  then 
+    codes=${pre_codes}
+  else
+    codes=`echo ${codes} | tr -d \' `
+  fi
+
+  if [ "${timeres}" = "" ] 
+  then 
+    timeres=${pre_timeres}
+  else
+    timeres=`echo ${timeres} | tr -d \' `
+    if [ "${timeres}" -lt "0" ]
+    then
+      echo "RESOLUTION is lower than zero" >&2
+      exit
+    fi
+    if [ "${timeres}" -gt "2" ]
+    then
+      echo "RESOLUTION is greater than 2" >&2
+      exit
+    fi
+  fi
+
+  if [ "${nplots}" = "" ] 
+  then 
+    nplots=${pre_nplots}
+  else
+    nplots=`echo ${nplots} | tr -d \' `
+  fi
+
+  if [ "${xticks}" = "" ] 
+  then 
+    xticks=${pre_xticks}
+  else
+    xticks=`echo ${xticks} | tr -d \' `
+  fi
+
+  if [ "${yticks}" = "" ] 
+  then 
+    yticks=${pre_yticks}
+  else
+    yticks=`echo ${yticks} | tr -d \' `
+  fi
+
+  if [ "${suppr}" = "" ] 
+  then 
+    suppr=${pre_suppr}
+  else
+    suppr=`echo ${suppr} | tr -d \' `
+  fi
+
+  if [ "${gaps}" = "" ] 
+  then 
+    gaps=${pre_gaps}
+  else
+    gaps=`echo ${gaps} | tr -d \' `
+  fi
+
+  if [ "${varfile}" = "" ] 
+  then 
+    varfile=${wrkdir}/${pre_varfile}
+  else
+    varfile=`echo ${varfile} | tr -d \' `
+  fi
+
+  if [ ! -f "${varfile}" ]
+  then
+    echo "FILE ${varfile} not found" >&2
+    exit
+  fi
+
+  if [ "${descfile}" = "" ] 
+  then 
+    descfile=${wrkdir}/${pre_descfile}
+  else
+    descfile=`echo ${descfile} | tr -d \' `
+  fi
+
+  if [ ! -f "${descfile}" ]
+  then
+    echo "FILE ${descfile} not found" >&2
+    exit
+  fi
+
+  if [ "${unitfile}" = "" ] 
+  then 
+    unitfile=${wrkdir}/${pre_unitfile}
+  else
+    unitfile=`echo ${unitfile} | tr -d \' `
+  fi
+
+  if [ ! -f "${unitfile}" ]
+  then
+    echo "FILE ${unitfile} not found" >&2
+    exit
+  fi
+
+  if [ "${uname}" = "Linux" ]
+  then
+    shift
+  fi
+
+  n=1
+  while [ "$1" != "" ]
+  do
+# Control filenames
+    tsfile[${n}]=`echo $1 | tr -d \' `
+    if [ ! -s "${tsfile[${n}]}" ]
+    then
+      echo "${tsfile[${n}]} does not exist or is of size zero" >&2
+      exit
+    fi
+    for str in _0 _1 _2
+    do
+      string=.*${str}
+      ret=`expr ${tsfile[${n}]} : ${string} `
+      if [ "${ret}" -ne 0 ]
+      then
+	echo "File ${tsfile[${n}]}} contains on \"_0\" or \"_1\" or \"_2\"" >&2
+	exit
+      fi
+    done
+
+    shift
+    n=`expr ${n} \+ 1 `
+  done
+  nr=`expr ${n} \- 1 `
+
+  if [ "${nr}" -gt "${nmaxfiles}" ]
+  then
+    echo "More than ${nmaxfiles} files" >&2
+    exit
+  fi
+
+elif [ "${interactive}" = "y" ]
+then
+# If filenames are given
+  if [ "${args}" != "${args1}" ]
+  then
+    if [ "${uname}" = "Linux" ]
+    then
+      shift
+    fi
+
+    n=1
+    while [ "$1" != "" ]
+    do
+# Control filenames
+      tsfile[${n}]=`echo $1 | tr -d \' `
+      if [ ! -s "${tsfile[${n}]}" ]
+      then
+	echo "${tsfile[${n}]} does not exist or is of size zero" >&2
+      fi
+      for str in _0 _1 _2
+      do
+	string=.*${str}
+	ret=`expr ${tsfile[${n}]} : ${string} `
+	if [ "${ret}" -ne 0 ]
+	then
+	  echo "File ${tsfile[${n}]} contains \"_0\" or \"_1\" or \"_2\"" >&2
+	  exit
+	fi
+      done
+
+      shift
+      n=`expr ${n} \+ 1 `
+    done
+    nr=`expr ${n} \- 1 `
+
+    if [ "${nr}" -gt 10 ]
+    then
+      echo "More than 10 files" >&2
+      exit
+    fi
+  
+  else
+
+# If filenames are not given, look for standard files
+# Timeseries filename
+    filename=ZEITSER.ext_
+
+    echo "$0 is searching for files ${filename}* in ${wrkdir} whose names do not contain \"_0\" or \"_1\" or \"_2\" ..."
+    list=`ls ${filename}* | egrep -v '_2|_1|_0'`
+    if [ "${list}" != "" ]
+    then
+      echo "${list}"
+    fi
+    nr=`echo ${list} | wc -w`
+
+    if [ "${nr}" -gt "10" ]
+    then
+      echo "More than 10 files" >&2
+      exit
+    elif [ "${nr}" -eq "0" ]
+    then
+      echo "No such files found." >&2
+      exit
+    fi
+
+    set ${list}
+  
+    n=1
+    while [ "${n}" -le "${nr}" ]
+    do
+      tsfile[${n}]=${wrkdir}/`echo $1`
+      shift
+      n=`expr ${n} \+ 1 `
+    done
+  fi
+
+# The following three files should have been built 
+# in the first year of an MPIOM run
+
+# 1. Timeseries variables filename
+  varfile=${wrkdir}/${pre_varfile}
+  if [ ! -f "${varfile}" ]
+  then
+    echo "FILE ${varfile} not found" >&2
+    exit
+  fi
+
+# 2. Timeseries descriptions filename
+  descfile=${wrkdir}/${pre_descfile}
+  if [ ! -f "${descfile}" ]
+  then
+    echo "FILE ${descfile} not found" >&2
+    exit
+  fi
+
+# 3. Timeseries physical units filename
+  unitfile=${wrkdir}/${pre_unitfile}
+  if [ ! -f "${unitfile}" ]
+  then
+    echo "FILE ${unitfile} not found" >&2
+    exit
+  fi
+fi
+
+
+## Search for information about time and codes ###########################
+# Determine resolution for every file
+m=1
+n=1
+while [ "${n}" -le "${nr}" ]
+do
+# Get first years
+  if [ "${interactive}" = "y" ]
+  then
+    echo "First year in file ${tsfile[${n}]}:"
+  fi
+
+# The first call of ${CDO} is not time consuming yet
+  datebegin=`${CDO} info ${tsfile[${n}]} 2> /dev/null | head -2 | tail -1 | gawk ' { print $3 } '`
+  yearbegin[${n}]=`echo ${datebegin} | gawk ' BEGIN { FS="-" } { print $1 } '`
+  monthbegin[${n}]=`echo ${datebegin} | gawk ' BEGIN { FS="-" } { print $2 } '`
+  daybegin[${n}]=`echo ${datebegin} | gawk ' BEGIN { FS="-" } { print $3 } '`
+  if [ "${interactive}" = "y" ]
+  then
+    echo ${yearbegin[${n}]}
+  fi
+
+# However, a second call is necessary to obtain information the end 
+# of the time series. This can take long. 
+# To shorten time yearly averages are computed if they do not exist yet.
+  if   [ "${monthbegin[${n}]}" -eq "01" ]
+  then
+    if [ "${daybegin[${n}]}" -eq "01" ]
+    then
+      timeresv[${n}]=2
+    elif [ "${daybegin[${n}]}" -eq "31" ]
+    then
+      timeresv[${n}]=1
+    else
+      echo "Data in file ${tsfile[${n}]} are daily" >&2
+      echo " but they do not start with the first day of the month" >&2
+      exit
+    fi
+  elif [ "${monthbegin[${n}]}" -eq "12" ]
+  then
+    timeresv[${n}]=0
+  else
+    echo "Data in file ${tsfile[${n}]} are monthly" >&2
+    echo " but they do not start with the first month of the year" >&2
+    exit
+  fi
+
+# Average the data to yearly means if necessary
+  if [ ${timeresv[${n}]} -eq "0" ]
+  then
+    \ln -s ${tsfile[${n}]} ${tsfile[${n}]}_0 2> /dev/null
+  elif [ ${timeresv[${n}]} -gt "0" ]
+  then
+    if [ ! -s "${tsfile[${n}]}_0" -o "${tsfile[${n}]}_0" -ot "${tsfile[${n}]}" ]
+    then
+      ${CDO} ${avg[0]} ${tsfile[${n}]} ${tsfile[${n}]}_0 2> /dev/null
+    fi
+  else
+    echo "RESOLUTION is lower than zero" >&2
+    exit
+  fi
+
+
+# Get last years
+  if [ "${interactive}" = "y" ]
+  then
+    echo "Last  year in file ${tsfile[${n}]}:"
+  fi
+  dateend=`${CDO} info ${tsfile[${n}]}_0 2> codes | tail -1 | gawk ' { print $3 } '`
+  yearend[${n}]=`echo ${dateend} | gawk ' BEGIN { FS="-" } { print $1 } '`
+  monthend[${n}]=`echo ${dateend} | gawk ' BEGIN { FS="-" } { print $2 } '`
+  dayend[${n}]=`echo ${dateend} | gawk ' BEGIN { FS="-" } { print $3 } '`
+
+  if [ "${monthend[${n}]}" -eq 12 -a "${dayend[${n}]}" -eq 31 ]
+  then
+    if [ "${interactive}" = "y" ]
+    then
+      echo ${yearend[${n}]}
+    fi
+  else
+    yearbefore=`expr ${yearend[${n}]} \- 1 `
+    if [ "${interactive}" = "y" ]
+    then
+      echo "Year ${yearend[${n}]} is not complete."
+      echo "The previous year ${yearbefore} is assumed to be the ending year."
+    fi
+  fi
+
+# Get numbers of codes available in every file
+  codesv[${n}]=`cat codes | gawk ' { print $7 } '`
+  \rm -f codes
+  if [ "${codesv[${n}]}" -ne "${codesv[${m}]}" ]
+  then
+    if [ "${interactice}" = "y" ]
+    then
+      echo "Number of codes do not equal:"
+      echo "FILE ${tsfile[${m}]} has ${codesv[${m}]} codes."
+      echo "FILE ${tsfile[${n}]} has ${codesv[${n}]} codes."
+    fi
+  fi
+
+  n=`expr ${n} \+ 1 `
+done
+
+
+# Get minimum of first years
+n=1
+yearbeginmin=1000000000000000
+while [ "${n}" -le "${nr}" ]
+do
+  if [ "${yearbegin[${n}]}" -lt "${yearbeginmin}" ]
+  then
+    yearbeginmin=${yearbegin[${n}]}
+    nmax=${n}
+  fi
+  
+  n=`expr ${n} \+ 1 `
+done
+
+
+# Get maximum of last years
+n=1
+yearendmax=0
+while [ "${n}" -le "${nr}" ]
+do
+  if [ "${yearend[${n}]}" -gt "${yearendmax}" ]
+  then
+    yearendmax=${yearend[${n}]}
+    nmin=${n}
+  fi
+  
+  n=`expr ${n} \+ 1 `
+done
+
+# Number of years
+years=`expr ${yearendmax} \- ${yearbeginmin} \+ 1 `
+
+
+# Get minimum of number of codes
+n=1
+codesmin=1000000000000000
+while [ "${n}" -le "${nr}" ]
+do
+  if [ "${codesv[${n}]}" -lt "${codesmin}" ]
+  then
+    codesmin=${codesv[${n}]}
+  fi
+
+  n=`expr ${n} \+ 1 `
+done
+
+
+# Plot all codes or only a specific range of them?
+if [ "${interactive}" = "y" ]
+then
+#  echo codes $interactive 
+  echo "Minimum of number of codes in the files is ${codesmin}" 
+  echo "Which codes do you want? They can be listed using commas"
+  echo "to separate them and hyphens to specify ranges:"
+  read codes
+fi
+
+
+### Parsing #############################################
+### shell variable 'codes' for codes and determine
+#
+#   'ncodes'  :   number of codes and build
+#   'codes[]' :   a vector of code numbers
+#
+strcodes=${codes}
+
+if [ "${strcodes}" = "" ]
+then
+  nrnr=0
+else
+  set `echo ${strcodes} | tr ",-" "  "`
+  n=1
+  while [ "$1" != "" ]
+  do
+    argnr[${n}]=$1
+    shift
+    n=`expr $n \+ 1 `
+  done
+  nrnr=`expr $n \- 1 `
+fi
+
+
+if [ "${nrnr}" -eq "0" ]
+then
+  ncodes=1
+  codes[${ncodes}]=1
+elif [ "${nrnr}" -eq "1" ]
+then
+  ncodes=1
+  n=1
+  codes[${ncodes}]=${argnr[${n}]}
+else
+# nrnr > 1
+  ncodes=0
+  codes[${ncodes}]=0
+
+# tr behaves differently on different operating systems. To be sure:
+  ops=`echo ${strcodes} | tr "1" " " | tr "2" " " | tr "3" " "  \
+                        | tr "4" " " | tr "5" " " | tr "6" " "  \
+                        | tr "7" " " | tr "8" " " | tr "9" " "  \
+                        | tr "0" " "`
+  ops2="\ $ops"
+  set ${ops2}
+  n=1
+  while [ "$2" != "" ]
+  do
+    argop[${n}]=$2
+    shift
+    n=`expr ${n} \+ 1 `
+  done
+  nrop=`expr ${n} \- 1 `
+  nrop1=`expr ${nrop} \+ 1 `
+
+  if [ ${nrnr} -ne ${nrop1} ]
+  then
+    echo "CODES: Syntax not correct" >&2
+    exit
+  fi
+
+  n=2
+  while [ "${n}" -le "${nrop}" ]
+  do
+    n1=`expr ${n} \- 1 `
+    if [ "${argop[${n}]}" = "-" -a "${argop[${n}]}" = "${argop[${n1}]}" ] 
+    then
+      echo "CODES: Syntax not correct" >&2
+      exit
+    fi
+    n=`expr ${n} \+ 1 `
+  done
+
+  n=1
+  if [ "${argop[${n}]}" = ","  ]
+  then
+    ncodes=`expr ${ncodes} \+ 1 `
+    codes[${ncodes}]=${argnr[${n}]}
+#    echo codes[${ncodes}] ${codes[${ncodes}]}
+  fi
+  
+  while [ "${n}" -le "${nrop}" ]
+  do
+    if [ "${argop[${n}]}" = "-" ]
+    then
+      n1=`expr ${n} \+ 1 `
+  
+      if [ "${argnr[${n}]}" -ge "${argnr[${n1}]}" ]
+      then
+        echo "CODES overlap" >&2
+        exit
+      fi
+
+      if [ "${argnr[${n}]}" -le "${codes[${ncodes}]}" ]
+      then
+        echo "CODES overlap" >&2
+        exit
+      else
+        code="${argnr[${n}]}"
+        while [ "${code}" -le "${argnr[${n1}]}" ]
+        do
+          ncodes=`expr ${ncodes} \+ 1 `
+          codes[${ncodes}]="${code}"
+          code=`expr ${code} \+ 1 `
+        done
+      fi
+  
+    elif [ "${argop[${n}]}" = "," ]
+    then
+      n1=`expr ${n} \+ 1 `
+
+      if [ "${argop[${n1}]}" != "-" ]
+      then
+        n1=`expr ${n} \+ 1 `
+
+        if [ "${argnr[${n1}]}" -le "${codes[${ncodes}]}" ]
+        then
+          echo "CODES: Syntax not correct" >&2
+          exit
+        else
+          ncodes=`expr ${ncodes} \+ 1 `
+          codes[${ncodes}]="${argnr[${n1}]}"
+        fi
+      fi
+    fi
+
+    n=`expr ${n} \+ 1 `
+  done
+fi
+
+#k=1
+#while [ "${k}" -le "${ncodes}" ]
+#do
+#  echo $k ${codes[${k}]}
+#  k=`expr ${k} \+ 1 `
+#done
+### End of parsing codes ############################################
+
+
+# Get minimum of time resolution
+timeresmin=1000000000000000
+n=1
+while [ "${n}" -le "${nr}" ]
+do
+  if [ "${timeresv[${n}]}" -lt "${timeresmin}" ]
+  then
+    timeresmin=${timeresv[${n}]}
+  fi
+  n=`expr ${n} \+ 1 `
+done
+
+
+# Use this resolution or a smaller one?
+if [ "${interactive}" = "y" ]
+then
+  echo "Minimum time resolution is ${timeresmin} (${res[${timeresmin}]})."
+  if [ "${timeresmin}" -eq 2 ]
+  then
+    echo "Do you want this resolution <return>"
+    echo "or a smaller one (0: ${res[0]}, 1: ${res[1]})?"
+  elif [ "${timeresmin}" -eq 1 ]
+  then
+    echo "Do you want this resolution <return>"
+    echo "or a smaller one (0: ${res[0]})?"
+  fi
+
+  if [ "${timeresmin}" -eq 1 -o "${timeresmin}" -eq 2 ]
+  then
+    read answer
+    if [ "${answer}" = "" ]
+    then
+      timeres=${timeresmin}
+    elif [ "${answer}" -ge "0" -a "${answer}" -le "${timeresmin}"  ]
+    then
+      timeres=${answer}
+    else
+      echo "Only between 0 and ${timeresmin}" >&2
+      exit
+    fi
+  elif [ "${timeresmin}" -eq 0 ]
+  then
+    timeres=${timeresmin}
+  fi
+elif [ "${interactive}" = "n" ]
+then
+  if [ "${timeres}" -gt "${timeresmin}" ]
+  then
+    echo "RESOLUTION=${timeres} is not allowed by the data" >&2
+    exit
+  fi
+fi
+
+
+# Inquire number of plots per page
+if [ "${interactive}" = "y" ]
+then
+  echo " "
+  echo "Presetting for NPLOTS is ${pre_nplots}."
+  echo "Do you want this number <return>"
+  echo "or another one <positive_number>?"
+  read answer
+  if [ "${answer}" = "" ]
+  then
+    nplots=${pre_nplots}
+  elif [ "${answer}" -ge "1" ]
+  then
+    nplots=${answer}
+  else
+    echo "Only positive numbers" >&2
+    exit
+  fi
+
+  echo " "
+  echo "Presetting for XTICKS is ${pre_xticks}."
+  echo "Do you want this number <return>"
+  echo "or another one <positive_number>?"
+  read answer
+  if [ "${answer}" = "" ]
+  then
+    xticks=${pre_xticks}
+  elif [ "${answer}" -ge "1" ]
+  then
+    xticks=${answer}
+  else
+    echo "Only positive numbers" >&2
+    exit
+  fi
+
+  echo " "
+  echo "Presetting for YTICKS is ${pre_yticks}."
+  echo "Do you want this number <return>"
+  echo "or another one <positive_number>?"
+  read answer
+  if [ "${answer}" = "" ]
+  then
+    yticks=${pre_yticks}
+  elif [ "${answer}" -ge "1" ]
+  then
+    yticks=${answer}
+  else
+    echo "Only positive numbers" >&2
+    exit
+  fi
+
+  echo " "
+  echo "Do you want to suppress plotting variable names?"
+  echo "y for yes. Default is no <return>"
+  read answer
+  if [ "${answer}" = "" ]
+  then
+    suppr=${pre_suppr}
+  elif [ "${answer}" = "n" -o "${answer}" = "y" ]
+  then
+    suppr=${answer}
+  else
+    echo "Only y or n" >&2
+    exit
+  fi
+
+  echo " "
+  echo "Do you want to look for gaps?"
+  echo "y for yes. Default is no <return>"
+  read answer
+  if [ "${answer}" = "" ]
+  then
+    gaps=${pre_gaps}
+  elif [ "${answer}" = "n" -o "${answer}" = "y" ]
+  then
+    gaps=${answer}
+  else
+    echo "Only y or n" >&2
+    exit
+  fi
+fi
+
+
+# Average the data if necessary
+n=1
+while [ "${n}" -le "${nr}" ]
+do
+  if [ "${timeresv[${n}]}" -gt "${timeres}" ]
+  then
+    if [ ! -s "${tsfile[${n}]}_${timeres}" -o "${tsfile[${n}]}_${timeres}" -ot "${tsfile[${n}]}" ]
+    then
+      ${CDO} ${avg[${timeres}]} ${tsfile[${n}]} ${tsfile[${n}]}_${timeres} 2> /dev/null
+    fi
+  elif [ "${timeresv[${n}]}" -eq "${timeres}" ]
+  then
+    \ln -s ${tsfile[${n}]} ${tsfile[${n}]}_${timeres} 2> /dev/null
+  elif [ "${timeresv[${n}]}" -lt "${timeres}" ]
+  then
+    echo "This message should not appear" >&2
+    exit
+  fi
+
+  n=`expr ${n} \+ 1 `
+done
+## End of searching for information about time and codes #################
+
+
+## Look for gaps, i.e. missing years and determine the years beginning and ending the time series parts
+if [ "${gaps}" = "y" ]
+then
+  if [ "${interactive}" = "y" ]
+  then
+    echo "Searching for gaps ..."
+  fi
+
+  n=1
+  code=1
+  while [ "${n}" -le "${nr}" ]
+  do
+    if [ ! -s "${tsfile[${n}]}_0" -o "${tsfile[${n}]}_0" -ot "${tsfile[${n}]}" ]
+    then
+      ${CDO} ${avg[0]} ${tsfile[${n}]} ${tsfile[${n}]}_0 2> /dev/null
+    fi
+    ${CDO} selcode,${code} ${tsfile[${n}]}_0 ${tsfile[${n}]}_0_${code} 2> /dev/null
+    ${CDO} info ${tsfile[${n}]}_0_${code} 2> /dev/null | grep -v Date > ${tsfile[${n}]}_0_${code}_info 
+    cat ${tsfile[${n}]}_0_${code}_info | gawk ' { print $3 " " $10 } ' > ${tsfile[${n}]}_0_${code}_info2
+    cat ${tsfile[${n}]}_0_${code}_info2 | gawk ' BEGIN { FS="-" } { print $1 } ' > ${tsfile[${n}]}_0_${code}_years
+  
+    yearplus=`head -1 ${tsfile[${n}]}_0_${code}_years`
+    tscnt[${n}]=1
+    tsyearbegin[${tscnt[${n}]}]=${yearplus} 
+    for year in `cat ${tsfile[${n}]}_0_${code}_years`
+    do
+      if [ "${year}" -ne "${yearplus}" ]
+      then
+	tscnt[${n}]=`expr ${tscnt[${n}]} \+ 1 `
+	tsyearbegin[${tscnt[${n}]}]=${year}
+      else
+	tsyearend[${tscnt[${n}]}]=${year}
+      fi
+  
+      yearplus=`expr ${year} \+ 1 `
+    done
+  
+    n=`expr ${n} \+ 1 `
+  done
+else
+  n=1
+  while [ "${n}" -le "${nr}" ]
+  do
+    tscnt[${n}]=1
+  
+    n=`expr ${n} \+ 1 `
+  done
+fi
+
+
+# Initialize the total PostScript file. One PostScript file
+# will be produced for each code and appended to the total file.
+> plot.ps
+
+### LOOP over all codes ##################################################
+oldpage=0
+ncode=1
+while [ "${ncode}" -le "${ncodes}" ]
+do
+  page=`echo ${ncode} | gawk " { print (${ncode}+${nplots}-1)/${nplots} } "`
+  page=`echo ${page} | gawk ' { printf "%i\n",$1 } '`
+
+# Initialize one PostScript-file per page.
+  if [ "${page}" -gt "${oldpage}" ]
+  then
+>   plot${page}.ps
+  fi
+
+  if [ "${interactive}" = "y" ]
+  then
+    echo "Processing code ${codes[${ncode}]} ..."
+  fi
+
+## LOOP over all files ###################################################
+  n=1
+  while [ "${n}" -le "${nr}" ]
+  do
+# Select the desired code
+    ${CDO} selcode,${codes[${ncode}]} ${tsfile[${n}]}_${timeres} ${tsfile[${n}]}_${timeres}_${codes[${ncode}]} 2> /dev/null
+
+# Prepare the data as input for the GMT routine minmax 
+    ${CDO} info ${tsfile[${n}]}_${timeres}_${codes[${ncode}]} > ${tsfile[${n}]}_${timeres}_${codes[${ncode}]}_info 2> /dev/null
+
+    codename=`grep "${codes[${ncode}]}" "${descfile}" | gawk ' { print $4 } '`
+
+# Special treatment of salinity.
+# Two files are produced, one contains only the time info (info2) and only one the values (output).
+# The reason for this complex procedure is that 'cdo output' produces more accurate values than 'cdo info'.
+# Precision is crucial for salinity, because it changes only very little.
+# Both files are merged containing the time info as well as the values (info3).
+    if [ "${codename}" = "salinity" ]
+    then
+      cat ${tsfile[${n}]}_${timeres}_${codes[${ncode}]}_info | gawk ' { print $3 } ' > ${tsfile[${n}]}_${timeres}_${codes[${ncode}]}_info2
+      ${CDO} output ${tsfile[${n}]}_${timeres}_${codes[${ncode}]} > ${tsfile[${n}]}_${timeres}_${codes[${ncode}]}_output 2> /dev/null
+
+      records=`wc -l ${tsfile[${n}]}_${timeres}_${codes[${ncode}]}_output | gawk ' { print $1 } '`
+      inforec=`head -2 ${tsfile[${n}]}_${timeres}_${codes[${ncode}]}_info2 | tail -1 `
+      outrec=`head -1 ${tsfile[${n}]}_${timeres}_${codes[${ncode}]}_output`
+      echo ${inforec} ${outrec} > ${tsfile[${n}]}_${timeres}_${codes[${ncode}]}_info3
+
+      k=2
+      while [ "${k}" -le "${records}" ]
+      do
+	kplus=`expr ${k} \+ 1 `
+	inforec=`head -${kplus} ${tsfile[${n}]}_${timeres}_${codes[${ncode}]}_info2 | tail -1 `
+	outrec=`head -${k} ${tsfile[${n}]}_${timeres}_${codes[${ncode}]}_output | tail -1 `
+	echo ${inforec} ${outrec} >> ${tsfile[${n}]}_${timeres}_${codes[${ncode}]}_info3
+	 
+	k=`expr ${k} \+ 1 `
+      done
+    else
+      cat ${tsfile[${n}]}_${timeres}_${codes[${ncode}]}_info | grep -v Date | gawk ' { print $3 " " $10 } ' > ${tsfile[${n}]}_${timeres}_${codes[${ncode}]}_info3
+    fi
+
+
+# Determine minimum and maximum times and values for the whole time series
+    info=`${GMT}/minmax -f0T -C ${tsfile[${n}]}_${timeres}_${codes[${ncode}]}_info3`
+    set $info
+    onev[${n}]=$1
+    twov[${n}]=$2
+    threev[${n}]=$3
+    fourv[${n}]=$4
+#echo 1 ${onev[${n}]} 2 ${twov[${n}]} 3 ${threev[${n}]} 4 ${fourv[${n}]}
+    
+
+# If gaps were determined, split the incomplete time series into several complete time series.
+    if [ "${tscnt[${n}]}" -gt "1" ]
+    then
+      k=1
+      while [ "${k}" -le "${tscnt[${n}]}" ]
+      do
+>        ${tsfile[${n}]}_${timeres}_${codes[${ncode}]}_info3_${k}
+
+	lyear=${tsyearbegin[${k}]}
+	while [ "${lyear}" -le "${tsyearend[${k}]}" ]
+	do
+	  cyear=`echo ${lyear} | gawk ' { printf "%4.4d\n",$1 } '`
+	  egrep "^${cyear}" ${tsfile[${n}]}_${timeres}_${codes[${ncode}]}_info3 >> ${tsfile[${n}]}_${timeres}_${codes[${ncode}]}_info3_${k}
+
+	  lyear=`expr ${lyear} \+ 1 `
+	done
+
+	k=`expr ${k} \+ 1 `
+      done
+    fi
+
+    n=`expr ${n} \+ 1 `
+  done
+## END LOOP over all files ###############################################
+
+  
+## Make minimum value and maximum value more appropriate ###############
+# Simulate absolute value
+  n=1
+  ithree=`echo ${threev[${n}]} | gawk ' { printf "%i\n",$1 } '`
+  if [ ${ithree} -lt 0 ]
+  then
+    ithree=`expr $ithree \* \-1 `
+  fi
+
+
+# Look for those minimum and maximum values which are smaller than
+# a given factor and then multiply them by this factor.
+  if [ "${ithree}" -lt "${factor}" ]
+  then
+    n=1
+    while [ "${n}" -le "${nr}" ]
+    do
+      threev[${n}]=`echo ${threev[${n}]} | gawk " { print ${threev[${n}]}*${factor} } "`
+      fourv[${n}]=`echo ${fourv[${n}]} | gawk " { print ${fourv[${n}]}*${factor} } "`
+      n=`expr ${n} \+ 1 `
+    done
+  else
+    n=1
+    while [ "${n}" -le "${nr}" ]
+    do
+      threev[${n}]=${threev[${n}]}
+      fourv[${n}]=${fourv[${n}]}
+      n=`expr ${n} \+ 1 `
+    done
+  fi
+
+  n=1
+  while [ "${n}" -le "${nr}" ]
+  do
+    threev[${n}]=`echo ${threev[${n}]} | gawk ' { printf "%i\n",$1 } '`
+    fourv[${n}]=`echo ${fourv[${n}]} | gawk ' { printf "%i\n",$1 } '`
+
+    n=`expr ${n} \+ 1 `
+  done
+
+
+# According to the minimum of first years
+# get minimum of minimum time
+  n=1
+  onemin=1000000000000000
+  nonemin=1
+  while [ "${n}" -le "${nr}" ]
+  do
+    onecmp=`echo ${onev[${n}]} | gawk ' BEGIN { FS="-" } { print $1 } '`
+    if [ "${onecmp}" -lt "${onemin}" ]
+    then
+      onemin=${onecmp}
+      nonemin=${n}
+    fi
+    
+    n=`expr ${n} \+ 1 `
+  done
+
+
+# According to the maximum of last years
+# get maximum of maximum time
+  n=1
+  twomax=0
+  ntwomax=1
+  while [ "${n}" -le "${nr}" ]
+  do
+    twocmp=`echo ${twov[${n}]} | gawk ' BEGIN { FS="-" } { print $1 } '`
+    if [ "${twocmp}" -gt "${twomax}" ]
+    then
+      twomax=${twocmp}
+      ntwomax=${n}
+    fi
+    
+    n=`expr ${n} \+ 1 `
+  done
+
+
+# Get minimum of minimum values
+  n=1
+  threemin=1000000000000000
+  while [ "${n}" -le "${nr}" ]
+  do
+#echo  threev[$n] "${threev[${n}]}"
+    if [ "${threev[${n}]}" -lt "${threemin}" ]
+    then
+      threemin=${threev[${n}]}
+    fi
+    
+    n=`expr ${n} \+ 1 `
+  done
+#echo threemin $threemin
+
+
+# Get maximum of maximum values
+  n=1
+  fourmax=-1000000000000000
+  while [ "${n}" -le "${nr}" ]
+  do
+#echo  fourv[$n] "${fourv[${n}]}"
+    if [ "${fourv[${n}]}" -gt "${fourmax}" ]
+    then
+      fourmax=${fourv[${n}]}
+    fi
+    
+    n=`expr ${n} \+ 1 `
+  done
+#echo fourmax $fourmax
+
+
+# Compute tickmarks at the y-axis. 
+#echo fourmax $fourmax threemin $threemin
+  ydiff0=`expr ${fourmax} \- ${threemin} `
+  ydiffpc=`expr ${ydiff0} \/ 5 `
+#echo ydiffpc $ydiffpc
+  if [ "${ydiff0}" -eq "0" ]
+  then
+    ydiff=${ydifffac}
+    threemin=`expr ${threemin} \- ${ydiff} `
+    ydiffpc=`expr ${ydiff} \* 2 \/ 5 `
+  else
+    ydiff=`expr ${ydiff0} \/ ${yticks} `
+  fi
+
+# Expand minimum ($three) by some %.
+#echo three1 $three1 threemin $threemin
+  three1=`expr ${threemin} \- ${ydiffpc} `
+  four1=`expr ${fourmax} \+ ${ydiff} `
+#  four1=${fourmax}
+
+
+# three2 and ydiff2 are needed to write variables below the plot
+  three2=`expr ${three1} \- ${ydiff} `
+  ydiff2=`expr ${ydiff} \/ 2 `
+  three2=`expr ${three2} \- ${ydiff2} `
+
+  if [ "${ydiff0}" -ne "0" ]
+  then
+# Change ydiff to the next lower standard interval (1,2,5,10).
+    digits=`echo ${ydiff} | wc -c `
+    digits=`expr ${digits} \- 2 `
+
+    first=1
+    first=`echo ${first} | gawk " { print ${first}*10^${digits} } "`
+    first=`echo ${first} | gawk ' { printf "%i\n", $1 } '`
+    second=2
+    second=`echo ${second} | gawk " { print ${second}*10^${digits} } "`
+    second=`echo ${second} | gawk ' { printf "%i\n", $1 } '`
+    third=5
+    third=`echo ${third} | gawk " { print ${third}*10^${digits} } "`
+    third=`echo ${third} | gawk ' { printf "%i\n", $1 } '`
+    fourth=10
+    fourth=`echo ${fourth} | gawk " { print ${fourth}*10^${digits} } "`
+    fourth=`echo ${fourth} | gawk ' { printf "%i\n", $1 } '`
+
+
+    if [ ${ydiff} -ge ${first} -a ${ydiff} -le ${second} ]
+    then
+      ydiff=${second}
+    elif [ ${ydiff} -gt ${second} -a ${ydiff} -le ${third} ]
+    then
+      ydiff=${third}
+    elif [ ${ydiff} -gt ${third} -a ${ydiff} -le ${fourth} ]
+    then
+      ydiff=${fourth}
+    fi
+  fi
+
+# Division by the same factor.
+  if [ "${ithree}" -lt "${factor}" ]
+  then
+    ydiff=`echo ${ydiff} | gawk " { print ${ydiff}/${factor} } "`
+    ydiff=`echo ${ydiff} | gawk ' { printf "%f\n",$1 } '`
+    threemin=`echo ${threemin} | gawk " { print ${threemin}/${factor} } "`
+    fourmax=`echo ${fourmax} | gawk " { print ${fourmax}/${factor} } "`
+    three1=`echo ${three1} | gawk " { print ${three1}/${factor} } "`
+    three2=`echo ${three2} | gawk " { print ${three2}/${factor} } "`
+    four1=`echo ${four1} | gawk " { print ${four1}/${factor} } "`
+  fi
+## End of making minimum and maximum values more appropriate ##############################
+
+
+# Option -R for psbasemap
+  R="-R${onev[${nonemin}]}/${twov[${ntwomax}]}/${three1}/${four1}"
+
+#  echo RRRRRRR   $R
+
+# Make code right-justified in a 3 character string
+  ccode=`echo ${codes[${ncode}]} | gawk ' { printf "%3s\n",$1 } '`
+# Fetch the texts
+  var=`egrep "${ccode}" ${varfile} | gawk ' { print $2 " " $3 " " $4 " " $5 " " $6 " " $7 " " $8 " " $9 } '`
+  desc=`egrep "${ccode}" ${descfile} | gawk ' { print $2 " " $3 " " $4 " " $5 " " $6 " " $7 " " $8 " " $9 } '`
+  unit=`egrep "${ccode}" ${unitfile} | gawk ' { print $2 " " $3 } '`
+
+#HERE
+#psbasemap $R -Jx9i/6i -K -Bs1Y/WSen -Bpa1Of1o/WSen:=\$::."Timeseries": >> plot${page}.ps
+# Monthly annotation up to a maximum of 3 years
+  if [ "${years}" -le "3" ]
+  then
+    primar='a3Of1o'
+    second='-Bs1Y/WSen'
+  elif [ "${years}" -gt "3" -a "${years}" -lt "10" ]
+  then
+    tickdist=1
+    primar="${tickdist}Y"
+    second=
+  else
+    xdiff=`expr ${years} \/ ${xticks} `
+
+# Change xdiff to the next lower standard interval (1,2,5,10).
+    digits=`echo ${xdiff} | wc -c `
+    digits=`expr ${digits} \- 2 `
+
+    first=1
+    first=`echo ${first} | gawk " { print ${first}*10^${digits} } "`
+    first=`echo ${first} | gawk ' { printf "%i\n", $1 } '`
+    second=2
+    second=`echo ${second} | gawk " { print ${second}*10^${digits} } "`
+    second=`echo ${second} | gawk ' { printf "%i\n", $1 } '`
+    third=5
+    third=`echo ${third} | gawk " { print ${third}*10^${digits} } "`
+    third=`echo ${third} | gawk ' { printf "%i\n", $1 } '`
+    fourth=10
+    fourth=`echo ${fourth} | gawk " { print ${fourth}*10^${digits} } "`
+    fourth=`echo ${fourth} | gawk ' { printf "%i\n", $1 } '`
+	  
+	  
+    if [ ${xdiff} -ge ${first} -a ${xdiff} -le ${second} ]
+    then
+      xdiff=${second}
+    elif [ ${xdiff} -gt ${second} -a ${xdiff} -le ${third} ]
+    then
+      xdiff=${third}
+    elif [ ${xdiff} -gt ${third} -a ${xdiff} -le ${fourth} ]
+    then
+      xdiff=${fourth}
+    fi
+
+    primar="${xdiff}Y"
+    second=
+  fi
+
+
+# Plot coordinate system and annotation
+# Define options for psbasemap
+# 1:    -K
+# 2: -O -K
+# 3: -O -K
+# 4: -O -K
+#echo ncode $ncode nplots $nplots
+  modulo=`expr ${ncode} % ${nplots} `
+#echo modulo $modulo
+  koption=-K
+  ooption=-O
+  if [ "${modulo}" -eq "1" -o "${nplots}" -eq "1" ]
+  then
+    ooption=
+    height=
+  fi
+
+  distance=`echo ${nplots} | gawk " { print 1.5/(${nplots}+1) } "`
+  heidist=`echo ${distance} | gawk " { print ${height}+2*${distance} } "`
+echo distance $distance heidist $heidist
+
+  ${GMT}/gmtset Y_ORIGIN 0.8i
+#  ${GMT}/gmtset Y_ORIGIN 1i
+
+  fontsize=10
+  height=`echo ${nplots} | gawk " { print 5.6/${nplots} } "`
+#echo height $height
+  joption=-JX${width}/${height}
+  joption2=-JX
+
+  yoption=-Y`echo ${heidist}`i
+  yoption2=
+#echo yoption $yoption yoption2 $yoption2 joption $joption ooption $ooption
+  
+#echo ydiff $ydiff
+  ${GMT}/psbasemap $R ${joption} ${yoption} -Bp${primar}/${ydiff}WSen:."${desc}":  ${second} ${ooption} ${koption} >> plot${page}.ps
+
+
+# Plot text of physical unit on the left side above the y-axis
+  echo "${onev[${nonemin}]} ${four1} ${fontsize} 0 0 CB ${unit}" | ${GMT}/pstext -R ${joption2} ${yoption2} -N -O -K -D0i/0.11i  >> plot${page}.ps
+
+# Plot data of each file
+  n=1
+  while [ "${n}" -le "${nr}" ]
+  do
+# If gaps were determined plot each time series part separately
+    if [ "${tscnt[${n}]}" -gt "1" ]
+    then
+      k=1
+      while [ "${k}" -le "${tscnt[${n}]}" ]
+      do
+        ${GMT}/psxy -Wthick/${pen[${n}]} -R ${joption2} ${yoption2} -O -K ${tsfile[${n}]}_${timeres}_${codes[${ncode}]}_info3_${k} >> plot${page}.ps
+  
+        k=`expr ${k} \+ 1 `
+      done
+    else
+      ${GMT}/psxy -Wthick/${pen[${n}]} -R ${joption2} ${yoption2} -O -K ${tsfile[${n}]}_${timeres}_${codes[${ncode}]}_info3 >> plot${page}.ps
+    fi
+
+# Plot variables on the right side of the header
+    if [ "${suppr}" = "n" ]
+    then
+      echo "${onev[${nonemin}]} ${four1} ${fontsize} 0 0 LB ${var}" | ${GMT}/pstext -R ${joption2} ${yoption2} -N -O -K -D8.6i/0.11i  >> plot${page}.ps
+    fi
+
+    expname=`basename ${tsfile[${n}]}_${timeres} | gawk ' BEGIN { FS="_" } { print $2 } '`
+    if [ "${n}" -eq "1" ]
+    then
+      penlegend="-Wwhite,othick"
+    else
+      penlegend=-W${pen[${n}]}
+    fi
+    xpos=`expr ${n} \- 1 `
+    xpos=`expr ${xpos} \* 100 `
+    xpos=`expr ${xpos} \+ 0 `
+    xpos=`expr ${xpos} \* ${width} `
+    xpos=`echo ${xpos} | gawk " { print ${xpos}/${nmaxfiles} } "`
+    xpos=`echo ${xpos} | gawk " { print ${xpos}/100 } "`
+    xpos=`echo ${xpos} | gawk " { print ${xpos}+0.1 } "`
+
+    if [ "${modulo}" -eq "0" -o "${ncode}" -eq "${ncodes}" ]
+    then
+      if [ "${n}" -eq "${nr}" ]
+      then
+        koption=
+      else
+        koption=-K
+      fi
+    else
+      koption=-K
+    fi
+
+# Plot the experiment names in a row below the curves
+    echo "${onev[${nonemin}]} ${three1} ${fontsize} 0 0 LB ${expname}" | ${GMT}/pstext ${penlegend} -R ${joption2} ${yoption2} -N -O ${koption} -D${xpos}i/0.06i  >> plot${page}.ps
+    n=`expr ${n} \+ 1 `
+  done
+
+
+# Clean up
+  n=1
+  while [ "${n}" -le "${nr}" ]
+  do
+    \rm -f ${tsfile[${n}]}_${timeres}_${codes[${ncode}]}
+    \rm -f ${tsfile[${n}]}_${timeres}_${codes[${ncode}]}_info
+    \rm -f ${tsfile[${n}]}_${timeres}_${codes[${ncode}]}_info2
+    \rm -f ${tsfile[${n}]}_${timeres}_${codes[${ncode}]}_info3*
+    \rm -f ${tsfile[${n}]}_${timeres}_${codes[${ncode}]}_output
+    n=`expr ${n} \+ 1 `
+  done
+
+  k=1
+  if [ "${codes[${ncode}]}" = "${codes[${k}]}" ]
+  then
+    cat plot${page}.ps | sed s/"%%Pages: 1"/"%%Pages: ${page}"/g > plot.ps
+    \rm -f plot${page}.ps
+  else
+    cat plot${page}.ps | sed s/"%%Pages: 1"//g | sed s/"%%Page: 1 1"/"%%Page: ${page} ${page}"/g >> plot.ps
+    \rm -f plot${page}.ps
+  fi
+
+  oldpage=${page}
+  ncode=`expr ${ncode} + 1 `
+done
+### END LOOP over the codes ##############################################
+
+gv -media=A4 plot.ps

@@ -1,0 +1,157 @@
+! -*- f90 -*-
+
+&CTRL_TS
+! ### SYNTAX:
+!     - name of time series
+!     - [var@] name (incl. path) of data file
+!           .nc -> netCDF, e.g., "var@my_path_to_my_file/my_file.nc" 
+!               -> ASCII,  e.g., "my_path_to_my_file/my_file.txt" 
+!     - valid range ( default: -HUGE(0._dp), HUGE(0._dp) )
+!     - out of time interval policy: 0: stop; 1: continue with nearest ...
+!       ... (before time interval, after time interval)
+!     - interpolation method:  -1: previous; 0: linear interpolation; 1: next
+!     - yr,mo,dy,hr,mi,se : pick out always this date/time
+!       (example: 2000, , , , , , will cycle through the year 2000 etc.)
+!     - offset (in days)
+!
+! ###########
+! ### QBO ###
+! ###########
+!
+!TS(1) = 'qbo', '$INPUTDIR_MESSY/qbo/misc/qbo_data_v04.txt', ,99.90, 0, 0, 0, , , , , , , 0.0,
+!TS(1) = 'qbo', 'QBO@$INPUTDIR_MESSY/qbo/qbo_data_v04.nc',   ,99.90, 0, 0, 0, , , , , , , 0.0,
+!
+! ############ ######################
+! ### JVAL ### ### RAD4ALL_FUBRAD ###
+! ############ ######################
+!
+!   NOTE: 
+!    The data file must either contain
+!     * JVAL and/or FUBRAD:
+!       - the F10.7cm in sfu (adjusted to 1 AU !!!)
+!     * JVAL
+!       - phi_la,SR_toa_flux,flux(7),f0(7) (adjusted to 1 AU !!!)
+!     * FUBRAD
+!       - TSI, Flya, Fsch1, Fs, Fl, soscale, Fherz(7:21),
+!         Fhart(22:31), Fhug(32:49), Fchap
+!         (units: Wm-2, except: Fsch1, Fs, Fl (erg cm-2 s-1),
+!         soscale (dimensionless))
+!
+!TS(2) = 'solact','F107@$INPUTDIR_MESSY/jval/F10.7_1AU_1948_2085.nc', , , 0, 0, 0, , , , , , , 0.0,
+!TS(2) = 'solact','SOLCYC@$INPUTDIR_MESSY/jval/solar_data_1AU_1950_2006.nc', , , 0, 0, 0, , , , , , , 0.0,
+!
+!TS(3) = 'solspec','SOLAR_DATA@$INPUTDIR_MESSY/rad4all/spectral_solar_data_daily_1950_2007_fubrad_v01.nc', , , 0, 0, 0, , , , , , , 0.0,
+!TS(3) = 'solspec','$INPUTDIR_MESSY/rad/fubrad/misc/NRLSSI_FUB1.0_hist_X_spec055_19500101_20111231.txt', , , 0, 0, 0, , , , , , , 0.0,
+TS(3) = 'solspec','$INPUTDIR_MESSY/rad/fubrad/misc/NRLSSI_FUB1.0_hist_X_spec106_19500101_20111231.txt', , , 0, 0, 0, , , , , , , 0.0,
+!TS(3) = 'solspec','$INPUTDIR_MESSY/rad/fubrad/misc/NRLSSI_FUB1.0_hist_X_spec055_19500101_20111231.txt', , , 0, 0, 0, , , , , , , 0.0,
+
+!
+/
+
+&CTRL_LT
+! ### SYNTAX:
+! ### LT(.) = 'table name','netcdf-file with path','netcdf variable name',
+! ###         (table name must be unique)
+!
+!LT(1) = 'mytable','$INPUTDIR_MESSY/mysubmodel/LT_my_file.nc','myvar',
+!
+/
+
+&RGTEVENTS
+! ### SYNTAX:
+! ###         NML=   '' (DEFAULT)   : this namelist-file (import.nml)
+!                    <namelist file>: other namelist file
+!
+! ###         FILE=  '' (DEFAULT)   : - ONLY first netCDF-file in NML
+!                    <netCDF-file>  : - this file in NML
+!
+! ###         VAR=   '' (DEFAULT)   : - all variables from FILE
+!                                     - all variables in first namelist in NML
+!                    <tracer name>  : - this variable from namelist in NML
+!                                       (FILE specifier ignored !!!)
+! ###         Z=     <z1,z2,...>    : - list of emission heights [m]
+!                                       (above GND) for multi level emissions
+!                                       (Nx2D)
+!
+! NOTEs: (1) SUMMATION OF DIFFERENT OFFLINE EMISSIONS FOR ONE TRACER
+!            CAN BE ACHEIVED BY USING THE
+!            FILE- or VAR- specifier in combination with the NML-specifier
+!        (2) PRESCRIBED MIXING RATIOS CAN BE ACHIEVED
+!            in combination with SUBMODEL TNUDGE
+!        (3) Surface emission fluxes (2D) must be in  molecules m-2 s-1.
+!        (4) Volume emissions (3D)        must be in  molecules m-3 s-1.
+!        (5) Multi level emissions (Nx2D) must be in  molecules m-2 s-1.
+!        (6) For volume emissions (3D), the corresponding &REGRID-namelist
+!            must contain the specification of the vertical coordinate.
+!            The Z-specifier (emission heights) must not be used!
+!        (7) The trigger for multi level emissions (Nx2D) is the presence
+!            of the Z-specifier (emission heights) in the RG_TRIG action
+!            string. The corresponding &REGRID-namelist must not contain any
+!            specification of a vertical coordinate, since the levels
+!            must be treated as 'invariant' (parameter-)dimension.
+!        (8) For Nx2D emissions, the FILE specifier must not be used, since
+!            the level is treated by NCREGRID as invariant dimension.
+!            (Regridding of a file (i.e., multiple variables in one step)
+!             containing one or more variables with a free parameter
+!             (here level index) is not possible, since the 'parameter'
+!             dimension is already used for the number of variables.)
+!
+! ############################################################################
+! OFFLINE RAD: ozone, temperature, specific humidity, ...
+! ############################################################################
+! time independent conditions
+RG_TRIG( 1) = 1, 'years', 'first', 0, 'INP_slm',   1,1,1,1, 'NML=./import/rad/mbm/MESSy_zm_slm_offline_ini_T42.nml;       VAR=slm;    IPOL=SCRP',
+RG_TRIG( 2) = 1, 'years', 'first', 0, 'INP_geosp', 1,1,1,1, 'NML=./import/rad/mbm/MESSy_zm_geosp_offline_ini_T42.nml;     VAR=geosp;  IPOL=SCRP',
+RG_TRIG( 3) = 1, 'years', 'first', 0, 'INP_alb',   1,1,1,1, 'NML=./import/rad/mbm/MESSy_zm_alb_offline_ini_T42.nml;       VAR=alb;    IPOL=SCRP',
+RG_TRIG( 4) = 1, 'years', 'first', 0, 'INP_glac',  1,1,1,1, 'NML=./import/rad/mbm/MESSy_zm_glac_offline_ini_T42.nml;      VAR=glac;   IPOL=SCRP',
+RG_TRIG( 5) = 1, 'years', 'first', 0, 'INP_forest',1,1,1,1, 'NML=./import/rad/mbm/MESSy_zm_forest_offline_ini_T42.nml;    VAR=forest; IPOL=SCRP',
+! 
+! time varying surface conditions
+!
+RG_TRIG( 6) = 1, 'months', 'first', 0, 'INP_vlt',   1,1,12,$START_MONTH, 'NML=./import/rad/mbm/MESSy_2090_mmzm_vlt_offline_ini_T42.nml;    VAR=vlt;    IPOL=SCRP',
+RG_TRIG( 7) = 1, 'months', 'first', 0, 'INP_tsl',   1,1,12,$START_MONTH, 'NML=./import/rad/mbm/MESSy_2090_mmzm_tsl_offline_ini_T42.nml;    VAR=tsl;    IPOL=SCRP',
+RG_TRIG( 8) = 1, 'months', 'first', 0, 'INP_tsw',   1,1,12,$START_MONTH, 'NML=./import/rad/mbm/MESSy_2090_mmzm_tsw_offline_ini_T42.nml;    VAR=tsw;    IPOL=SCRP',
+RG_TRIG( 9) = 1, 'months', 'first', 0, 'INP_tsi',   1,1,12,$START_MONTH, 'NML=./import/rad/mbm/MESSy_2090_mmzm_tsi_offline_ini_T42.nml;    VAR=tsi;    IPOL=SCRP',
+RG_TRIG(10) = 1, 'months', 'first', 0, 'INP_cvs',   1,1,12,$START_MONTH, 'NML=./import/rad/mbm/MESSy_2090_mmzm_cvs_offline_ini_T42.nml;    VAR=cvs;    IPOL=SCRP',
+RG_TRIG(11) = 1, 'months', 'first', 0, 'INP_cvsc',  1,1,12,$START_MONTH, 'NML=./import/rad/mbm/MESSy_2090_mmzm_cvsc_offline_ini_T42.nml;   VAR=cvsc;   IPOL=SCRP',
+RG_TRIG(12) = 1, 'months', 'first', 0, 'INP_icecov',1,1,12,$START_MONTH, 'NML=./import/rad/mbm/MESSy_2090_mmzm_icecov_offline_ini_T42.nml; VAR=icecov; IPOL=SCRP',
+RG_TRIG(13) = 1, 'months', 'first', 0, 'INP_seacov',1,1,12,$START_MONTH, 'NML=./import/rad/mbm/MESSy_2090_mmzm_seacov_offline_ini_T42.nml; VAR=seacov; IPOL=SCRP',
+RG_TRIG(14) = 1, 'months', 'first', 0, 'INP_seaice',1,1,12,$START_MONTH, 'NML=./import/rad/mbm/MESSy_2090_mmzm_seaice_offline_ini_T42.nml; VAR=seaice; IPOL=SCRP',
+RG_TRIG(15) = 1, 'months', 'first', 0, 'INP_sni',   1,1,12,$START_MONTH, 'NML=./import/rad/mbm/MESSy_mmzm_sni_dummy_offline_ini_T42.nml;   VAR=sni;    IPOL=SCRP',
+!!$RG_TRIG(15) = 1, 'months', 'first', 0, 'INP_sni',   1,1,12,$START_MONTH, 'NML=./import/rad/mbm/MESSy_2090_mmzm_sni_offline_ini_T42.nml;    VAR=sni;    IPOL=SCRP',
+RG_TRIG(16) = 1, 'months', 'first', 0, 'INP_aps',   1,1,12,$START_MONTH, 'NML=./import/rad/mbm/MESSy_2090_mmzm_aps_offline_ini_T42.nml;    VAR=aps;    IPOL=SCRP',
+! 
+! atmospheric conditions 
+!
+RG_TRIG(17) = 1, 'months', 'first', 0, 'INP_O3',    1,1,12,$START_MONTH, 'NML=./import/rad/mbm/MESSy_2090_mmzm_O3_offline_ini_mlev_T42.nml;     VAR=O3',
+RG_TRIG(18) = 1, 'months', 'first', 0, 'INP_CH4',   1,1,12,$START_MONTH, 'NML=./import/rad/mbm/MESSy_2090_mmzm_CH4_offline_ini_mlev_T42.nml;    VAR=CH4',
+RG_TRIG(19) = 1, 'months', 'first', 0, 'INP_qm1',   1,1,12,$START_MONTH, 'NML=./import/rad/mbm/MESSy_2090_mmzm_q_offline_ini_mlev_T42.nml;      VAR=q',
+RG_TRIG(20) = 1, 'months', 'first', 0, 'INP_tm1',   1,1,12,$START_MONTH, 'NML=./import/rad/mbm/MESSy_2090_mmzm_st_offline_ini_mlev_T42.nml;     VAR=st',
+RG_TRIG(21) = 1, 'months', 'first', 0, 'INP_clc',   1,1,12,$START_MONTH, 'NML=./import/rad/mbm/MESSy_2090_mmzm_aclcac_offline_ini_mlev_T42.nml; VAR=aclcac',
+RG_TRIG(22) = 1, 'months', 'first', 0, 'INP_cdn',   1,1,12,$START_MONTH, 'NML=./import/rad/mbm/MESSy_2090_mmzm_acdnc_offline_ini_mlev_T42.nml;  VAR=acdnc',
+RG_TRIG(23) = 1, 'months', 'first', 0, 'INP_xim1',  1,1,12,$START_MONTH, 'NML=./import/rad/mbm/MESSy_2090_mmzm_xi_offline_ini_mlev_T42.nml;     VAR=xi',
+RG_TRIG(24) = 1, 'months', 'first', 0, 'INP_xlm1',  1,1,12,$START_MONTH, 'NML=./import/rad/mbm/MESSy_2090_mmzm_xl_offline_ini_mlev_T42.nml;     VAR=xl',
+!
+! ###########################################
+! AEROPT
+! ###########################################
+!
+! TIMER: JAN 1950 =   1       DEC 1950 =  12
+!        JAN 1951 =  13       DEC 1951 =  24
+!        ...
+!        JAN 1960 = 121       DEC 1960 = 132
+!        ...
+!        JAN 1991 = 493       DEC 1991 = 504
+!        JAN 1992 = 505       DEC 1992 = 516
+!        ...
+!        JAN 2000 = 601       DEC 2000 = 612
+!
+!        JAN 2010 = 721       DEC 2010 = 732
+!        JAN 2011 = 733       DEC 2011 = 744
+!
+RG_TRIG(195) = 1,'months', 'first',0,'OPT-LW' , 601,1,612,601,'NML=./import/aeropt/CCMI-ETH_UMZ1.0_hist_optLW-ECHAM5_X_195001-201112.nml;',
+!
+RG_TRIG(196) = 1,'months', 'first',0,'OPT-SW' , 601,1,612,601,'NML=./import/aeropt/CCMI-ETH_UMZ1.0_hist_optSW-ECHAM5_X_195001-201112.nml;',
+!
+
+/

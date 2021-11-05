@@ -1,0 +1,35 @@
+\CANCEL MODE verify ! like "unset echo" under unix
+CANCEL DATA/ALL
+CANCEL VARIABLE/ALL
+CANCEL SYMBOL/ALL
+
+SET DATA/skip=1/FORMAT=DELIMITED/VARIABLES="X_Value,raw_Untitled,raw_T_NA,raw_T_oben,raw_T_mid,raw_RH_NA,raw_RH_oben,raw_RH_mid,raw_DiffDruck,raw_Ozon_MLU,raw_NOx,raw_NO,raw_verduennungsfluss,raw_FID,raw_UV_Diode,raw_Druck,raw_O3_Ethen,raw_Konv_Eff,raw_CH4,raw_Comment" FeClO3.csv
+
+! see: http://ferret.pmel.noaa.gov/static/FAQ/axes_and_data/time_axis_from_variables.html
+! Define a time axis:
+DEFINE AXIS/T/T0=1-jan-2010/UNIT=seconds time=X_Value[L=1:21480]
+! ! Define a dummy variable on the new time taxis:
+LET dummy=t[GT=time]
+
+! Reshape the variable from abstract I axis to the new T axis
+LET/TITLE="Untitled          " /UNIT=""    Untitled          = RESHAPE(raw_Untitled          , dummy)
+LET/TITLE="T_NA              " /UNIT=""    T_NA              = RESHAPE(raw_T_NA              , dummy)
+LET/TITLE="T_oben            " /UNIT=""    T_oben            = RESHAPE(raw_T_oben            , dummy)
+LET/TITLE="T_mid             " /UNIT=""    T_mid             = RESHAPE(raw_T_mid             , dummy)
+LET/TITLE="RH_NA             " /UNIT=""    RH_NA             = RESHAPE(raw_RH_NA             , dummy)
+LET/TITLE="RH_oben           " /UNIT=""    RH_oben           = RESHAPE(raw_RH_oben           , dummy)
+LET/TITLE="RH_mid            " /UNIT=""    RH_mid            = RESHAPE(raw_RH_mid            , dummy)
+LET/TITLE="DiffDruck         " /UNIT=""    DiffDruck         = RESHAPE(raw_DiffDruck         , dummy)
+LET/TITLE="Ozon_MLU          " /UNIT="ppb" Ozon_MLU          = RESHAPE(raw_Ozon_MLU          , dummy)
+LET/TITLE="NOx               " /UNIT=""    NOx               = RESHAPE(raw_NOx               , dummy)
+LET/TITLE="NO                " /UNIT=""    NO                = RESHAPE(raw_NO                , dummy)
+LET/TITLE="verduennungsfluss " /UNIT="l/s" verduennungsfluss = RESHAPE(raw_verduennungsfluss , dummy)
+LET/TITLE="FID               " /UNIT="mv"  FID               = RESHAPE(raw_FID               , dummy)
+LET/TITLE="UV_Diode          " /UNIT="V"   UV_Diode          = RESHAPE(raw_UV_Diode          , dummy)
+LET/TITLE="Druck             " /UNIT="hPa" Druck             = RESHAPE(raw_Druck             , dummy)
+LET/TITLE="O3_Ethen          " /UNIT="ppb" O3_Ethen          = RESHAPE(raw_O3_Ethen          , dummy)
+LET/TITLE="Konv_Eff          " /UNIT=""    Konv_Eff          = RESHAPE(raw_Konv_Eff          , dummy)
+LET/TITLE="CH4               " /UNIT=""    CH4               = RESHAPE(raw_CH4               , dummy)
+LET/TITLE="Comment           " /UNIT=""    Comment           = RESHAPE(raw_Comment           , dummy)
+
+SAVE/ClOBBER/FILE=FeClO3.nc Untitled,T_NA,T_oben,T_mid,RH_NA,RH_oben,RH_mid,DiffDruck,Ozon_MLU,NOx,NO,verduennungsfluss,FID,UV_Diode,Druck,O3_Ethen,Konv_Eff,CH4,Comment

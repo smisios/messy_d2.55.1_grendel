@@ -1,0 +1,53 @@
+#! /bin/tcsh -f
+# -*- Shell-script -*- Time-stamp: <2014-02-19 14:14:41 sander>
+
+if ( "$2" == "" ) then
+  echo "usage:"
+  echo "  plt_mergeto_pdf <outfilename> [portrait|landscape]"
+  exit
+endif
+
+# type outfile with or without extension:
+# note that ":r" only works for names with only one dot
+set outfile = "$1:t:r"
+
+if ( "$2" == "landscape" ) set landscape
+
+set tmpfile = tmp_file.txt
+
+echo "converting all *.plt to *.ps"
+foreach pltfile (page*.plt)
+  set basename = `basename $pltfile .plt`
+  #echo "working on $basename.plt"
+
+  # check if pltfile contains illegal "nan" values:
+  grep -i nan $basename.plt > $tmpfile
+  if ( -s $tmpfile != 0 ) then
+    echo "WARNING: $basename.plt contains 'nan'"
+    echo "         (replacing 'nan' with '0')"
+    mv -f $basename.plt $tmpfile
+    sed 's/nan/0/g' $tmpfile > $basename.plt
+  endif
+
+  if ${?landscape} then
+    gksm2ps -p landscape -l cps -R -o $basename.ps_raw $basename.plt
+  else
+    gksm2ps -p portrait  -l cps -R -o $basename.ps_raw $basename.plt
+  endif
+  # improve postscript file:
+  ps2ps $basename.ps_raw $basename.ps
+  # remove temporary file:
+  rm $basename.ps_raw
+end
+echo "merging all *.ps into $outfile.ps"
+# (no space after "-o"):
+psmerge -o$outfile.ps page*.ps
+echo "converting $outfile.ps to $outfile.pdf"
+ps2pdf $outfile.ps $outfile.pdf
+gzip -f $outfile.ps
+
+# remove temporary files:
+rm tmp_*
+rm page*.ps
+
+exit

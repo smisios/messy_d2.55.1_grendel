@@ -1,0 +1,364 @@
+#export
+
+SHELL = /bin/sh
+
+# ---------------------------------------------------------------
+
+###srcdir = .
+###top_srcdir = ..
+### VPATH = .
+prefix = .
+exec_prefix = ${prefix}
+
+bindir = ${exec_prefix}/bin
+sbindir = ${exec_prefix}/sbin
+libexecdir = ${exec_prefix}/libexec
+datadir = ${datarootdir}
+sysconfdir = ${prefix}/etc
+libdir = ${exec_prefix}/lib
+includedir = ${prefix}/include
+oldincludedir = /usr/include
+infodir = ${datarootdir}/info
+mandir = ${datarootdir}/man
+datarootdir = ${prefix}/share
+
+sharedstatedir = ${prefix}/com
+localstatedir = ${prefix}/var
+
+program_transform_name = s,x,x,
+
+# ---------------------------------------------------------------
+# ARCHITECTURE
+ARCH     = LINUX64
+ENDIAN   = LITTLE_ENDIAN
+LINKMODE = 
+
+# TOOLS
+AR       = ar
+ARFLAGS  = crv
+NMFLAGS  = 
+LD       = 
+LDFLAGS  = 
+AS       = as
+
+# COMPILER AND FLAGS
+COMPILER = 
+F90      = mpifort
+F90FLAGS = -O3 -fpp -heap-arrays -fp-model strict -lpthread -save-temps -fno-alias -align all
+DEFOPT   = -D
+MODOPT   = -I
+EXTMODCASE = asis
+### NOTE: ALBMELTHI temporarily here for MPIOM
+MPIOMVERS = MPIOM_13B
+### mz_rs_20160217 THESE F90DEFS ARE ONLY FOR THE SMIL, NOT FOR THE SMCL:
+F90DEFS0 =  MESSY LITTLE_ENDIAN _LINUX64  PNCREGRID ECHAM5   HAVE_LIBNETCDF64 FFT991 ALBMELTHI MESSYMMD  MPIOM_13B       
+### mz_rs_20160217 additional CPP defs for tagging:
+-include ../../messy/mbm/caaba/mecca/tag/f90defs0_mecca_tag.mk
+F90DEFS  = $(addprefix $(DEFOPT), $(F90DEFS0))
+
+# TARGETS
+ECHAM5_LIB     =  -L../../lib -lmpiom -L../../lib -llapack -L../../lib -lblas -L../../lib -lsupport -L../../lib -lmessy -lcrm -lqhull -lisorropia  -L../../lib -lmmd -L/home/stergios/sw/netcdf-3.6.3-intel/lib -lnetcdf      
+ECHAM5_INCLUDE =    -I../../libsrc/mmd/src -I/home/stergios/sw/netcdf-3.6.3-intel/include -I/home/stergios/sw/netcdf-3.6.3-intel/include     
+
+# MESSY ?
+MESSY    = MESSY
+MESSYMMD = MESSYMMD
+
+# FORCHECK
+FCKLIBS  = 
+# ---------------------------------------------------------------
+
+# ---------------------------------------------------------------
+### NOTE: THIS IS A TEMPORARY WORKAROUND FOR 'gmake check' TO WORK!
+###       AT THE END THE PREPROCESSOR DIRECTIVES SHOULD BE SHARED AMONG
+###       ALL BASE-/SUBMODELS ...
+F90DEFSMPIOM = $(shell ../messy/util/getomdefs.sh ../mpiom/src/Makefile.m)
+# ---------------------------------------------------------------
+
+# ---------------------------------------------------------------
+ifeq ($(strip $(MESSY)), MESSY)
+SRCDIRS  = src modules ../messy/bmil ../messy/echam5/bmil ../messy/echam5/smil ../messy/smil
+
+LIBSRCS  = ../messy/smcl
+ifneq ($(strip $(MPIOMVERS)), )
+LIBSRCS  += ../mpiom/src ../mpiom/src_hamocc
+endif
+ifeq ($(strip $(MESSYMMD)), MESSYMMD)
+LIBSRCS  += ../libsrc/mmd/src
+endif
+ifeq ($(strip $(FORPY_DEF)), HAVE_FORPY)
+LIBSRCS  += ../libsrc/forpy
+endif
+
+else
+#SRCDIRS  = src modules
+#LIBSRCS  =
+define err_message
+
+! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! echam5.3.02_c cannot be compiled with --disable-MESSY anymore !
+! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+endef
+#$(warning $(err_message))
+endif
+
+INCLUDES = $(MODOPT)./ $(addprefix $(MODOPT)../, $(SRCDIRS)) \
+	   $(addprefix $(MODOPT)../, $(LIBSRCS)) \
+	   $(ECHAM5_INCLUDE) -I../include
+# ---------------------------------------------------------------
+
+# ---------------------------------------------------------------
+LIBS     = $(ECHAM5_LIB)
+F90NOR8  = $(INCLUDES) $(F90FLAGS) $(F90DEFS)
+F90ALL   = $(F90NOR8)
+
+ifeq ($(strip $(LD)), )
+LD = $(F90)
+endif
+ifeq ($(strip $(LDFLAGS)), )
+LDFLAGS = $(F90NOR8)
+endif
+
+# ---------------------------------------------------------------
+
+# ----------------------------------------------------------------------
+ ifeq (,$(filter __$(ARCH),$(notdir $(CURDIR))))
+# FROM HERE UP TO 'else' RULES AND TARGETS ARE VALID IN THE
+# BASE DIRECTORY OF THIS DISTRIBUTION
+# ----------------------------------------------------------------------
+.SUFFIXES:
+
+OBJDIR := __$(ARCH)
+
+MAKETARGET = --no-print-directory -C $(OBJDIR) \
+	     -f $(CURDIR)/Makefile SRCDIR=$(CURDIR) $(MAKECMDGOALS)
+
+#.PHONY: $(OBJDIR)
+# $(OBJDIR):
+#	+@[ -d $@ ] || mkdir -p $@
+#	+@$(MAKE) $(MAKETARGET)
+
+NOOBJTARG =
+
+.PHONY: force
+force:
+ifeq ($(strip $(MESSY)), MESSY)
+ifneq (,$(strip $(findstring $(MAKECMDGOALS), $(NOOBJTARG))))
+	@echo 'Do not need (OBJDIR) for $(MAKECMDGOALS)'
+else
+	@echo 'Need (OBJDIR) for $(MAKECMDGOALS)'
+	@if ! test -r Makefile ; then \
+	  echo "Makefile does not exist!" ; \
+	  echo "Recursion not possible!"; \
+	  exit 1 ; \
+	fi
+	@[ -d $(OBJDIR) ] || mkdir -p $(OBJDIR)
+	@$(MAKE) $(MAKETARGET)
+endif
+else
+	$(warning $(err_message))
+endif
+
+% :: force ; :
+
+Makefile : ;
+%.mk :: ;
+
+.PHONY: clean
+clean:
+ifeq ($(strip $(MESSY)), MESSY)
+	-find $(OBJDIR) -type f -name '*' -exec rm -f '{}' \;
+#	-rm -fr $(OBJDIR)/*
+else
+	$(warning $(err_message))
+endif
+
+# Note: "-rm -fr $(OBJDIR)" must be the last command
+.PHONY: distclean
+distclean: clean
+ifeq ($(strip $(MESSY)), MESSY)
+	rm -fr $(OBJDIR)
+else
+	$(warning $(err_message))
+endif
+
+### % :: $(OBJDIR) ; :
+
+# ----------------------------------------------------------------------
+# MISC
+# ----------------------------------------------------------------------
+.PHONY: check
+check:
+ifeq ($(strip $(MESSY)), MESSY)
+	../messy/util/mfchk echam5 "$(F90DEFS0) $(F90DEFSMPIOM)" "$(SRCDIRS) $(LIBSRCS)" "$(ECHAM5_INCLUDE)" "$(F90)" "$(FCKLIBS)"
+else
+	$(warning $(err_message))
+endif
+
+# ----------------------------------------------------------------------
+ else
+# FROM HERE UP TO 'endif' RULES AND TARGETS ARE VALID IF THIS Makefile
+# IS CALLED BY ITSELF FROM WITHIN THE (ARCHITECTIRE SPECIFIC) 'OBJDIR'
+# ----------------------------------------------------------------------
+
+.SUFFIXES: $(SUFFIXES) .f90
+
+%.o: %.f90
+	$(F90) $(F90ALL) -c $<
+
+# ----------------------------------------------------------------------
+VPATH = $(SRCDIR)
+
+REDIR    = ..
+
+PROG     = $(REDIR)/../bin/echam5.exe
+
+### SEARCH PATHs FOR ECHAM5/MESSy
+vpath %.f90 $(REDIR)/src
+vpath %.f90 $(REDIR)/modules
+ifeq ($(strip $(MESSY)), MESSY)
+vpath %.f90 $(REDIR)/../messy/bmil
+vpath %.f90 $(REDIR)/../messy/smil
+vpath %.f90 $(REDIR)/../messy/echam5/bmil
+vpath %.f90 $(REDIR)/../messy/echam5/smil
+endif
+
+SRCS0   := $(foreach DIR, $(SRCDIRS), $(wildcard $(REDIR)/$(DIR)/*.f90))
+SRCS    := $(sort $(notdir $(SRCS0)))
+OBJS    := $(SRCS:.f90=.o)
+
+MAKEFILE_INC = depend.mk
+F_makedepend = $(REDIR)/../messy/util/sfmakedepend.pl --modcase $(EXTMODCASE) \
+	       --depend=obj --libdeps --file=$(MAKEFILE_INC) \
+	       $(addprefix --srcdir $(REDIR)/, $(SRCDIRS)) \
+	       $(addprefix -I$(REDIR)/, $(SRCDIRS)) -I$(REDIR)/include \
+	       $(addprefix --modsearch $(REDIR)/, $(LIBSRCS))
+
+# ----------------------------------------------------------------------
+
+.SUFFIXES: $(SUFFIXES) .f90
+
+%.o: %.f90
+	$(F90) $(F90ALL) -c $<
+
+# ----------------------------------------------------------------------
+
+.PHONY: all
+ifeq ($(strip $(MESSY)), MESSY)
+all: $(PROG)
+	@echo ''
+	@echo 'The compilation has been successful.'
+	@echo 'The model can be used now with the run script'
+	@echo '(messy/util/xmessy_mmd).'
+	@echo 'Use "xmessy_mmd -h" for more information.'
+	@echo ''
+else
+	$(warning $(err_message))
+endif
+
+ifeq ($(strip $(MESSY)), MESSY)
+ifeq ($(strip $(LINKMODE)), LIBS)
+$(PROG): depend $(OBJS)
+	$(AR) $(ARFLAGS) $(REDIR)/../lib/libmessy_e5.a \
+	      $(filter messy_%, $(OBJS))
+	$(AR) $(ARFLAGS) $(REDIR)/../lib/libe5mod.a \
+	      $(filter mo_%, $(OBJS))
+	$(AR) $(ARFLAGS) $(REDIR)/../lib/libe5src.a \
+	      $(filter-out messy_% mo_%, $(OBJS))
+	$(LD) $(LDFLAGS) -o $@ $(LIBS) -L$(REDIR)/../lib \
+	      -lmessy_e5 -le5mod $(REDIR)/../lib/libe5src.a
+else
+$(PROG): depend $(OBJS)
+	$(LD) $(LDFLAGS) -o $@ $(OBJS) $(LIBS)
+endif
+else
+	$(warning $(err_message))
+endif
+
+# update file dependencies
+depend $(MAKEFILE_INC): $(SRCS)
+ifeq ($(strip $(MESSY)), MESSY)
+	$(F_makedepend)
+else
+	$(warning $(err_message))
+endif
+
+# check files
+.PHONY: list
+list:
+ifeq ($(strip $(MESSY)), MESSY)
+	@echo "--- ARCHITECTURE ----------------------------------------------"
+	@echo "MACHINE        = `uname -a`"
+	@echo "ARCH           = $(ARCH)"
+	@echo "ENDIAN         = $(ENDIAN)"
+	@echo "LINKMODE       = $(LINKMODE)"
+	@echo "--- TOOLS -----------------------------------------------------"
+	@echo "AR             = $(AR)"
+	@echo "ARFLAGS        = $(ARFLAGS)"
+	@echo "NMFLAGS        = $(NMFLAGS)"
+	@echo "LD             = $(LD)"
+	@echo "LDFLAGS        = $(LDFLAGS)"
+	@echo "AS             = $(AS)"
+	@echo "MD5SUM_PRESENT = $(MD5SUM_PRESENT)"
+	@echo "--- COMPILERS AND FLAGS ---------------------------------------"
+	@echo "CPP            = $(CPP)"
+	@echo "CPPFLAGS       = $(CPPFLAGS)"
+	@echo "DEFS           = $(DEFS)"
+	@echo "CXX            = $(CXX)"
+	@echo "CC             = $(CC)"
+	@echo "CFLAGS         = $(CFLAGS)"
+	@echo "FC             = $(FC)"
+	@echo "FFLAGS         = $(FFLAGS)"
+	@echo "F90            = $(F90)"
+	@echo "F90VERS        = $(F90VERS)"
+	@echo "F90FLAGS       = $(F90FLAGS)"
+	@echo "DEFOPT         = $(DEFOPT)"
+	@echo "MODOPT         = $(MODOPT)"
+	@echo "F90DEFS0       = $(F90DEFS0)"
+	@echo "F90DEFS        = $(F90DEFS)"
+	@echo "--- LIBRARIES -------------------------------------------------"
+	@echo "LIBSRCS        = $(LIBSRCS)"
+	@echo "NETCDF_LIB     = $(NETCDF_LIB)"
+	@echo "NETCDF_INCLUDE = $(NETCDF_INCLUDE)"
+	@echo "MPI            = $(MPI)"
+	@echo "MPI2_LIB       = $(MPI2_LIB)"
+	@echo "MPI2_INCLUDE   = $(MPI2_INCLUDE)"
+	@echo "--- TARGETS --------------------------------------------------"
+	@echo "MESSY          = $(MESSY)"
+	@echo "ECHAM5_LIB     = $(ECHAM5_LIB)"
+	@echo "ECHAM5_INCLUDE = $(ECHAM5_INCLUDE)"
+	@echo "MPIOM_LIB      = $(MPIOM_LIB)"
+	@echo "MPIOM_INCLUDE  = $(MPIOM_INCLUDE)"
+	@echo "--------------------------------------------------------------"
+	@echo "SRCS           = "
+	@echo "$(SRCS)"
+	@echo "--------------------------------------------------------------"
+	@echo "OBJS           = "
+	@echo "$(OBJS)"
+	@echo "--------------------------------------------------------------"
+else
+	$(warning $(err_message))
+endif
+
+.DEFAULT:
+	@echo '  ---------------'
+	@echo '  UNKNOWN TARGET!'
+	@echo '  ---------------'
+
+# ----------------------------------------------------------------------
+
+include $(MAKEFILE_INC)
+-include $(REDIR)/specific.mk
+ifeq ($(strip $(MESSY)), MESSY)
+-include $(REDIR)/../messy/bmil/specific.mk
+-include $(REDIR)/../messy/smil/specific.mk
+-include $(REDIR)/../messy/echam5/bmil/specific.mk
+-include $(REDIR)/../messy/echam5/smil/specific.mk
+endif
+
+# ----------------------------------------------------------------------
+
+# ----------------------------------------------------------------------
+ endif
+# ----------------------------------------------------------------------

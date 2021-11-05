@@ -1,0 +1,34 @@
+#! /bin/sh
+set -e
+. "@abs_builddir@/../setup-common.inc"
+
+assert_vars_are_set DEST GRID POOL np reflat reflon ie je date
+
+@MKDIR_P@ mk_anta
+cd mk_anta
+
+cat >"${DEST}/${GRID}_GRID.asc" <<EOF
+echo 'GRID='$GRID
+echo 'reflon='$reflon
+echo 'reflat='$reflat
+echo 'np='$np
+echo 'ie='$ie
+echo 'je='$je
+echo 'date='$date
+EOF
+
+cat >gridgen.input <<EOF
+&gridparams
+np=${np}
+jf=${je}
+date=${date}
+verbose=${DEBUG+1}${DEBUG-0} /
+${POOL}/setup/etopo5/TOTATO
+${DEST}/${GRID}_anta
+${DEST}/${GRID}_topo.raw
+EOF
+
+$CMD_PREFIX "@abs_builddir@/gridgen" <gridgen.input
+
+#mv topo "${DEST}/${GRID}_topo"
+#"${CDO}" -p 8b copy antar8 "${DEST}/${GRID}_anta"

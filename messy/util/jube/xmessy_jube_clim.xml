@@ -1,0 +1,802 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jube>
+  <benchmark name="messy_clim" outpath="messy_bench">
+    <comment>messy/clams clim-run</comment>
+
+    <!-- Usage:
+         tags: - time: use system function 'time' to measure the runtime of the simulation;
+               - comp: runs make clean and make in messy source directory;
+	       - perp: perpetuum run -> set 'cycle' in parameterset 'perpParam'
+
+               Do not use more than one profiling tool in a simulation run!!!
+               - darshan: use the darshan I/O profiling tool;
+                    - postprocessing: module load intel-para
+                                      module load darshan-util
+                                      darshan-job-summary.pl darshan.log
+                                      gv darshan.pdf
+                                      python darshanparser_jube.py -f darshan.log -j
+               - allinea: use the Allinea Performance Report tool;
+                    - postprocessing: e.g. firefox myprog_<NP>p_<DATE>.html
+               - advisor: use Intel Advisor for Vectorization and Thread profiling;
+                    - postprocessing: module use /usr/local/software/jureca/OtherStages
+                                      module load Stages/Devel
+                                      module load intel-para
+                                      module load Advisor/2016_update3
+                                      advixe-gui path/to/advisor/output/directory
+               - scorep: use Score-P/Scalasca profiling,
+               - scorep_comp: compile and run messy with scorep Option
+                    - postprocessing: module load intel-para
+                                      module load Scalasca
+                                      scalasca -examine path/to/scorep/output/directory
+               - gprof: profiling with gprof 
+                        -> compile with options for profiling
+                        -> on runtime gmon.out is created 
+                        -> postprocessing: gprof is called
+
+         example: 1. run messy with time measurement and darshan profiling:
+                          jube run messy_clim.xml -t time darshan
+                  2. standard messy simulation run:
+                          jube run messy_clim.xml
+    -->
+
+
+    <!-- Required files:
+         - Dummy Makefile:
+	      ${BASEDIR}/messy/mbm/clams/Makefile_jube
+	 - Dummy MESSy-script: 
+              $BASEDIR/messy/util/xmessy_mmd.jube
+         - Dummy namelist directory:
+              'dir_dummy_nml' specified in namelistParam
+
+         Attention:
+           - The namelist directory (NML_SETUP) will be overwritten !
+	   - ${BASEDIR}/messy/mbm/clams/Makefile will be overwritten !
+           - For perpetuum runs: the initfile will be overwritten !
+	     -> write access on directory/file !
+	     ->  copy original initfile for new run !
+	  
+    -->
+
+
+    <!-- ************************************************************************* 
+	             Makefile parameters 
+         ************************************************************************* -->
+
+    <parameterset name="makeParam">
+      <parameter name="scorep" type="string">scorep</parameter>
+      <parameter name="gprof" type="string">-pg</parameter>
+    </parameterset>
+
+    <!-- ************************************************************************* 
+	             jobscript parameters (used on JURECA) 
+         ************************************************************************* -->
+
+    <parameterset name="jobscriptParameter">
+      <parameter name="nodes" type="int">1</parameter>
+      <parameter name="ntasks" type="int">24</parameter>
+      <parameter name="ntaskspernode" type="int">24</parameter>
+      <parameter name="outlogfile">mpi-out.%j</parameter>
+      <parameter name="errlog">mpi-err</parameter>
+      <parameter name="errlogfile">${errlog}.%j</parameter>
+      <parameter name="timelimit">00:20:00</parameter>
+      <parameter name="partition" type="string">batch</parameter> 
+      <parameter name="filter" type="string">/work/zam/breuer/jube_messy_jr/filter</parameter> 
+    </parameterset>
+
+    <!-- ************************************************************************* 
+	             parameters for messy-script   
+         ************************************************************************* -->
+
+    <parameterset name="xmessy_mmd">
+      <parameter name="EXP_NAME" type="string">climtest</parameter>
+      <parameter name="START_YEAR" type="int">1979</parameter>
+      <parameter name="START_MONTH" type="int">01</parameter>
+      <parameter name="START_DAY" type="int">01</parameter>
+      <parameter name="START_HOUR" type="int">12</parameter>
+      <parameter name="STOP_YEAR" type="int">1979</parameter>
+      <parameter name="STOP_MONTH" type="int">01</parameter>
+      <parameter name="STOP_DAY" type="int">03</parameter>
+      <parameter name="STOP_HOUR" type="int">12</parameter>
+      <parameter name="NML_SETUP" type="string">MBM/${EXP_NAME}</parameter>
+      <parameter name="BASEDIR" type="string">/home/icg1/icg112/messy-2.53.0-output</parameter>
+      <parameter name="NPY" type="int">4</parameter> 
+      <parameter name="NPX" type="int">1</parameter> 
+      <parameter name="QWCH" type="int">0</parameter>
+      <parameter name="INPUTDIR_MESSY" type="string">/private.archive/icg112/emac_data/DATA/MESSy2</parameter>
+      <parameter name="MSH_DATAROOT" type="string">/private.archive/icg112/emac_data/DATA</parameter>
+    </parameterset>
+    
+    <!-- ************************************************************************* 
+	            directory with dummy namelists
+         ************************************************************************* -->
+
+    <parameterset name="namelistParam">
+      <parameter name="dir_dummy_nml" type="string">clams_jube</parameter>
+    </parameterset>
+
+    <!-- ************************************************************************* 
+	             parameters used for perpetuum runs
+         ************************************************************************* -->
+
+    <parameterset name="perpParam">
+      <parameter name="cycle" type="int">1,2,3</parameter>
+      <parameter name="messy_tools_dir" type="string">/home/icg1/icg112/messy-tools</parameter>
+      <parameter name="i3d_dir" type="string">/home/icg1/icg112/clams/i3d</parameter>
+      <parameter name="first_initfile" type="string">/usr/nfs/data/clams/clim/init/init_KY2_79010112.nc</parameter>
+      
+      <!-- The following parameters should not be changed -->
+      <parameter name="last_initfile" type="string" mode="python">
+	'init_xxx_' + '${STOP_YEAR}'[2:4] + '${STOP_MONTH}' + '${STOP_DAY}' + '${STOP_HOUR}' + '.nc'
+      </parameter> -->
+      <parameter name="teststr" type="string" mode="python">
+       '${EXP_NAME}' + '______________'
+      </parameter>
+      <parameter name="datestr" type="string" mode="python">
+        '${STOP_YEAR}' + '${STOP_MONTH}' + '${STOP_DAY}' + '_' + '${STOP_HOUR}' + '0000'
+      </parameter>
+      <parameter name="last_messyfile" type="string" mode="python">
+	"_".join(['${teststr}'[0:14],'$datestr','clams.nc'])
+      </parameter>
+      <parameter name="i3doutfile" type="string" mode="python">
+	'i3dout_' + '${START_YEAR}'[2:4] + '${START_MONTH}' + '${START_DAY}' + '${START_HOUR}' + '_weighted.nc'
+      </parameter> 
+      <parameter name="lastcycle" mode="python" type="float">
+        ${cycle}-1
+      </parameter>  
+    </parameterset>
+
+
+    <!-- ************************************************************************* 
+	                    Namelists
+         ************************************************************************* -->
+
+    <parameterset name="clams_nml">
+      <parameter name="initfile" type="string">'/usr/nfs/data/clams/clim/init/init_KY2_79010112.nc'</parameter>
+      <parameter name="met_dir" type="string">'/usr/nfs/data/met_data/era_interim/nc/hybrid/yymm'</parameter>
+      <parameter name="met_prefix" type="string">'ecmwf'</parameter>
+      <parameter name="met_freq" type="int">6</parameter>
+      <parameter name="rres" type="float">1.5</parameter>
+      <parameter name="rres_shuffle" type="float">4.0</parameter>
+      <parameter name="username" type="string">'N.Thomas'</parameter>
+      <parameter name="maxspec" type="int">100</parameter>
+      <parameter name="timestep_clamsout" type="int">24</parameter>
+      <parameter name="use_3d" type="string">.true.</parameter>
+      <parameter name="levdotname" type="string">'ZETA_DOT_clr'</parameter>
+      <parameter name="corrfile" type="string">'/usr/nfs/data/clams/clim/config/corr_00_clr_79_17.nc'</parameter>
+      <parameter name="theta_dir" type="string">'/usr/nfs/data/met_data/era_interim/nc/hybrid/yymm'</parameter>
+      <parameter name="theta_prefix" type="string">'isen_ECT'</parameter>
+      <parameter name="nparams" type="int">5</parameter>
+      <parameter name="paramnames_1" type="string">'TEMP'</parameter>
+      <parameter name="paramnames_2" type="string">'PRESS'</parameter>
+      <parameter name="paramnames_3" type="string">'THETA'</parameter>
+      <parameter name="paramnames_4" type="string">'EQLAT'</parameter>
+      <parameter name="paramnames_5" type="string">'PV'</parameter>
+      <parameter name="paramnames_6" type="string">'BVF_WET'</parameter>
+      <parameter name="paramnames_7" type="string">''</parameter>
+      <parameter name="paramnames_8" type="string">''</parameter>
+      <parameter name="paramnames_9" type="string">''</parameter>
+      <parameter name="paramnames_10" type="string">''</parameter>
+      <parameter name="paramnames_11" type="string">''</parameter>
+      <parameter name="paramnames_12" type="string">''</parameter>
+      <parameter name="paramnames_13" type="string">''</parameter>
+      <parameter name="paramnames_14" type="string">''</parameter>
+      <parameter name="paramnames_15" type="string">''</parameter>
+      <parameter name="paramnames_16" type="string">''</parameter>
+      <parameter name="paramnames_17" type="string">''</parameter>
+      <parameter name="paramnames_18" type="string">''</parameter>
+      <parameter name="paramnames_19" type="string">''</parameter>
+      <parameter name="paramnames_20" type="string">''</parameter>
+      <parameter name="ldiagout" type="string">.false.</parameter>
+      <parameter name="buffersize" type="int">1048576</parameter> 
+    </parameterset>
+
+    <parameterset name="clamsbmix_nml">
+      <parameter name="timestep_bmix" type="int">24</parameter>
+      <parameter name="lev_in_down" type="float">50.</parameter>
+      <parameter name="lev_in_up" type="float">2500.</parameter>
+      <parameter name="lat_in_down" type="float">-90.</parameter>
+      <parameter name="lat_in_up" type="float">90.</parameter>
+      <parameter name="delta_lev" type="float">0.</parameter>
+      <parameter name="interpol_from_init" type="int">0</parameter>
+      <parameter name="file_bounds" type="string">'/usr/nfs/data/clams/clim/init/init_KY2_79010112.nc'</parameter>
+      <parameter name="dir_boundfiles" type="string">'/usr/nfs/data/clams/clim/config'</parameter>
+      <parameter name="bmix_boundlist" type="string">'/usr/nfs/local/messy_config/bounds_bmix_clim.inp'</parameter>
+      <parameter name="clams_boundlist" type="string">'/usr/nfs/local/messy_config/bounds_clams_clim.inp'</parameter>
+    </parameterset>
+
+    <parameterset name="clamschem_nml">
+      <parameter name="timestep_chem" type="int">86400</parameter>
+      <parameter name="NCDT" type="int">86400</parameter>
+      <parameter name="LHET" type="string">.false.</parameter>
+      <parameter name="lphotol" type="string">.true.</parameter>
+      <parameter name="METHOD" type="int">1</parameter>
+      <parameter name="chemdata_type" type="string">'clim3'</parameter>
+      <parameter name="iodump" type="string">.false.</parameter>
+      <parameter name="DSN_TWODAVG" type="string">'/usr/nfs/data/clams/clim/config/avg_twod_haloe_clams_jpl11.nc'</parameter>
+      <parameter name="rates" type="string">.false.</parameter>
+      <parameter name="const" type="string">.false.</parameter>
+      <parameter name="hetparam" type="string">.false.</parameter>
+    </parameterset>
+
+    <parameterset name="clamscirrus_nml">
+      <parameter name="timestep_cirrus" type="int">6</parameter>
+      <parameter name="characteristic_height" type="float">300.</parameter>
+      <parameter name="characteristic_height_100" type="float">0.</parameter>
+      <parameter name="sat_crit" type="float">1.0</parameter>
+      <parameter name="type_ice_fit" type="int">0</parameter>
+      <parameter name="troposphere" type="string">.false.</parameter>
+    </parameterset>
+
+    <parameterset name="clamsmix_nml">
+      <parameter name="switch_mixing" type="int">1</parameter>
+      <parameter name="lexp" type="float">1.5</parameter>
+      <parameter name="fac_limit_outside" type="float">2.</parameter>
+      <parameter name="fac_limit_inside" type="float">2.</parameter>
+      <parameter name="fac_limit_lev_down" type="float">350.</parameter>
+      <parameter name="fac_limit_lev_up" type="float">1300.</parameter>
+      <parameter name="delta_lev_mix" type="float">50.</parameter>
+      <parameter name="fac_theta_max" type="float">0.167</parameter>
+      <parameter name="fac_bvfwet_min" type="float">0.0001</parameter>
+      <parameter name="no_steps" type="int">1</parameter>
+      <parameter name="r_dev" type="float">0.0</parameter>
+      <parameter name="grid_switch" type="int">0</parameter>
+      <parameter name="nintervals" type="int">1</parameter>
+      <parameter name="timestep_mix" type="int">24</parameter>
+      <parameter name="nmixspec" type="int">9</parameter>
+      <parameter name="mixspec_1" type="string">'CV'</parameter>
+      <parameter name="mixspec_2" type="string">'ST'</parameter>
+      <parameter name="mixspec_3" type="string">'BA'</parameter>
+      <parameter name="mixspec_4" type="string">'H2O'</parameter>
+      <parameter name="mixspec_5" type="string">'H2O_100'</parameter>
+      <parameter name="mixspec_6" type="string">'IWC'</parameter>
+      <parameter name="mixspec_7" type="string">'IWC_100'</parameter>
+      <parameter name="mixspec_8" type="string">'DENSICE'</parameter>
+      <parameter name="mixspec_9" type="string">'CLWC'</parameter>
+      <parameter name="mixspec_10" type="string">''</parameter>
+      <parameter name="mixspec_11" type="string">''</parameter>
+      <parameter name="mixspec_12" type="string">''</parameter>
+      <parameter name="mixspec_13" type="string">''</parameter>
+      <parameter name="mixspec_14" type="string">''</parameter>
+      <parameter name="mixspec_15" type="string">''</parameter>
+      <parameter name="mixspec_16" type="string">''</parameter>
+      <parameter name="mixspec_17" type="string">''</parameter>
+      <parameter name="mixspec_18" type="string">''</parameter>
+      <parameter name="mixspec_19" type="string">''</parameter>
+      <parameter name="mixspec_20" type="string">''</parameter>
+    </parameterset>
+
+    <parameterset name="clamssedi_nml">
+      <parameter name="lat_min" type="float">60.</parameter>
+      <parameter name="lat_max" type="float">90.0</parameter>
+      <parameter name="lev_start" type="float">350.</parameter>
+      <parameter name="lev_end" type="float">850.</parameter>
+      <parameter name="factor" type="int">4</parameter>
+      <parameter name="nfine" type="int">4</parameter>
+      <parameter name="densnat_val" type="int">-3</parameter>
+      <parameter name="flaggary" type="int">0</parameter>
+      <parameter name="timestep_sedi" type="int">3600</parameter>
+      <parameter name="nparticle_max" type="int">400000</parameter>
+      <parameter name="ice_nuc_table" type="string">'/home/icg1/icg112/clams_input/ice_nucleation.dat'</parameter>
+      <parameter name="nat_nuc_table" type="string">'/home/icg1/icg112/clams_input/NAT_nucleation.dat'</parameter>
+      <parameter name="part_init_file" type="string">''</parameter>
+      <parameter name="nat_tstep" type="int">1</parameter>
+      <parameter name="ice_tstep" type="int">1</parameter>
+    </parameterset>
+    
+    <parameterset name="clamstraj_nml">
+      <parameter name="type_traj" type="int">0</parameter>
+      <parameter name="timestep_trajout" type="int">6</parameter>
+      <parameter name="timestep_trajin" type="int">0</parameter>
+      <parameter name="dir_trajin" type="string">'/private/icg112/messy-jube-clim-trajsave'</parameter>
+    </parameterset>
+
+    <parameterset name="dissoc_nml">
+      <parameter name="o3dat" type="string">'/usr/nfs/data/clams/clim/config/haloe_twod_climat_10deg.nc'</parameter>
+      <parameter name="davg" type="string">.true.</parameter>
+      <parameter name="datdir" type="string">'/usr/nfs/local/messy_config/photodata'</parameter>
+      <parameter name="mean_albedo" type="float">0.4</parameter>
+    </parameterset>
+
+
+    <parameterset name="clamstracer_nml">
+      <parameter name="timestep_tracer" type="int">24</parameter>
+      <parameter name="tracertype" type="string">'map'</parameter>
+      <parameter name="step_perp" type="int">0</parameter>
+      <parameter name="lev_bound" type="float">250.</parameter>
+      <parameter name="file_lsm" type="string">'/home/icg1/icg112/messy_config/land-sea_mask_0125.nc'</parameter>
+      <parameter name="file_gph" type="string">'/home/icg1/icg112/messy_config/invariant_geopotential_orography_0125.nc'</parameter>
+      <parameter name="tracer_desc_file" type="string">'/home/icg1/icg112/messy_config/tracers_map'</parameter>
+    </parameterset>
+   
+    <parameterset name="switch_nml">
+      <parameter name="USE_CLAMS" type="string">.TRUE.</parameter>
+      <parameter name="USE_CLAMSTRAJ" type="string">.TRUE.</parameter>
+      <parameter name="USE_CLAMSCIRRUS" type="string">.TRUE.</parameter>
+      <parameter name="USE_DISSOC" type="string">.TRUE.</parameter>
+      <parameter name="USE_CLAMSCHEM" type="string">.TRUE.</parameter>
+      <parameter name="USE_CLAMSSEDI" type="string">.FALSE.</parameter>
+      <parameter name="USE_CLAMSMIX" type="string">.TRUE.</parameter>
+      <parameter name="USE_CLAMSBMIX" type="string">.TRUE.</parameter>
+      <parameter name="USE_CLAMSTRACER" type="string">.FALSE.</parameter>
+    </parameterset>
+    
+    <parameterset name="timer_nml">
+      <parameter name="timer_counter" type="int">1</parameter>
+      <parameter name="timer_unit" type="string">'days'</parameter>
+      <parameter name="timer_adjust" type="string">'first'</parameter>
+      <parameter name="timer_offset" type="int">86400</parameter>
+      <parameter name="timer_no_cycles" type="int">99</parameter>
+      <parameter name="delta_time" type="int">1800</parameter>
+    </parameterset>
+
+    <parameterset name="channel_nml">
+      <parameter name="verbose_level" type="int">2</parameter>
+      <parameter name="out_prec_netcdf"   type="int">2</parameter>
+      <parameter name="lout_clams"        type="string">T</parameter>
+      <parameter name="lout_clamssedi"    type="string">F</parameter>
+      <parameter name="lout_clamstraj"    type="string">T</parameter>
+      <parameter name="lout_winddata"     type="string">F</parameter>
+      <parameter name="lout_chemrates"    type="string">F</parameter>
+      <parameter name="lout_chemconst"    type="string">F</parameter>
+      <parameter name="lout_chemhetparam" type="string">F</parameter>
+      <parameter name="lout_clamstracer"  type="string">F</parameter>
+      <parameter name="lout_dissoc"       type="string">F</parameter>
+      <parameter name="timestep_clamsout"   type="int">24</parameter>
+      <parameter name="unit_clamsout"   type="string">'hours'</parameter>
+      <parameter name="timestep_clamstrajout"   type="int">6</parameter>
+      <parameter name="unit_clamsout"   type="string">'hours'</parameter>
+      <parameter name="timestep_clamssediout"   type="int">24</parameter>
+      <parameter name="unit_clamsout"   type="string">'hours'</parameter>
+      <parameter name="timestep_clamstracerout"   type="int">24</parameter>
+      <parameter name="unit_clamsout"   type="string">'hours'</parameter>
+   </parameterset>
+
+    <!-- ************************************************************************* -->
+    <!-- ************************************************************************* 
+	          DO NOT CHANGE ANYTHING BELOW THIS LINE !!!
+         ************************************************************************* -->
+    <!-- ************************************************************************* -->
+
+    <!-- Files -->
+    <fileset name="nml_dir">
+      <copy>${BASEDIR}/messy/nml/MBM/${dir_dummy_nml}</copy>
+    </fileset>
+    
+    <!-- ************************************************************************* 
+	          Substitute (Makefile, jobscript and namelists)
+         ************************************************************************* -->
+
+    <substituteset name="make_subs">
+      <iofile in="${BASEDIR}/messy/mbm/clams/Makefile_jube" out="${BASEDIR}/messy/mbm/clams/Makefile" />
+      <sub source="!scorep!" dest=""/>
+      <sub tag="scorep, scorep_comp" source="!scorep!" dest="$scorep"/>
+      <sub source="!gprofflag!" dest=""/>
+      <sub tag="gprof" source="!gprofflag!" dest="$gprof"/>
+    </substituteset>
+
+    <substituteset name="xmessy_subs">
+      <iofile in="$BASEDIR/messy/util/xmessy_mmd.jube" out="xmessy_mmd.$EXP_NAME" />
+      <sub source="!nodes!" dest="$nodes" />
+      <sub source="!ntasks!" dest="$ntasks" />
+      <sub source="!ntaskspernode!" dest="$ntaskspernode" />
+      <sub source="!outlogfile!" dest="$outlogfile" />
+      <sub source="!errlogfile!" dest="$errlogfile" />
+      <sub source="!timelimit!" dest="$timelimit" />
+      <sub source="!partition!" dest="$partition" />
+
+      <sub source="!EXP_NAME!" dest="$EXP_NAME" />
+      <sub source="!WORKDIR!" dest="$jube_wp_abspath" />
+      <sub source="!START_YEAR!" dest="$START_YEAR" />
+      <sub source="!START_MONTH!" dest="$START_MONTH" />
+      <sub source="!START_DAY!" dest="$START_DAY" />
+      <sub source="!START_HOUR!" dest="$START_HOUR" />
+      <sub source="!STOP_YEAR!" dest="$STOP_YEAR" />
+      <sub source="!STOP_MONTH!" dest="$STOP_MONTH" />
+      <sub source="!STOP_DAY!" dest="$STOP_DAY" />
+      <sub source="!STOP_HOUR!" dest="$STOP_HOUR" />
+      <sub source="!NML_SETUP!" dest="$NML_SETUP" />
+      <sub source="!BASEDIR!" dest="$BASEDIR" />
+      <sub source="!NPY!" dest="$NPY" />
+      <sub source="!NPX!" dest="$NPX" />
+      <sub source="!QWCH!" dest="$QWCH" />
+      <sub source="!INPUTDIR_MESSY!" dest="$INPUTDIR_MESSY" />
+      <sub source="!MSH_DATAROOT!" dest="$MSH_DATAROOT" />
+
+      <sub source="!filter!" dest="$filter" />
+
+      <sub source="!profiling_export!" dest="" tag="!darshan"/>
+      <include from="darshan_in.xml" path="subs/sub[@source='!profiling_export!']" tag="darshan"/>
+
+      <sub source="!MSH_SRUN!">
+	    "$$MSH_MEASURE srun $$MPI_OPT $$EXECUTABLE $$MSH_PINP"
+      </sub>
+      <include from="darshan_in.xml" path="subs/sub[@source='!MSH_RUN!']" tag="darshan"/>
+      <sub source="!MSH_RUN!" tag="allinea">
+	    "perf-report --mpi=slurm --nodes $nodes --np $ntasks --procs-per-node $ntaskspernode $$EXECUTABLE"
+      </sub>
+      <sub source="!MSH_RUN!" tag="scorep_comp, scorep">
+        "scalasca -analyze srun $$EXECUTABLE"
+      </sub>
+      
+      <sub source="!MSH_RUN!" tag="advisor">
+        "srun advixe-cl -collect survey --project-dir ${jube_wp_abspath}/intel_advisor $$EXECUTABLE"
+      </sub>
+      
+      <sub source="!time!" dest=""/>
+      <sub source="!time!" tag="time" dest="time"/>
+    </substituteset>
+
+    <substituteset name="clams_nml_subs">
+      <iofile in="${dir_dummy_nml}/clams.nml" out="${dir_dummy_nml}/clams.nml" />
+      <sub source="#initfile#" dest="$initfile" />
+      <sub source="#met_dir#" dest="$met_dir" />
+      <sub source="#met_prefix#" dest="$met_prefix" />
+      <sub source="#met_freq#" dest="$met_freq" />
+      <sub source="#rres#" dest="$rres" />
+      <sub source="#rres_shuffle#" dest="$rres_shuffle" />
+      <sub source="#username#" dest="$username" />
+      <sub source="#maxspec#" dest="$maxspec" />
+      <sub source="#timestep_clamsout#" dest="$timestep_clamsout" />
+      <sub source="#use_3d#" dest="$use_3d" />
+      <sub source="#levdotname#" dest="$levdotname" />
+      <sub source="#corrfile#" dest="$corrfile" />
+      <sub source="#theta_dir#" dest="$theta_dir" />
+      <sub source="#theta_prefix#" dest="$theta_prefix" />
+      <sub source="#nparams#" dest="$nparams" />
+      <sub source="#paramnames(1)#" dest="$paramnames_1" />
+      <sub source="#paramnames(2)#" dest="$paramnames_2" />
+      <sub source="#paramnames(3)#" dest="$paramnames_3" />
+      <sub source="#paramnames(4)#" dest="$paramnames_4" />
+      <sub source="#paramnames(5)#" dest="$paramnames_5" />
+      <sub source="#paramnames(6)#" dest="$paramnames_6" />
+      <sub source="#paramnames(7)#" dest="$paramnames_7" />
+      <sub source="#paramnames(8)#" dest="$paramnames_8" />
+      <sub source="#paramnames(9)#" dest="$paramnames_9" />
+      <sub source="#paramnames(10)#" dest="$paramnames_10" />
+      <sub source="#paramnames(11)#" dest="$paramnames_11" />
+      <sub source="#paramnames(12)#" dest="$paramnames_12" />
+      <sub source="#paramnames(13)#" dest="$paramnames_13" />
+      <sub source="#paramnames(14)#" dest="$paramnames_14" />
+      <sub source="#paramnames(15)#" dest="$paramnames_15" />
+      <sub source="#paramnames(16)#" dest="$paramnames_16" />
+      <sub source="#paramnames(17)#" dest="$paramnames_17" />
+      <sub source="#paramnames(18)#" dest="$paramnames_18" />
+      <sub source="#paramnames(19)#" dest="$paramnames_19" />
+      <sub source="#paramnames(20)#" dest="$paramnames_20" />
+      <sub source="#ldiagout#" dest="$ldiagout" />
+      <sub source="#buffersize#" dest="$buffersize" />
+    </substituteset>
+
+    <substituteset name="clamsbmix_nml_subs">
+      <iofile in="${dir_dummy_nml}/clamsbmix.nml" out="${dir_dummy_nml}/clamsbmix.nml" />
+      <sub source="#timestep_bmix#" dest="$timestep_bmix" />
+      <sub source="#lev_in_down#" dest="$lev_in_down" />
+      <sub source="#lev_in_up#" dest="$lev_in_up" />
+      <sub source="#lat_in_down#" dest="$lat_in_down" />
+      <sub source="#lat_in_up#" dest="$lat_in_up" />
+      <sub source="#delta_lev#" dest="$delta_lev" />
+      <sub source="#interpol_from_init#" dest="$interpol_from_init" />
+      <sub source="#file_bounds#" dest="$file_bounds" />
+      <sub source="#dir_boundfiles#" dest="$dir_boundfiles" />
+      <sub source="#bmix_boundlist#" dest="$bmix_boundlist" />
+      <sub source="#clams_boundlist#" dest="$clams_boundlist" />
+    </substituteset>
+
+    <substituteset name="clamschem_nml_subs">
+      <iofile in="${dir_dummy_nml}/clamschem.nml" out="${dir_dummy_nml}/clamschem.nml" />
+      <sub source="#timestep_chem#" dest="$timestep_chem" />
+      <sub source="#NCDT#" dest="$NCDT" />
+      <sub source="#LHET#" dest="$LHET" />
+      <sub source="#lphotol#" dest="$lphotol" />
+      <sub source="#METHOD#" dest="$METHOD" />
+      <sub source="#chemdata_type#" dest="$chemdata_type" />
+      <sub source="#iodump#" dest="$iodump" />
+      <sub source="#DSN_TWODAVG#" dest="$DSN_TWODAVG" />
+      <sub source="#rates#" dest="$rates" />
+      <sub source="#const#" dest="$const" />
+      <sub source="#hetparam#" dest="$hetparam" />
+    </substituteset>
+
+    <substituteset name="clamscirrus_nml_subs">
+      <iofile in="${dir_dummy_nml}/clamscirrus.nml" out="${dir_dummy_nml}/clamscirrus.nml" />
+      <sub source="#timestep_cirrus#" dest="$timestep_cirrus" />
+      <sub source="#characteristic_height#" dest="$characteristic_height" />
+      <sub source="#characteristic_height_100#" dest="$characteristic_height_100" />
+      <sub source="#sat_crit#" dest="$sat_crit" />
+      <sub source="#type_ice_fit#" dest="$type_ice_fit" />
+      <sub source="#troposphere#" dest="$troposphere" />
+    </substituteset>
+
+    <substituteset name="clamsmix_nml_subs">
+      <iofile in="${dir_dummy_nml}/clamsmix.nml" out="${dir_dummy_nml}/clamsmix.nml" />
+      <sub source="#switch_mixing#" dest="$switch_mixing" />
+      <sub source="#lexp#" dest="$lexp" />
+      <sub source="#fac_limit_outside#" dest="$fac_limit_outside" />
+      <sub source="#fac_limit_inside#" dest="$fac_limit_inside" />
+      <sub source="#fac_limit_lev_down#" dest="$fac_limit_lev_down" />
+      <sub source="#fac_limit_lev_up#" dest="$fac_limit_lev_up" />
+      <sub source="#delta_lev#" dest="$delta_lev_mix" />
+      <sub source="#fac_theta_max#" dest="$fac_theta_max" />
+      <sub source="#fac_bvfwet_min#" dest="$fac_bvfwet_min" />
+      <sub source="#no_steps#" dest="$no_steps" />
+      <sub source="#r_dev#" dest="$r_dev" />
+      <sub source="#grid_switch#" dest="$grid_switch" />
+      <sub source="#nintervals#" dest="$nintervals" />
+      <sub source="#timestep_mix#" dest="$timestep_mix" />
+      <sub source="#nmixspec#" dest="$nmixspec" />
+      <sub source="#mixspec(1)#" dest="$mixspec_1" />
+      <sub source="#mixspec(2)#" dest="$mixspec_2" />
+      <sub source="#mixspec(3)#" dest="$mixspec_3" />
+      <sub source="#mixspec(4)#" dest="$mixspec_4" />
+      <sub source="#mixspec(5)#" dest="$mixspec_5" />
+      <sub source="#mixspec(6)#" dest="$mixspec_6" />
+      <sub source="#mixspec(7)#" dest="$mixspec_7" />
+      <sub source="#mixspec(8)#" dest="$mixspec_8" />
+      <sub source="#mixspec(9)#" dest="$mixspec_9" />
+      <sub source="#mixspec(10)#" dest="$mixspec_10" />
+      <sub source="#mixspec(11)#" dest="$mixspec_11" />
+      <sub source="#mixspec(12)#" dest="$mixspec_12" />
+      <sub source="#mixspec(13)#" dest="$mixspec_13" />
+      <sub source="#mixspec(14)#" dest="$mixspec_14" />
+      <sub source="#mixspec(15)#" dest="$mixspec_15" />
+      <sub source="#mixspec(16)#" dest="$mixspec_16" />
+      <sub source="#mixspec(17)#" dest="$mixspec_17" />
+      <sub source="#mixspec(18)#" dest="$mixspec_18" />
+      <sub source="#mixspec(19)#" dest="$mixspec_19" />
+      <sub source="#mixspec(20)#" dest="$mixspec_20" />
+    </substituteset>
+
+    <substituteset name="clamssedi_nml_subs">
+      <iofile in="${dir_dummy_nml}/clamssedi.nml" out="${dir_dummy_nml}/clamssedi.nml" />
+      <sub source="#lat_min#" dest="$lat_min" />
+      <sub source="#lat_max#" dest="$lat_max" />
+      <sub source="#lev_start#" dest="$lev_start" />
+      <sub source="#lev_end#" dest="$lev_end" />
+      <sub source="#factor#" dest="$factor" />
+      <sub source="#nfine#" dest="$nfine" />
+      <sub source="#densnat_val#" dest="$densnat_val" />
+      <sub source="#flaggary#" dest="$flaggary" />
+      <sub source="#timestep_sedi#" dest="$timestep_sedi" />
+      <sub source="#nparticle_max#" dest="$nparticle_max" />
+      <sub source="#ice_nuc_table#" dest="$ice_nuc_table" />
+      <sub source="#nat_nuc_table#" dest="$nat_nuc_table" />
+      <sub source="#part_init_file#" dest="$part_init_file" />
+      <sub source="#nat_tstep#" dest="$nat_tstep" />
+      <sub source="#ice_tstep#" dest="$ice_tstep" />
+    </substituteset>
+
+    <substituteset name="clamstraj_nml_subs">
+      <iofile in="${dir_dummy_nml}/clamstraj.nml" out="${dir_dummy_nml}/clamstraj.nml" />
+      <sub source="#type_traj#" dest="$type_traj" />
+      <sub source="#timestep_trajout#" dest="$timestep_trajout" />
+      <sub source="#timestep_trajin#" dest="$timestep_trajin" />
+      <sub source="#dir_trajin#" dest="$dir_trajin" />
+    </substituteset>
+
+    <substituteset name="dissoc_nml_subs">
+      <iofile in="${dir_dummy_nml}/dissoc.nml" out="${dir_dummy_nml}/dissoc.nml" />
+      <sub source="#o3dat#" dest="$o3dat" />
+      <sub source="#davg#" dest="$davg" />
+      <sub source="#datdir#" dest="$datdir" />
+      <sub source="#mean_albedo#" dest="$mean_albedo" />
+    </substituteset>
+
+    <substituteset name="clamstracer_nml_subs">
+      <iofile in="${dir_dummy_nml}/clamstracer.nml" out="${dir_dummy_nml}/clamstracer.nml" />
+      <sub source="#timestep_tracer#" dest="$timestep_tracer" />
+      <sub source="#tracertype#" dest="$tracertype" />
+      <sub source="#step_perp#" dest="$step_perp" />
+      <sub source="#lev_bound#" dest="$lev_bound" />
+      <sub source="#file_lsm#" dest="$file_lsm" />
+      <sub source="#file_gph#" dest="$file_gph" />
+      <sub source="#tracer_desc_file#" dest="$tracer_desc_file" />
+    </substituteset>
+   
+    <substituteset name="switch_nml_subs">
+      <iofile in="${dir_dummy_nml}/switch.nml" out="${dir_dummy_nml}/switch.nml" />
+      <sub source="#USE_CLAMS#" dest="$USE_CLAMS" />
+      <sub source="#USE_CLAMSTRAJ#" dest="$USE_CLAMSTRAJ" />
+      <sub source="#USE_CLAMSCIRRUS#" dest="$USE_CLAMSCIRRUS" />
+      <sub source="#USE_DISSOC#" dest="$USE_DISSOC" />
+      <sub source="#USE_CLAMSCHEM#" dest="$USE_CLAMSCHEM" />
+      <sub source="#USE_CLAMSSEDI#" dest="$USE_CLAMSSEDI" />
+      <sub source="#USE_CLAMSMIX#" dest="$USE_CLAMSMIX" />
+      <sub source="#USE_CLAMSBMIX#" dest="$USE_CLAMSBMIX" />
+      <sub source="#USE_CLAMSTRACER#" dest="$USE_CLAMSTRACER" />
+    </substituteset>
+
+    <substituteset name="timer_nml_subs">
+      <iofile in="${dir_dummy_nml}/timer.nml" out="${dir_dummy_nml}/timer.nml" />
+      <sub source="#counter#" dest="$timer_counter" />
+      <sub source="#unit#" dest="$timer_unit" />
+      <sub source="#adjust#" dest="$timer_adjust" />
+      <sub source="#offset#" dest="$timer_offset" />
+      <sub source="#no_cycles#" dest="$timer_no_cycles" />
+      <sub source="#delta_time#" dest="$delta_time" />
+    </substituteset>
+
+    <substituteset name="channel_nml_subs">
+      <iofile in="${dir_dummy_nml}/channel.nml" out="${dir_dummy_nml}/channel.nml" />
+      <sub source="#verbose_level#" dest="$verbose_level" />
+      <sub source="#out_prec_netcdf#" dest="$out_prec_netcdf" />
+      <sub source="#lout_clams#" dest="$lout_clams" />
+      <sub source="#lout_clamssedi#" dest="$lout_clamssedi" />
+      <sub source="#lout_clamstraj#" dest="$lout_clamstraj" />
+      <sub source="#lout_winddata#" dest="$lout_winddata" />
+      <sub source="#lout_chemrates#" dest="$lout_chemrates" />
+      <sub source="#lout_chemconst#" dest="$lout_chemconst" />
+      <sub source="#lout_chemhetparam#" dest="$lout_chemhetparam" />
+      <sub source="#lout_clamstracer#" dest="$lout_clamstracer" />
+      <sub source="#lout_dissoc#" dest="$lout_dissoc" />
+      <sub source="#timestep_clamsout#" dest="$timestep_clamsout" />
+      <sub source="#unit_clamsout#" dest="$unit_clamsout" />
+      <sub source="#timestep_clamstrajout#" dest="$timestep_clamstrajout" />
+      <sub source="#unit_clamstrajout#" dest="$unit_clamstrajout" />
+      <sub source="#timestep_clamssediout#" dest="$timestep_clamssediout" />
+      <sub source="#unit_clamssediout#" dest="$unit_clamssediout" />
+      <sub source="#timestep_clamstracerout#" dest="$timestep_clamstracerout" />
+      <sub source="#unit_clamstracerout#" dest="$unit_clamstracerout" />
+    </substituteset>
+
+
+   <!-- ************************************************************************* 
+	          Operation
+         ************************************************************************* -->
+
+    <!-- JURECA: Load Modules -->
+    <step name="load_modules" export="true">
+<!--      <do>module purge </do> -->
+<!--      <do tag="advisor">module use /usr/local/software/jureca/OtherStages </do>-->
+<!--      <do tag="advisor">module load Stages/Devel</do>-->
+<!--      <do tag="advisor">module load Advisor/2017_prerelease</do>-->
+<!--      <do tag="advisor">module load Advisor/2016_update3</do>-->
+<!--      <do>module load intel-para </do>-->
+<!--      <do>module load netCDF-Fortran </do>-->
+<!--      <do tag="allinea">module load AllineaPerformanceReports </do>-->
+<!--      <include from="darshan_in.xml" path="dos[@name='mod_load']/do" tag="darshan"/>-->
+<!--      <do tag="scorep, scorep_comp">module load Scalasca </do>-->
+    </step>
+
+    <!-- Compile -->
+    <step name="compile" depend="load_modules">
+      <use tag="comp, scorep_comp, gprof">xmessy_mmd</use>
+      <use tag="comp, scorep_comp, gprof">makeParam</use>
+      <use tag="comp, scorep_comp, gprof">make_subs</use>
+      <do tag="advisor">export LD_LIBRARY_PATH=/lib64:$${LD_LIBRARY_PATH}</do>
+      <do tag="comp">cd ${BASEDIR}/messy/mbm/clams; make clean; make </do>
+      <do tag="scorep_comp">cd ${BASEDIR}/messy/mbm/clams; make clean; make</do>
+      <do tag="gprof">cd ${BASEDIR}/messy/mbm/clams; make clean; make </do>
+    </step>
+    
+
+    <!-- Create Namelists -->
+    <step name="prepare_nml">
+      <use>xmessy_mmd</use>            <!-- use existing parameterset -->
+      <use>namelistParam</use>
+      <use>clams_nml</use>
+      <use>clamsbmix_nml</use>
+      <use>clamschem_nml</use>
+      <use>clamscirrus_nml</use>
+      <use>clamsmix_nml</use>
+      <use>clamssedi_nml</use>
+      <use>clamstraj_nml</use>
+      <use>clamstracer_nml</use>
+      <use>dissoc_nml</use>
+      <use>switch_nml</use>
+      <use>timer_nml</use>
+      <use>channel_nml</use>
+      <use>nml_dir</use>        <!-- use existing fileset -->
+  
+      <use>clams_nml_subs</use>         <!-- use existing substituteset -->
+      <use>clamsbmix_nml_subs</use>
+      <use>clamschem_nml_subs</use>
+      <use>clamscirrus_nml_subs</use>
+      <use>clamsmix_nml_subs</use>
+      <use>clamssedi_nml_subs</use>
+      <use>clamstraj_nml_subs</use>
+      <use>clamstracer_nml_subs</use>
+      <use>dissoc_nml_subs</use>
+      <use>switch_nml_subs</use>
+      <use>timer_nml_subs</use>
+      <use>channel_nml_subs</use>
+      <!-- if an old nml directory exists with the same name ${EXP_NAME},
+	the old nml-files will be overwritten by the new nml files -->
+      <do>rm -rf ${BASEDIR}/messy/nml/${NML_SETUP}</do>    <!-- shell command -->
+      <do>mv ${dir_dummy_nml} ${BASEDIR}/messy/nml/${NML_SETUP}</do> 
+    </step>
+    
+    <!-- Execute -->
+    <step name="exe" depend="load_modules, compile, prepare_nml">
+      <!-- JURECA: use jobscript-parameters -->
+      <!--<use>jobscriptParameter</use> -->
+      <use tag="perp">perpParam</use>
+      <use>xmessy_mmd</use>
+      <!--<use from="darshan_in.xml" tag="darshan">darshanParam</use>-->
+      <use>xmessy_subs</use>
+      <!--<do tag="advisor">export LD_LIBRARY_PATH=/lib64:$${LD_LIBRARY_PATH}</do>-->
+
+      <!-- Perpetuum run: save first initfile, copy last created initfile for new run -->
+      <do tag="perp"> echo cp ${first_initfile}  ${initfile}_0 </do>
+      <do tag="perp"> cp ${first_initfile}  ${initfile}_0 </do>
+      <do tag="perp"> echo cp ${initfile}_${lastcycle} ${initfile} </do> -->
+      <do tag="perp"> cp ${initfile}_${lastcycle} ${initfile} </do> -->
+
+      <do tag="perp">echo '****************************' </do>
+      <do tag="perp">echo '      'cycle $cycle  </do>
+      <do tag="perp">echo '****************************' </do>
+
+      <do done_file="END">${jube_wp_abspath}/xmessy_mmd.${EXP_NAME}</do>
+      <!-- JURECA: submit script -->
+      <!--<do done_file="END">sbatch ${jube_wp_abspath}/xmessy_mmd.${EXP_NAME}</do>-->
+
+      <!-- Perpetuum run: create new initfile -->
+      <do tag="perp"> echo messy_rm_mdi ${last_messyfile} ${last_initfile}_nomdi</do>
+      <do tag="perp"> ${messy_tools_dir}/messy_rm_mdi ${last_messyfile} ${last_initfile}_nomdi</do>
+      <do tag="perp"> echo messy2clams ${last_initfile}_nomdi ${last_initfile}</do>
+      <do tag="perp"> ${messy_tools_dir}/messy2clams ${last_initfile}_nomdi ${last_initfile}</do>
+
+      <!-- Perpetuum run: call i3d -->
+      <do tag="perp"> echo y >>i3d.inp</do>
+      <do tag="perp"> echo -90.,90. >>i3d.inp</do>
+      <do tag="perp"> echo 1 >>i3d.inp</do>
+      <do tag="perp"> echo 0 >>i3d.inp</do>
+      <do tag="perp"> echo y >>i3d.inp</do>
+      <do tag="perp"> echo ${last_initfile} >>i3d.inp</do>
+      <do tag="perp"> echo ${first_initfile} >>i3d.inp</do>
+      <do tag="perp"> echo . >>i3d.inp</do>
+      <do tag="perp"> echo i3dout >>i3d.inp</do>
+      <do tag="perp"> ${i3d_dir}/i3d </do>
+
+      <do tag="perp"> echo cp ${i3doutfile}  ${initfile}_$cycle </do>
+      <do tag="perp"> cp ${i3doutfile}  ${initfile}_$cycle </do>
+
+
+    </step>    
+
+    <!-- Post processing -->
+    <step name="post_proc" depend="exe" tag="gprof">
+      <do tag="gprof">cp ${jube_wp_abspath}/exe/gmon.out .</do>
+      <do tag="gprof">gprof ${jube_wp_abspath}/exe/bin/clams.exe</do>
+    </step>
+
+    <!-- include darshan settings to generate a jube result table showing the darshan profiling results-->
+    <step name="darshan" depend="load_modules, exe" tag="darshan">
+      <do>mv exe/${darshan_log_file} .</do>
+      <include from="darshan_in.xml" path="darshanstep/*"/>
+    </step>
+
+    <!--<include from="darshan_in.xml" path="parameterset[@name='darshanParam']" tag="darshan"/>-->
+    <!--<include from="darshan_in.xml" path="fileset[@name='python_darshan']" tag="darshan"/>-->
+    <!--<include from="darshan_in.xml" path="patternset[@name='darshan_pattern']" tag="darshan"/>-->
+    <!--    <include from="darshan_in.xml" path="analyser[@name='analyse_darshan']" tag="darshan"/>-->
+    <!--    <include from="darshan_in.xml" path="result" tag="darshan"/>-->
+
+    <patternset name="time_pattern">
+      <pattern mode="pattern" name="time_pat" type="float">real\t${jube_pat_nint}m${jube_pat_fp}s</pattern>
+      <pattern mode="pattern" name="time_min" type="int">real\t${jube_pat_int}m</pattern>
+      <pattern mode="python" name="time_sec" type="string">${time_min}*60+${time_pat}</pattern>
+    </patternset>
+
+    <!-- Analyse -->
+    <analyser name="analyse_time">
+      <use>time_pattern</use> <!-- use existing patternset -->
+      <analyse step="exe">
+        <file>${errlog}.*</file> <!-- <use>jobscriptParameter</use> ${errlogfile}.1638087file which should be scanned -->
+      </analyse>
+    </analyser>
+
+   <!-- Create result table -->
+    <result>
+      <use>analyse_time</use> <!-- use existing analyser -->
+      <table name="result" style="pretty">
+        <column>time_min</column>
+        <column>time_pat</column>
+        <column>time_sec</column>
+        <column>time_min_cnt</column>
+        <column>time_pat_cnt</column>
+      </table>
+    </result>
+
+
+  </benchmark>
+</jube>

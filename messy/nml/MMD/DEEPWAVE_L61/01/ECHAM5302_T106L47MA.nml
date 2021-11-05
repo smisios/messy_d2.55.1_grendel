@@ -1,0 +1,115 @@
+ ! -*- f90 -*-
+
+&RUNCTL
+!# NOTES:
+!# 1. The following entries are meaningless, because they are overwritten
+!#    by TIMER (see timer.nml):
+!#    DT_START, DT_STOP, NO_DAYS, NO_STEPS, LRESUME, NO_CYCLES, PUTRERUN,
+!#    LABORT 
+!# 2. PUTDATA is only meaningful, if you switch L_BM_ORIG_OUTPUT = T
+!#    in channel.nml; all output is controlled in channel.nml
+!#
+!-  LRESUME      = $MSH_LRESUME        ! do not change; set by run-script
+  out_expname  = "$EXP_NAME"
+  out_filetype = 2                   ! GRIB=1, NetCDF=2
+! LTDIAG       = T                   ! tendency diagnostics
+! IADVEC       = 0                   ! no advection for quick runs
+  NMWICFI      = 8       ! number of mass-wind-inconsistency fixer iterations
+  LAMIP        = $ECHAM5_LAMIP
+  LNUDGE       = $LNUDGE             ! nudging 
+  LNMI         = $LNMI               ! normal mode filtering for nudging
+  LMIDATM      = $ECHAM5_LMIDATM     ! middle atmosphere setup
+!-  DT_START     = $START_YEAR,$START_MONTH,$START_DAY,0,0,0
+!-  DT_STOP      = $STOP_YEAR,$STOP_MONTH,$STOP_DAY,0,0,0
+!-  PUTDATA      = 5,'hours','first',0
+!-  TRIGFILES    = 1,'days','first',0
+!-  PUTRERUN     = 1,'months','last',0  ! default: 1,'months','last',0
+!-  NO_CYCLES    = 5,                  ! number of rerun cycles
+!-  LABORT       = F
+  NPROMA       = $NPROMA             ! change value in xmessy, not here
+  NPROCA       = $NPROCA             ! change value in xmessy, not here
+  NPROCB       = $NPROCB             ! change value in xmessy, not here
+/
+
+&DYNCTL
+  VCHECK=235.             ! activate for L90MA
+  SPDRAG=0.926E-4         ! activate for L90MA
+/
+
+&NMICTL
+/
+
+&NDGCTL
+!
+DT_NUDG_START =${START_YEAR},${START_MONTH},${START_DAY},${START_HOUR},0,0
+DT_NUDG_STOP  =${STOP_YEAR},${STOP_MONTH},${STOP_DAY},${STOP_HOUR},0,0
+LNUDGDBX      = F
+!LNUDGINI      = T
+LNUDGINI      = F
+NUDGTRUN      = 0
+LNUDGWOBS     = F
+LNUDGFRD      = F
+INUDGFORMAT   = 2
+NDG_FILE_NC   = "$INPUTDIR_NUDGE/${FNAME_NUDGE}.nc"
+!!$NDG_FILE_VOR  = "$INPUTDIR_NUDGE/${FNAME_NUDGE}_vor"
+!!$NDG_FILE_DIV  = "$INPUTDIR_NUDGE/${FNAME_NUDGE}_div"
+!!$NDG_FILE_STP  = "$INPUTDIR_NUDGE/${FNAME_NUDGE}_stp"
+NDG_FILE_SST  = "$INPUTDIR_NUDGE/${FNAME_NUDGE}_sst"
+!
+! nudging weights: 
+!
+! L39MA
+!NUDGD         = 15*0,0.0723,0.1447,0.2894,15*0.5787,0.2894,0.1447,0.0723,3*0
+!NUDGV         = 15*0,0.5787,1.1574,2.3148,15*4.6296,2.3148,1.1574,0.5787,3*0
+!NUDGT         = 15*0,0.1447,0.2894,0.5787,15*1.1574,0.5787,0.2894,0.1447,3*0
+!NUDGP         = 1.1574
+!
+! L90MA (maximum nudging at level 63, ~100 hPa)
+!NUDGD         = 57*0,0.0723,0.1023,0.1447,0.2046,0.2894,22*0.5787,0.2894,0.1447,0.0723,3*0
+!NUDGV         = 57*0,0.5787,0.8184,1.1574,1.6368,2.3148,22*4.6296,2.3148,1.1574,0.5787,3*0
+!NUDGT         = 57*0,0.1447,0.2046,0.2894,0.4092,0.5787,22*1.1574,0.5787,0.2894,0.1447,3*0
+!NUDGP         = 1.1574
+!
+! L90MA (maximum nudging at level 71, ~200 hPa)
+!NUDGD         = 64*0,0.0723,0.1023,0.1447,0.2046,0.2894,0.4093,14*0.5787,0.2894,0.1447,0.0723,3*0
+!NUDGV         = 64*0,0.5787,0.8184,1.1574,1.6368,2.3148,3.2736,14*4.6296,2.3148,1.1574,0.5787,3*0
+!NUDGT         = 64*0,0.1447,0.2046,0.2894,0.4092,0.5787,0.8184,14*1.1574,0.5787,0.2894,0.1447,3*0
+!NUDGP         = 1.1574
+!
+! L31ECMWF
+!!$NUDGD         = 6*0, 0.0723,0.1447,0.2894, 16*0.5787, 0.2894,0.1447,0.0723,3*0
+!!$NUDGV         = 6*0, 0.5787,1.1574,2.3148, 16*4.6296, 2.3148,1.1574,0.5787,3*0
+!!$NUDGT         = 6*0, 0.1447,0.2894,0.5787, 16*1.1574, 0.5787,0.2894,0.1447,3*0
+!!$NUDGP         = 1.1574
+!
+! L31ECMWF boundary layer free
+!NUDGD         = 3*0,0.0723,0.1447,0.2894,19*0.5787,0.2894,0.1447,0.0723,3*0
+!NUDGV         = 3*0,0.5787,1.1574,2.3148,19*4.6296,2.3148,1.1574,0.5787,3*0
+!NUDGT         = 3*0,0.1447,0.2894,0.5787,19*1.1574,0.5787,0.2894,0.1447,3*0
+!NUDGP         = 1.1574
+!
+! L31ECMWF down to surface
+!NUDGD         = 3*0,0.0723,0.1447,0.2894,25*0.5787
+!NUDGV         = 3*0,0.5787,1.1574,2.3148,25*4.6296
+!NUDGT         = 3*0,0.1447,0.2894,0.5787,25*1.1574
+!NUDGP         = 1.1574
+! L47MA
+! Festgelegt aus interpolation "per Auge" der L90MA Nudgingkoeffizienten (K.Pankatz)
+NUDGD         = 21*0,0.0394,0.1186,0.2215,0.3811,16*0.5787,0.2894,0.1447,0.0723,3*0
+NUDGV         = 21*0,0.3156,0.9596,1.7724,3.0480,16*4.6296,2.3148,1.1574,0.5787,3*0
+NUDGT         = 21*0,0.0789,0.2541,0.4431,0.7620,16*1.1574,0.5787,0.2894,0.1447,3*0
+NUDGP         = 1.1574
+!
+! L87MA (linear interpolated from L90MA)
+!NUDGD         = 57*0,0.0594,0.0977,0.1387,0.1962,0.2770,0.3902,0.5487,14*0.5787,0.5314,0.3422,0.2245,0.1403,0.0935,0.0431,3*0
+!NUDGV         = 57*0,0.4760,0.7810,1.1090,1.5700,2.2150,3.1210,4.3900,14*4.6296,4.2510,2.7380,1.7960,1.1220,0.7480,0.3450,3*0
+!NUDGT         = 57*0,0.1190,0.1950,0.2770,0.3920,0.5540,0.7800,1.0970,14*1.1574,1.0630,0.6840,0.4490,0.2810,0.1870,0.0860,3*0
+!NUDGP         = 1.1574
+!
+! L87MA (box average from L90MA)
+!NUDGD         = 57*0,0.0596,0.0978,0.1390,0.1969,0.2781,0.3921,0.5518,15*0.5787,0.2937,0.2304,0.1447,0.0859,0.0483,3*0
+!NUDGV         = 57*0,0.4774,0.7826,1.1118,1.5748,2.2246,3.1362,4.4146,15*4.6296,2.3489,1.8429,1.1574,0.6874,0.3866,3*0
+!NUDGT         = 57*0,0.1194,0.1957,0.2780,0.3937,0.5562,0.7841,1.1037,15*1.1574,0.5872,0.4607,0.2894,0.1719,0.0967,3*0
+!NUDGP         = 1.1574
+!
+/

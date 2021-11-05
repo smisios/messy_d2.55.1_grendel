@@ -1,0 +1,80 @@
+! -*- f90 -*-
+&CPL
+! ALLOW POINT EMISSIONS ALSO FOR NON-TREXP-TRACERS ?
+l_force_emis = T,
+!
+L_GP = T,
+L_LG = F,
+!
+! ### LIST OF TRACERS
+! ### O : ORDER
+!         = 0 : dx/dt = -ka * x       + p , [ka] = 1/s , Ta = 0
+!         = 1 : dx/dt = -ka * x * [Y] + p , [ka] = cm3/s
+!         = -1: dx/dt = -k  * x * [Y] + p , [ka] = cm3/s
+!               k = ka + c_air*kb           [kb] = cm6/s, [c_air] = 1/cm3
+!         (p: production, x: mixing ratio, Y: reaction partner)
+! ### ka: O=0 : ARRHENIUS A FACTOR          [ka] = cm3/s
+!         O=1 : DECAY CONSTANT              [ka] = 1/s
+!         O=-1:                             [ka] = cm3/s
+! ### Ta: O=0 : Ta=0
+!         O=1 : ACTIVATION TEMPERATURE      [Ta] = K
+!         O=-1: PRESSURE DEPENDENCE         [Ta] = cm6/s
+! SYNTAX:
+!                                                             ONLY FOR ORDER=1
+!                                                           |==================|
+! 'tracer-set(s);', 'tracer-name[_subname]', ORDER, ka, Ta, 'channel', 'object'
+!!$TR(1) = 'gp', 'T01', 1, 0.5625E-13, 1.5550E+03, 'tracer_gp', 'H', 
+!!$TR(2) = 'gp', 'T02', 1, 0.1125E-12, 1.5550E+03, 'tracer_gp', 'H', 
+!!$TR(3) = 'gp', 'T03', 1, 0.2250E-12, 1.5550E+03, 'tracer_gp', 'H', 
+!!$TR(4) = 'gp', 'T04', 1, 0.4500E-12, 1.5550E+03, 'tracer_gp', 'H', 
+!!$TR(5) = 'gp', 'T05', 1, 0.9000E-12, 1.5550E+03, 'tracer_gp', 'H', 
+!!$TR(6) = 'gp', 'T06', 1, 1.8000E-12, 1.5550E+03, 'tracer_gp', 'H', 
+!!$TR(7) = 'gp', 'T07', 1, 3.6000E-12, 1.5550E+03, 'tracer_gp', 'H', 
+!!$TR(8) = 'gp', 'T08', 1, 7.2000E-12, 1.5550E+03, 'tracer_gp', 'H', 
+!!$TR(9) = 'gp', 'T09', 1, 1.4400E-11, 1.5550E+03, 'tracer_gp', 'H', 
+!!$TR(10) = 'gp', 'T10', 1, 2.8800E-11, 1.5550E+03, 'tracer_gp', 'H', 
+!!$TR(11) = 'gp', 'T11', 1, 5.7600E-11, 1.5550E+03, 'tracer_gp', 'H', 
+!!$!
+!!$TR(12) = 'gp', 'R01', 0, 1.981875e-10, ,   ,   ,   
+!!$TR(13) = 'gp', 'R02', 0, 3.963750e-10, ,   ,   ,   
+!!$TR(14) = 'gp', 'R03', 0, 7.927500e-10, ,   ,   ,   
+!!$TR(15) = 'gp', 'R04', 0, 1.585500e-09, ,   ,   ,   
+!!$TR(16) = 'gp', 'R05', 0, 3.171000e-09, ,   ,   ,   
+!!$TR(17) = 'gp', 'R06', 0, 6.342000E-09, ,   ,   ,   
+!!$TR(18) = 'gp', 'R07', 0, 1.268400e-08, ,   ,   ,   
+!!$TR(19) = 'gp', 'R08', 0, 2.536800e-08, ,   ,   ,   
+!!$TR(20) = 'gp', 'R09', 0, 5.073600e-08, ,   ,   ,   
+!!$TR(21) = 'gp', 'R10', 0, 1.014720e-07, ,   ,   ,   
+!!$TR(22) = 'gp', 'R11', 0, 2.029440e-07, ,   ,   ,   
+!!$!
+!!$!
+!!$TR(23) = 'gp', 'T12', 1, 0., 1., 'tracer_gp', 'H', 
+!!$TR(24) = 'gp', 'R12', 0, 0., ,   ,   ,   
+!
+TR(1) = 'gp', 'PNT', 0, 0., ,   ,   ,   
+TR(2) = 'gp', 'VUL', 0, 0., ,   ,   ,   
+TR(3) = 'gp', 'GER', 0, 0., ,   ,   ,   
+!
+! ### LIST OF RELEASE POINTS AND TIME
+! ### HEIGHT, "hPa|Pa|m ASL|m AGL", EMISSION, "kg|kg/s|mol/s|molec/s", LON [-180 ... 180], LAT [-90 ... 90]
+! SYNTAX:
+!   TYPE, LON, LAT, 
+!   1     HEIGHT, UNIT, EMISSION, UNIT, YYYY, MM, DD, HH, MI, SE, YYYY, MM, DD, HH, MI, SE,
+!                                       |=======================| |======================|
+!                                               START                    STOP
+!   2     'channel', 'altitude', 'flux', scaling factor,
+!   1,2   ';-separated tracer set list', ';-separated list of tracers'
+!
+POINT(1) = 1,  -20.00, 50.00,  900.0, 'hPa', 1.0E+06, 'kg',
+          2010, 3, 01,  0, 0, 0,  2010, 4, 01, 0, 0, 0,
+          '', '', '', 1.0, 
+          'gp', 'PNT',
+POINT(2) = 1,  -19.60, 63.63,  800.0, 'hPa', 1.0E+06, 'kg',
+          2010, 3, 01,  0, 0, 0,  2010, 4, 01, 0, 0, 0,
+          '', '', '', 1.0, 
+          'gp', 'VUL',
+POINT(3) = 1, 8.27,  50.00, 900.0, 'hPa', 1.E+06, 'kg',
+          2010, 3, 01,  0, 0, 0,  2010, 4, 01, 0, 0, 0,
+          '', '', '', 1.0, 
+          'gp', 'GER',
+/

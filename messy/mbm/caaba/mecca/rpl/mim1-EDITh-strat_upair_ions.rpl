@@ -1,0 +1,130 @@
+// -*- kpp -*- kpp mode for emacs
+
+// Author: Patrick Joeckel (for RC1-base-02)
+
+// Syntax of this replacement file is similar to kpp syntax, but...
+// - Only the commands "#REPLACE" and "#ENDREPLACE" are allowed.
+// - Comments must start with "//", curly braces ("{}") cannot be used here.
+
+// known limitation:
+// - The reaction number (e.g. "<G9876>") in the input equation file
+//   (gas.eqn) must be the first (non-whitespace) item in the line. If it is
+//   preceded by a comment in curly braces, replace.awk will not be able to
+//   find it.
+
+// Apply by running xmecca or using:
+//gawk -f replace.awk -v infile=gas.eqn.org -v outfile=gas.eqn gas.rpl
+
+// add new reactions, specify an empty reaction number
+
+// replace the comprehensive organic chemistry by mim1:
+//#include mim1
+
+// TEMPERATURE: use temp for temp_ion and temp_ec:
+#include EDIth-temp
+
+//-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+//---"St" muss vorhanden sein, damit Reaktion beachtet wird (siehe .bat, set wanted = "St")
+//---production of excited molecular oxygen
+
+// Regular replacements
+
+#REPLACE <>
+<G1002bup> O1D   + O3        = O3P + O3P + O2         :{%StG} 1.2E-10{§1.2}                       ;{&} 
+<G1050>    O1D   + O3P       = O3P + O3P              :{%StG} 8.0e-12                             ;{&}
+<G1051>    O1D   + N2        = O3P + N2               :{%StG} 2.53e-11*exp(69/temp)              ;{&}
+<G1052>    O1D   + CO2       = O3P + CO2              :{%StG} 7.5e-11*exp(115/temp)               ;{&}
+<G1053>    O1D   + H2O       = O3P + H2O              :{%StG} 2.0e-10               ;{&}
+<G1059>    O1D               = O3P                    :{%StG} 1.35 -(1.26+2.42e-4+7.54e-2) ;{&}
+#ENDREPLACE
+//-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+#REPLACE <>
+<G2115up>  H   + H {+M}       = H2        {+ 436. kJmol}  :{%StG} 5.7E-32*(300./temp)**(1.6)*cair    ;{&2615}
+<G3226up>  H   + NO2          = NO + OH                   :{%StG} 4.00E-10*EXP(-340./temp)         ;{&1555}
+<G2113up>  H2  + O3P          = H  + OH   {+ 7.72 kJmol}  :{%StG} 1.60E-11*EXP(-4570./temp)        ;{&2615}
+#ENDREPLACE
+
+
+//Odd hydrogen reactions
+#REPLACE <G2103>
+<G2103tf>  OH   + O3P        = H + O2    {+ 69.5 kJmol}  : {%UpStG}   0.85*1.8E-11{§1.15}*EXP(180./temp); {&2626}
+#ENDREPLACE
+
+#REPLACE <>
+<G2114aup> OH   + OH         = H2O   + O3P                :{%StG} 1.8e-12                                            ;{&}
+<G2114bup> OH   + OH {+M}    = H2O2                       :{%StG} k_3rd(temp,cair,6.9E-31,1.0,2.6E-11,0.0,0.6){§1.5} ;{&2626}
+<G3225up>  OH   + N          = NO    + H  {+ 203. kJmol}  :{%StG} 5.00E-11   ;{&2615}
+#ENDREPLACE
+
+#REPLACE <G2110>
+<a>  HO2   + HO2          = O2    + H2O2             :{%StG} 3.0e-13*(460/temp) ;{&}
+#ENDREPLACE
+
+
+#REPLACE <>
+<G2116up>  H2O2 + O3P      = OH   + HO2              {+ 332. kJmol} :{%StG}    1.40E-12*EXP(-2000./temp)                          ;{&1555}   
+#ENDREPLACE
+
+#REPLACE <G42080>
+#ENDREPLACE
+
+#REPLACE <G42081>
+#ENDREPLACE
+
+// replacements of reactions by andreas baumgaertner
+//
+
+// new ion reactions
+//
+
+#REPLACE <>
+<G0000i> N2p   + O2        = O2p + N2         :{%StG} 5.0E-11*(300/temp)**(0.8)                       ;{&}
+<G0001i> N2p   + O3P       = NOp + N2D         :{%StG} 1.4E-10*(300/temp)**(0.44)                       ;{&}
+<G0002i> N2p   + O3P       = NOp + N         :{%StG} 1.4E-10*(300/temp)**(0.44)*0.0                       ;{&}
+<G0003i> N2p   + em        = N2D + N2D         :{%StG} 1.8E-07*(300/temp)**(0.39)*0.56                       ;{&}
+<G0004i> N2p   + em        = N + N         :{%StG} 1.8E-07*(300/temp)**(0.39)*0.44                       ;{&}
+<G0005i> N2p   + O3P       = O4Sp + N2         :{%StG} 1.4E-10*(300/temp)**(0.44)                     ;{&}
+<G0006i> O4Sp   + O2       = O2p + O3P         :{%StG} 2.0E-11*(300/temp)**(0.4)                       ;{&}
+<G0007i> O2p   + em        = O1D + O3P         :{%StG} 1.9E-07*(300/temp)**(0.5)                       ;{&}
+<G0008i> O2Dp   + em       = O4Sp + em         :{%StG} 7.8E-08*(300/temp)**(0.5)                       ;{&}
+<G0009i> O2Pp   + em       = O4Sp + em         :{%StG} 4.0E-08*(300/temp)**(0.5)                       ;{&}
+//<G0010i> Hp   + O3P        = O4Sp + H          :{%StG} 5.34E-10                       ;{&}
+<G0011i> O4Sp   + N2       = NOp + N         :{%StG} 1.2E-12*(300/temp)**(0.74)                       ;{&}
+<G0012i> O2Pp   + em       = O2Dp + em         :{%StG} 1.5E-07*(300/temp)**(0.5)                       ;{&}
+//<G0013i> NOp   + em        = O3P + N         :{%StG} 1.2E-07                       ;{&}
+//<G0014i> NOp   + em        = O3P + N2D         :{%StG} 1.2E-07                       ;{&}
+<G0013i> NOp   + em        = O3P + N         :{%StG} 4.2E-07*(300/temp)**(0.85)*0.22                       ;{&}
+<G0014i> NOp   + em        = O3P + N2D         :{%StG} 4.2E-07*(300/temp)**(0.85)*0.78                       ;{&}
+//<G0013i> NOp           = N2         :{%StG} 4.2E-03*(300/temp)**(0.85)                       ;{&}
+//<G0013ia> em           = N2         :{%StG} 4.2E-03*(300/temp)**(0.85)                       ;{&}
+<G0015i> N2D   + em        = N + em          :{%StG} 5.5E-10*(300/temp)**(0.5)                       ;{&}
+<G0016i> N2D   + O3P       = N + O3P         :{%StG} 2.0E-12                     ;{&}
+<G0017i> N2D               = N               :{%StG} 1.06E-05                       ;{&}
+<G0018i> O2Dp  + O3P       = O4Sp + O3P        :{%StG} 1.0E-11                       ;{&}
+<G0019i> O2Dp  + N2        = O4Sp + N2         :{%StG} 8.0E-10                       ;{&}
+<G0020i> O2Pp  + O3P       = O4Sp + O3P        :{%StG} 5.2E-11                       ;{&}
+<G0021i> O2Pp              = O4Sp              :{%StG} 4.7E-02                       ;{&}
+<G0022i> Np  + O2          = O4Sp + NO         :{%StG} 3.0E-11                       ;{&}
+<G0023i> O4Sp  + NO        = NOp + O3P         :{%StG} 8.0E-13                       ;{&}
+//<G0024i> O4Sp  + H         = Hp + O3P          :{%StG} 6.0E-10                       ;{&}
+<G0025i> O4Sp  + N2D       = Np + O3P          :{%StG} 1.3E-10                       ;{&}
+<G0026i> O2Pp              = O2Dp              :{%StG} 0.171                         ;{&}
+<G0027i> O2Dp              = O4Sp              :{%StG} 7.7E-05                       ;{&}
+<G0028i> O2Pp  + N2        = Np + NO           :{%StG} 1.0E-10                       ;{&}
+<G0029i> O2Pp  + N       = Np + O3P          :{%StG} 1.0E-10                       ;{&}
+<G0030i> O2Dp  + N       = Np + O3P          :{%StG} 7.5E-11                       ;{&}
+<G0031i> Np  + O2          = NOp + O3P         :{%StG} 2.6E-10                       ;{&}
+<G0032i> Np  + O3P         = O4Sp + N        :{%StG} 5.0E-13                       ;{&}
+//<G0033i> Np  + H           = Hp + N          :{%StG} 3.6E-12                       ;{&}
+<G0034i> N2D  + O2         = NO + O3P          :{%StG} 5.3E-12*0.98                       ;{&}
+<G0035i> N2D  + O2         = NO + O1D          :{%StG} 5.3E-12*0.02                       ;{&}
+<G0036i> N2D  + NO         = N2 + O3P          :{%StG} 7.0E-11                       ;{&}
+<G0081i> O4Sp  + CO2       = O2p + CO          :{%StG} 1.06E-09                       ;{&}
+<G0082i> O2Dp  + CO2       = O2p + CO          :{%StG} 1.06E-09*0.05                       ;{&}
+<G0083i> O2Pp  + CO2       = O2p + CO          :{%StG} 1.06E-09*0.05                       ;{&}
+<G0100i> Np  + em          = N               :{%StG} 1.0E-12                       ;{&}
+<G0101i> O4Sp  + em        = O3P               :{%StG} 4.0E-06                       ;{&}
+<G0102i> O2Pp  + em        = O3P               :{%StG} 4.0E-06                       ;{&}
+//<G0103i> Hp  + em          = H                 :{%StG} 1.0E-12                       ;{&}
+#ENDREPLACE

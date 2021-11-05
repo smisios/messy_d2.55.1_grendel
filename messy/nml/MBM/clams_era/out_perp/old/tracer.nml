@@ -1,0 +1,63 @@
+! -*- f90 -*-
+&CTRL
+L_FAMILY     = F, !# USE TRACER FAMILIES (SEE CTRL_FAMILY BELOW)
+L_PDEF       = F, !# SWITCH TRACER SUB-SUBMODEL PDEF (SEE CPL/CTRL_PDEF BELOW)
+/
+
+&CPL
+L_TRACER_INIT = T, !# SWITCH ON(T)/OFF(F) TRACER INITIALISATION
+!L_CONV_LG2GP = F, !# ONLY IF LAGRANGIAN TRACERS PRESENT 
+/
+
+&CTRL_FAMILY
+l_verbose = F,   !# diagnostic output
+i_diag_pe = 0,   !# ... for this p_pe
+i_diag_jrow = 1, !# ... and this jrow
+!#
+!# NOTES:
+!#    - MAX. NUMBER OF FAMILIES: 50
+!#    - FAMILY-TYPE = 1: FAMILY = SUM OF TRACERS, TRACER = FRACTION OF FAMILY
+!#                                - TRACER FRACTIONS NOT TRANSPORTED
+!#                                - PROCESS SPECIFIC CONVERSION
+!#                                - switch is meaningless for type 1
+!#    -             = 2: FAMILY = SUM OF TRACERS, TRACER REMAINS
+!#                                - TRACER TRANSPORTED
+!#                                - RESCALED TO SUM AFTER TRANSPORT
+!#                                - switch = .FALSE.: no re-scaling,
+!#                                                    only summation
+!#                                -        = .TRUE. (default): re-scaling ON
+!#    - FAMILY TRACER MUST NOT EXIST
+!#    - FIRST VALID TRACER IN FAMILY SPECIFIES ATTRIBUTES OF TRACER FAMILY
+!#    - nadvect=nconvect=nvdiff = ON FOR FAMILIES WITH FAMILY-TYPE = 1
+!#    - EACH TRACER CAN BE MEMBER OF ZERO OR ONE TRACER FAMILY
+!#    - THE DEFAULT WEIGHT FOR EACH TRACER IS 1.0
+!# SYNTAX:
+!#    tracer-set, family-type, switch, family-name, family-subname,
+!#    LIST OF TRACERS ...
+!#    ... ('name' OR 'name_subname' OR 'name:weight' OR 'name_subname:weight')
+!TF(1) = 'gp',1, ,'ClOX','','Cl','ClO','HOCl','OClO','Cl2O2:2.0','Cl2:2.0',!94*''
+!TF(2) = 'gp',1, ,'BrOX','','Br','BrO','HOBr','BrCl','Br2:2.0',!95*''
+!TF(3) = 'gp',1, ,'NOX','','N','NO','NO2','NO3','N2O5:2.0',!95*''
+!TF(4) = 'gp',1, ,'HOx','','H','OH','HO2',!97*''
+!TF(5) = 'gp',1, ,'Ox','','O1D','O3P','O3',!97*''
+!
+/
+
+&CPL_PDEF
+!# TIMER
+TPD_TIMER = 1,'steps','first',0
+/
+
+&CTRL_PDEF
+!# diagnostic output ?
+L_DIAGOUT = T,
+!# SYNTAX: set-name, tracer-name, subname,
+!#         reset to zero?, stop on exceed?, relative tolerance
+TPD_DEFAULT(1) = 'gp',   '',     '',    T, F, 0.01,
+TPD_DEFAULT(2) = 'lg',   '',     '',    T, F, 0.01,
+TPD_DEFAULT(3) = 'lggp', '',     '',    F, F, 0.01,
+!
+TPD(1)         = 'gp',   'HNO3', 'nat', T, F,     ,
+TPD(2)         = 'gp',   'N',    '',    T, F,     ,
+!
+/

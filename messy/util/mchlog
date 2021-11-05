@@ -1,0 +1,226 @@
+#!/bin/bash
+#
+# mchlog: MESSy change-logger (V1.3b)
+# Author: Patrick Joeckel, MPICH, Jan 2002, 2004
+# 
+# output all lines modified and marked according to the
+# convention discussed on Jan 15, 2002 by the MAINZ MESSy group:
+#          mz_ui_yyyymmdd[+/-] 
+# where yyyy is the year,
+#         mm is the month,
+#         dd is the day of modification, and
+#         ui are the initials of the modifier
+#         +/- mark start and end of a modified block, respectively
+#             if not used for only on line
+#
+
+prog=$0
+
+### USAGE ++++++++++++++++++++++++++++++++++++++++++++++++++++
+usage()
+{
+          echo "Usage: $prog [options] file ..."
+          echo "Options: -g<gg>    : group"
+          echo "         -u<ui>    : user initials"
+          echo "         -y<yyyy>  : year"
+          echo "         -m<mm>    : month"
+          echo "         -d<dd>    : day"
+	  echo "         -n        : output line numbers"
+          echo "         -V        : print version and exit"
+          echo "         -h        : print usage and exit"
+          echo " "
+}
+### END USAGE ------------------------------------------------
+
+#### INIT ++++++++++++++++++++++++++++++++++++++++++++++++++++
+# lnr=0
+# yy="[0-9][0-9][0-9][0-9]"
+# mm="[0-9][0-9]"
+# dd="[0-9][0-9]"
+# usr="[A-z][A-z]"
+# grp="[A-z][A-z]"
+# vers="1.1b"
+
+lnr=0
+yy="[[:digit:]][[:digit:]][[:digit:]][[:digit:]]"
+mm="[[:digit:]][[:digit:]]"
+dd="[[:digit:]][[:digit:]]"
+usr="[[:alpha:]][[:alpha:]]"
+grp="[[:alpha:]][[:alpha:]]"
+vers="1.3b"
+
+### END INIT -------------------------------------------------
+
+### ARGUMENT PARSING +++++++++++++++++++++++++++++++++++++++++
+if [ $# -eq 0 ]
+then 
+          usage
+          exit 1
+fi
+
+for i in "$@"
+do
+    case $i in
+    -g*)
+         grp=${1#-g}
+	 if [ ${#grp} -eq 0 ]
+	    then
+	    echo 'group missing'
+	    usage
+	    exit 1
+	 else
+	    grp=`echo $grp | awk '{ for (i=1;i<=length($0);i++) \
+                                    { printf("[%s%s]",tolower(substr($0,i,1)),\
+                                                      toupper(substr($0,i,1)))\
+                                     }\
+                                  }'`
+	 fi
+	 shift
+         ;;
+    -u*)
+         usr=${1#-u}
+	 if [ ${#usr} -eq 0 ]
+	    then
+	    echo 'user initials missing'
+	    usage
+	    exit 1
+	 else
+	    usr=`echo $usr | awk '{ for (i=1;i<=length($0);i++) \
+                                    { printf("[%s%s]",tolower(substr($0,i,1)),\
+                                                      toupper(substr($0,i,1)))\
+                                     }\
+                                  }'`
+	 fi
+	 shift
+         ;;
+    -y*)
+         yy=${1#-y}
+	 if [ ${#yy} -eq 0 ]
+	    then
+	    echo 'year missing'
+	    usage
+	    exit 1
+	 fi
+	 shift
+         ;;
+    -m*)
+         mm=${1#-m}
+	 if [ ${#mm} -eq 0 ]
+	    then
+	    echo 'month missing'
+	    usage
+	    exit 1
+	 fi
+	 shift
+         ;;
+    -d*)
+         dd=${1#-d}
+	 if [ ${#dd} -eq 0 ]
+	    then
+	    echo 'day missing'
+	    usage
+	    exit 1
+	 fi
+	 shift
+         ;;
+    -n)   
+	   lnr=1
+           shift
+           ;;
+    -V)   
+	   echo $prog" Version "$vers" by Patrick Joeckel, MPICH, Jan 2004"
+	   exit 0
+           shift
+           ;;
+    -h)   
+	   usage
+	   exit 0
+           shift
+           ;;
+    -*)   
+         echo ""
+         echo "$prog: bad option"
+         usage
+         exit 1
+	 shift
+         ;;
+      esac
+done
+
+if [ ${#1} -eq 0 ]
+   then
+   echo 'file(list) missing'
+   usage
+   exit 1
+fi
+
+### END ARGUMENT PARSING -----------------------------------------------
+
+### SET UP SEARCH STRING +++++++++++++++++++++++++++++++++++++++++++++++
+srch="[!][ ]*"$grp"_"$usr"_"$yy$mm$dd
+### END SEARCH STRING --------------------------------------------------
+
+### CREATE AWK-SCRIPT ++++++++++++++++++++++++++++++++++++++++++++++++++
+rm -f mchlog.awk
+
+cat <<EOF > mchlog.awk
+BEGIN{
+      out = 0;
+      bls = 0;
+      new = 0;
+      old = 0;
+     }
+      { if (match(\$0,"$srch") != 0)    {out++} }
+      { if (match(\$0,"$srch[+]") != 0) {out=0; bls++} }
+      { if (match(\$0,"$srch[-]") != 0) {out=1; bls--} }
+      { if ((out > 0) || (bls > 0)) {
+           if (${lnr} == 1)
+              {printf("%6d  ",NR); print}
+           else
+              {print};
+	   out--;
+	   if (out < 0) {out = 0};
+           old = new;
+           new = 1;
+           }
+         else
+           {
+            old = new;
+            new = 0;
+           }
+      } 
+      { if ((new != old) && (new == 0)) { if (${lnr} == 1)
+                                               {printf("   ...\n")}
+                                          else
+                                               {printf("...\n") };
+                                        }
+      }
+END { }
+EOF
+
+### END CREATE AWK-SCRIPT ----------------------------------------------
+
+### LOOP OVER FILES
+for file in $@
+do
+
+if [ ! -f $file ]
+then
+    echo "--------------------------------------------->"
+    echo $file" not found"
+    echo "---------------------------------------------<"
+fi
+
+echo ""
+echo "--------------------------------------------->"
+echo "Scanning for "$srch" in "$file":"
+awk -f mchlog.awk $file
+echo "---------------------------------------------<"
+
+done
+### END LOOP OVER FILES ------------------------------------------------
+
+### CLEAN UP
+rm -f mchlog.awk
+
+exit 0

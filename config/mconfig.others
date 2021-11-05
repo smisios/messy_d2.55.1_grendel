@@ -1,0 +1,1333 @@
+# -*- Makefile -*- Time-stamp: <2019-05-13 17:05:46 joec_pa>
+###############################################################################
+##### PLATFORM SPECIFIC SETTINGS (LINUX64) ####################################
+###############################################################################
+ARCH       = LINUX64
+
+###########################################################################
+### DEFAULTS
+###########################################################################
+#### DEFAULT COMPILE MODE
+if test -z "$RUNMODE" ; then
+   RUNMODE=PRODUCTION
+fi
+
+#### SET DEFAULT PROFILING MODE
+if test -z "$PROFILEMODE" ; then
+   PROFILEMODE=NONE
+fi
+
+##### TOOLS
+#AR       = ar
+#ARFLAGS  = cvr
+#NMFLAGS  = 
+
+##### F95 EXTENSIONS
+DEFOPT   = -D
+MODOPT   = -I
+
+###########################################################################
+##### SYSTEM / HOST SPECIFIC NON-DEFAULTS
+###########################################################################
+#HOSTNAME=`hostname`
+#HOST=`host $HOSTNAME`
+#if (( $? )) ; then
+#HOST=$HOSTNAME
+#else
+#HOST=`host $HOSTNAME | awk '{print $1}'`
+#fi
+
+##### C-COMPILER AND FLAGS
+case $HOST in
+
+
+  #########################################################################
+  ### FUB
+  #########################################################################
+  blogin*)
+     COMPILER=GFORTRAN
+     case $COMPILER in
+      INTEL)
+         #CXX      = CC
+         CC       = cc
+         CFLAGS   = -O2 -dynamic -Df2cFortran
+         F90      = ftn
+         F90VERS  = `$F90 --version | awk '{if (NR == 1) print}'`
+         ##### F95 EXTENSIONS
+         DEFOPT   = -D
+         MODOPT   = -I
+         ##### F95 COMPILER FLAG TO OBTAIN DOUBLE PRECISION
+         F90R8    = -autodouble
+         ##### F77 OPTIONS
+         FFLAGS   = -fpp -O2 -dynamic -fp-speculation=safe -mp1 -align all -fno-alias
+         ###
+         #MPIROOT    = ${CRAY_MPICH2_DIR}
+         MPIROOT    = /opt/cray/mpt/6.0.1/gni/mpich2-intel/130
+         MPI_LIB    = mpichf90 mpich fmpich
+         #
+         #NETCDFROOT = ${NETCDF_DIR}
+         NETCDFROOT = /opt/cray/netcdf/4.3.0/INTEL/130
+         #
+         SPEC_NETCDF_INC = ${NETCDFROOT}/include
+         SPEC_NETCDF_LIB = -L${NETCDFROOT}/lib -lnetcdf -lnetcdff
+         #PNETCDFROOT = ${PARALLEL_NETCDF_DIR}
+         PNETCDFROOT = /opt/cray/parallel-netcdf/1.3.1.1/INTEL/130
+         #BLASROOT   = ${CRAY_LIBSCI_PREFIX_DIR}
+         BLASROOT   = /opt/cray/libsci/12.1.01/INTEL/130/ivybridge
+         BLAS_LIB   = sci_intel
+         #LAPACKROOT = ${CRAY_LIBSCI_PREFIX_DIR}
+         LAPACKROOT = /opt/cray/libsci/12.1.01/INTEL/130/ivybridge
+         LAPACK_LIB = sci_intel
+         FCKLIBS    = 
+
+         case $RUNMODE in
+            DEBUG*)
+               F90FLAGS = -fpp -O0 -dynamic -mieee-fp -fp-speculation=safe -mp1 -align all -fno-alias
+               ;;
+            PRODUCTION*)
+               F90FLAGS = -fpp -O2 -dynamic -mieee-fp -fp-speculation=safe -mp1 -align all -fno-alias
+               ;;
+            *)
+               ERRSTR='Error: wrong run-time mode selected! To solve ./configure [options] RUNMODE=DEBUG|PRODUCTION'
+               ;;
+         esac
+         ;;
+      GFORTRAN)
+         ### ### gcc/gcc481
+         ### ### openmpi/1.6.5/gfortran/4.8.1 
+         CXX      = g++
+         CC       = cc
+         CFLAGS   = -O -dynamic -Df2cFortran
+         F90      = ftn
+         F90VERS  = `$F90 --version | awk '{if (NR == 1) print}'`
+         ##### F95 EXTENSIONS
+         DEFOPT   = -D
+         MODOPT   = -I
+         ##### F95 COMPILER FLAG TO OBTAIN DOUBLE PRECISION
+         F90R8    = -fdefault-real-8
+         ##### F77 OPTIONS
+         #FFLAGS   = -dynamic -fno-second-underscore -ffree-line-length-none -fno-range-check 
+         FFLAGS   = -dynamic -march=haswell -mtune=haswell -mavx2 -mfma -fno-second-underscore -ffree-line-length-none -fno-range-check
+         ###
+         MPIROOT    = ${CRAY_MPICH2_DIR}
+         MPI_LIB    = mpichf90 mpich
+         #
+         NETCDFROOT = ${NETCDF_DIR}
+         #
+         SPEC_NETCDF_INC = ${NETCDFROOT}/include
+         SPEC_NETCDF_LIB = -L${NETCDFROOT}/lib -lnetcdff -lnetcdf -Wl,-rpath,${NETCDFROOT}/lib
+         PNETCDFROOT = ${PARALLEL_NETCDF_DIR}
+         BLASROOT   = ${CRAY_LIBSCI_PREFIX_DIR}
+         BLAS_LIB   = sci_gnu
+         LAPACKROOT = ${CRAY_LIBSCI_PREFIX_DIR}
+         LAPACK_LIB = sci_gnu
+         FCKLIBS    = 
+
+         case $RUNMODE in
+            DEBUG*)
+               ### for debugging:
+               F90FLAGS = -cpp -g -O0 -Wall -dynamic -fno-second-underscore -ffree-line-length-none -fno-range-check -fbacktrace -fbounds-check -fdump-core
+               # -pedantic
+               # -DNOENDIANCONVERT
+               # -std=f95
+               ;;
+            PRODUCTION*)
+               ### fast, optimized model run:
+               #F90FLAGS = -cpp -O1 -dynamic -fno-second-underscore -ffree-line-length-none -fno-range-check
+               F90FLAGS = -O1 -march=haswell -mtune=haswell -mavx2 -mfma -cpp -dynamic -fno-second-underscore -ffree-line-length-none -fno-range-check
+               ;;
+            DEBUGOPT*)
+               ### for debugging:
+               F90FLAGS = -cpp -O -dynamic -fno-second-underscore -ffree-line-length-none -fno-range-check -fbacktrace -fbounds-check -g -Wall -fdump-core
+               ;;
+            *)
+               ERRSTR='Error: wrong run-time mode selected! To solve ./configure [options] RUNMODE=DEBUG|PRODUCTION'
+               ;;
+         esac
+         ;;
+      CRAY)
+         #CXX      = CC
+         CC       = cc
+         CFLAGS   = -O3 -dynamic -Df2cFortran
+         F90      = ftn
+         F90VERS  = `$F90 --version | awk '{if (NR == 1) print}'`
+         ##### F95 EXTENSIONS
+         DEFOPT   = -D
+         MODOPT   = -I
+         ##### F95 COMPILER FLAG TO OBTAIN DOUBLE PRECISION
+         F90R8    = -s real64
+         ##### F77 OPTIONS
+         FFLAGS   = -O3 -dynamic -eZ -hnoomp
+         ###
+         MPIROOT    = ${CRAY_MPICH2_DIR}
+         MPI_LIB    = mpichf90 mpich fmpich
+         NETCDFROOT = ${NETCDF_DIR}
+         #NETCDFROOT = /home/b/bekmkune/local/netcdf_local/CRAY/81
+         #
+         SPEC_NETCDF_INC = ${NETCDFROOT}/include
+         SPEC_NETCDF_LIB = -L${NETCDFROOT}/lib -lnetcdf -lnetcdff
+         PNETCDFROOT = ${PARALLEL_NETCDF_DIR}
+         BLASROOT   = ${CRAY_LIBSCI_PREFIX_DIR}        
+         BLAS_LIB   = sci_cray
+         LAPACKROOT   = ${CRAY_LIBSCI_PREFIX_DIR}
+         LAPACK_LIB = sci_cray
+         FCKLIBS    = 
+
+         case $RUNMODE in
+            DEBUG*)
+               F90FLAGS = -O0 -g -dynamic -rm -hnoomp -hstatic -eZ -D__cray__
+               ;;
+            PRODUCTION*)
+               F90FLAGS = -O3 -dynamic -rm -hnoomp -hstatic -eZ -D__cray__
+               ;;
+            *)
+               ERRSTR='Error: wrong run-time mode selected! To solve ./configure [options] RUNMODE=DEBUG|PRODUCTION'
+               ;;
+         esac
+         ;;
+     esac
+     ;;
+
+  #########################################################################
+  ### ???
+  #########################################################################
+  bice*)
+     case $COMPILER in
+      INTEL)
+         CXX      = g++
+         CC       = mpicc
+         CFLAGS   = -O -Df2cFortran
+         F90      = mpif90
+         F90VERS  = `$F90 --version | awk '{if (NR == 1) print}'`
+         ##### F95 EXTENSIONS
+         DEFOPT   = -D
+         MODOPT   = -I
+         ##### F95 COMPILER FLAG TO OBTAIN DOUBLE PRECISION
+         F90R8    = -autodouble
+         ##### F77 OPTIONS
+         FFLAGS   = -fpp -O -fp-model strict -mp1 -align all -fno-alias
+         ###
+         #MPIROOT    = /sw/comm/mvapich2/1.2rc2-intel
+         #MPIROOT    = /sw/comm/mvapich2/1.5.0-intel
+         MPIROOT    = /sw/comm/mvapich2/1.8-intel
+         #MPIROOT    = /sw/comm/mvapich2/1.2.0-intel
+         #MPIROOT    = /home/b/bekklabi/local/mpich2/mvapich2-1.9a_ifc
+         MPI_LIB    = mpichf90 mpich fmpich
+         #NETCDFROOT = /home/b/bekklabi/local/netcdf/netcdf-3.6.3_ifc_64
+         NETCDFROOT = /home/b/bekklabi/local/netcdf/netcdf-4.2.1.1_ifc_64
+         #NETCDFROOT = /sw/dataformats/netcdf/4.1.2-intel
+         SPEC_NETCDF_INC = ${NETCDFROOT}/include
+         SPEC_NETCDF_LIB = -L${NETCDFROOT}/lib -lnetcdf -lnetcdff
+         PNETCDFROOT = /sw/dataformats/pnetcdf/netcdf-4.0.1-mvapich2-intel
+         #BLASROOT   = /usr/lib64
+         #BLAS_LIB   = blas
+         #LAPACKROOT = /usr/lib64
+         #LAPACK_LIB = lapack
+         FCKLIBS    = 
+
+         case $RUNMODE in
+            DEBUG*)
+               F90FLAGS = -g -fpp -O0 -fp-model strict -mp1 -align all -fno-alias
+               ;;
+            PRODUCTION*)
+               F90FLAGS = -fpp -O -fp-model strict -mp1 -align all -fno-alias
+               ;;
+            *)
+               ERRSTR='Error: wrong run-time mode selected! To solve ./configure [options] RUNMODE=DEBUG|PRODUCTION'
+               ;;
+         esac
+         ;;
+     esac
+     ;;
+
+  #########################################################################
+  ### FUB
+  #########################################################################
+  strat*)
+
+     case $COMPILER in
+
+      GFORTRAN*)
+       CC        = $HOME/local/mpich2/mpich2_gf95_64/bin/mpicc
+       CFLAGS   = -O0 -g -Df2cFortran
+
+       F90      = $HOME/local/mpich2/mpich2_gf95_64/bin/mpif90
+       F90VERS  = `$F90 --version | awk '{if (NR == 1) print}'`
+       ##### F95 EXTENSIONS
+       DEFOPT   = -D
+       MODOPT   = -I
+       ##### F95 COMPILER FLAG TO OBTAIN DOUBLE PRECISION
+       F90R8    = -fdefault-real-8
+       ###
+       case $RUNMODE in
+         DEBUG)
+           FFLAGS   = -O0 -g -fno-second-underscore -ffree-line-length-none -fno-range-check 
+           F90FLAGS = -g -O0 -cpp -D__linux__ -fno-second-underscore -ffree-line-length-none -fno-range-check -fbacktrace -fbounds-check -Wall -fdump-core
+           ;;
+
+         PRODUCTION)
+           FFLAGS   = -O -fno-second-underscore -ffree-line-length-none -fno-range-check 
+           F90FLAGS = -O3 -cpp -D__linux__ -fno-second-underscore -ffree-line-length-none -fno-range-check
+           ;;
+       esac
+       ### glibc-2.3.2-6, gcc-3.3.1-0
+       MPIROOT    = ${HOME}/local/mpich2/mpich2_gf95_64
+       #MPI_LIB    = mpichf90nc mpich 
+       #INCLUDE    = -I/opt/mpich/include/f90base
+       NETCDFROOT = $HOME/local/netcdf/netcdf_gf95_64
+       #BLASROOT   = /usr/lib64
+       #BLAS_LIB   = blas
+       #LAPACKROOT = /usr/lib64
+       #LAPACK_LIB = lapack
+       ;;
+    INTEL*)
+       #CC       = gcc
+       #CFLAGS   = -O -Df2cFortran
+       CC       = /usr/local/mpich2/mpich2_ifc/bin/mpicc
+       #CC       = mpicc
+       #CFLAGS   = -O -Df2cFortran
+       #CFLAGS   = -O -Df2cFortran
+       CFLAGS   = -O0 -g -Df2cFortran
+       #FFLAGS   = -O -fp-model precise
+       FFLAGS   = -O0 -g -fp-model strict
+       #F90 = lf95   ! only needed if not default
+       #F90 = ifc
+       F90      = /usr/local/mpich2/mpich2_ifc/bin/mpif90
+       F90VERS  = `$F90 --version | awk '{if (NR == 1) print}'`
+       #F90      = mpif90
+       F90R8    = -autodouble
+       F90FLAGS = -cpp  -O -fp-model strict
+       #F90FLAGS = -cpp  -O0 -g -fp-model precise
+       ### glibc-2.3.2-6, gcc-3.3.1-0
+       #MPIROOT    = /opt/mpich/ch-p4
+       #MPI_LIB    = mpichf90nc mpich 
+       #INCLUDE    = -I/opt/mpich/include/f90base
+       NETCDFROOT = /usr/local/netcdf/netcdf_ifc
+       #BLASROOT   = /usr/lib64
+       #BLAS_LIB   = blas
+       #LAPACKROOT = /usr/lib64
+       #LAPACK_LIB = lapack     
+       ;; 
+    esac
+    ;;
+
+  calc*)
+     COMPILER=INTEL
+     case $COMPILER in
+      INTEL)
+       dd #CC       = gcc
+        #CFLAGS   = -O -Df2cFortran
+        CC       = mpicc
+        F90      = mpif90
+        F90VERS  = `$F90 --version | awk '{if (NR == 1) print}'`
+        F90R8    = -autodouble
+        #
+        ### glibc-2.3.2-6, gcc-3.3.1-0
+        MPIROOT    = /net/opt/mpich2/ifort-12.0.2/1.3.1/i686
+        MPI_LIB    = mpichf90nc mpich 
+        #INCLUDE    = -I/opt/mpich/include/f90base
+        NETCDFROOT = /home/aktuell/local/netcdf/netcdf_ifc_64
+        SPEC_NETCDF_INC = ${NETCDFROOT}/include
+        SPEC_NETCDF_LIB = -L${NETCDFROOT}/lib -lnetcdf -lnetcdff
+        #BLASROOT   = /usr/lib64
+        #BLAS_LIB   = blas
+        #LAPACKROOT = /usr/lib64
+        #LAPACK_LIB = lapack
+
+        case $RUNMODE in
+          DEBUG*)
+            CFLAGS   = -O0 -g -Df2cFortran
+            FFLAGS   = -O0 -g -fp-model strict
+            F90FLAGS = -cpp -O0 -g -fp-model strict
+            ;;
+          PRODUCTION*)
+            CFLAGS   = -O -Df2cFortran
+            FFLAGS   = -O -fp-model strict
+            F90FLAGS = -cpp -O -fp-model strict
+            ;;
+        esac
+        ;;
+     esac
+     ;;
+
+  #########################################################################
+  ### yellowstone @ UCAR
+  #########################################################################
+  ys*)
+     #########################################################################
+     # INTEL compiler options
+     # -fp-model source(=precise) Disables optimizations that can change the 
+     #                           result  of  floating-point  calculations
+     # -align all                add padding bytes to obtain the natural 
+     #                           alignment of data items in common  blocks,
+     #                           derived types, and  record  structures
+     # -ftz                      Flushes denormal results to zero
+     # -assume byterecl          units for the OPEN statement record length
+     #                           are in byte
+     # -fp-speculation=safe      Disables speculation if there is a possibility
+     #                           that the speculation may cause a floating-
+     #                           point exception.
+     # -fno-alias                aliasing should not be assumed in the program 
+     # -lpthread                 link POSIX thread library
+     # -free                     specifies source files are in free format
+     #########################################################################
+     # default: no profiling (nothing to do)
+     PREF90 =
+     COMPILER=INTEL
+     CC       = mpiicc
+     CFLAGS = -O -fp-model strict -Df2cFortran
+     F90 = mpiifort
+     F90R8    = -autodouble
+     # F90R8    = --dbl
+     F90VERS  = `$F90 --version | awk '{if (NR == 1) print}'`
+     ##### F95 EXTENSIONS
+     DEFOPT   = -D
+     MODOPT   = -I
+     ##### F77 OPTIONS #-fno-alias -lpthread
+     FFLAGS =-fpp -O2 -fp-model strict
+     ###
+     F90ADDOPT = -xAVX 
+     ###
+     ### fp-model source -convert big_endian -assume byterecl -ftz -traceback   -xHost   -DLINUX  -DMCT_INTERFACE -DHAVE_MPI -DFORTRANUNDERSCORE -DNO_R16 -DHAVE_NANOTIME  -DLINUX -DCPRINTEL  -DHAVE_SLASHPROC -free  
+     case $RUNMODE in
+        DEBUG)
+           F90FLAGS = -fpp -g -debug all -check all -traceback -O0 $F90ADDOPT -fp-model strict -align all -fno-alias -lpthread -free -ftz -convert big_endian -assume byterecl 
+           ;;
+        PRODUCTION)
+           # standard:
+           #F90FLAGS = -fpp -O2 $F90ADDOPT -fp-model strict -align all -fno-alias -lpthread
+           # from CESM:
+           #F90FLAGS = -fpp -O2 -fp-model source -convert big_endian -assume byterecl -ftz -traceback -xHost -free
+           # combined:
+           F90FLAGS = -fpp -O2 $F90ADDOPT -fp-model strict -convert big_endian -assume byterecl -ftz -traceback -xHost -free -align all -fno-alias -lpthread
+           F90NOO3  = -O2 
+           ;;
+        DEBUGOPT)
+           F90FLAGS = -ftrapuv -fpp -g -debug all -check all -traceback -O2 $F90ADDOPT -fp-model strict -align all -fno-alias -lpthread
+           ;;
+        *)
+           ERRSTR='Error: wrong run-time mode selected! To solve ./configure [options] RUNMODE=DEBUG|DEBUGOPT|PRODUCTION'
+           ;;
+     esac
+
+     NETCDFROOT = /glade/apps/opt/netcdf/4.3.0/intel/12.1.5
+     SPEC_NETCDF_INC=/glade/apps/opt/netcdf/4.3.0/intel/12.1.5/include
+     SPEC_NETCDF_LIB=-L/glade/apps/opt/netcdf/4.3.0/intel/12.1.5 -lnetcdff -lnetcdf
+     ;;
+
+  #########################################################################
+  ### TU Delft Linux Cluster
+  #########################################################################
+  *.hpc)
+
+     TMPF90=`mpif90 -show | awk '{print $1}'`
+     case $TMPF90 in
+          ifort*)
+            COMPILER=INTEL
+            ;;
+          gfortran*)
+            COMPILER=GFORTRAN
+            ;;
+          *)
+            ERRSTR='Error: no openmpi module loaded!'
+            ;;
+     esac
+
+     case $COMPILER in
+
+      INTEL)
+         ### ### intel/2016 (16.0.3) mpi/openmpi-1.8.8-intel
+         CXX      = g++
+         CC       = mpicc
+         CFLAGS   = -O -Df2cFortran
+         #F90 = mpif90
+         F90 = `which \mpif90`
+         F90VERS  = `$F90 --version | awk '{if (NR == 1) print}'`
+         ##### F95 EXTENSIONS
+         DEFOPT   = -D
+         MODOPT   = -I
+         ##### F95 COMPILER FLAG TO OBTAIN DOUBLE PRECISION
+         F90R8    = -autodouble
+         ##### F77 OPTIONS
+         FFLAGS   = -fpp -O2 -fp-model strict
+         ###
+         MPIROOT    =
+         MPI_LIB    = 
+         #PNETCDFROOT = /export/opt/PA/prgs/pnetcdf/1.6.0/ifort/14.0-4
+         NETCDFROOT = 
+         #SPEC_NETCDF_INC = /home/fyin/netcdf/intel
+         SPEC_NETCDF_INC = /home/fyin/netcdf
+         SPEC_NETCDF_LIB = -L/usr/lib64 -lnetcdf -lnetcdff
+         BLASROOT   =
+         BLAS_LIB   =
+         LAPACKROOT =
+         LAPACK_LIB =
+         SPEC_LABLA_LIB =
+         SPEC_LIB   =
+
+         case $RUNMODE in
+            DEBUG)
+               F90FLAGS = -g -traceback -debug all -check all -fpp -O0 -fp-model strict -fno-alias -no-ansi-alias -lpthread -save-temps
+# -align all 
+               ;;
+            DEBUGOPT)
+               F90FLAGS = -g -traceback -debug all -check all -fpp -O2 -fp-model strict -fno-alias -no-ansi-alias -lpthread -save-temps
+#  -align all
+               ;;
+            PRODUCTION)
+               F90FLAGS = -fpp -O2 -fp-model strict -fno-alias -no-ansi-alias -lpthread -save-temps
+# -align all
+               ;;
+            *)
+               ERRSTR='Error: wrong run-time mode selected! To solve ./configure [options] RUNMODE=DEBUG|PRODUCTION'
+               ;;
+         esac
+         ;;
+
+      GFORTRAN)
+         ### ### gcc/gcc483
+         ### ### mpi/openmpi-1.8.8-gnu
+         CXX      = g++
+         CC       = mpicc
+         CFLAGS   = -O -Df2cFortran
+         F90      = `which \mpif90`
+         F90VERS  = `$F90 --version | awk '{if (NR == 1) print}'`
+         ##### F95 EXTENSIONS
+         DEFOPT   = -D
+         MODOPT   = -I
+         ##### F95 COMPILER FLAG TO OBTAIN DOUBLE PRECISION
+         F90R8    = -fdefault-real-8
+         ##### F77 OPTIONS
+         FFLAGS   = -fno-second-underscore -ffree-line-length-none -fno-range-check 
+         ###
+         MPIROOT    =
+         MPI_LIB    = 
+         #PNETCDFROOT = /export/opt/PA/prgs/pnetcdf/1.6.0/gfortran/4.8.1
+         NETCDFROOT =
+         #SPEC_NETCDF_INC = /home/fyin/netcdf/gnu
+         SPEC_NETCDF_INC = /home/fyin/netcdf
+         SPEC_NETCDF_LIB = -L/usr/lib64 -lnetcdf -lnetcdff
+         BLASROOT   =
+         BLAS_LIB   =
+         LAPACKROOT =
+         LAPACK_LIB =
+         SPEC_LABLA_LIB =
+         SPEC_LIB   = -I/usr/include
+
+         case $RUNMODE in
+            DEBUG)
+               ### for debugging:
+               F90FLAGS = -cpp -D__linux__ -fno-second-underscore -ffree-line-length-none -fno-range-check -fbacktrace -fbounds-check -g -O0 -Wall -fdump-core
+               # -pedantic
+               # -DNOENDIANCONVERT
+               # -std=f95
+               ;;
+            DEBUGOPT)
+               ### for debugging:
+               F90FLAGS = -cpp -D__linux__ -fno-second-underscore -ffree-line-length-none -fno-range-check -O3 -fbacktrace -fbounds-check -g -Wall -fdump-core
+               ;;
+            PRODUCTION)
+               ### fast, optimized model run:
+               F90FLAGS = -cpp -D__linux__ -fno-second-underscore -ffree-line-length-none -fno-range-check -O3
+               ;;
+            *)
+               ERRSTR='Error: wrong run-time mode selected! To solve ./configure [options] RUNMODE=DEBUG|PRODUCTION'
+               ;;
+         esac
+         ;;
+
+      *)
+         ERRSTR='Error: no or wrong compiler suite selected! To solve ./configure [options] COMPILER=LF|INTEL|G95|GFORTRAN'
+         ;;
+
+     esac
+
+     FCKLIBS    =
+     ;;
+
+
+  pia12*)
+     CC       = icc
+     CFLAGS   = -O -static-libcxa -static -Df2cFortran
+     #FFLAGS   =
+     F90 = /usr/local/mvapich/icc/bin/mpif90 -v 9.0
+     F90R8    = -autodouble
+     F90VERS  = `$F90 --version | awk '{if (NR == 1) print}'`
+     F90FLAGS = -cpp -O2 -xW -ip -V
+     #F90FLAGS = -cpp -O0 -V
+     #F90FLAGS = -cpp -O0 -g -traceback -CB -WB -check all -error-limit 0 -V
+     MPIROOT    = /usr/local/mvapich/icc
+     MPI_LIB    = 
+     INCLUDE    =
+     NETCDFROOT = /afs/ipp-garching.mpg.de/home/j/joeckel/extra_space/@sys/netcdf/v3.6.0b6
+     BLASROOT   =
+     BLAS_LIB   =
+     LAPACKROOT =
+     LAPACK_LIB =
+     ;;
+
+  #########################################################################
+  ### Sun-Cluster at MPIM / ZMAW
+  #########################################################################
+  tornado*)
+#      ##### C++-COMPILER (for tools only, do NOT specify cross-compiler !)
+#      CXX = g++
+#      ### C-COMPILER AND FLAGS
+#      CC      = suncc
+#      CFLAGS  = -g -Bstatic -O -Df2cFortran
+#      ### F77 COMPILER AND FLAGS
+#      FFLAGS  = -g -xtypemap=real:64,double:64,integer:32
+#      ### F90 COMPILER AND FLAGS
+#      F90= mpif90
+#      # how compiler creates module files: upper, lower, asis
+#      EXTMODCASE = upper
+#      ##### F95 COMPILER FLAG TO OBTAIN DOUBLE PRECISION
+#      F90R8  = -xtypemap=real:64
+#      ### OTHER F95 COMPILER FLAGS (choose one)
+#      F90FLAGS = -fpp -g -xtypemap=double:64,integer:32 -DNOENDIANCONVERT
+#      ;;
+      ##### FORTRAN INTEL
+      CC       = icc
+      CFLAGS   = -O -static-libgcc -static -Df2cFortran
+      F90 = /sw/sles9-x64/ofed/openmpi-1.2.5-intel/bin/mpif90
+      F90R8 = -autodouble
+      F90VERS  = `$F90 --version | awk '{if (NR == 1) print}'`
+      F90FLAGS = -cpp -O1 -DOPENMPI
+      MPIROOT    =
+      MPI_LIB    =
+      NETCDFROOT = /pf/b/b302019/soft/tornado/netcdf/v3.6.2_int
+      BLASROOT   = 
+      BLAS_LIB   = 
+      LAPACKROOT = 
+      LAPACK_LIB = 
+     ;;
+
+  #########################################################################
+  ### PCs of KK
+  #########################################################################
+  lusaka*|etosha*|windhoek*)
+     CC       = mpicc
+     CFLAGS   = -O2 -D_SX
+     F90 = mpif90
+     F90R8    = -autodouble
+     F90VERS  = `$F90 --version | awk '{if (NR == 1) print}'`
+     F90FLAGS = -cpp -O1
+     MPIROOT    = 
+     MPI_LIB    = 
+     INCLUDE    =
+     NETCDFROOT = /opt/NetCDF
+     BLAS_LIB   = blas
+     LAPACK_LIB = lapack
+     ;;
+
+  #########################################################################
+  ### ???
+  #########################################################################
+  lc2login*)
+     ### INTEL
+     CXX      = g++
+     CC       = mpicc
+     CFLAGS   = -O -Df2cFortran
+     #
+     F90 = mpif90 -g -debug full -traceback
+     #F90 = ifort -g -debug full -traceback
+     F90 = mpif90
+     F90R8    = -autodouble
+     F90VERS  = `$F90 --version | awk '{if (NR == 1) print}'`
+     #F90FLAGS = -cpp -O2
+     ### use this option, if you use the Intel compiler version 11:
+     #F90FLAGS = -cpp -O2 -D__INTEL_v11
+     F90FLAGS = -cpp -O1 -D__INTEL_v11
+     #F90FLAGS = -cpp -O0 -D__INTEL_v11
+
+     ### Pathscale
+     #LINKMODE = LIBS
+     #F90 = pathf90
+     ### how compiler creates module files: upper, lower, asis
+     #EXTMODCASE = upper
+     #F90R8    = -r8
+     #F90VERS  = `$F90 -version`
+     #F90FLAGS = -ftpp -O2 -c -DNOENDIANCONVERT
+
+     MPIROOT    =
+     MPI_LIB    =
+     SPEC_LIB   =
+     INCLUDE    =
+     NETCDFROOT = /data/esm/tools/netcdf4_intelv17
+     #NETCDFROOT = /usr/local/cluster/netcdf/3.6.2/intel64/
+     ;;
+
+  #########################################################################
+  ### Linux Cluster at ZDV Uni Mainz
+  #########################################################################
+  *mogon*)
+     if test -z "$COMPILER" ; then
+        COMPILER=INTEL
+     fi
+     case $COMPILER in
+     INTEL*)
+         ### ### intel/12.0
+         CXX      = icpc
+         CC       = mpiicc
+         CFLAGS   = -O -Df2cFortran
+         MPICXX   = mpiicpc
+         LIBCXX   = -L/cluster/easybuild/nehalem/software/compiler/GCCcore/6.3.0/lib64/ -lstdc++
+         ### intelmpi/4.0.3.008
+         F90 = mpiifort
+         ### openmpi/1.6
+         ###F90 = mpif90
+         #####
+         F90VERS  = `$F90 --version | awk '{if (NR == 1) print}'`
+         ##### F95 EXTENSIONS
+         DEFOPT   = -D
+         MODOPT   = -I
+         ##### F95 COMPILER FLAG TO OBTAIN DOUBLE PRECISION
+         F90R8    = -autodouble
+         ##### F77 OPTIONS
+         FFLAGS   = -fpp -O2 -fp-model strict
+         ###
+         NETCDFROOT = /project/esm/tools/netcdf-4.1.1_intel17
+###         NETCDFROOT = ${EBROOTNETCDFMINFORTRAN}
+###         SPEC_NETCDF_LIB = -L${EBROOTNETCDFMINFORTRAN}/lib -L${EBROOTNETCDF}/lib -lnetcdff -lnetcdf -lhdf5_hl -lhdf5 -lz
+###         SPEC_NETCDF_INC = /cluster/easybuild/nehalem/software/data/netCDF-Fortran/4.4.4-intel-2017.02-HDF5-1.8.18/include
+         case $RUNMODE in
+            DEBUG*)
+               F90FLAGS = -g -debug full -traceback -fpp -O0 -check bounds,format,output_conversion,pointer,assume,uninit,stack -fp-model strict -align all -fno-alias -lpthread
+               MPICXXFLAGS = -std=c++98 -g -traceback -O0 -DDEBUG -fp-model strict
+               CFLAGS   = -std=c++98 -g -O0 -traceback -Df2cFortran -fp-model strict 
+               ;;
+            PRODUCTION*)
+               F90FLAGS = -fpp -O2 -fp-model strict -align all -fno-alias -lpthread
+               MPICXXFLAGS = -std=c++98 -O2 -DNODEBUG -fp-model strict -fp-model source -fp-speculation=off -fno-alias -no-fma -fimf-arch-consistency=true -align -fno-alias -lpthread
+               CFLAGS   = -std=c++98 -O -Df2cFortran -fp-model strict
+               ;;
+            *)
+               ERRSTR='Error: wrong run-time mode selected! To solve ./configure [options] RUNMODE=DEBUG|PRODUCTION'
+               ;;
+         esac
+         ;;
+     GFORTRAN*)
+         ### ### openmpi/1.4.4/gfortran/4.6.2
+         CXX      = g++
+         CC       = mpicc
+         MPICXX   = mpic++ -std=c++1y
+         LIBCXX   = -lstdc++ 
+         CFLAGS   = -O -Df2cFortran
+         F90      = mpif90
+         F90VERS  = `$F90 --version | awk '{if (NR == 1) print}'`
+         ##### F95 EXTENSIONS
+         DEFOPT   = -D
+         MODOPT   = -I
+         ##### F95 COMPILER FLAG TO OBTAIN DOUBLE PRECISION
+         F90R8    = -fdefault-real-8
+         ##### F77 OPTIONS
+         FFLAGS   = -fno-second-underscore -ffree-line-length-none -fno-range-check 
+### -D__linux__ required (see CHANGELOG)
+
+         NETCDFROOT = /project/esm/tools/netcdf-4.1.1_gcc_6.3.0
+###/project/esm/tools/netcdf-4.1.1_gcc
+         SPEC_LIB = -lcurl
+
+         case $RUNMODE in
+            DEBUG*)
+               ### for debugging:
+               F90FLAGS = -cpp -fno-second-underscore -ffree-line-length-none -fno-range-check -fbacktrace -fbounds-check -g -O0 -Wall -fdump-core
+               MPICXXFLAGS = -O0 -DDEBUG
+	       CFLAGS = -g -O0 -Df2cFortran
+               # -pedantic
+               # -DNOENDIANCONVERT
+               # -std=f95
+               ;;
+            PRODUCTION*)
+               ### fast, optimized model run:
+               F90FLAGS = -cpp -fno-second-underscore -ffree-line-length-none -fno-range-check -O3
+               MPICXXFLAGS = -O2 -DNDEBUG -Wuninitialized -fno-common
+               ;;
+            DEBUGOPT*)
+               ### for debugging:
+               F90FLAGS = -cpp -fno-second-underscore -ffree-line-length-none -fno-range-check -O3 -fbacktrace -fbounds-check -g -Wall -fdump-core
+               MPICXXFLAGS = -O2 -DNDEBUG -Wuninitialized -fno-common
+               ;;
+            *)
+               ERRSTR='Error: wrong run-time mode selected! To solve ./configure [options] RUNMODE=DEBUG|PRODUCTION'
+               ;;
+         esac
+         ;;
+     esac
+     ;;
+
+  #########################################################################
+
+ *.cm.cluster)
+
+     if test -z "$COMPILER" ; then
+        COMPILER=INTEL
+     fi
+
+     case $COMPILER in
+      INTEL*)
+         ### ### intel/12.0
+         MPICXX      = mpic++
+         MPICXXFLAGS = -O0 -DNDEBUG
+         LIBCXX = -lstdc++
+         CXX      = g++
+         CC       = mpicc
+         CFLAGS   = -O -Df2cFortran
+         ### intelmpi/4.0.3.008
+         F90 = mpif90
+         ### openmpi/1.6
+         ###F90 = mpif90
+         #####
+         F90VERS  = `$F90 --version | awk '{if (NR == 1) print}'`
+         ##### F95 EXTENSIONS
+         DEFOPT   = -D
+         MODOPT   = -I
+         ##### F95 COMPILER FLAG TO OBTAIN DOUBLE PRECISION
+         F90R8    = -autodouble
+         ##### F77 OPTIONS
+         FFLAGS   = -fpp -O3 -fp-model precise
+         ###
+         case $RUNMODE in
+            DEBUG*)
+               F90FLAGS = -g -debug full -traceback -fpp -O0 -fp-model precise -fp-speculation=safe -align all -fno-alias -lpthread
+               ;;
+            PRODUCTION*)
+               F90FLAGS = -fpp -O3 -fp-model precise -fp-speculation=safe -align all -fno-alias -lpthread
+               ;;
+            *)
+               ERRSTR='Error: wrong run-time mode selected! To solve ./configure [options] RUNMODE=DEBUG|PRODUCTION'
+               ;;
+         esac
+        ;;
+
+      GFORTRAN*)
+         ### ### openmpi/1.4.4/gfortran/4.6.2
+         CXX      = g++
+         CC       = gcc
+         CFLAGS   = -O -Df2cFortran
+         F90      = gfortran
+         F90VERS  = `$F90 --version | awk '{if (NR == 1) print}'`
+         ##### F95 EXTENSIONS
+         DEFOPT   = -D
+         MODOPT   = -I
+         ##### F95 COMPILER FLAG TO OBTAIN DOUBLE PRECISION
+         F90R8    = -fdefault-real-8
+         ##### F77 OPTIONS
+         FFLAGS   = -fno-second-underscore -ffree-line-length-none -fno-range-check 
+          ;;
+      esac
+     ;;
+
+
+  #########################################################################
+  ### CYI
+  #########################################################################
+  planck*.cyi.ac.cy)
+     CC       = mpicc
+     CFLAGS   = -O -static -Df2cFortran
+     # to be added for large netcdf files (netcdf 3)
+     #CFLAGS = $CFLAGS -DHAVE_LIBNETCDF64
+     FC  = mpif90
+     F90 = mpif90
+     ############################
+     ## INTEL FORTRAN
+     ############################
+     #F90R8    = -autodouble
+     #F90VERS  = `$F90 --version | awk '{if (NR == 1) print}'`
+     #CFLAGS   = -O -static-libcxa -static -Df2cFortran
+     #CFLAGS   = -O -static -Df2cFortran
+     ## not working intel + mvapich
+     ##F90FLAGS = -cpp -O1
+     # working intel + mvapich2
+     #F90FLAGS = -cpp -O1  
+     # working intel + openmpi
+     #F90FLAGS = -cpp -O1 -DOPENMPI
+     # to be added for additional checks
+     #F90FLAGS = $F90FLAGS -g -traceback
+     # to be added for all checks
+     #F90FLAGS = $F90FLAGS -C -g -debug all -check all -traceback -fp-stack-check 
+     # to be added for huge files output (netcdf 3)
+     #F90FLAGS = $F90FLAGS  -DHAVE_LIBNETCDF64
+     #############################
+     ### LAHEY FORTRAN
+     #############################
+     #F90R8    = --dbl
+     F90R8    = -CcdRR8
+     F90VERS  = `$F90 --version | awk '{if (NR == 1) print}'`
+     CFLAGS  = -O -static -Df2cFortran
+     DEFOPT   = -D
+     MODOPT   = -I
+     ### fast, optimized model run:
+     F90FLAGS = -DLF --ap -O -Cpp 
+     ### fast, but not optimized:
+     #F90FLAGS = -DLF --ap -O0 -Cpp
+     ### some checks:
+     #F90FLAGS = -DLF --f95 --chk a,e,s,u --ap -g --trap -O0 -Cpp
+     ### all possible checks:
+     #F90FLAGS = -DLF --f95 --chkglobal --ap -g --trap --verbose -Cpp
+     # to be added for OPENMPI
+     F90FLAGS = $F90FLAGS  -DOPENMPI
+     # to be added for huge files output (netcdf 3)
+     #F90FLAGS = $F90FLAGS  -DHAVE_LIBNETCDF64
+
+     MPIROOT    = 
+     MPI_LIB    = 
+     SPEC_LIB   = 
+     INCLUDE    =
+     # LAHEY FORTRAN
+     NETCDFROOT = /gpfs_ci/opt/soft/netcdf/v4.0.1_lf
+     # INTEL FORTRAN
+     #NETCDFROOT = /soft/netcdf/v3.6.3_i
+     #NETCDFROOT = /gpfs_ci/opt/soft/netcdf/v3.6.3_i
+     #NETCDFROOT = /gpfs_ci/opt/soft/libraries/netcdf-4/4.0.1/intel
+     BLASROOT   =
+     BLAS_LIB   =
+     LAPACKROOT =
+     LAPACK_LIB =
+     ;;
+
+  #########################################################################
+  ### PCs
+  #########################################################################
+  ab-*|pc-suse-messy*)
+     #CC = gcc
+     CC = mpicc
+     CFLAGS   = -O -Df2cFortran
+     #F90 = g95
+     F90 = mpif90
+     F90R8 = -r8 
+     #-pg works only if cp /usr/lib/x86_64-linux-gnu/gcrt1.o cesm1/__LINUX64
+     #F90FLAGS = -ffree-line-length-huge -fno-second-underscore -ftrace=full -fno-backslash -fbounds-check -g -cpp -O0 -fmultiple-save
+     #F90FLAGS = -ffree-line-length-huge -fno-second-underscore -ftrace=full -fno-backslash -g -cpp -O3 -fmultiple-save
+     case $RUNMODE in
+        DEBUG)
+           F90FLAGS = -ffree-line-length-huge -fno-second-underscore -ftrace=full -fno-backslash -fbounds-check -g -cpp -O0 -fmultiple-save
+           FFLAGS = -ffree-line-length-huge -fno-second-underscore -ftrace=full -fbounds-check -g -cpp -O0
+           ;;
+        PRODUCTION)
+           F90FLAGS = -ffree-line-length-huge -fno-second-underscore -fno-backslash -g -cpp -O3 -fmultiple-save
+           FFLAGS = -ffree-line-length-huge -fno-second-underscore -g -cpp -O0
+           ;;
+     esac
+     F90VERS = `$F90 --version | awk '{if (NR == 1) print}'`
+     MPIROOT    = 
+     INCLUDE    = 
+     NETCDFROOT = /soft/netcdf/v4.1.1_g95_64
+     BLASROOT   = /soft/ECHAM5
+     BLAS_LIB   = blas
+     LAPACKROOT = /soft/ECHAM5
+     LAPACK_LIB = lapack
+     FCKLIBS    = /soft/ECHAM5/lib/netcdf90 /soft/ECHAM5/lib/mpi
+     ;;
+
+  imkpc*)
+     #CC = gcc
+     CC = mpicc
+     CFLAGS   = -O -Df2cFortran
+     #F90 = g95
+     F90 = mpif90
+     F90R8 = -r8 
+     #-pg works only if cp /usr/lib/x86_64-linux-gnu/gcrt1.o cesm1/__LINUX64
+     F90FLAGS = -ffree-line-length-huge -fno-second-underscore -ftrace=full -fno-backslash -fbounds-check -g -cpp -O0 -fmultiple-save
+     FFLAGS = -ffree-line-length-huge -fno-second-underscore -ftrace=full -fbounds-check -g -cpp -O0
+     F90VERS = `$F90 --version | awk '{if (NR == 1) print}'`
+     NETCDFROOT = /home/reddmann/netcdf95
+     ;;
+
+  pc10-612*)
+     #CC = gcc
+     CC = mpicc
+     CFLAGS   = -O -Df2cFortran
+     #F90 = g95
+     F90 = mpif90
+     F90R8 = -r8 
+     #-pg works only if cp /usr/lib/x86_64-linux-gnu/gcrt1.o cesm1/__LINUX64
+     F90VERS = `$F90 --version | awk '{if (NR == 1) print}'`
+     FFLAGS = -ffree-line-length-huge -fno-second-underscore -g -cpp -O3
+     case $RUNMODE in
+        DEBUG)
+           F90FLAGS = -ffree-line-length-huge -fno-second-underscore -ftrace=full -fno-backslash -fbounds-check -g -cpp -O0 -fmultiple-save
+           ;;
+        PRODUCTION)
+           F90FLAGS = -ffree-line-length-huge -fno-second-underscore -fno-backslash -g -cpp -O3 -fmultiple-save
+           ;;
+     esac
+     #NETCDFROOT = /local/tosth/netcdf/v4.1.1_pg
+     NETCDFROOT = /local/tosth/netcdf/v4.1.1_g95
+     ;;
+
+  #########################################################################
+  ### Uni Bonn
+  #########################################################################
+  m*)
+    ### Uni Bonn
+    CC = gcc
+    CFLAGS = -O -Df2cFortran
+    F90 = /home/omgfort/bin/mpif90
+    F90R8 = -autodouble
+    F90VERS  = `$F90 --version | awk '{if (NR == 1) print}'`
+    F90FLAGS = -cpp -O1
+    ;;
+
+  #########################################################################
+  ### Hornet (login-3) @ University of Connecticut
+  #########################################################################
+  cn65*)
+     TMPF90=`mpif90 -show | awk '{print $1}'`
+     case $TMPF90 in
+          ifort*)
+            COMPILER=INTEL
+            ;;
+          gfortran*)
+            COMPILER=GFORTRAN
+            ;;
+          *)
+            ERRSTR='Error: no openmpi module loaded!'
+            ;;
+     esac
+
+     case $COMPILER in
+
+      INTEL*)
+         ### intelics/2013.1.039-compiler
+         ### mpi/openmpi/1.6.5-ics-2013.1.039
+         ### netcdf/3.6.3-ics
+         CXX      = g++
+         CC       = mpicc
+         CFLAGS   = -O -Df2cFortran
+         #F90 = mpif90
+         F90 = `which \mpif90`
+         F90VERS  = `$F90 --version | awk '{if (NR == 1) print}'`
+         ##### F95 EXTENSIONS
+         DEFOPT   = -D
+         MODOPT   = -I
+         ##### F95 COMPILER FLAG TO OBTAIN DOUBLE PRECISION
+         F90R8    = -autodouble
+         ##### F77 OPTIONS
+         FFLAGS   = -fpp -O2 -fp-model strict
+         ###
+         case $RUNMODE in
+            DEBUG*)
+               F90FLAGS = -g -traceback -debug all -check all -fpp -O0 -fp-model strict -fno-alias -no-ansi-alias -lpthread -save-temps
+               # -align all
+               ;;
+            DEBUGOPT*)
+               F90FLAGS = -g -traceback -debug all -check all -fpp -O2 -fp-model strict -fno-alias -no-ansi-alias -lpthread -save-temps
+               # -align all
+               ;;
+            PRODUCTION*)
+               F90FLAGS = -fpp -O2 -fp-model strict -fno-alias -no-ansi-alias -lpthread -save-temps
+               # -align all
+               ;;
+            *)
+               ERRSTR='Error: wrong run-time mode selected! To solve ./configure [options] RUNMODE=DEBUG|DEBUGOPT|PRODUCTION'
+               ;;
+         esac
+         ;;
+
+      GFORTRAN*)
+         ### gcc/4.8.2
+         ### mpi/openmpi/1.6.5-gcc
+         ### netcdf/3.6.3-gcc-4.8.2
+         CXX      = g++
+         CC       = mpicc
+         CFLAGS   = -O -Df2cFortran
+         F90      = `which \mpif90`
+         F90VERS  = `$F90 --version | awk '{if (NR == 1) print}'`
+         ##### F95 EXTENSIONS
+         DEFOPT   = -D
+         MODOPT   = -I
+         ##### F95 COMPILER FLAG TO OBTAIN DOUBLE PRECISION
+         F90R8    = -fdefault-real-8
+         ##### F77 OPTIONS
+         FFLAGS   = -fno-second-underscore -ffree-line-length-none -fno-range-check 
+         ###
+         case $RUNMODE in
+            DEBUG*)
+               ### for debugging:
+               F90FLAGS = -cpp -D__linux__ -fno-second-underscore -ffree-line-length-none -fno-range-check -fbacktrace -fbounds-check -g -O0 -Wall -fdump-core
+               # -pedantic
+               # -DNOENDIANCONVERT
+               # -std=f95
+               ;;
+            PRODUCTION*)
+               ### fast, optimized model run:
+               F90FLAGS = -cpp -D__linux__ -fno-second-underscore -ffree-line-length-none -fno-range-check -O3
+               ;;
+            DEBUGOPT*)
+               ### for debugging:
+               F90FLAGS = -cpp -D__linux__ -fno-second-underscore -ffree-line-length-none -fno-range-check -O3 -fbacktrace -fbounds-check -g -Wall -fdump-core
+               ;;
+            *)
+               ERRSTR='Error: wrong run-time mode selected! To solve ./configure [options] RUNMODE=DEBUG|DEBUGOPT|PRODUCTION'
+               ;;
+         esac
+         ;;
+
+      *)
+         ERRSTR='Error: no or wrong compiler suite selected! To solve, load either INTEL or GFORTRAN compiler suite.'
+         ;;
+    esac
+
+    ### (1) MESSAGE PASSING INTERFACE (options a and b are exclusive!)
+    ####    a) use mpi-compiler wrappers (preferable!) and keep
+    ####       MPIROOT and MPI_LIB unset.
+    ####    b) set MPIROOT and MPI_LIB (e.g. for MPI-1 
+    ###        MPI_LIB = mpichf90nc mpich)
+    MPIROOT    =
+    MPI_LIB    = 
+    ### (2) NETCDF LIBRARY (options a and b are exclusive!)
+    ###     a) set NETCDFROOT (must contain lib/libnetcdf.a and
+    ###        include/netcdf.inc) (for necdf-3)
+    ###     b) set SPEC_NETCDF_INC to include path and
+    ###        SPEC_NETCDF_LIB to ld-options (-L ...  -l...)
+    NETCDFROOT = $NETCDF_PATH
+    #SPEC_NETCDF_INC = /apps2/netcdf/4.2-ics/include
+    #SPEC_NETCDF_LIB = -L/apps2/netcdf/4.2-ics/lib -lnetcdf -lnetcdff
+    ###
+    ### (3) BLAS and LAPACK LIBRARIES (options a, b and are exclusive)
+    ###     a) keep all entries empty -> blas/lapack contained in 
+    ###        distribution will be compiled and used
+    ###     b) specify *ROOT (path to library) and
+    ###        and *_LIB (name of library without "-llib" and ".a",
+    ###        e.g., BLASROOT=/usr/lib and BLAS_LIB=blas for
+    ###        /usr/lib/libblas.a)
+    ###     c) specifiy SPEC_LABLA_LIB with full ld options)
+    BLASROOT   =
+    BLAS_LIB   =
+    LAPACKROOT =
+    LAPACK_LIB =
+    SPEC_LABLA_LIB =
+    ### (4) ADDITONAL LIBRARIES REQUIRED FOR LINKING (full ld options)
+    SPEC_LIB   =
+    ### (5) SPECIAL LIBRARIES FOR FORCHECK
+    FCKLIBS    =
+    ;;
+
+  #########################################################################
+  ### KIT
+  #########################################################################
+  ic*|hc*|uc*|fh*)
+
+     case $COMPILER in
+
+       INTEL)
+        #F90ADDOPT = -xAVX
+        F90ADDOPT = -march=core-avx2
+
+        ##### SPECIAL SETTINGS FOR PROFILING
+        case $PROFILEMODE in
+           NONE*)
+              # default: no profiling (nothing to do)
+              PREF90 =
+              ;;
+           SCALASCA*)
+              # corresponding module must be loaded
+              PREF90 = scalasca -instrument
+              ;;
+           VAMPIR*)
+              # corresponding module must be loaded
+              PREF90 = vtf90 -vt:mpi -vt:f90
+              ;;
+           *)
+              ERRSTR='Error: unknown profiling mode selected! To solve ./configure [options] PROFILEMODE=SCALASCA|VAMPIR'
+              ;;
+        esac
+
+        ## For some strange reason (file system synchronisation)
+        ## the corresponding tests in configure fail; thus these two
+        ## variables need to be set explicitely:
+        FORT_INTEGER_LEN=4
+        FORT_REAL_LEN=4
+        #
+        #CXX    =
+        CC     = mpicc
+        #CFLAGS = -O $F90ADDOPT -fp-model strict -fp-model source -Df2cFortran
+        CFLAGS = -O $F90ADDOPT -fp-model precise -fp-model source -Df2cFortran
+        F90    = $PREF90 mpif90
+        F90VERS  = `$F90 --version | awk '{if (NR == 1) print}'`
+        ##### F95 EXTENSIONS
+        DEFOPT   = -D
+        MODOPT   = -I
+        ##### F95 COMPILER FLAG TO OBTAIN DOUBLE PRECISION
+        F90R8    = -autodouble
+        ##### F77 OPTIONS
+        #FFLAGS = -fpp -O3 -fp-model strict -fp-model source
+        FFLAGS = -fpp -O3 -fp-model precise -fp-model source
+        ###
+        MPIROOT    =
+        MPI_LIB    = 
+        NETCDFROOT = /home/kit/imk-asf/hj6804/netcdf_fh1b/
+        #NETCDFROOT = $NETCDF_HOME
+        #BLASROOT   = $HOME/messy_2.50/echam5.3.02/blas
+        #BLAS_LIB   = blas
+        #LAPACKROOT = $HOME/messy_2.50/echam5.3.02/lapack
+        #LAPACK_LIB = lapack
+        #MKLROOT=/opt/intel/composer_xe_2015.6.233/mkl/
+        #SPEC_LABLA_LIB = -Wl,--start-group $MKLROOT/lib/intel64/libmkl_intel_lp64.a $MKLROOT/lib/intel64/libmkl_intel_thread.a $MKLROOT/lib/intel64/libmkl_core.a -Wl,--end-group -lpthread -lm -openmp
+        YAXTROOT = /home/kit/imk-asf/hj6804/yaxt_emac
+
+        case $RUNMODE in
+           DEBUG)
+              #F90FLAGS = -ftrapuv -fpp -g -debug all -check noarg_temp_created -traceback -O0 $F90ADDOPT -fp-model strict -fp-model source -fp-speculation=safe -align all -fno-alias -lpthread
+              #F90FLAGS = -zero -fpp -g -debug all -check noarg_temp_created -traceback -O0 $F90ADDOPT -fp-model strict -fp-model source -fp-speculation=safe -align all -fno-alias -lpthread
+              F90FLAGS = -ftrapuv -fpp -g -debug all -check uninit -traceback -O0 $F90ADDOPT -fp-model precise -fp-model source -fp-speculation=safe -align all -fno-alias -lpthread
+              ;;
+           PRODUCTION)
+              #F90FLAGS = -fpp -O3 $F90ADDOPT -fp-model strict -fp-model source -fp-speculation=safe -align all -fno-alias -lpthread -D__INTEL_v11 -D__INTEL_COMPILER
+              #F90FLAGS = -fpp -O0 -fp-model strict -fp-model source -fp-speculation=safe -align all -fno-alias -lpthread -D__INTEL_v11 -D__INTEL_COMPILER
+              F90FLAGS = -fpp -O3 $F90ADDOPT -fp-model precise -fp-model source -fp-speculation=safe -align all -fno-alias -lpthread -D__INTEL_v11 -D__INTEL_COMPILER
+              ;;
+           PRODUCTION2)
+               F90FLAGS = -fpp -O3 $F90ADDOPT -fp-model strict -fp-speculation=safe -align all -fno-alias -lpthread -D__INTEL_v11 -D__INTEL_COMPILER
+              ;;
+           DEBUGOPT)
+              #F90FLAGS = -ftrapuv -fpp -g -debug all -check all -check noarg_temp_created -traceback -O3 -nowarn $F90ADDOPT -fp-model strict -fp-model source -fp-speculation=safe -align all -fno-alias -lpthread
+              F90FLAGS = -ftrapuv -fpp -g -debug all -check all -traceback -O3 -nowarn -check noarg_temp_created $F90ADDOPT -fp-model precise -fp-model source -fp-speculation=safe -align all -fno-alias -lpthread 
+              ;;
+           INTELADVISOR)
+              #F90FLAGS = -g -O2 -fno-inline-functions -I -L -ladvisor
+              F90FLAGS = -fpp -g -O2 -fno-inline-functions -I -L -ladvisor
+              ;;
+           *)
+              ERRSTR='Error: wrong run-time mode selected! To solve ./configure [options] RUNMODE=DEBUG|DEBUGOPT|PRODUCTION|INTELADVISOR'
+              ;;
+        esac
+        ;;
+
+       PGI)
+        CC = mpicc
+        CFLAGS = -tp nehalem-64 -fastsse -DpgiFortran
+        F90 = mpif90
+        F90R8    = -r8
+        #F90FLAGS = -Mpreprocess -tp nehalem-64 -fastsse -r8 -g -Ktrap=fp,inv,denorm,divz,ovf,unf,inexact
+        F90FLAGS = -Mpreprocess -tp nehalem-64 -fastsse -r8
+        #FFLAGS = -Mpreprocess -tp nehalem-64 -fastsse -g -Ktrap=fp,inv,denorm,divz,ovf,unf,inexact
+        FFLAGS = -Mpreprocess -tp nehalem-64 -fastsse
+        NETCDFROOT = /home/kit/imk-asf/hj6804/n
+        BLASROOT   = $HOME/messy_2.50/echam5.3.02/blas
+        BLAS_LIB   = blas
+        LAPACKROOT = $HOME/messy_2.50/echam5.3.02/lapack
+        LAPACK_LIB = lapack
+        ;;
+
+       GCC)
+         CXX      = g++
+         CC       = /opt/openmpi/2.0/bin/mpicc
+         CFLAGS   = -O2 -Df2cFortran
+         F90      = /opt/openmpi/2.0/bin/mpif90
+         F90VERS  = `$F90 --version | awk '{if (NR == 1) print}'`
+         ##### F95 EXTENSIONS
+         DEFOPT   = -D
+         MODOPT   = -I
+         ##### F95 COMPILER FLAG TO OBTAIN DOUBLE PRECISION
+         F90R8    = -fdefault-real-8
+         ##### F77 OPTIONS
+         FFLAGS   = -O2 -fno-second-underscore -ffree-line-length-none -fno-range-check
+         ###
+         NETCDFROOT = /home/kit/imk-asf/hj6804/netcdf_gcc/netcdf-4.1.1
+	 #NETCDFROOT = /home/kit/imk-asf/hj6804/netcdf_gcc
+         BLASROOT   = $HOME/MESSY/messy_2.52/echam5.3.02/blas
+         BLAS_LIB   = blas
+         LAPACKROOT = $HOME/MESSY/messy_2.52/echam5.3.02/lapack
+         LAPACK_LIB = lapack
+
+         case $RUNMODE in
+            DEBUG*)
+               ### for debugging
+               F90FLAGS = -cpp -ffree-line-length-none -fno-range-check -fbacktrace -fbounds-check -g -O0 -Wall -fdump-core -DOPENMPI  -fno-second-underscore -pedantic -DNOENDIANCONVERT -std=f95
+               ;;
+            PRODUCTION*)
+               ### fast, optimized model run:
+               F90FLAGS = -cpp -O2 -fno-second-underscore -ffree-line-length-none -fno-range-check
+               ;;
+            *)
+               ERRSTR='Error: wrong run-time mode selected! To solve ./configure [options] RUNMODE=DEBUG|PRODUCTION'
+               ;;
+         esac
+         ;;
+
+       *)
+         ERRSTR='Compiler not defined. Use ./configure [options] COMPILER=INTEL|PGI|GCC'
+         ;;
+
+     esac
+
+     ;;
+
+  #########################################################################
+  ### Astrids Laptop 
+  #########################################################################
+  linux-oksn.suse)
+    COMPILER=GFORTRAN
+
+     case $COMPILER in
+
+      GFORTRAN)
+         ### ### openmpi/1.8.4/gfortran/4.8.1
+         CXX      = g++
+         CC       = mpicc
+         CFLAGS   = -O -Df2cFortran
+         F90      = `which \mpif90`
+         F90VERS  = `$F90 --version | awk '{if (NR == 1) print}'`
+         ##### F95 EXTENSIONS
+         DEFOPT   = -D
+         MODOPT   = -I
+         ##### F95 COMPILER FLAG TO OBTAIN DOUBLE PRECISION
+         F90R8    = -fdefault-real-8
+         ##### F77 OPTIONS
+         FFLAGS   = -fno-second-underscore -ffree-line-length-none -fno-range-check
+         ##### OpenMP options
+         F90OMP    = -fopenmp
+         F90OMPLIB = -lgomp
+         ###
+         MPIROOT    =
+         MPI_LIB    = 
+         #PNETCDFROOT = $HOME/Programs/pnetcdf/1.6.1/gfortran/4.8.1
+         PNETCDFROOT = 
+         NETCDFROOT = /home/kerkweg/soft/netcdf/3.6.3/gfortran
+         SPEC_NETCDF_INC =
+         SPEC_NETCDF_LIB =
+         BLASROOT   =
+         BLAS_LIB   =
+         LAPACKROOT =
+         LAPACK_LIB =
+         #SPEC_LABLA_LIB =
+         SPEC_LIB   =
+
+         case $RUNMODE in
+            DEBUG)
+               ### for debugging:
+               F90FLAGS = -cpp -D__linux__ -fno-second-underscore -ffree-line-length-none -fno-range-check -fbacktrace -fbounds-check -g -O0 -Wall -fdump-core
+               # -pedantic
+               # -DNOENDIANCONVERT
+               # -std=f95
+               ;;
+            DEBUGOPT)
+               ### for debugging:
+               F90FLAGS = -cpp -D__linux__ -fno-second-underscore -ffree-line-length-none -fno-range-check -O3 -fbacktrace -fbounds-check -g -Wall -fdump-core
+               ;;
+            PRODUCTION)
+               ### fast, optimized model run:
+               F90FLAGS = -cpp -D__linux__ -fno-second-underscore -ffree-line-length-none -fno-range-check -O3
+               ;;
+            *)
+               ERRSTR='Error: wrong run-time mode selected! To solve ./configure [options] RUNMODE=DEBUG|PRODUCTION'
+               ;;
+         esac
+         ;;
+
+      *)
+         ERRSTR='Error: no or wrong compiler suite selected! To solve ./configure [options] COMPILER=G95|GFORTRAN'
+         ;;
+
+     esac
+
+     FCKLIBS    = 
+     ;;
+
+esac
+
+###########################################################################
+###########################################################################
+###########################################################################

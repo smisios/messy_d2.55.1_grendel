@@ -1,0 +1,110 @@
+! -*- f90 -*-
+&CPL
+!coupling of certain emission domain (e.g. smallest instance) necessary? 
+!domainfld = 'import_rgt','MAP_MAP' 
+domainfld = '','' 
+
+!calculation of additional fields necessary? wind, gradients, ...
+lwind    = T  !T/F
+lthetae  = T  !T/F
+
+! SYNTAX for SET:
+!INI1STEP:     - for onetime initialisation (if T, EMIS_IOEVENT is ignored,
+!                if F, EVENT_START is ignored ) 
+!EVENT_START:  - set for onetime initialisation, is ignored for INI1STEP=F
+!              - exact date to start the event (has to be a multiple of the 
+!                timestep, because exact time is prompted) 
+!EMIS_IOEVENT: - set for continous initialisation, is ignored for INI1STEP=T 
+!              - use step-intervall (otherwise oszillation for leapfrog scheme)
+!RELAX:        - if T, tracers are relaxed to coarser instance
+!              - only usefull for COSMO, ignored for EMAC
+!IFNOT:        - if T, field is initialised when crits are NOT fullfilled 
+!DOMAIN:       - if T, field is only initialised in coupeld domain
+! 
+!TRACER: 'name_tr1', 'subname_tr1', 'name_tr2', 'subname_tr2', ...
+!CRIT:   'channel', 'object', 'crit', const(_dp!) , 'compfld_cha','compfld_obj'
+
+TRINI(1)%INI1STEP = T
+TRINI(1)%EVENT_START = 2014,07,11,00,06,0
+TRINI(1)%EMIS_IOEVENT  = 1,'steps','first',360  
+TRINI(1)%RELAX = T !only for COSMO
+TRINI(1)%IFNOT = F
+TRINI(1)%DOMAIN = F 
+TRINI(1)%TRACER = 'strato','','','','','','','','','',
+TRINI(1)%CRIT(1)='COSMO','press','<=',90000,'',''
+TRINI(1)%CRIT(2)='COSMO','press','>=',15000,'','' 
+TRINI(1)%CRIT(3)='tropop','PV','>=',2,'',''
+TRINI(1)%CRIT(4)='COSMO','qv','<=',0.001,'',''
+
+TRINI(2)%INI1STEP = T
+TRINI(2)%EVENT_START = 2014,07,11,00,06,0
+TRINI(2)%EMIS_IOEVENT  = 1,'steps','first',0  
+TRINI(2)%RELAX = T
+TRINI(2)%IFNOT = F
+TRINI(2)%DOMAIN = F
+TRINI(2)%TRACER = 'strato','','','','','','','','','',
+TRINI(2)%CRIT(1)='COSMO','press','<',15000,'',''
+
+TRINI(3)%INI1STEP = F
+TRINI(3)%EVENT_START = 2014,07,11,00,06,0
+TRINI(3)%EMIS_IOEVENT  = 1,'steps','first',360  
+TRINI(3)%RELAX = T !only for COSMO
+TRINI(3)%IFNOT = F
+TRINI(3)%DOMAIN = F 
+TRINI(3)%TRACER = 'strato','cont','','','','','','','','',
+TRINI(3)%CRIT(1)='COSMO','press','<=',90000,'',''
+TRINI(3)%CRIT(2)='COSMO','press','>=',15000,'','' 
+TRINI(3)%CRIT(3)='tropop','PV','>=',2,'',''
+TRINI(3)%CRIT(4)='COSMO','qv','<=',0.001,'',''
+
+TRINI(4)%INI1STEP = F
+TRINI(4)%EVENT_START = 2014,07,11,00,06,0
+TRINI(4)%EMIS_IOEVENT  = 1,'steps','first',0  
+TRINI(4)%RELAX = T
+TRINI(4)%IFNOT = F
+TRINI(4)%DOMAIN = F
+TRINI(4)%TRACER = 'strato','cont','','','','','','','','',
+TRINI(4)%CRIT(1)='COSMO','press','<',15000,'',''
+
+TRINI(5)%INI1STEP = T
+TRINI(5)%EVENT_START = 2014,07,11,00,06,0
+TRINI(5)%EMIS_IOEVENT  = 1,'steps','first',360  
+TRINI(5)%RELAX = T !only for COSMO
+TRINI(5)%IFNOT = F
+TRINI(5)%DOMAIN = F 
+TRINI(5)%TRACER = 'strato','4pvu','','','','','','','','',
+TRINI(5)%CRIT(1)='COSMO','press','<=',90000,'',''
+TRINI(5)%CRIT(2)='COSMO','press','>=',15000,'','' 
+TRINI(5)%CRIT(3)='tropop','PV','>=',4,'',''
+TRINI(5)%CRIT(4)='COSMO','qv','<=',0.001,'',''
+
+TRINI(6)%INI1STEP = T
+TRINI(6)%EVENT_START = 2014,07,11,00,06,0
+TRINI(6)%EMIS_IOEVENT  = 1,'steps','first',0  
+TRINI(6)%RELAX = T
+TRINI(6)%IFNOT = F
+TRINI(6)%DOMAIN = F
+TRINI(6)%TRACER = 'strato','4pvu','','','','','','','','',
+TRINI(6)%CRIT(1)='COSMO','press','<',15000,'',''
+
+TRINI(7)%INI1STEP = F
+TRINI(7)%EVENT_START = 2014,07,11,00,06,0
+TRINI(7)%EMIS_IOEVENT  = 1,'steps','first',360  
+TRINI(7)%RELAX = T !only for COSMO
+TRINI(7)%IFNOT = F
+TRINI(7)%DOMAIN = F 
+TRINI(7)%TRACER = 'strato','cont_4pvu','','','','','','','','',
+TRINI(7)%CRIT(1)='COSMO','press','<=',90000,'',''
+TRINI(7)%CRIT(2)='COSMO','press','>=',15000,'','' 
+TRINI(7)%CRIT(3)='tropop','PV','>=',4,'',''
+TRINI(7)%CRIT(4)='COSMO','qv','<=',0.001,'',''
+
+TRINI(8)%INI1STEP = F
+TRINI(8)%EVENT_START = 2014,07,11,00,06,0
+TRINI(8)%EMIS_IOEVENT  = 1,'steps','first',0  
+TRINI(8)%RELAX = T
+TRINI(8)%IFNOT = F
+TRINI(8)%DOMAIN = F
+TRINI(8)%TRACER = 'strato','cont_4pvu','','','','','','','','',
+TRINI(8)%CRIT(1)='COSMO','press','<',15000,'',''
+/

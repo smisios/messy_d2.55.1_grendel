@@ -1,0 +1,22 @@
+#! /bin/tcsh -f
+# Time-stamp: <2008-12-11 23:29:11 sander>
+# Authors:
+# Rolf Sander,     Max-Planck-Institute, Mainz, Germany, 2008
+
+################################################################################
+
+mkdir ../spectra_eff_static_old
+lf95 -o split_sig_eff.exe -Cpp --chk a,e,s,u --pca --ap -O0 -g --trap split_sig_eff.f90
+echo "running split_sig_eff.exe, please wait..."
+./split_sig_eff.exe > split_sig_eff.log
+cd ../spectra_eff_static_old
+rm dummy*
+foreach filename (*)
+  echo "working on $filename"
+  sed -e "s|^  *|§§§|g" $filename | sed -e "s|   *|\n§§§|g" | sed -e "s|^§§§|  |g" > ../spectra_eff_static/$filename
+end
+cd ../spectra_eff_static
+rm -fr ../spectra_eff_static_old
+
+echo "note that v2.ef*, v3_du.ef*, and tau.ef* were not created with this script"
+exit

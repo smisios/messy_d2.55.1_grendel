@@ -1,0 +1,49 @@
+! -*- f90 -*-
+
+&CPL
+!
+l_full_diag = F  ! set TRUE to define individual channel objects for
+                 ! each process and each prognostic variable or tracer
+!
+l_closure = F    ! set TRUE to define internal channel objects
+                 ! for closure analysis
+                 ! (I_HANDLE_SUM and I_HANDLE_DIFF)
+!
+l_clos_diag = F  ! set TRUE to get additional diagnostic log-file
+                 ! output (about the closure); 
+                 ! this option is useful to integrate new processes
+                 ! into the tendency-submodel
+!
+! USER DEFINED TENDENCY ANALYSES:
+! SYNTAX:
+! TDIAG(.) = 'variable name or tracer name', 
+!            'semicolon separated list of (sums of) processes'
+! EXAMPLE: TDIAG(1) = 'X', 'p1;p2+p3;...;pn',
+! 
+! Variables are: t, q, xl, xi, u, v, all GP-tracers
+! Processes are: 
+!  - ECHAM5:          advect, dyn
+!  - MESSy-submodels: e5vdiff, cloud, surface, convect, rad, fubrad, gwave,
+!                     orogw, cvtrans, dradon, ...
+!
+! WARNING: By default the time filter switch (l_tf) in cloud.nml is set to 
+!         .FALSE.. This inhibits the closure in TENDENCY. To achieve a
+!         closure, you need to set l_tf=T in cloud.nml.!
+!
+! ----------------------------------------------------------
+!TDIAG(1)  = 't'  ,'e5vdiff; cloud + rad + convect; surface',
+!TDIAG(2)  = 'q'  ,'e5vdiff + cloud + convect', 
+!TDIAG(3)  = 'xl' ,'',
+!TDIAG(4)  = 'xi' ,'e5vdiff; cloud + rad + convect; surface', 
+!TDIAG(5)  = 'u'  ,'e5vdiff; cloud + rad + convect; surface',
+!TDIAG(6)  = 'v'  ,'e5vdiff; cloud + rad + convect + surface', 
+! ----------------------------------------------------------
+!TDIAG(7)  = 'H'  ,'e5vdiff; cloud + rad + convect; surface',
+!TDIAG(8)  = 'NH' ,'e5vdiff; cloud + rad + convect; surface',
+!TDIAG(9)  = 'SH' ,'e5vdiff; cloud + rad + convect; surface',
+!TDIAG(10) = 'ST' ,'e5vdiff; cloud + rad + convect; surface',
+!TDIAG(11) = 'TR' ,'e5vdiff; cloud + rad + convect; surface',
+!TDIAG(12) = 'V1' ,'',
+!TDIAG(13) = 'V2' ,'e5vdiff; cloud + rad + convect; surface',
+! ----------------------------------------------------------
+/

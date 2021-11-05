@@ -1,0 +1,56 @@
+! -*- f90 -*-
+! NMHC speciataion 
+! In the file the total NMHC emissions in moelc/m^2/s are present 
+! They could be converted to g(NMHC/m^2/s) as following:
+!
+! (1) totals(NMHC) [g] = flux(NMHC) [molec] * mw(NMHC) [g/mol] / Navo [molec/mol]
+!
+! mw(NMHC) is 72.9 g/mol (for non ship NMHCs)  
+!
+! This totals(NMHC) can be converted by the usual 161/210 factor to totals(C) 
+! (see Hoor et al 10, IPCC, Escimo Paper) 
+
+! However offemis now needs the flux in molec/m^2/s
+! This means, that totals(NMHC) [g] are converted to molec by:
+!
+!  (2)  flux(X) = TOTAL(NMHC) * 161/210 * FRAC  * Navo / (MW(C) * #C)
+
+! When we now put (1) in (2) we get: 
+
+! (3) flux(x) = flux(NMHC) *161/210 * Frac*  mw(NMHC) / (mw(C) * #C) 
+
+
+! ----------------------------------------------------------------------
+! | SPECIES  | 161/210 * FRAC | #C    | CONVERSION FACTOR                 |
+! |          | [molec(C)/molec(NMHC)] | 161/210*FRAC*mw(NMHC)/(mw(C) * #C)|
+! |          |                |       |                                   |
+! ----------------------------------------------------------------------
+! | C2H4     |  0.03717       |  2 |  0.1127                     |
+! | C2H6     |  0.05974       |  2 |  0.1813                      |
+! | C3H6     |  0.01565       |  3 |  0.03166                     |
+! | C3H8     |  0.09457       |  3 |  0.1913                      |
+! | NC4H10   |  0.71540       |  4 |  1.085                      |
+! | CH3CHO   |  0000000       |  2 |  ---                         |
+! | CH3COCH3 |  0.02374       |  3 |  0.04803                     |
+! | CH3CO2H  |  0.00000       |  2 |  ---                         |
+! | CH3OH    |  0.01435       |  1 |  0.08710                     |
+! | HCHO     |  0.00479       |  1 |  0.2907                     |
+! | HCOOH    |  0.00000       |  1 |  ---                         |
+! | MEK      |  0.03443       |  4 |  0.05224                     |
+! ----------------------------------------------------------------------
+! |      SUM = 0.76654 = 161/210 (= 0.766667)                           |
+! ----------------------------------------------------------------------
+
+&regrid
+infile    = "$INPUTDIR_MESSY/offemis/VEU/IER_1.0_VEU_ship_MISC_20080101-20081231.nc",
+i_rlatm    = 'lat_rot',
+i_rlonm    = 'lon_rot',
+i_clatm    = 'lat',
+i_clonm    = 'lon',
+i_timem    = 'time',
+i_pollon   = '-170.0',
+i_pollat   = '40.0',
+i_polgam   = '0.0', 
+!var       = 'NO2=NOx;CO=CO;SO2=SOx;NH3=NH3;C2H4=NMVOC,0.1127;C2H6=NMVOC,0.1813;C3H6=NMVOC,0.03166;C3H8=NMVOC,0.1913;NC4H10=NMVOC,1.085;HCHO=NMVOC,0.2907;MEK=NMVOC,0.05224;CH3OH=NMVOC,0.08710;CH3COCH3=NMVOC,0.04803',
+var       = 'NO2=NOx|units=molecules m-2 s-1| longname= emission flux of NO2;CO=CO|units=molecules m-2 s-1| longname= emission flux of CO;SO2=SOx|units=molecules m-2 s-1| longname= emission flux of SO2;NH3=NH3|units=molecules m-2 s-1| longname= emission flux of NH3;C2H4=NMVOC,0.1127|units=molecules m-2 s-1| longname= emission flux of C2H4;C2H6=NMVOC,0.1813|units=molecules m-2 s-1| longname= emission flux of C2H6;C3H6=NMVOC,0.03166|units=molecules m-2 s-1| longname= emission flux of C3H6;C3H8=NMVOC,0.1913|units=molecules m-2 s-1| longname= emission flux of C3H8;NC4H10=NMVOC,1.085|units=molecules m-2 s-1| longname= emission flux of NC4H10;HCHO=NMVOC,0.2907|units=molecules m-2 s-1| longname= emission flux of HCHO;MEK=NMVOC,0.05224|units=molecules m-2 s-1| longname= emission flux of MEK;CH3OH=NMVOC,0.08710|units=molecules m-2 s-1| longname= emission flux of CH3OH;CH3COCH3=NMVOC,0.04803|units=molecules m-2 s-1| longname= emission flux of CH3COCH3;',
+/

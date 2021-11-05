@@ -1,0 +1,276 @@
+******************************************************************************
+**                          JVAL and JVPP history                           **
+**                 Time-stamp: <2018-03-14 13:14:21 joec_pa>                 **
+******************************************************************************
+
+Previous versions are available at:
+~/messy/photolysis/ori/jval_<VERSION>.zip   (zip files)
+~/messy/photolysis/frozen/jval_<VERSION>    (directories)
+
+new versions are created with: njv <VERSION>
+
+******************************************************************************
+
+The next version will be:
+14.3 (2018-)
+
+CHANGES by Vlassis Karydis and Rolf Sander:
+- new photolysis reactions (necessary for CB05BASCOE):
+  HO2, ClO
+
+******************************************************************************
+
+14.2 (2017-12-04)
+
+CHANGES by Rolf Sander:
+- JVPP:
+  - bugfixes for temperature dependencies in O3.s2t and OCS.s2t
+    (email 2017-11-29 from Stefan Versick)
+  - Makefile now uses g95 v093
+- C3O2 re-inserted
+- l_export_to_smil added
+- *.nml: 
+  - meccanum renamed to eqntag
+  - new equation tags for organic photolyses (J4nnnn)
+
+CHANGES by Holger Tost:
+- messy_jval.f90: IF (l_aero_inp) then coupling to external aerosol via
+  new pointers zaer_sca, zaer_abs, zaer_ga, zjv_asca, zjv_aabs, zjv_ga
+
+CHANGES by Domenico Taraborrelli and Rolf Sander:
+- new photolysis reactions: CH3NO3 (with *.tc1), CH3O2, CH3O2NO2, CH3ONO
+  (with *.phi), HCOOH
+- for CH3OOH, sigma from Matthews et al. (2005) added for 600-640nm
+- new photolysis reactions:
+  C2H5NO3, NOA, MEKNO3, BENZAL, HOPh3Me2NO2, HOC6H4NO2, CH3CHO2VINY,
+  CH3COCO2H IPRCHO2HCO, C2H5CHO2HCO, C2H5CHO2ENOL, C3H7CHO2HCO,
+  C3H7CHO2VINY, PeDIONE24, PINAL2HCO, PINAL2ENOL
+
+CHANGES by Jens-Uwe Grooß and Rolf Sander:
+- new photolysis reactions:
+  HO2NO2, OHNO3, BrONO2, CH3OCl, MEO2NO2, CHF2Cl, F113
+
+CHANGES by Duy Cai and Rolf Sander:
+- new photolysis reactions:
+  CF2ClCFCl2, CH3CFCl2, CF3CF2Cl, CF2ClCF2Cl, CHF2Cl
+
+******************************************************************************
+
+14 (2014-09-24) THIS VERSION IS PUBLISHED IN GMD
+
+CHANGES by Rolf Sander:
+- messy_jval.f90: Bug fix for index i0. At very high altitudes, dlv2 can
+  be smaller than 44.5 and the resulting index i0 was out of the valid
+  range. It is now set to i0=1:
+  i0(j,k)  = MAX(1,MIN(58,INT(AINT((dlv2(j,k)-44.5)/0.2) + 1.00001)))
+- GLYOX, CH3COCH3, MVK, MGLYOX, MACR: pressure dependence mentioned in
+  *.nml files
+
+******************************************************************************
+
+13.99gmdd (2014-03-12) THIS VERSION IS PUBLISHED IN GMDD
+
+CHANGES by Rolf Sander:
+- JVPP files with math tools renamed:
+  messy_main_lsq.f90    -> messy_main_math_lsq.f90
+  messy_main_spline.f90 -> messy_main_math_spline.f90 
+- JVAL and JVPP user manual moved from outside into the manual/ directory
+- njv, main.mk, _zipjval.tcsh: updated to bring into line with
+  corresponding caaba files (ncv, main.mk, _zipcaaba.tcsh)
+
+******************************************************************************
+
+13 (2013-10-14)
+
+CHANGES by Rolf Sander:
+- SO2.sig and SO2.nml with data from Danielache et al. (2008) added
+- DP added to JVAL box model
+- bugfix for HCHO: Temperature dependence increased by a factor of 10
+  because of error in Table 2 of Meller and Moortgat (2000).
+
+CHANGES by Patrick Joeckel:
+- jvpp_step1.f90: NMAXWAV = 5000 is now the maximum size for the input
+  spectrum. Error check introduced.
+
+******************************************************************************
+
+12 (2013-03-11)
+
+- bugfix for CO2: now using the original data from Shemansky (ref2346)
+- bugfix for N2O5: see jvpp_step2.f90
+
+******************************************************************************
+
+11 (2013-02-07)
+
+- from now on, the same version number is used for JVAL and JVPP
+- JVAL:
+  - JVPP directory moved from messy/tools/ to messy/mbm/jval/
+  - SX preprocesser directives removed
+  - cleanup of SUBROUTINE aero_2d: only 1...7 as a loop, dont calc 8
+    then overwrite it with i_ref(j) = MIN(i_ref(j),7)
+  - now using the automatically generated include file from JVPP
+  - DP added for cdisse in SUBROUTINE jval_solar_time_control
+  - messy_jval_si.f90, jval.nml: 'O3ubc' instead of 'jval' for RG_TRIG
+- JVPP:
+  - temperature dependence for O3 added (dat_lit/spectra/O3.s2t)
+  - for J(O2), JPL-2011 only has data for >= 205 nm; data from Koppers &
+    Murtagh is only used for <= 201.01 nm; simple fix for gap in
+    interpolation added
+  - C3O2 added
+  - NO3NOO deleted. It is probably not important, not used in MECCA
+    anymore, and JPL2011 has no recommendation for the quantum yield.
+  - SO2 deleted. It is not used in MECCA, and it is unclear how the
+    numbers were derived. JPL2011 has no recommendation in note I1.
+  - CS2 deleted. It is not used in MECCA, and it is unclear how the
+    numbers were derived. Using the Xu&Joens spectrum, JVPP produces
+    parameters that are a factor of about 1E4 larger that those that are
+    now in JVAL.
+  - ClNO2 from Ghosh et al. (ref2693)
+
+******************************************************************************
+
+10 (2012-05-23)
+
+- step 1: interpolation method changed to "integration". This is
+  especially necessary for OClO, BrO and IO with many peaks.
+- inputdir = dat_m17 or dat_lit defined via namelist and used for
+  calculation of quantum yield phi in step2
+- quantum yield calculations for MGLYOX, CH3COCH3, MACR, MVK, and GLYOX
+  in SUBROUTINE calc_phi deleted because these species are hardcoded
+  anyway. If the code is needed again, it should be recovered from
+  version 09.
+- quantum yield calculation for CH3CHO in SUBROUTINE calc_phi deleted
+  because it is now read from dat/spectra/CH3CHO.phi
+- using JVPP-generated code fixes the missing parentheses bug for PAN
+  and CFCl3 (emails from RS to ML and PJ, 2009-01-30), e.g.:
+  wrong:
+  SIG_PAN(1) = &
+    P1(c1_PAN(1),c1_PAN(2),tnorm(j,k))* &
+    P1(B1_1_PAN(i1(j,k)),A1_1_PAN(i1(j,k)),v3_du1(j,k)) + &
+    P1(B1_2_PAN(i1(j,k)),A1_2_PAN(i1(j,k)),v3_du1(j,k)) * v2s_m(j,k)
+  correct:
+  SIG_PAN(1) = &
+    P1(c1_PAN(1),c1_PAN(2),tnorm(j,k))* &
+    (P1(B1_1_PAN(i1(j,k)),A1_1_PAN(i1(j,k)),v3_du1(j,k)) + &
+    P1(B1_2_PAN(i1(j,k)),A1_2_PAN(i1(j,k)),v3_du1(j,k)) * v2s_m(j,k))
+
+******************************************************************************
+
+09 (2011-10-19)
+
+- quantum yields calculated in SUBROUTINE calc_phi are written to *.phi
+  output files
+- new namelist variable meccanum defines the MECCA reaction number of
+  the photolysis reaction
+- CH2Br2.tc1, C3H7I.tc2: incorrect hyphens "–" replaced by correct "-"
+- loop variable jt renamed to jp
+
+******************************************************************************
+
+08 (2011-10-06)
+
+- entire jvpp code now used predefined 176 wavelength with 5-digit precision
+- SO2 deleted
+- fj_corr values copied from dat_m17/*.nml into dat_lit/*.nml
+- hardcoded subroutines from old JVAL code are used for CH3COCH3, H2SO4,
+  MGLYOX, NO, GLYOX, MACR, and MVK.
+- C3O2 added
+- jvpp_read_nml.f90 deleted and contents moved into jvpp_step3.f90
+- jvpp_step3.f90: jrow deleted and jval_gp renamed to jval_2d, as in new
+  JVAL version 2.5.
+
+******************************************************************************
+
+07 (2011-07-14)
+
+- compiler update to g95-v0.92
+- new directory structure
+- data/cheb_coeff.dat moved and renamed to cheb_coeff.txt
+- renamed CH3COCHO --> MGLYOX and PAA --> CH3CO3H
+- jvpp_step1.f90:
+  - new SUBROUTINE spline_integration for optional use
+  - write wave.dat (only for ferret plots)
+  - calculate lower and upper borders of wavelength range wave_nm_min
+    and wave_nm_max
+- jvpp_step3.f90:
+  - set small numbers to zero: WHERE (ABS(array(:)) < 1E-38) array(:) = 0.
+- PARAMETER NBIN=8 introduced
+
+******************************************************************************
+
+06 (2009-02-24)
+
+- ly_alpha added
+- allow long "latexnote"s (more than 1 line)
+- subroutines write_nml_spectra_m17 and write_nml_spectra_lit deleted.
+  From now on, the nml files are under manual control (they are not
+  overwritten anymore in step3)
+
+******************************************************************************
+
+05 (2009-02-13)
+
+- this is the last version that includes the subroutines
+  write_nml_spectra_m17 and write_nml_spectra_lit
+
+******************************************************************************
+
+04 (2009-02-10)
+
+- phi files (quantum yields) added to spectra/
+- all files moved to $E2/messy/tools/jvpp/
+- starting from spectra_sig_static, step1 now creates spectra_176 which
+  is identical to spectra_176_static (except for CH2O.s2t_176,
+  NO3.s2t_176, and O3.s3t_176 because of non-standard names)
+- step1 now also works for tdep files (now called s2t and s3t)
+- memory leak in lsq.f90 fixed
+- creation of subroutine jval_cal 
+
+******************************************************************************
+
+03 (2009-02-04)
+
+- data/flux.* removed and data included in f90 code
+- INPUTDIR* and OUTPUTDIR* definitions moved to jvpp_mem.f90
+- directories spectra_eff_tdep and spectra_eff merged
+- switched from lf95 to g95
+- using double precision with --dbl 
+
+******************************************************************************
+
+02 (2009-02-02)
+
+- steps 1, 2, and 3 combined
+
+******************************************************************************
+
+01 (2009-02-02)
+
+- changes in step1:
+  - 17: from now on, only the cubic spline spline_b_val is used
+  - 16: combination of original code and 4 different splines
+
+- changes in step2:
+  - 96: calculation of T-dep is now ok
+  - 87: changed to just one module
+  - 86: this version works fine for one T. It does not yet have
+        T-dependence
+  - 55: unsuccessful try to change wave from [cm] to [nm] (see
+        conv_176_eff-wrong.f90)
+  - 45: file renamed to conv_176_eff.f90; new OUTPUTDIR =
+        ../spectra_eff/ instead of result/
+  - 44: order of call read_write_xxx changed
+  - 43: read_write_xxx_OLD and read_write_xxx_tdep_OLD deleted. The
+        input file data/sig2.new3 is not used anymore
+  - 42: reads individual files from ../spectra_176_static/*.176
+  - 41: reads data/sig2.new3 and writes individual files to
+        ../spectra_176_static/*.176
+
+- changes in step3:
+  - 22: tdep code and code at 1 T merged
+  - 21: the complete code of step3_tdep before merging into step3
+  - 20...17: tdep code
+  - 16...1: code at 1 temperature
+
+******************************************************************************

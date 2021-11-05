@@ -1,0 +1,96 @@
+! -*- f90 -*-
+&CPL
+!#####################################
+!# A. DEFINITION OF ISO-SURFACES 
+!#####################################
+!# NOTES:
+!# - channel objects <name>_i, and <name_f> are added for
+!#   'index' and 'fraction below'
+!# SYNTAX:
+!#    ISO-SURFACE name, channel, object, iso-value, index + fraction ?,
+!#        reverse search ?, skip levels from top, skip levels from sfc
+!#
+!!# PRESSURE LEVELS
+!ISO(1)  = 'p075',      'ECHAM5',  'press',  7500.0, T, T,  ,  ,
+!ISO(2)  = 'p080',      'ECHAM5',  'press',  8000.0, T, T,  ,  ,
+!ISO(3)  = 'p100',      'ECHAM5',  'press', 10000.0, T, T,  ,  ,
+!ISO(4)  = 'p200',      'ECHAM5',  'press', 20000.0, T, T,  ,  ,
+!ISO(5)  = 'p500',      'ECHAM5',  'press', 50000.0,  , T,  ,  ,
+!!#
+!!# ISENTROPES (THETA=CONST.)
+ ISO(6)  = 'isent340',  'ECHAM5',  'tpot',    340.0, T, T,  ,  ,
+ ISO(7)  = 'isent380',  'ECHAM5',  'tpot',    380.0, T, T,  ,  ,
+ ISO(8)  = 'isent420',  'ECHAM5',  'tpot',    420.0, T, T,  ,  ,
+!!#
+!!# CONST. POTENTIAL VORTICITY
+ ISO(9)  = 'PV2',        'tropop',  'PV',       2.0, T, T, 1, 4,
+ ISO(10) = 'PV3',        'tropop',  'PV',       3.0, T, T, 1, 3,
+ ISO(11) = 'PV4',        'tropop',  'PV',       4.0, T, T, 1, 3,
+!#
+!#####################################
+!# B. FIELDS MAPPED TO (ISO-)SURFACES
+!#####################################
+!# NOTES:
+!# - '_i' and '_f' are internally appended to SURFACE(object) name
+!#   for 'index' and 'fraction below'; availability of '_f' determines
+!#   the mapping method
+!# SYNTAX:
+!#    MAP name, ISO-SURFACE(channel), ISO-SURFACE(object), 
+!#              FIELD(channel), FIELD(object)
+!#
+!!# PRESSURE (e.g. for LGVLUX)
+!MAP(1)  = 'pp075',   'viso',   'p075',     'ECHAM5', 'press',
+!MAP(2)  = 'pp080',   'viso',   'p080',     'ECHAM5', 'press',
+!MAP(3)  = 'pp100',   'viso',   'p100',     'ECHAM5', 'press',
+!MAP(4)  = 'pp200',   'viso',   'p200',     'ECHAM5', 'press',
+!MAP(5)  = 'pp500',   'viso',   'p500',     'ECHAM5', 'press',
+!!#
+!!# ISENTROPES
+ MAP(10) = 'pth340',   'viso',  'isent340', 'ECHAM5', 'press',
+ MAP(11) = 'pth380',   'viso',  'isent380', 'ECHAM5', 'press',
+ MAP(12) = 'pth420',   'viso',  'isent420', 'ECHAM5', 'press',
+ MAP(13) = 'PVth340',  'viso',  'isent340', 'tropop', 'PV',
+ MAP(14) = 'PVth380',  'viso',  'isent380', 'tropop', 'PV',
+ MAP(15) = 'PVth420',  'viso',  'isent420', 'tropop', 'PV',
+!!#
+!!# TROPOPAUSE
+ MAP(16) = 'ttp',     'tropop', 'tp',    'ECHAM5', 'tm1',
+ MAP(17) = 'ztp',     'tropop', 'tp',    'ECHAM5', 'geopot',
+ MAP(18) = 'thtp',    'tropop', 'tp',    'ECHAM5', 'tpot',
+!!#
+!!# PLANETARY BOUNDARY LAYER HEIGHT
+ MAP(22) = 'ppblh',   'tropop', 'pblh',  'ECHAM5', 'press',
+ MAP(23) = 'tpblh',   'tropop', 'pblh',  'ECHAM5', 'tm1',
+!!#
+!!# PV
+ MAP(24) = 'pPV2',    'viso',   'PV2',   'ECHAM5', 'press',
+ MAP(25) = 'pPV3',    'viso',   'PV3',   'ECHAM5', 'press',
+ MAP(26) = 'pPV4',    'viso',   'PV4',   'ECHAM5', 'press',
+ MAP(27) = 'thPV2',   'viso',   'PV2',   'ECHAM5', 'tpot',
+ MAP(28) = 'thPV3',   'viso',   'PV3',   'ECHAM5', 'tpot',
+ MAP(29) = 'thPV4',   'viso',   'PV4',   'ECHAM5', 'tpot',
+ MAP(30) = 'tPV2',    'viso',   'PV2',   'ECHAM5', 'tm1',
+ MAP(31) = 'tPV3',    'viso',   'PV3',   'ECHAM5', 'tm1',
+ MAP(32) = 'tPV4',    'viso',   'PV4',   'ECHAM5', 'tm1',
+!!#
+!!# COLD POINT
+ MAP(40) = 'pcpt',    'tropop', 'cpt',   'ECHAM5', 'press',
+ MAP(41) = 'tcpt',    'tropop', 'cpt',   'ECHAM5', 'tm1',
+ MAP(42) = 'qcpt',    'tropop', 'cpt',   'ECHAM5', 'qm1',
+!
+!!#
+!!# number of CELLs at 75 hPa
+!MAP(30) = 'ncb075',  'viso',   'p075',  'attila', 'NCB',
+!!#
+! op_cf_20141211+
+!MAP(33) = 'flxs_tp_01',   'tropop', 'tp_clim',    'rad01', 'flxs',
+!MAP(34) = 'flxt_tp_01',   'tropop', 'tp_clim',    'rad01', 'flxt',
+!MAP(35) = 'flxs_tp_02',   'tropop', 'tp_clim',    'rad02', 'flxs',
+!MAP(36) = 'flxt_tp_02',   'tropop', 'tp_clim',    'rad02', 'flxt',
+! op_cf_20141211-
+!
+! ut_kt_20041009+
+!MAP(40) = 'flxs_tp',   'tropop', 'tp',    'rad01', 'flxs',
+!MAP(41) = 'flxt_tp',   'tropop', 'tp',    'rad01', 'flxt',
+! ut_kt_20041009-
+/

@@ -1,0 +1,66 @@
+// -*- kpp -*- kpp mode for emacs
+// see example.rpl for details about replacement files
+
+// Author: Domenico Taraborrelli
+// Author: Patrick Joeckel (merged with CCMI-base-02)
+
+// replace the comprehensive organic chemistry by mim1:
+#include mim1
+
+// modifications for the ESCiMo base run:
+#include ESCiMo
+
+// Introduction of alkyl nitrate yields that dependent on 
+// temperature and pressure
+
+#REPLACE <G4305>
+<a>  IC3H7O2    + NO      = CH3COCH3 + HO2 + NO2      : {%TrG} k_PrO2_NO*(1.-alpha_AN(3,2,temp,cair)); {&1745}
+<b>  IC3H7O2    + NO      = IC3H7NO3                  : {%TrG} k_PrO2_NO*alpha_AN(3,2,temp,cair); {&1745}
+#ENDREPLACE
+
+// For LHOC3H6O2 only 3/4 of LC4H9NO3 are formed in order to keep the 
+// carbon mass balance
+#REPLACE <G4309>
+<a>  LHOC3H6O2  + NO      = CH3CHO + HCHO + HO2 + NO2  : {%TrG} 4.2E-12*EXP(180./temp)*(1.-alpha_AN(4,2,temp,cair)); {&803}
+<b>  LHOC3H6O2  + NO      = .75 LC4H9NO3               : {%TrG} 4.2E-12*EXP(180./temp)*alpha_AN(4,2,temp,cair); {&803}
+#ENDREPLACE
+
+// LC4H9O2 in gas_mim1.eqn is a lumped species representing butane and higher
+// alkanes whose AN yield is higher than for butane. Therefore, instead of
+// n=4, n=6 is used yielding a 16% yield at 298K as in the original 
+// gas_mim1.eqn.  
+#REPLACE <G4403>
+<a>  LC4H9O2  + NO      = NO2 + .667 MEK + .667 HO2 + .333 C2H5O2 + .333 CH3CHO : {%TrG} k_PrO2_NO*(1.-alpha_AN(6,2,temp,cair)); {&}
+<b>  LC4H9O2  + NO      = LC4H9NO3                                              : {%TrG} k_PrO2_NO*alpha_AN(6,2,temp,cair); {&} 
+#ENDREPLACE
+
+// MIM1 was built to reproduce the AN yileds of MCM (10%) with a 4.4% 
+// nominal yield (see Taraborrelli et al., ACP 2009). 
+// According to Teng et al. this yield should be now around 14% at 296K.
+// We rescale the AN yield in MIM1 and add the T- and P-dependency. 
+#REPLACE <G4504>  
+<b> ISO2  + NO        = NO2 + MVK + HCHO + HO2      : {%TrG} 2.54E-12*EXP(360./temp)*(1.-0.044*(alpha_AN(5,2,temp,cair)/.10)); {&1614}
+<c> ISO2  + NO        = ISON                        : {%TrG} 2.54E-12*EXP(360./temp)*0.044*(alpha_AN(5,2,temp,cair)/.10); {&1614}
+#ENDREPLACE
+
+// O3s diagnostic
+#REPLACE <>
+<G01Diag> O3s            = LO3s        : {%StTrG} k_O3s; {&1714}
+#ENDREPLACE
+
+// additional diagnostic tracers (Note: these have NOT been present
+// in REFC1-DLR-01, RC1-base-01, RC2-base-01
+#REPLACE <>
+<G10G6501>  CFCl3_c   + O1D  = O1D   : {%StG}   2.3E-10{§1.2}; {&2626} // equivalent reaction for diagnostic tracer
+<J11J6500>  CFCl3_c   + hv   = Dummy : {%StGJ}  jx(ip_CFCl3){§}; {&2342} // equivalent reaction for diagnostic tracer
+<G12G6500>  CF2Cl2_c  + O1D  = O1D   : {%StG}   1.4E-10{§1.25}; {&2626} // equivalent reaction for diagnostic tracer
+<J13J6501>  CF2Cl2_c  + hv   = Dummy : {%StGJ}  jx(ip_CF2Cl2){§}; {&2342} // equivalent reaction for diagnostic tracer
+<G14G3102a> N2O_c     + O1D  = O1D   : {%UpStG}   7.25E-11{§1.1}*EXP(20./temp); {&2626} // equivalent reaction for diagnostic tracer
+<G15G3102b> N2O_c     + O1D  = O1D + Dummy : {%StG} 4.63E-11{§1.1}*EXP(20./temp); {&2626} // equivalent reaction for diagnostic tracer
+<J16J3100>  N2O_c     + hv   = Dummy : {%UpStGJ}  jx(ip_N2O){§}; {&2342} // equivalent reaction for diagnostic tracer
+<G17G6407>  CH3CCl3_c + O1D  = O1D   : {%StG}   3.E-10{§}; {&} // equivalent reaction for diagnostic tracer
+<G18G6408>  CH3CCl3_c + OH   = OH    : {%StTrG} 1.64E-12{§1.15}*EXP(-1520./temp); {&2626} // equivalent reaction for diagnostic tracer
+<J19J6402>  CH3CCl3_c + hv   = Dummy : {%StGJ}  jx(ip_CH3CCl3){§}; {&2342} // equivalent reaction for diagnostic tracer
+<J20J7601>  CF2ClBr_c + hv   = Dummy : {%StGJ}  jx(ip_CF2ClBr){§}; {&2342} // equivalent reaction for diagnostic tracer
+<J21J7500>  CF3Br_c   + hv   = Dummy : {%StGJ}  jx(ip_CF3Br){§}; {&2342} // equivalent reaction for diagnostic tracer
+#ENDREPLACE

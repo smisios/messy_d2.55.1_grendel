@@ -1,0 +1,96 @@
+! -*- f90 -*- Time-stamp: <2013-10-04 15:55:46 pa1.pa.cluster  mecca.nml>
+
+&CTRL_KPP
+! icntrl(3) = solver-specific method:
+! values for rosenbrock:
+!icntrl(3) = 1 ! ros2: L-stable method, 2 stages, order 2
+ icntrl(3) = 2 ! ros3: L-stable method, 3 stages, order 3 (recommended)
+!icntrl(3) = 3 ! ros4: L-stable method, 4 stages, order 4
+!icntrl(3) = 4 ! rodas3: stiffly-stable method, 4 stages, order 3
+!icntrl(3) = 5 ! rodas4: stiffly-stable method, 6 stages, order 4
+!
+!icntrl(4) = 5000, ! max. number of kpp-substeps (default: 10000)
+!
+!### t_steps(:) = 0.0      => automatic time stepping (DEFAULT)
+!### SUM(t_steps(:)) = 1.0 => fixed time stepping
+!t_steps = 50*0.0,
+!t_steps = 0.0005,  0.0015,  0.005,  0.02,  0.06,  0.1,  0.15,  0.1875,  0.23775,  0.23775, 40*0.0,
+/
+
+&CTRL
+! Do not change the default mecca_aero='AUTO' except for debugging and testing!
+!mecca_aero = ['ON'/'OFF'/'AUTO'] ! if AUTO (default) then l_aero = REQ_AEROSOL
+!l_force_khet = T ! switch on khet subsubmodel even if REQ_HET=F (default: F)
+!l_kpp_debug  = T ! switch on kpp debugging (default: F)
+
+! Monte-Carlo factor seed:
+ mcexp_seed = 858703751
+ 
+/
+
+!*****************************************************************************
+! coupling namelist for MECCA
+!*****************************************************************************
+
+&CPL
+! NOTE: If photolysis reactions are considered MECCA requires a submodel that
+!       calculates photolysis rate coeff., e.g., JVAL. 
+! Choose a channel that contains J-values for photolysis reactions:
+photrat_channel_gp  = 'jval_gp'
+!photrat_channel_lg  = 'jval_lg'   ! not required, since l_lg = F
+l_gp = T   ! GRIDPOINT (default: F)
+!l_lg = T   ! LAGRANGE (default: F)
+!l_skipkpp_gp = T    ! skip call to kpp chemistry integration (GRIDPOINT) (default: F)
+!l_skipkpp_lg = T    ! skip call to kpp chemistry integration (LAGRANGIAN) (default: F)
+!
+c_pa_asm = 'made3' ! submodel for pseudo aerosol tracer properties (see gas.tex)
+i_pa_amode = 7     ! corresponding mode of pseudo aerosol properties
+
+!!!### feedback to hydrological cycle (specific hunmidity):
+!!!### (0 (default): no feedback; 1: feedback from GP)
+!!!### Note: use as alternative to H2O submodel
+i_H2O_feedback = 1
+!
+
+/
+
+!*****************************************************************************
+! control namelist for MECCA_KHET subsubmodel
+!*****************************************************************************
+
+&CTRL_KHET
+! NOTE: CTRL_KHET is not used in connection with CAABA
+l_troposphere  = T   ! (default: F)
+l_stratosphere = T   ! (default: F)
+/
+
+!*****************************************************************************
+! coupling namelist for MECCA_KHET subsubmodel
+!*****************************************************************************
+
+&CPL_KHET
+
+! channel object for aerosol surface climatology:
+aerosurf_clim = 'import_grid', 'aerosurf_clim_A_CLIM'
+
+! aerosol submodel and modes:
+!asm(2) = 'm7',   '1,2,3,4,5,6,7'
+!asm(3) = 'gmxe',   '1,2,3,4,5,6,7'
+asm(4) = 'made3', '1,2,3,4,5,6,7,8,9'
+! aerosol chemistry coupling (submodel to calculate rate coefficients):
+! (0 = aerosol surface climatology)
+asm_cpl = 4
+
+! stratosphere
+strat_channel = 'msbm'
+
+/
+
+!*****************************************************************************
+! coupling namelist for MECCA_AERO subsubmodel
+!*****************************************************************************
+
+&CPL_AERO
+/
+
+!*****************************************************************************

@@ -1,0 +1,104 @@
+ g _jnl $0
+
+ cda
+ col/var=upds,pepn,exps ($jnl).exp
+ sp sed -e 's/[-=\/\\]/_/g' ($jnl).exp > ($jnl).cap
+ col/var=dum1,dum2,caps ($jnl).cap
+
+ li exps[d=1], pepn[d=1], caps[d=2]
+ de sy qe = `exps[d=1],r=iend`
+
+\ca mo ve
+! ------------ data -------------------
+!if `$1%0%` then
+ ! refresh data
+   rep/ran=1:($qe)/name=ie (\
+     de sy ie = `ie` ;\
+     de sy exp = `exps[d=1,i=($ie)]` ;\
+     if `upds[d=1,i=($ie)]` then (\
+       say updating ($exp)... ;\
+       let a = spawn("cd ($exp); n2m 0_qtimer") ;\
+       list a; \
+   ) else ( say skipping ($exp)... ))
+!endif
+
+! ------------ definitions -------------
+ let simy = int(yyyymmdd/1e4)
+ let simm = int((yyyymmdd-simy*1e4)/1e2)
+ let simd = (yyyymmdd-simy*1e4-simm*1e2)
+ let simyn = simy+int(simm/12) !if simm eq 12 then 1 else simm
+ let simmn = mod(simm+1,12)    !if simm eq 12 then simy+1 else simy
+ let simms = days1900(simyn,simmn,1)-days1900(simy,simm,1)
+ let simt = simy + ((simm-1) + (simd-1)/simms)/12
+ let simt2 = simt[l=1]+dt*(nstep-nstep[l=1])/60/60/24/365.2524 
+
+ rep/ran=1:($qe)/name=ie (\
+   de sy ie = `ie` ;\
+   de sy exp = `exps[d=1,i=($ie)]` ;\
+   use "($exp)/0_qtimer.des" ;\
+   de ax/t0="01-jan-2015"/calendar=julian/unit="days" rtax_($ie) = real[i=@ave]; \
+   let rt_($ie) = t[gt=rtax_($ie)] ;\
+   de ax/t/unit="log(years)" stax_($ie) = (simt2[i=@ave]-2000); \
+   let st_($ie) = t[gt=stax_($ie)] ;\
+   )
+
+ ca sy *_caps
+ let wall_acc_m1 = (wall_acc[i=@sum]-wall_acc[i=@sum,l=1])/60/60 !*(1+0*`wall_acc[d=($id)],r=iend`)
+ rep/ran=1:($qe)/name=ie (\
+   de sy ie = `ie` ;\
+   de sy exp = `exps[d=1,i=($ie)]` ;\
+   de sy cap = `caps[d=2,i=($ie)]` ;\
+   de sy id = `2+($ie)` ;\
+   let/title="@SR($cap) position"/units="simulated year" pr_($cap) = simt2[d=($id),gt=rtax_($ie)@asn] ;\
+   de sy pr_caps = ($pr_caps)pr_($cap) ;\
+   let/title="@SR($cap) elapsed"/units="node hours" el_($cap) = wall_acc_m1[d=($id),gt=stax_($ie)@asn]/pepn[d=1,i=($ie)] ;\
+   de sy el_caps = ($el_caps)el_($cap) ;\
+   de sy et_caps = ($et_caps)el_($cap)[l=@max] ;\
+   de sy eta_caps = ($eta_caps)`el_($cap)[l=@max]` ;\
+   if `($ie) lt ($qe)` then (\
+     de sy pr_caps = ($pr_caps),;\
+     de sy el_caps = ($el_caps),;\
+     de sy et_caps = ($et_caps),;\
+     de sy eta_caps = ($eta_caps)+;\
+     ) else ();\
+ )
+ se mo/la ve
+
+! ------------ plots -------------------
+ g _linecolors
+!se wi/as=1.5
+ se wi/as=0.64
+ g _tics -1
+ ppl color 14,60,50,40
+
+ g _VxV "1,1" 1 0.3
+
+ se vi 1
+ ppl AXNSIG,1,1 ! 0 dig precision
+ pl/grat=(line,col=13)/thick ($pr_caps)
+
+ se vi 2
+ pl/tr/hlog/hlim=1e-2:1e3/vlog/vlim=1e-3:1e2/l=2:1e9/grat=(line,col=12) ($el_caps)
+!pl/grat=(line,col=12)/li/t="1-jan-2000":"7-jan-2000" ($el_caps)
+
+ li ($et_caps)
+ let/title="total consumed"/units="node hours" total=($eta_caps)
+ li total
+
+ stop
+
+ sp rm $0.ps; se mo me:$0.ps
+
+!ppl AXLINT,4, ! freq. of large tics
+ ppl AXLINT,2, !
+ ppl AXNSIG,0, ! 0 dig precision
+ ppl AXNMTC,5, ! no of small tics
+!ppl TXNMTC,0 ! T axis large tics freq
+!ppl TXLINT,hour,
+!ppl TXLABP,-1
+ pl/tr/grat=(line,col=6)/li ($pr_caps)
+!pl/vlim=2013:2015:0.5/grat=(line,col=6)/li ($pr_caps)
+!pl/tr/vlim="12-nov-2015":"17-nov-2015"/hlim=2013:2015:0.5/grat=(line,col=6)/sy pr_MOM09_480mi
+
+ ca mo me
+!sp rm $0.gif; frame/file=$0.gif

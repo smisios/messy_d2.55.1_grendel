@@ -1,0 +1,210 @@
+// -*- kpp -*- kpp mode for emacs
+// see example.rpl for details about replacement files
+
+// To add a new reaction, specify an empty equation tag
+// in the "#REPLACE" command ("<>"), and give a complete
+// equation tag in the replacement ("<G9876>")
+
+// Author: Patrick Joeckel, DLR (March 2020)
+//         see also CMIP6.rpl and CCMI.rpl
+
+// ###########################################################
+// ### replace the comprehensive organic chemistry by mim1 ###
+// ###########################################################
+#include mim1
+
+// ################################
+// ### additional modifications ###
+// ################################
+
+// The label "St" was added here to <J8401a> only because it prevents the
+// exclusion of this reaction via wanted = "...\!I..." in CCMI2-base-01.bat
+#REPLACE <J8401>
+<>  CH3I    + hv = CH3O2                 : {%StTrGJ}    JX(ip_CH3I); {&2342}
+#ENDREPLACE
+
+// #REPLACE <>
+// <J9002>  SF6 + hv = PROD                  : {%StGSJ}    JX(ip_SF6); {&}
+// #ENDREPLACE
+
+// ### exclude H2OH2O reactions
+#REPLACE <G2117>
+#ENDREPLACE
+
+#REPLACE <G2118>
+#ENDREPLACE
+
+// // ### exclude C2H6 + Cl reaction for backward compatibility to M2E23_exp??
+// // ### (this was introduced in 2.3z)
+// #REPLACE <G6412>
+// #ENDREPLACE
+
+// ### exclude parts of the Hg chemistry (Ox and HOx oxidation) in any case
+// ### (even, if Hg chemistry is active!)
+#REPLACE <G10100>
+#ENDREPLACE
+
+#REPLACE <G10200>
+#ENDREPLACE
+
+#REPLACE <G10201>
+#ENDREPLACE
+
+// ### add O3s diagnostic
+#REPLACE <>
+<G01Diag> O3s            = LO3s        : {%StTrG} k_O3s; {&1714}
+#ENDREPLACE
+
+// ##########################################
+// ### add sink reactions of acetonitrile ###
+// ##########################################
+// (tracer for biomass burning emissions)
+// Note: reaction products are ignored and reaction partners are
+//       unaffected (S => <S>implified
+
+#REPLACE <>
+
+// = NCCH2O2 + H2O 
+// <G42085aS> CH3CN + OH        = OH : {%TrG} 8.1E-13*EXP(-1080./temp)*0.40; {&1759, 3212} // Uncertainties on the kinetics at pressures $<$ 0.1 bar.
+
+// = OH + CH3CO + NO
+// <G42085bS> CH3CN + OH        = OH : {%TrG} 8.1E-13*EXP(-1080./temp)*(1.-0.40); {&1759, 3212} // Channel proposed by Hynes and Wine 1991, OH + HCHO + HOCN, could not be confirmed by \cite{3212}. There is no alternative mechanism at the moment. Products assumed to be OH + CH3CO3 + NO
+
+// <G42085aS> and <G42085bS> combined:
+<G42085abS> CH3CN + OH       = OH : {%TrG} 8.1E-13*EXP(-1080./temp) ; {&1759, 3212}
+
+// // = O3P + CH3CN (no sink of CH3CN)
+// <G42086aS> CH3CN + O1D       = O3P + CH3CN : {%TrG} 2.54E-10*EXP(-24./temp)*0.0269*EXP(137./temp); {&3197}
+
+// = 2 H + CO + HCN
+// <G42086bS> CH3CN + O1D       = O1D : {%TrG} 2.54E-10*EXP(-24./temp)*0.16; {&3197} // Assuming HCN is from channel 2h, HCO + H + HCN. HCO is replaced by H + CO.
+
+// = .5 CH3 + .5 NCO + .5 NCCH2O2 + .5 OH 
+// <G42086cS> CH3CN + O1D       = O1D : {%TrG} 2.54E-10*EXP(-24./temp)*(1.-(0.16+0.0269*EXP(137./temp))); {&3197} // Assuming exothermic channels 2b and 2d are equally important.
+
+// <G42086bS> and <G42086cS> combined:
+// --> 2.54E-10*EXP(-24./temp) * [0.16 + 1.-(0.16+0.0269*EXP(137./temp))]
+//   = 2.54E-10*EXP(-24./temp)*(1.-0.0269*EXP(137./temp))
+<G42086bcS> CH3CN + O1D       = O1D : {%TrG} 2.54E-10*EXP(-24./temp)*(1.-0.0269*EXP(137./temp)) ; {&3197}
+
+// = NCCH2O2 + HCl
+<G6416S>  Cl      + CH3CN  = Cl : {%TrG} 1.6E-11{§}*EXP(-2104./temp); {&3211, 3212, 3264}
+
+#ENDREPLACE
+
+// #################
+// ### NEW HCFCs ###
+// #################
+
+#REPLACE <>
+
+// ### HCFC-22
+
+<G6500dc01> CHF2Cl + O1D = 0.55 ClO + 0.05 OH + 0.28 O3P + 0.28 CHF2Cl +0.72 LCARBON + 0.17 Cl: {%StG} 1.0E-10{§1.15}; {&2626}  //
+<G6500dc02> CHF2Cl + OH = LCARBON + H2O :{%StG}1.05e-12{§1.1}*EXP(-1600./temp); {&2626}
+<G6500dc03> CHF2Cl + Cl = HCl + LCARBON :{%StG}1.05e-12{§1.15}*EXP(-2430./temp); {&2626}
+//photolysis Quantum Yield and Product Studies: No studies are available.
+<J6500dc01> CHF2Cl + hv = Cl + LCARBON + 2 LFLUORINE : {%StGJ} jx(ip_CHF2Cl){§}; {&2626} //OKAY!
+
+// ### CF4 
+//CF4 + O1D = CF4 + O // too big differences among the different studies
+
+// ### HFC-134a
+<G5300dc01> CH2FCF3 + O1D = 0.65 O3P + 0.65 CH2FCF3 + 0.24 OH + 0.70 LCARBON:  {%StG} 4.9E-11{§1.15}; {&2626} //Kono and Matsumi 2001
+<G5300dc02> CH2FCF3 + OH = 2 LCARBON + H2O :{%StG}1.05e-12{§1.1}*EXP(-1630./temp); {&2626}
+<G5300dc03> CH2FCF3 + Cl = HCl + 2 LCARBON : {%StG}2.4e-12{§1.1}*EXP(-2200./temp); {&2626}
+// no photolysis
+
+// ### CFC-113
+<G6500dc04> CF2ClCFCl2 + O1D = 0.2 O3P + 0.2 CF2ClCFCl2 + 0.8 ClO + 1.6 LCARBON + 1.6 Cl :{%StG} 2.0E-10 {§1.5};{&2626} 
+// photolysis: no studies on quantum yield and products available
+<J6500dc02> CF2ClCFCl2 + hv = 3 Cl + 2 LCARBON : {%StGJ} jx(ip_CF2ClCFCl2){§}; {&2626} 
+
+// ### CH2Cl2
+<G6400dc01> CH2Cl2 + OH = LCARBON + H2O :{%StG}1.09e-12{§1.15}*EXP(-870./temp);  {&2626}
+<G6400dc02> CH2Cl2 + Cl = LCARBON + HCl :{%StG}.4e-12{§1.07}*EXP(-910./temp);  {&2626}
+<J6400dc01> CH2Cl2 + hv = 2 Cl + LCARBON : {%StGJ} jx(ip_CH2Cl2){§}; {&2626} 
+
+// ### HFC-23
+<G5300dc04> CHF3 + O1D = 0.77 O3P + 0.77 CHF3 + 0.23 LCARBON :{%StG} 9.1E-12{§1.10}; {&2626} //force and wiesenfeld 1981
+<G5300dc05> CHF3 + OH = LCARBON + H2O :{%StG}5.2e-13{§1.15}*EXP(-2210./temp);  {&2626}
+// no photolysis 
+
+// ### HCFC-141a no information available
+
+// ### HCFC-141b
+<G6500dc05> CH3CFCl2 + O1D = 0.31 O3P + 0.31 CH3CFCl2 + 0.69 LCARBON + 0.69 Cl :{%StG} 2.6E-10 {§1.2}; {&2626} //physical quenching (O1D->O3P) Warren 1991
+<G6500dc06> CH3CFCl2 + OH = H2O + 2 LCARBON :{%StG}1.25e-12{§1.15}*EXP(-1600./temp); {&2626}
+<G6500dc07> CH3CFCl2 + Cl = HCl + 2 LCARBON  :{%StG}3.4e-12{§1.15}*EXP(-2200./temp); {&2626}
+// photolysis: no studies on quantum yield and products available
+<J6500dc03> CH3CFCl2 + hv =  2 Cl + 2 LCARBON : {%StGJ} jx(ip_CH3CFCl2){§}; {&2626} 
+
+// ### CFC-114
+<G6500dc08> CF2ClCF2Cl + O1D = 0.25 O3P + 0.25 CF2ClCF2Cl + 0.75 LCARBON :{%StG} 1.3E-10 {§1.2}; {&2626} 
+// photolysis: no studies on quantum yield and products available
+<J6500dc04> CF2ClCF2Cl + hv = 2 Cl + 2 LCARBON : {%StGJ} jx(ip_CF2ClCF2Cl){§}; {&2626} 
+
+// ### HFC-125
+<G5300dc06> CHF2CF3 + O1D = 0.24 O3P + 0.24 CHF2CF3 + 0.6 OH + 1.52 LCARBON :{%StG} 1.2E-10 {§1.15}; {&2626} // Kono and Matsumi
+<G5300dc07> CHF2CF3 + OH = H2O + 2 LCARBON  :{%StG}6.0e-13{§1.2}*EXP(-1700./temp);  {&2626}
+<G6500dc09> CHF2CF3 + Cl = HCl + 2 LCARBON  :{%StG}1.8e-12{§1.5}*EXP(-2600./temp);  {&2626}
+// no photolysis 
+
+// ### HFC-143a
+<G5300dc08> CH3CF3 + O1D = 0.18 O3P + 0.18 CH3CF3 + 0.38 OH + 0.8 LCARBON :{%StG}4.4E-11{§1.5}; {&2626} // Kono and Matsumi
+<G5300dc09> CH3CF3 + OH = H2O + 2 LCARBON  :{%StG}1.1e-12{§1.1}*EXP(-2010./temp); {&2626} 
+<G6500dc10> CH3CF3 + Cl = HCl + 2 LCARBON  :{%StG}1.44e-11{§3.0}*EXP(-3940./temp); {&2626} 
+// no photolysis
+
+// ### CHCl3
+<G6400dc03> CHCl3 + OH = H2O + LCARBON + 3 Cl :{%StG}2.2e-12{§1.15}*EXP(-920./temp);{&2626} 
+<G6400dc04> CHCl3 + Cl = HCl + LCARBON + 3 Cl :{%StG}3.31e-12{§1.15}*EXP(-990./temp);{&2626} 
+<J6400dc02> CHCl3 + hv = 3 Cl + LCARBON : {%StGJ} jx(ip_CHCl3){§}; {&2626} 
+
+// ### CFC-115 
+<G6500dc11> CF3CF2Cl + O1D = 0.7 O3P + 0.7 CF3CF2Cl + 0.6 LCARBON  :{%StG}5.0E-11{§1.2}; {&2626} 
+// photolysis: no studies on quantum yield and products available
+<J6500dc05> CF3CF2Cl + hv = Cl + 2 LCARBON : {%StGJ} jx(ip_CF3CF2Cl){§}; {&2626} 
+// ### HFC-32
+<G5300dc10> CH2F2 + O1D = 0.7 O3P + 0.7 CH2F2 + 0.3 LCARBON:{%StG}5.1e-11{§1.2}; {&2626}
+<G5300dc11> CH2F2 + OH = H2O + LCARBON:{%StG}1.7e-12{§1.15}*EXP(-1500./temp); {&2626}
+<J6500dc06> CH2F2 + Cl = HCl + LCARBON:{%StG}4.9e-12{§1.5}*EXP(-1500./temp); {&2626}
+// no photolysis
+
+// ### HFC-152a
+<G5300dc12> CH3CHF2 + O1D = 0.34 O1D + 0.34 CH3CHF2 + 0.15 OH + LCARBON  :{%StG}1.75e-10{§1.2}; {&2626}
+<G5300dc13> CH3CHF2 + OH = 2 LCARBON :{%StG}8.7e-13{§1.07}*EXP(-975./temp); {&2626}
+<G6500dc12> CH3CHF2 + Cl = HCl + 2 LCARBON :{%StG}6.0e-12{1.1}*EXP(-960./temp); {&2626}
+// no photolysis
+
+#ENDREPLACE
+
+//
+// ### MODIFIED SULFUR CHEMISTRY (FOR USAGE WITH INTERACTIVE AEROSOL)
+//
+// this is the original reaction in gas_mim1.eqn (JPL-2011):
+// <G9200>  SO2 + OH {+O2+H2O} = H2SO4 + HO2  : {%StTrGS}   k_3rd(temp,cair,3.3E-31,4.3,1.6E-12,0.,0.6){Â§1.1}; {&3245}
+// keeping the same reaction rate coefficient,
+// but splitting the reaction yields:
+#REPLACE <G9200>
+<a>  SO2    + OH    = SO3 + HO2 : {%StTrG}   k_3rd(temp,cair,3.3E-31,4.3,1.6E-12,0.,0.6){Â§1.1}; {&2626}
+#ENDREPLACE
+
+//
+// - G9202, J9002 and J9003 are new
+// - <J9001>  SO2 + hv  = SO  + O3P   : {%TrStGSJ} JX(ip_SO2); {&&}
+//   not used, because J_SO2 not correct, apply scaled J_OCS instead
+//
+#REPLACE <>
+<G9100>  SO + O2   = SO2 + O3P   : {%TrStG} 1.25e-13*exp(-2190/temp); {&2626}
+<G9101>  SO + O3   = SO2 + O2    : {%TrStG} 3.4e-12*exp(-1100/temp); {&2626}
+<G9102>  S  + O2   = SO  + O3P   : {%TrStG} 2.3e-12; {&2626}
+<G9201>  SH + O2   = OH  + SO    : {%TrStG} 4.e-19; {&2626}
+<G9202>  SO3 + H2O = H2SO4       : {%TrStG} 8.5e-41*exp(6540./temp)*C(ind_H2O); {&1555}
+<G9406>  OCS + OH  = SH  + CO2   : {%TrStG} 1.1e-13*exp(-1200./temp); {&2626}
+<G9407>  OCS + O3P = CO  + SO    : {%TrStG} 2.1e-11*exp(-2200./temp); {&2626}
+<J9000>  OCS + hv  = CO  + S     : {%TrStGJ} JX(ip_OCS); {&}
+<J9001>  SO2 + hv  = SO  + O3P   : {%TrStGJ} 60.*JX(ip_OCS); {&}
+<J9002>  SO3 + hv   = SO2 + O3P  : {%TrStGJ} JX(ip_SO3); {&}
+<J9003>  H2SO4 + hv = SO3 + H2O  : {%TrStGJ} JX(ip_H2SO4); {&}
+#ENDREPLACE

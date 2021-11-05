@@ -1,0 +1,22 @@
+#! /bin/sh
+#
+if [ "${DEBUG+set}" = set ]; then
+  set -x
+  outputRedir=">&2"
+else
+  outputRedir=">/dev/null 2>&1"
+fi
+while echo "$1" | grep '^-' >/dev/null 2>&1; do
+  FPPFLAGS="${FPPFLAGS+${FPPFLAGS} }$1"
+  shift
+done
+set -e
+for srcfile in "$@" ; do
+  set +e
+  eval \$FC \$FCFLAGS \$FPPFLAGS -d -qnoobject \"\$srcfile\" $outputRedir
+  set -e
+  FPPOUTNAME=`echo $srcfile | sed -e 's:\(.*/\)*\([^/]*\)\.[^./]*$:F\2.f:'`
+  cat "$FPPOUTNAME" 2>/dev/null
+  test "${DEBUG+set}" = set && cat "$FPPOUTNAME" >&2
+  rm "$FPPOUTNAME"
+done

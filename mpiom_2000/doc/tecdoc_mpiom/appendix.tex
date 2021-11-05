@@ -1,0 +1,348 @@
+%$Source: /server/cvs/mpiom1/mpi-om/doc/tecdoc_mpiom/Attic/appendix.tex,v $\\
+%$Revision: 1.1.2.1.4.2.2.2.2.3.2.1 $\\
+%$Date: 2006/03/07 14:50:42 $\\
+%$Name: mpiom_1_2_0 $\\
+
+
+%\pagenumbering{arabic}
+%\thispagestyle{myheadings} \markright{Introduction}
+
+\thispagestyle{empty}
+\chapter[Appendix]
+{\Large{\bf Appendix}}
+
+\section{Appendix A Auxiliary Subroutines}
+
+\subsection{trian.f90}
+
+Called from {\tt mpiom.f90}. Matrix triangulation 
+to solve a set of linear equations by Gaussian elimination.
+
+\subsection{mo\_parallel}
+\label{ch:appendix:mo-parallel} 
+
+Variables and subroutines for the parallelization.
+Including the subroutine {\tt bounds\_exch} which
+updates the cyclic boundaries of arrays
+
+\subsection{mo\_mpi}
+\label{ch:appendix:mo-mpi} 
+
+Variables and subroutines for the MPI parallelization.
+
+\subsection{mo\_couple}
+\label{ch:appendix:mo-couple} 
+Variables and subroutines for the coupling to ECHAM.
+
+
+\subsection{rho1j.f90}
+
+Calculates the density $\rho(S,T,p)$, using the equation of state
+defined by the Joint Panel on Oceanographic Tables and Standards (UNESCO,
+1981). See Gill (1982, appendix A3.1).
+
+This subroutine calculates the density
+at all scalar "i" points for a given "j", i.e. even on land points.
+ As a consequence the values of $T$ and $S$ on land points should have sensible
+magnitudes (e.g. $S$ must be positive !).
+
+\subsection{rho2.f90}
+
+Calculates the density $\rho(S,T,p)$, using the equation of state
+defined by the Joint Panel on Oceanographic Tables and Standards (UNESCO,
+1981). See Gill (1982, appendix A3.1).
+
+{\tt rho2.f90} returns the density of one location only and is used to compute
+the reference stratification.
+
+
+\subsection{adisit1.f90}
+
+Transformation from potential temperature $\Theta$ to in situ temperature
+$T$ for use in the UNESCO equation of state.
+
+\subsection{adisitj.f90}
+
+Transformation from potential temperature $\Theta$ to in situ temperature
+$T$ for use in the UNESCO equation of state.
+This subroutine calculates the temperature
+at all scalar "i" points for a given "j", i.e. even on land points.
+
+\subsection{diagnosis.f90}
+
+
+Computes the total vertical mass fluxes, layer mean temperatures
+and kinetic energies in each time-step. Temperatures and kinetic energies are
+stored  for diagnostics in a time series file.
+
+\subsection{nlopps.f90}
+
+Computes the so-called "PLUME" convection scheme
+based on an original routine by E. Skyllingstad and T. Paluszkiewicz.
+Activated by the compile flag "PLUME". 
+
+
+\newpage
+\section{Appendix B \hspace{0.5cm} List of Variables}
+\label{sec:appendix:los}
+
+\subsection{Model Constants and Parameters}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+\begin{table}[!bh]
+\begin{footnotesize}
+\centerline{\hbox{\begin{tabular}{|c|l|c|}
+\hline
+Symbol & Description & Value\\ 
+\hline
+\hline
+$\alpha_{\mathit{if}}$ & freezing sea-ice albedo & 0.75 \\
+$\alpha_{\mathit{im}}$ & melting sea-ice albedo & 0.70 \\
+$\alpha_{\mathit{sf}}$ & freezing snow albedo & 0.85 \\
+$\alpha_{\mathit{sm}}$ & melting snow albedo & 0.70 \\
+$\alpha_{\mathit{w}}$ & sea water albedo & 0.10 \\
+$\lambda$ & wind mixing stability parameter & 0.03 kg m$^{-3}$ \\
+$\varepsilon$ & emissivity of sea water & 0.97 \\
+$\rho_a$ & density of air     & 1.3 kg m$^{-3}$ \\
+$\rho_i$ & density of sea-ice & 910 kg m$^{-3}$ \\
+$\rho_s$ & density of snow    & 330 kg m$^{-3}$ \\
+$\rho_w$ & density of sea water & 1025 kg m$^{-3}$ \\
+$\sigma$ &Stefan-Boltzmann constant & 5.5$\times$10$^{-8}$ W m$^{-2}$ K$^{-4}$ \\
+%$\Delta x$ &  parallel grid distance & m \\
+%$\Delta y$ &  meridional grid distance & m \\
+%$\Delta z$ &  vertical grid distance & m \\
+$\Lambda_V$ & eddy viscosity relaxation coefficient & 0.6 \\
+$\Lambda_D$ & eddy diffusivity relaxation coefficient & 0.6 \\
+$c_a$ & specific heat capacity of air & 1004 J kg$^{-1}$ K$^{-1}$ \\
+$c_w$ & specific heat capacity of sea water & 4.0$\times$10$^3$ J kg$^{-1}$ K$^{-1}$ \\
+$e$ & ratio of principle axis of yield ellipse & 2.0 \\
+$g$ & acceleration due to gravity & 9.81 m s$^{-2}$ \\
+$k_i$ & thermal conductivity of sea ice & 2.17 W m$^{-1}$ K$^{-1}$ \\
+$k_s$ & thermal conductivity of snow    & 0.31 W m$^{-1}$ K$^{-1}$ \\
+$z_{0}$ & wind mixing penetration depth  & 40 m \\
+$A_b$ & PP background vertical viscosity & 1.0$\times$10$^{-4}$ m$^2$ s$^{-1}$ \\
+$A_w$ & PP wind mixing & 5.0$\times$10$^{-4}$ m$^2$ s$^{-1}$  \\
+$A_{\mathit{VO}}$ & PP vertical viscosity parameter & 1.0$\times$10$^{-2}$ m$^2$ s$^{-1}$ \\
+$B_H$ & biharmonic horizontal viscosity & 1.1$\times$10$^{-6}$ s$^{-1}\times({\Delta x}^4,{\Delta y}^4)$ \\
+BBL$_{max}$ & maximum BBL thickness & 500~m \\
+$C$ & empirical internal ice pressure const. & 20 \\
+$C_{RA}$ & PP viscosity tuning constant & 5.0 \\
+$C_{RD}$ & PP diffusivity tuning constant & 5.0 \\
+$C_W$ & ocean-ice stress bulk transfer & 0.0045 \\
+$D_b$ & PP background vertical diffusivity & 1.0$\times$10$^{-5}$ m$^2$ s$^{-1}$ \\
+$D_H$ & harmonic horizontal diffusion & $2.5\times10^{-3}$ m s$^{-1}\times(\Delta x, \Delta y)$ \\
+$D_w$ & PP wind mixing & 5.0$\times$10$^{-4}$ m$^2$ s$^{-1}$  \\
+$D_{\mathit{VO}}$ & PP vertical diffusivity parameter & 1.0$\times$10$^{-2}$ m$^2$ s$^{-1}$ \\
+$L_f$ & latent heat of fusion & $2.5\times10^6$ J kg$^{-1}$ \\
+$L_s$ & latent heat of sublimation & $2.834\times10^6$ J kg$^{-1}$ \\
+$L_v$ & latent heat of vaporization &$2.5\times10^6$ J kg$^{-1}$ \\
+$P^*$ & empirical internal ice pressure const.  & 5000 N m$^{-1}$ \\
+$S_{\mathit{ice}}$ & salinity of sea-ice & 5 psu \\
+$T_{\mathit{freeze}}$ & freezing temperature of sea water & -1.9$^{\circ}$C \\
+$T_{\mathit{melt}}$ & melting temperature of sea ice/snow & 0$^{\circ}$C \\
+$W_{T}$ & wind mixing amplitude parameter &  5.0$\times$10$^{-4}$ m$^2$ s$^{-1}$ \\
+\hline
+\end{tabular}}}
+\caption{Constants and parameters used in the GROB3 setup of the ocean/sea ice
+model. Table is taken from \citet{Haak:2004}.}
+\end{footnotesize}
+\end{table}
+
+
+
+
+
+\subsection{Global Parameters}
+
+\begin{table}[!bh]
+\begin{footnotesize}
+\centerline{\hbox{\begin{tabular}{|c|l|c|} \hline
+Parameter & Description & GROB3\\
+\hspace*{2.5cm}          &  \hspace*{9.0cm}          &  \hspace*{2.0cm}   \\ \hline
+{\tt IE }      & number of zonal grid points & 122 \\ \hline
+{\tt JE }      & number of meridional grid points & 101 \\ \hline
+{\tt KE }      & number of vertical levels & 40 \\ \hline
+\end{tabular}}}
+\caption{Global values for version GROB3}
+\end{footnotesize}
+\end{table}
+
+
+
+
+\subsection{Model Variables}
+%{\bf 3--dimensional arrays {\tt (IE,JE,KE+1)}}
+
+TO DO: Name all vector point defined variables in the U/V convention.
+
+U/V denote the vector points in u and v direction on the C-grid.
+For every array that is indexed by U/V there exist two arrays.
+Sometimes, U/V points are still called E/O which used to denotes the 
+EVEN/ODD parity of the north--south index of the HOPE model E-grid.
+
+
+\begin{table}[!bh]
+\begin{footnotesize}
+\centerline{\hbox{\begin{tabular}{|l|c|l|} \hline
+Name & Symbol & Description \\
+\hspace*{1.5cm}          & \hspace*{1.0cm}&\hspace*{11.0cm}  \\ \hline
+$\mbox{\tt AVO}$ & $A_V$ &  vertical eddy viscosity  \\ \hline
+$\mbox{\tt DVO}$ & $D_V$ &  vertical eddy diffusivity      \\ \hline
+$\mbox{\tt WO}$ & $w$ & vertical velocity   \\ \hline
+$\mbox{\tt WPO}$ &$p'^{n+1,l}$  & pressure in baroclinic subsystem iteration   \\ \hline
+\end{tabular}}}
+\caption{3--dimensional arrays {\tt (IE,JE,KE+1)}}
+\end{footnotesize}
+\end{table}
+
+
+
+%{\bf 3--dimensional arrays {\tt (IE,JE,KE)}}
+
+
+\begin{table}[!bh]
+\begin{footnotesize}
+\centerline{\hbox{\begin{tabular}{|l|c|l|} \hline
+Name & Symbol & Description \\
+\hspace*{1.5cm}          & \hspace*{1.0cm}&\hspace*{11.0cm}  \\ \hline
+$\mbox{\tt DDU}_{E/O}$ & $d_{uk}$  & layer thicknesses at vector points   \\ \hline
+$\mbox{\tt DDPO}$ & $d_{wk}$ &layer thicknesses at scalar points  \\ \hline
+$\mbox{\tt PO}$ & $p$ & pressure   \\ \hline
+$\mbox{\tt SAO}$ & $S$ & salinity   \\ \hline
+$\mbox{\tt STABIO}$ & $-\partial\rho / \partial z$  &negative of vertical density gradient (stability)
+    \\ \hline
+$\mbox{\tt THO}$ & $\Theta$ & potential temperature   \\ \hline
+$\mbox{\tt UKO}$ & $u', u$ & baroclinic zonal velocity / total zonal velocity  \\ \hline
+$\mbox{\tt VKE}$ & $v', v$ & baroclinic merid.\ velocity / total merid.\ velocity  \\ \hline
+$\mbox{\tt UOO}$ &$ u$ & total zonal velocity   \\ \hline
+$\mbox{\tt VOE}$ & $v$ & total meridional velocity    \\ \hline
+\end{tabular}}}
+\caption{3--dimensional arrays {\tt (IE,JE,KE)}}
+\end{footnotesize}
+\end{table}
+
+%\newpage
+%\subsection{Model variables (2--D)}
+%{\bf 2--dimensional arrays {\tt (IE,JE)}}
+
+\begin{table}[!bh]
+\begin{footnotesize}
+\centerline{\hbox{\begin{tabular}{|l|c|l|} \hline
+Name & Symbol & Description \\
+\hspace*{1.5cm}          & \hspace*{1.0cm}&\hspace*{11.0cm}  \\ \hline
+$\mbox{\tt DEPTO}$ & $H_p$ &  total depth at scalar points  \\ \hline
+$\mbox{\tt DEUT}_{E/O}$ & $H_u$ &  total depth at vector points  \\ \hline
+$\mbox{\tt DEUTI}_{E/O}$ &$1./H_u$  & inverse of total depth at vector points  \\ \hline
+$\mbox{\tt DLX}_{U/V}$ & $\Delta x_\zeta$  & zonal distance of 2  vector-points   \\ \hline
+$\mbox{\tt DLY}_{U/V}$ & $\Delta y$  & meridional distance of 2 vector/scalar points   \\ \hline
+$\mbox{\tt DPY}_{E/O}$ & $\Delta t/ \Delta y$  &    \\ \hline
+$\mbox{\tt DTDXP}_{E/O}$ &$\Delta t/ \Delta x_\zeta$  &    \\ \hline
+$\mbox{\tt DTDXU}_{E/O}$ & $\Delta t/ \Delta x_u$ &    \\ \hline
+$\mbox{\tt DTDYO}$ & $\Delta t/ \Delta y$ &    \\ \hline
+$\mbox{\tt EMINPO}$ &$E-P$  & Evaporation minus precipitation    \\ \hline
+$\mbox{\tt PX}_{E/O}\mbox{\tt IN}$ & $\int p_x dz$ & vertically integrated zonal pressure gradient   \\ \hline
+$\mbox{\tt PY}_{E/O}\mbox{\tt IN}$ &$\int p_y dz$  & vertically integrated meridional pressure gradient     \\ \hline
+%$\mbox{\tt RHELP}$ &   & dummy (2--D density field)   \\ \hline
+%$\mbox{\tt SHELP}$ &   &  dummy (2--D salinity field)  \\ \hline
+%$\mbox{\tt SLOW}$  &   &  dummy (2--D salinity field lower layer)  \\ \hline
+%$\mbox{\tt SLN}$ & $I_0$ & incoming surface solar radiation [W/M**2]   \\ \hline
+%$\mbox{\tt QSW}$ & $I_A$ & absorbed solar radiation    [W/M**2]    \\ \hline
+%$\mbox{\tt TAFO}$ & $\Theta_{ML}$ & mixed layer temperature   \\ \hline
+%$\mbox{\tt THELP}$ &   &  dummy (2--D temperature field)  \\ \hline
+%$\mbox{\tt TLOW}$  &   &  dummy (2--D temperature field lower layer)  \\ \hline
+$\mbox{\tt TXO}$ & $\tau^x$ & wind-stress zonal component  \\ \hline
+$\mbox{\tt TYE}$ &$\tau^y$ &wind-stress meridional component   \\ \hline
+$\mbox{\tt U1}_{E/O}$ & $U$  & barotropic zonal velocity (also $(1-\beta) U$)   \\ \hline
+$\mbox{\tt V1}_{E/O}$ & $V$  & barotropic meridional velocity (also $(1-\beta) V$)    \\ \hline
+$\mbox{\tt USO}$ &  & $\beta(\Gamma_U+f\alpha\Delta t\Gamma_V)$ see \ref{ch:timestepping:ocvtro} and \ref{ch:timestepping:ocvtot} \\ \hline
+$\mbox{\tt VSE}$ &  & $\beta(\Gamma_V-f\alpha\Delta t\Gamma_U)$ see \ref{ch:timestepping:ocvtro} and \ref{ch:timestepping:ocvtot}  \\ \hline
+$\mbox{\tt UZO}$ &$\Gamma_U$  &  see \ref{ch:timestepping:ocvtro} and \ref{ch:timestepping:troneu} \\ \hline
+$\mbox{\tt VZE}$ &$\Gamma_V$  &  see \ref{ch:timestepping:ocvtro} and \ref{ch:timestepping:troneu}  \\ \hline
+$\mbox{\tt Z1O}$ & $\zeta^n$ &  sea level old time step  \\ \hline
+$\mbox{\tt ZO}$  & $\zeta^{n+1}$ & sea level new time step\\ \hline
+\end{tabular}}}
+\caption{ 2--dimensional arrays {\tt (IE,JE)}}
+\end{footnotesize}
+\end{table}
+
+
+\begin{table}[!bh]
+\begin{footnotesize}
+\centerline{\hbox{\begin{tabular}{|l|l|c|l|} \hline
+Name & Dimension &Symbol & Description \\
+\hspace*{1.5cm}          & \hspace*{1.0cm}& \hspace*{1.0cm}&\hspace*{9.0cm}  \\ \hline
+%5$\mbox{\tt AGL}$ &  {\tt 2*KBB+1} & & 1 row of barotropic system matrix $A$ (optional)    \\ \hline
+$\mbox{\tt ALAT}$ & {\tt JE*2} & $\phi$ & latitudes    \\ \hline
+$\mbox{\tt ALONG}$ & {\tt IE*2+6} &$\lambda$  & longitudes   \\ \hline
+%$\mbox{\tt B}$ & {\tt ILL+KBB} &$b^*_l$  & right hand side of eqs.\ \ref{sys} after triangularization   \\ \hline
+%$\mbox{\tt B1}$ & {\tt IE,JE*2} &$\Gamma_\zeta^n$  &    \\ \hline
+$\mbox{\tt DZ}$ & {\tt KE+1} & $\Delta z_u$  & vertical distances vector points   \\ \hline
+$\mbox{\tt DI}$ & {\tt KE+1} &$1/\Delta z_u$  &    \\ \hline
+$\mbox{\tt DZW}$ & {\tt KE} & $\Delta z_w$ & vertical distances vertical velocity points    \\ \hline
+$\mbox{\tt DWI}$ & {\tt KE} & $1/\Delta z_w$ &    \\ \hline
+%$\mbox{\tt F}$ & {\tt JE*2} &$f$  & Coriolis parameter   \\ \hline
+%$\mbox{\tt H}$ & {\tt IE,JE*2} &$H^*$  & modified depth see eq.\ \ref{hsta} on p.\ \pageref{hsta}   \\ \hline
+%$\mbox{\tt H00}$ & {\tt IE,JE*2} &  & dummy   \\ \hline
+%$\mbox{\tt HP}$ & {\tt IE,JE*2} & $H_p$  &  total depth at scalar points  \\ \hline
+%$\mbox{\tt HU}$ & {\tt IE,JE*2} &$H_u$  &  total depth at vector points  \\ \hline
+$\mbox{\tt SAF}$ & {\tt KE} & $S_{ref}$ & reference salinity   \\ \hline
+$\mbox{\tt TAF}$ & {\tt KE} & $\Theta_{ref}$ & reference temperature   \\ \hline
+$\mbox{\tt TIESTU}$ & {\tt KE+1} &  & vertical level of vector/scalar points see section \ref{depp}   \\ \hline
+$\mbox{\tt TIESTW}$ & {\tt KE+1} &  & vertical level of vertical velocity points see section \ref{depp}   \\ \hline
+$\mbox{\tt TRIDSY}$ & {\tt IE,KE,3} &  & coefficients of vertical tridiagonal system    \\ \hline
+$\mbox{\tt NUM}$ & {\tt IE,JE*2} &  & consecutively numbered oceanic scalar points    \\ \hline
+$\mbox{\tt PGL}$ & {\tt 2*KBB+1,ILL} & $A$ & barotropic system matrix and elimination factors   \\ \hline
+%$\mbox{\tt SKAL}$ & {\tt ILL} & $1/a_{ll}$ & inverse of main diagonal elements of the barotropic system matrix       \\ \hline
+\end{tabular}}}
+\caption{ variables with various dimensions}
+\end{footnotesize}
+\end{table}
+
+
+\begin{table}[!bh]
+\begin{footnotesize}
+\centerline{\hbox{\begin{tabular}{|l|c|l|} \hline
+Name & Symbol & Description \\
+\hspace*{1.5cm}          & \hspace*{1.0cm}&\hspace*{11.0cm}  \\ \hline
+%$\mbox{\tt HIBDEL}_{E/O}$ & $\Delta$ &  \\ \hline
+$\mbox{\tt HIBET}_{E/O}$ & $\eta$ & nonlinear shear viscosity of ice  \\ \hline
+$\mbox{\tt HIBZET}_{E/O}$ & $\zeta$ & nonlinear bulk viscosity of ice \\ \hline
+$\mbox{\tt SICOMO}$ & $A$ & sea ice compactness   \\ \hline
+$\mbox{\tt SICTHO}$ & $h_I$ & sea ice thickness   \\ \hline
+$\mbox{\tt SICUO}$ & $u_I$ & zonal sea ice velocity   \\ \hline
+$\mbox{\tt SICVE}$ & $v_I$ & meridional sea ice velocity   \\ \hline
+\end{tabular}}}
+\caption{Sea ice model variables (2--D)}
+\end{footnotesize}
+\end{table}
+
+
+
+
+\clearpage
+%\newpage
+
+\section{Appendix C \hspace{0.5cm} File Formats}
+\label{ch:appendix:formats}
+
+\begin{itemize}
+\item EXTRA :\\
+EXTRA is a binary format which was developed at the University of Hamburg. 
+It contains the describing variables date, code, level and field size. It does not 
+contain any grid description. EXTRA is described in detail in the DKRZ Technical Report No. 6.
+
+\item NetCDF :\\
+NetCDF (network Common Data Form) is an interface for array-oriented data access and a 
+library that provides an implementation of the interface. 
+The netCDF library also defines a machine-independent format for representing scientific data. 
+For a detailed description please refer to: 
+\begin{verbatim} http://my.unidata.ucar.edu/content/software/netcdf/index.html \end{verbatim} 
+\item ASCII :\\
+ASCII is an abbreviation for American Standard Code for Information Interchange, 
+developed through the American National Standards Institute. 
+ASCII is a scheme of binary notation for machine-readable data.
+\end{itemize}
+
+

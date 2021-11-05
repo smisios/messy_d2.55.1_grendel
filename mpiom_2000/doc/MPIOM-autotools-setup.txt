@@ -1,0 +1,98 @@
+The following is relevant to people who want to make additions to the
+autoconfiscated build setup currently (2009/02/10) introduced.
+
+I. RECOMMENDATIONS FOR BUILDING THE MODEL
+
+To keep the source directory clean from any file introduced in a
+(potentially failed) build the following strategy is recommended:
+
+1. Put your copy of the sources (from archive or svn checkout) in some
+   directory in your home directory, i.e. '$HOME/work/mpiom'.
+2. Make another directory to do the build for a particular machine and
+   run the setup and make from there, i.e.:
+
+   > mkdir $HOME/build/machineA
+   > cd $HOME/build/machineA
+   > $HOME/work/mpiom/configure
+   [...]
+   > make
+
+II. PREREQUISITES FOR SOURCE-LEVEL CHANGES
+
+For the rerun of 'autoreconf' to succeed, automake must be version 1.10 or
+newer and autoconf version 2.60 or newer. This can be checked by
+running
+
+   > autoconf --version
+   autoconf (GNU Autoconf) 2.61
+   [...]
+   > automake --version
+   automake (GNU automake) 1.10.1
+   [...]
+
+III. EXTENDING THE MODEL
+
+To add a source file to mpiom.x please:
+
+1. Put your file in a sub-directory of the tree ('src/' or 'src_hamocc/'
+   being the usual places).
+
+2. Add your sources to the build system, either
+
+ a. To compile it into 'bin/mpiom.x', change the 'mpiom_x_SOURCES'
+    primary in bin/Makefile.am by adding your file to the list.
+
+ b. To build a standalone program for your files, add the intended
+    binary name to the bin_PROGRAMS primary in bin/Makefile.am and add
+    an appropriate _SOURCES primary to bin/Makefile.am.
+
+    I.e. to add a program called foo consisting of src/bar.f90 and
+    src_hamocc/baz.f90 add the following lines to bin/Makefile.am:
+
+    foo_SOURCES = ../src/bar.f90 ../src_hamocc/baz.f90
+
+    and append foo to bin_PROGRAMS to read
+
+    bin_PROGRAMS=mpiom.x foo
+
+3. Run 'autoreconf' to regenerate bin/Makefile.am.
+
+IV. ADDING OTHER FILES (i.e. documentation)
+
+Also any file intended for distribution and not directly part of some
+automake primary (i.e. some _SOURCES directive) should be mentioned in
+an EXTRA_DIST primary of the corresponding directories Makefile.am.
+
+The vpath abilities of automake mean that source files might not be
+present in the build tree. Therefore test for source file presence in
+self-written Makefile rules like this:
+
+foo: bar
+	baz `test -e bar || echo $(srcdir)/`bar
+
+If additional autoconf macros have to be added, please copy the
+corresponding .m4 file (e.g. from the autoconf macro archive [1]) to
+the m4 subdirectory of the source tree root. If you write it yourself,
+please remember to declare macros intended for direct use in
+configure.ac with AC_DEFUN so aclocal can resolve references to it.
+Since MPIOM is regularly built in a cross compilation setup, please
+try stick with compile tests as much as possible. Run tests will have
+to be preempted with appropriate cache values.
+
+If one of configure.ac or the Makefile.am files is changed, please
+rerun the autotools with
+
+autoreconf
+
+prior to committing your changes.
+
+V. CAVEATS
+
+Since automake does not yet deliver full-fledged dependency tracking
+for Fortran sources, any directory with fortran sources should copy the
+all-local hook rule and inclusion from bin/Makefile.am.
+
+
+Thomas Jahns, 2009-02-10
+
+[1] http://autoconf-archive.cryp.to/

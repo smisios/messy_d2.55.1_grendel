@@ -1,0 +1,46 @@
+#  change compiler, options and libraries according to the needs of your computer system
+#
+#########
+#  OSX 
+#  gfortran-mp-4.9 and netCDF installed with MacPorts
+#########
+#
+# modules and libraries
+#
+
+#... MPI
+MPI_INC=-I/opt/local/include 
+MPI_LIB=""-L/opt/local/lib/mpich-gcc7 -lmpichf90"
+
+#... netCDF
+NC_INC=-I/opt/local/include
+NC_LIB=""-L/opt/local/lib -lnetcdf -lnetcdff"
+
+#... GRIB
+#
+GRIB_LIB = /Users/rockel/md/src/libgrib1/lib/libgrib1_osx.a
+
+#... other libs, if needed on the computer system (e.g. mathematical packages)
+OTHLIBS1=
+
+# standard binary
+PROGRAM      = cclm.exe
+
+#
+# compiler, options and libraries
+#
+F90          = mpif90-mpich-gcc7
+
+CPPFLAGS     = -DNETCDF -DGRIBDWD -DCLM -DCLM_NEW  # separator is compiler dependend (e.g. comma or blank)
+
+COMFLG        = -c -cpp -O2 -march=x86-64 $(CPPFLAGS) -I. -I$(SRCDIR) $(MPI_INC) ${NC_INC} 
+
+COMFLG1     = $(COMFLG)
+COMFLG2     = $(COMFLG)
+COMFLG3     = $(COMFLG)
+COMFLG4     = $(COMFLG)
+
+LDSEQ        = $(F90)
+LDPAR        = $(F90)
+LDFLG        = -I$(SRCDIR)
+LIB         = ${GRIB_LIB} ${NC_LIB} ${MPI_LIB} ${OTHLIBS1}

@@ -1,0 +1,86 @@
+! -*- f90 -*-
+! LOCCOUPLE(:)='component name','send location', 'receive location'
+!   'send location' = 'subroutine name : B / E : order send/receive'
+!  B:= begin of entry point calls
+!  E:=   end of entry point calls
+!  1 / 2 order of send /receive 
+!
+&CPL
+LOCCOUPLE(1)='cosmo01','messy_init_loop:B:2','messy_init_loop:B:1',0,
+LOCCOUPLE(2)='echam','messy_init_loop:B:1','messy_init_loop:B:2',0,
+LOCCOUPLE(3)='nemo', 'messy_physc:A','messy_init_loop:B',0,
+LOCCOUPLE(4)='cosmo02','messy_init_loop:B:1','messy_init_loop:B:2',0,
+! location in organize_physics
+! LOCCOUPLE(4)='clmXX','messy_init_loop:B:2','messy_init_loop:B:1'
+
+! SOURCE FIELDS
+! SFIELD(:) = 'oasisnamcouple name', 'channel name', 'object name'
+!           , 'oasaxis', 'levelstr'
+! oasaxis: DEFINES HOW TO INTERPRET THE OASIS MULTI-LEVEL INFORMATION
+!          FORMAT:  'Z;N:nnum;T:tlev' => respective order is important !
+!           'Z' can be without specifier => nlev
+! levelstr: SPECIFIES LEVEL of variable , enables rank reduction
+!           timelev:  nnow: -1 ; nnew: -2 ; nold: -3
+!           vertical level: number or  'LL' (lowest level)
+SFIELD(2) = 'OOOATT', 'ddep_gp','test2', ' ', ' '
+SFIELD(3) = 'OOOAUU', 'hhh',    'test1', ' ', ' '
+SFIELD(4) = 'LONC1', 'grid_def', 'philon_2d' , ' ', ' ' 
+SFIELD(5) = 'LATC1', 'grid_def', 'philat_2d' , ' ', ' ' 
+SFIELD(6) = 'LON2', 'grid_def', 'philon_2d'  , ' ', ' '
+SFIELD(7) = 'LAT2', 'grid_def', 'philat_2d'  , ' ', ' '
+SFIELD(8)  = 'V1CON1', 'tracer_gp', 'V1'  , 'Z', ' '
+SFIELD(9)  = 'V2CON1', 'tracer_gp', 'V2'  , 'Z', ' '
+SFIELD(10) = 'NHCON1', 'tracer_gp', 'NH'  , 'Z', ' '
+SFIELD(11) = 'SHCON1', 'tracer_gp', 'SH'  , 'Z', ' '
+SFIELD(12) = 'TRCON1', 'tracer_gp', 'TR'  , 'Z', ' '
+SFIELD(13) = 'STCON1', 'tracer_gp', 'ST'  , 'Z', ' '
+SFIELD(18) = 'V1BIL1', 'tracer_gp', 'V1'  , 'Z', ' '
+SFIELD(19) = 'V2BIL1', 'tracer_gp', 'V2'  , 'Z', ' '
+SFIELD(20) = 'NHBIL1', 'tracer_gp', 'NH'  , 'Z', ' '
+SFIELD(21) = 'SHBIL1', 'tracer_gp', 'SH'  , 'Z', ' '
+SFIELD(22) = 'TRBIL1', 'tracer_gp', 'TR'  , 'Z', ' '
+SFIELD(23) = 'STBIL1', 'tracer_gp', 'ST'  , 'Z', ' '
+!
+!
+! RFIELD () = OASISNAME, channel, object, lcreate,  lcalc,
+!              oasaxis, levelstr, representation
+! - 'oasis3mct' as channel name indicates, that the submodel should create the
+!     channel object. In this case the representation is required.
+! - lcreate = T => create if channel object does not exist, in this case the 
+!     representation is required.
+! - mask field: 0 use all points, 1 use only landpoint, 2 only sea points
+! - postproc: postprocessing string: non-empty variable needs specific treatment
+!    - ABS      use absolute value
+!    - x:fac    multiply by "fac", e.g. "-1"
+!    - +:const  add constant 
+!    - GT:limit=number  ie. if (x > limit) x = number
+!    - GE, LT,LE similar
+! - oasaxis: DEFINES HOW TO INTERPRET THE OASIS MULTI-LEVEL INFORMATION
+!            FORMAT:  'Z;N:nnum;T:tlev' => respective order is important !
+!            'Z' can be without specifier => nlev
+! - levelstr: SPECIFIES LEVEL of variable , enables rank reduction
+!            timelev:  nnow: -1 ; nnew: -2 ; nold: -3
+!            vertical level: number or  'LL' (lowest level)
+! - representation required for channel object creation
+!
+!RFIELD(1) = 'O3COS2', 'tracer_gp', 'O3',T,'GP_3D_MID'  
+!RFIELD(1) = 'O3COS2', 'oasis3mct', 'lono3c1',T,'GP_2D_HORIZONTAL'  
+RFIELD(2)  = 'OOOATS', 'ddep_gp','test2',T,0,' ', ' ', ' ','GP_2D_HORIZONTAL'  
+RFIELD(3)  = 'OOOAUV', 'hhh',    'test1',F,0, ' ', ' ', ' ','GP_NOTEXIST'  
+RFIELD(4)  = 'LONC2',  'oasis3mct', 'lonc1',T,0,' ', ' ', ' ','GP_2D_HORIZONTAL'  
+RFIELD(5)  = 'LATC2',  'oasis3mct', 'latc1',T,0,' ', ' ', ' ','GP_2D_HORIZONTAL'  
+RFIELD(6)  = 'LON1',   'oasis3mct', 'lonc2',T,0,' ', ' ', ' ','GP_2D_HORIZONTAL'  
+RFIELD(7)  = 'LAT1',   'oasis3mct', 'latc2',T,0,' ', ' ', ' ','GP_2D_HORIZONTAL'  
+RFIELD(8)  = 'V1CON2', 'oasis3mct', 'V1',T,0,' ', 'Z', ' ','GP_3D_MID'  
+RFIELD(9)  = 'V2CON2', 'oasis3mct', 'V2',T,0,' ', 'Z', ' ','GP_3D_MID'  
+RFIELD(10) = 'NHCON2', 'oasis3mct', 'NH',T,0,' ', 'Z', ' ','GP_3D_MID'  
+RFIELD(11) = 'SHCON2', 'oasis3mct', 'SH',T,0,' ', 'Z', ' ','GP_3D_MID'  
+RFIELD(12) = 'STCON2', 'oasis3mct', 'ST',T,0,' ', 'Z', ' ','GP_3D_MID'  
+RFIELD(13) = 'TRCON2', 'oasis3mct', 'TR',T,0,' ', 'Z', ' ','GP_3D_MID'  
+RFIELD(18) = 'V1BIL2', 'oasis3mct', 'xV1',T,0,' ', 'Z', ' ','GP_3D_MID'  
+RFIELD(19) = 'V2BIL2', 'oasis3mct', 'xV2',T,0,' ', 'Z', ' ','GP_3D_MID'  
+RFIELD(20) = 'NHBIL2', 'oasis3mct', 'xNH',T,0,' ', 'Z', ' ','GP_3D_MID'  
+RFIELD(21) = 'SHBIL2', 'oasis3mct', 'xSH',T,0,' ', 'Z', ' ','GP_3D_MID'  
+RFIELD(22) = 'STBIL2', 'oasis3mct', 'xST',T,0,' ', 'Z', ' ','GP_3D_MID'  
+RFIELD(23) = 'TRBIL2', 'oasis3mct', 'xTR',T,0,' ', 'Z', ' ','GP_3D_MID'  
+/

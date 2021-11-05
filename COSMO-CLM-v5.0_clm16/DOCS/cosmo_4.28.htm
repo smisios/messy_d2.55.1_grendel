@@ -1,0 +1,1029 @@
+<!DOCTYPE html 
+     PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+     "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xml:lang="en" lang="en">
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="GENERATOR" content="Mozilla/4.7C-SGI [en] (X11; I; IRIX64 6.5 IP27) [Netscape]">
+   <title>Changes in the COSMO-Model 4.28</title>
+<style type="text/css">
+  body { font-family:       Arial;
+         font-size:         12pt;
+         background-repeat: no-repeat; 
+         margin:            1em; }
+
+  tt   { font-size:         12pt;}
+
+  li   { margin-top:         5pt;
+         margin-bottom:      5pt }
+
+  th   { border:           1px solid black;
+         padding:          3pt;
+         vertical-align:   top;
+         background-color: lightblue;}
+
+  td   { border:           1px solid black;
+         padding:          3pt;
+         vertical-align:   top;}
+
+  td.middl   { border:           1px solid black;
+               padding:          3pt;
+               vertical-align:   middle;}
+
+  td.hilit       { border:           1px solid black;
+                   padding:          1pt;
+                   vertical-align:   top;
+                   background-color: lightblue;}
+
+  td.clean       { padding:          0pt;
+                   border-style:     none;
+                   vertical-align:   top;}
+
+  td.notes       { padding:          3pt;
+                   border-style:     none;
+                   vertical-align:   top;}
+
+  td.nomid       { padding:          3pt;
+                   border-style:     none;
+                   vertical-align:   middle;}
+
+  table.note     { border-width:     0pt;
+                   border-style:     none;
+                   margin-left:      5pt;
+                   margin-top:       1pt;
+                   margin-bottom:    1pt;
+                   cell-padding:     5pt;
+                   vertical-align:   top;
+                   text-align:       left;}
+  
+  table.atte     { border-width:     0pt;
+                   border-style:     none;
+                   margin-left:      5pt;
+                   margin-top:       1pt;
+                   margin-bottom:    1pt;
+                   cell-padding:     5pt;
+                   vertical-align:   top;
+                   text-align:       left;
+                   background-color: red;}
+  
+  table.namelist { border-width:  2pt;
+                   border-style:  groove;
+                   border-color:  black;
+                   text-align:    left;
+                   margin-top:    1pt;
+                   margin-bottom: 1pt;
+                   padding:       3pt;
+                   align:         center;}
+  
+  tr.headings    { text-align:       left;
+                   vertical-align:   top;
+                   border-width:     1pt;
+                   border-style:     groove;
+                   border-color:     grey;
+                   padding:          2pt;
+                   font-weight:      bold;}
+
+  .rot           { background-color: red;}
+  .blau          { background-color: lightblue;}
+  .hell          { background-color: fuchsia;}
+</style>
+
+</head>
+  <body text="#000000" bgcolor="#FFFFFF" link="#0000EE" vlink="#551A8B" alink="#FF0000">
+
+<center>
+<h1>
+<a NAME="begin">Documentation of the Changes in the COSMO-Model <br /> Version 4.28</a>
+</h1>
+<h3>
+11.07.2013
+</h3>
+</center>
+
+<p>
+This version contains the interfaces to the ECMWF grib library, the grib_api, to read and
+write GRIB data in GRIB1 and GRIB2. Besides that, the nudging code has been revised and 
+a modified quality control for surface pressure observations has been implemented.
+</p>
+
+<h4><a NAME="content">Contents:</a></h4>
+
+<ol>
+<li><a href="#gribapi">Implementation of grib_api (GRIB1/2)</a></li>
+<li><a href="#fawabug">Bug Fixes in src_runge_kutta.f90</a></li>
+<li><a href="#nudgeqc">Revision of the Nudging Code and 
+                       Extension of Quality Control for Surface Pressure Observations</a></li>
+<li><a href="#asyngrb">Changes to the asynchronous GRIB-IO: mpe_io2.f90</a></li>
+<li><a href="#lhnudge">Changes to the Latent Heat Nudging</a></li>
+<li><a href="#cosmart">Adapted COSMO-ART to new tracer version</a></li>
+<li><a href="#bugfixe">Technical Changes and (minor) Bug Fixes</a></li>
+<li><a href="#namelis">Changes to the Namelists</a></li>
+<li><a href="#results">Changes of Results</a></li>
+</ol>
+<p>
+<hr>
+
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="gribapi">1. Implementation of grib_api (GRIB1/2)</a></h3>
+  <h4>(by Ulrich Sch&auml;ttler)</h4>
+
+<p>
+This version of the COSMO-Model now is able to write GRIB data with the grib_api from
+ECMWF. If GRIB2 is chosen as writing format, the multi-level atmospheric variables are
+written using the new general vertical coordinate (with level type 150).
+</p>
+
+<p>
+Note that at least version 1.11.0 from grib_api is necessary to compile
+the COSMO-Model with grib_api, because of the use of the new general vertical coordinate.
+</p>
+
+<p>
+The usage of GRIB2, the new general vertical coordinate (and most important
+the local use sections of GRIB2) will be documented on the COSMO-Web Page:
+
+<a href="http://www.cosmo-model.org/content/model/documentation/grib/default.htm">
+www.cosmo-model.org/content/model/documentation/grib/default.htm</a>
+
+This page is still under construction. We hope to extend it until
+end of July 2013 significantly.
+</p>
+
+
+<h4>Basic changes to implement grib_api</h4>
+
+<p>
+The basic changes have been in the modules:
+<ul>
+ <li><tt>io_utilities:</tt>
+   <ul>
+     <li>extended <tt>open_file</tt>, <tt>close_file</tt> with corresponding grib_api routines</li>
+     <li>new subroutines <tt>read_gribapi</tt>, <tt>write_gribapi</tt></li>
+     <li>get meta data with grib_api-routines</li>
+   </ul></li>
+ <li><tt>mpe_io2:</tt><br />
+     extended with grib_api interface routines for reading and writing GRIB data.</li>
+ <li><tt>src_input:</tt><br />
+     get meta data with grib_api routines.</li>
+ <li><tt>src_lheat_nudge:</tt><br />
+     implemented grib_api interfaces to read radar data
+     <p>
+     <span class="rot">NOTE:</span><br />
+       Up to now the radar data can only be read in GRIB1!.</li>
+     </p>
+ <li><tt>src_output:</tt><br />
+    call routines from io_metadata to set meta data with grib_api routines.</li>
+ <li><tt>src_sfcana:</tt><br />
+     implemented grib_api interfaces to write surface analysis fields
+     (use structures from usual output to write such grib files).</li>
+</ul>
+Two new modules have been implemented:
+<ul>
+ <li><tt>io_metadata.f90</tt><br />
+    to set most GRIB metadata.</li>
+ <li><tt>vgrid_refatm_utils.f90</tt><br />
+     this is not really related to GRIB, but to get a consistent treatment of
+     all vertical coordinate and reference atmosphere parameters.</li>
+</ul>
+</p>
+
+<h4>Implemented new GRIB2 leveltype <tt>'generalVertical'</tt> and 
+    <tt>'generalVerticalLayer'</tt></h4>
+
+<p>
+The main difference to the other vertical coordinate types <tt>'hybrid'</tt> and
+<tt>'hybridLayer'</tt> is, that now there is no computational algorithm how the
+vertical layers are constructed, but a full 3D file (called a HHL-file for the
+height of half levels in COSMO) is provided, that has to be processed together
+with other 3D variables defined on these levels.
+</p>
+
+<p>
+With this new vertical level type, also some new keys were introduced for
+the WMO GRIB2 standard, namely:
+<ul>
+  <li><tt>nlev</tt>   (alias for <tt>numberOfVerticalCoordinateValues</tt>)<br />
+       <tt>nlev</tt> is <tt>ke+1</tt> in COSMO, because the number of half
+       levels are specified here.</li>
+  <li><tt>numberOfVGridUsed</tt><br />
+       represents the vertical coordinate type <tt>ivctype</tt>.</li>
+  <li><tt>uuidOfVGrid</tt><br />
+       is a unique identifier for a special HHL-file.</li>
+</ul>
+</p>
+
+<p>
+HHL-files can only be created by the INT2LM, not by the COSMO-Model.
+</p>
+
+<p>
+These keys replace the vertical coordinate parameters, which are present in
+data with level types <tt>'hybrid'</tt> or <tt>'hybridLayer'</tt>.
+</p>
+
+<p>
+The new general vertical coordinate and its usage in the COSMO-Model system will
+be documented and explained in detail on the COSMO web page (coming soon).
+</p>
+
+<h4>Changes in the COSMO-Model to implement the new vertical coordinate</h4>
+
+<h5>New module <tt>vgrid_refatm_utils.f90</tt></h5>
+
+<p>
+This new module contains data structures, variables and routines necessary 
+for dealing with the vertical grid and the reference atmosphere. The new
+data structures are:
+
+<ul>
+  <li><tt>refatm_type</tt>:  which contains variables for the reference atmosphere</li>
+  <li><tt>vcoord_type</tt>:  which contains variables for the vertical grid</li>
+</ul>
+
+This module also contains data and routines, which have been in other modules before:
+<ul>
+  <li>routines from <tt>meteo_utilities</tt> to compute the different reference 
+      atmospheres (<tt>reference_atmosphere_xx</tt></li>
+  <li>data for the vertical coordinate parameters from <tt>data_grid_lm</tt>
+      and <tt>data_grid_in</tt>, resp.</li>
+</ul>
+
+The module <tt>vgrid_refatm_utils</tt> also contains subroutines to create a UUID and
+to compare different UUIDs.
+</p>
+
+
+<h5>Read HHL from an extra file</tt></h5>
+
+<p>
+Implemented possibility to read HHL from an extra file with full precision
+(but only when reading or writing GRIB2).
+For that, 2 new Namelist switches have been implemented in group <tt>/GRIBIN/</tt>:
+
+<center>
+<table border="1" cellspacing="3" class="namelist">
+ <tbody>
+   <tr>
+     <th>Group</th>
+     <th>Name</th>
+     <th>Meaning</th>
+     <th align="center", width="5%">Default</th>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td class="hilit" rowspan="2"><tt>/GRIBIN/</tt></td>
+     <td><tt>ydirhhl</tt></td>
+     <td class="middl" rowspan="1">directory which contains the HHL-file</td>
+     <td class="middl" align="center" rowspan="1"><tt> ' '  </tt></td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td><tt>ynamhhl</tt></td>
+     <td class="middl" rowspan="1">file name for the HHL-file</td>
+     <td class="middl" align="center" rowspan="1"><tt> ' '   </tt></td>
+   </tr>
+<!---------------------------------------------------------------------------->
+ </tbody>
+</table>
+</center>
+
+If a HHL-file has to be read, the readloop in <tt>src_input</tt> is invoked again after
+reading the laf-file, to also read the HHL-file.
+</p>
+
+<h4>Transferring the vertical coordinate and reference atmosphere parameters</h4>
+
+<p>
+In GRIB1 (and NetCDF) the vertical coordinate and reference atmosphere parameters
+are transferred from INT2LM to the COSMO-Model (or from COSMO-Nudging to COSMO-forecast)
+via the meta data. This is no more possible in GRIB2 because of the new general vertical
+coordinate. But these informations, which are set in the INT2LM, are still needed in 
+the COSMO-Model to compute the proper reference state for the model.
+</p>
+
+<p>
+In order to provide the correct information in both programs, a few sets of default 
+parameters have been implemented in the new module <tt>vgrid_refatm_utils.f90</tt>.
+These sets are numbered consecutively and the corresponding number of a special set
+is written into the <tt>localDefinitionNumber</tt> of the fields <tt>P</tt> or <tt>PP</tt> for 
+reference atmosphere sets and in <tt>HHL</tt> for the vertical coordinate parameters.
+In this way, the different programs can determine the correct set of parameters when
+processing the corresponding variables.
+</p>
+
+<p>
+Defining a new set of parameters for either the reference atmosphere or for the
+vertical coordinate parameters therefore is now more complicated, because it requires
+to change the source code of the programs. But this is only a first implementation to
+start the tests with GRIB2. We can think of a better solution for that problem soon.
+</p>
+
+<p>
+Up to now only few set of parameters are implemented. We will extend these sets in
+the near future with all important settings that are in use.
+</p>
+
+
+<h4>Some more organizational data structures</h4>
+
+<p>
+Introduced arrays to convert some GRIB1 codings to grib_api strings
+
+<ul>
+ <li>GRIB1 level types:                 <tt>ylevltypes_in, ylevltypes_out</tt></li>
+ <li>GRIB1 time range indicators:       <tt>ysteptypes</tt></li>
+ <li>GRIB2 scaleFactors / scaledValues: <tt>scalefactors</tt></li>
+</ul>
+</p>
+
+<!---------------------------------------------------------------------------->
+<p align="right"><a href="#content">Back to Contents</a>
+<hr>
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="fawabug">2. Bug Fixes in src_runge_kutta.f90</a></h3>
+  <h4>(by Michael Baldauf)</h4>
+
+<ol>
+ <li>Use of time level <tt>nnow</tt> (instead of <tt>nnew</tt>) for the moisture 
+     variables in the water loading contribution of the buoyancy.
+     <p>
+     In the Runge-Kutta scheme, <tt>nnew</tt> for the moisture variables actually means
+     the <tt>old</tt> time level. Therefore, using <tt>nnow</tt> leads to a better 
+     coupling of the dynamics to the moisture physics (concerning this water 
+     loading contribution).
+     </p>
+
+     <p>
+     This correction has the potential to improve the precipitation forecast in strongly
+     convective situations.
+     </p>
+
+     <p>
+     This measure is a bug fix and will change the results if  <tt>itype_fast_waves=2</tt> 
+     is used.
+     </p>
+   </li>
+
+ <li>Exchange of <tt>wadvt</tt> in the case <tt>ldyn_bbc=.TRUE.</tt>:
+     <p>
+     This bug fix guarantees reproducibility for different processor configurations
+     in the case <tt>itype_fast_waves=2</tt> and  <tt>ldyn_bbc=.TRUE.</tt> .
+     In this case, results are changed.
+     </p>
+   </li>
+</ol>
+
+<!---------------------------------------------------------------------------->
+<p align="right"><a href="#content">Back to Contents</a>
+<hr>
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="nudgeqc">3. Revision of the Nudging Code and 
+ Extension of Quality Control for Surface Pressure Observations</a></h3>
+  <h4>(by Christoph Schraff)</h4>
+
+<p>
+<ul>
+<li>New option for quality control (QC) of surface pressure observations against
+    the fields that provide the lateral boundary conditions ('LBC-QC').
+    This includes a threshold QC for each individual pressure observation as well
+    as a spatial consistency check.</li>
+
+<li>New option to read observations from NetCDF feedobs (or feedback) files
+  ('fof' files). <br />
+  <ul>
+   <li>As an option, the simulated observations from the feedobs files can be
+       deployed as observation values, so that they may serve in an OSSE setup as
+       synthetic observations derived from a nature run.</li>
+   <li>As an additional option, the (simulated or original) observations can be
+       randomly perturbed.</li>
+  </ul>
+  Observations can be read both from ('cdfin') NetCDF observation input files
+  and from 'fof' files in the same model run.</li>
+
+<li>More relaxed conditions on variable (names) required to exist in ('cdfin')
+  NetCDF observation input files (in order to better cope with historic cases);
+  the relaxed conditions relate to:
+  <ul>
+   <li>variable name for station ID;</li>
+   <li>variable names for main observables in single-level reports;</li>
+   <li>variable name(s) for vertical coordinate in aircraft reports;</li>
+   <li>variable for roll angle in aircraft reports.</li>
+  </ul></li>
+
+<li>
+  <p>
+  Restructuring of the code so as to have one module for the observation
+  operators (<tt>src_obs_operator_conv.f90</tt>) and another one for the threshold
+  quality control (<tt>src_obs_qc_conv.f90</tt>) for conventional in-situ and profiling
+  data.
+  </p>
+  <p>
+  Both modules and their routines have clean interfaces which consist only of
+  subroutine arguments and of fortran parameters (plus station ID) from a
+  limited set of data modules that can easily be used by other programs.
+  This allows these two modules to be shared now with the 3DVAR-LETKF package
+  of DWD.
+  </p>
+  <p>
+  Note that the spatial consistency checks (for surface pressure and integrated
+  water vapour) are not part of the QC module and hence the shared code.
+  In the new version, the observation operators and the QC (which are both used
+  for the nudging, verification, and LETKF), and the computation of other local
+  information used purely for the nudging, are much more disentangled.
+  </p> </li>
+
+<li>bit reproducibility irrespective of the domain decomposition re-established,
+  due to a correction of a minor bug introduced in V4_22 at the reduction of the
+  geostrophic wind increments depending on the geographic latitude.</li>
+
+<li>other minor bug fixes, e.g.:
+  <ul>
+   <li>QC threshold for passive humidity obs from upper-air single-level reports
+    corrected (before, they were zero when using the operational settings);</li>
+   <li>correction of a bug because of which pressure increments derived from
+    multi-level reports and flagged passive in the individual threshold QC
+    could never be accepted in the spatial consistency check;</li>
+   <li>surface pressure increment in height and thickness check taken into account
+    now even if surface pressure has been rejected by threshold QC;</li>
+   <li>the lowest height observation increment of a multi-level report, that is
+    written to the SOR and used for the LETKF, is now computed in a way (in
+    routine 'ps_obs_operator_mult' instead of 'mult_obs_operator(_z)') which
+    is consistent with the surface pressure increment used in the nudging;</li>
+   <li>GPS obs type set correctly in data structure 'cma'.</li>
+  </ul></li>
+
+<li>minor bug fixes affecting verification and other diagnostic output, e.g.:
+  <ul>
+  <li>spatial consistency check also performed for observations rejected in the
+    observation pre-processing;</li>
+  <li>surface pressure increments derived from multi-level reports written to
+    the VOF also if rejected by QC;</li>
+  <li>upper-air height obs, even from radiosondes, now flagged to passive,
+    except for the lowest radiosonde height obs (to be used in the LETKF);</li>
+  <li>removal of QC (flags) for aircraft 'height' (because this is not an
+    observation);</li>
+  <li>diagnostic recording of rejection of screen-level obs (on file YUSTATS)
+    corrected.</li>
+  </ul></li>
+
+<li>changes to the VOF file YUVERIF:
+  <ul>
+   <li>the condition to write a radiosonde height increment is now the existence
+    of the height obs instead of the temperature obs, i.e. height increments
+    are more rare now;</li>
+   <li>simulated observations of zenith total path delay (ZPD) also written to VOF
+    (no new VOF version is defined - the program 'lmstat' will not read and
+     write simulated ZPD).</li>
+  </ul></li>
+
+<li>changes to the NetCDF feedobs file (NEFF) output:
+  <ul>
+   <li>surface pressure obs error converted from height to pressure units (not only
+    in feedobs file output, but generally within COSMO (the ODR));</li>
+   <li>flight phase now set in the report header only, not any more in report body;</li>
+   <li>GPS station height filled into height value in report body, to avoid
+    problems in LETKF;</li>
+   <li>simulated values of GPS zenith total path delay (ZPD), cloud base height,
+    mid-level and high cloud cover additionally written;</li>
+   <li>bug fix: flag of lapse rate check also written.</li>
+  </ul></li>
+
+<li>general technical changes:
+  <ul>
+   <li>all direct calls of MPI routines in the data assimilation code replaced
+    by calls of routines from <tt>parallel_utilities.f90</tt>; for this purpose,
+    new routines introduced to module <tt>parallel_utilities.f90</tt>
+    (see below);</li>
+   <li>all statement functions replaced by elemental or intrinsic functions;</li>
+   <li>change of data structure: simulated observations instead of observation
+    increments stored in 'SOR' arrays (see <tt>data_obs_record.f90</tt>);</li>
+   <li>special comments introduced to indicate common usage of modules by the COSMO
+    and the 3DVAR-LETKF packages, with indication of current code owners for
+    each of the packages.</li>
+  </ul></li>
+
+<li>(technical) changes related to the writing of feedobs files:
+  <ul>
+   <li>added routines for writing volumn radar data to the NEFF file (to prepare
+    the processing and use of 3D radar data in the LETKF, by Ulrich Blahak).</li>
+   <li>common modules ('mo_*') from 3DVAR-LETKF package updated to 3DVAR-V1_23,
+    svn cycle 9070; e.g. new variables defined for writing cloud top height
+    and cloud type; module 'mo_fdbk_io.f90' added.</li>
+  </ul></li>
+</ul>
+</p>
+
+
+<p>
+New modules in the nudging code:
+<ul>
+  <li><tt>src_obs_operator_conv.f90:</tt>  observation operators for conventional data</li>
+  <li><tt>rc_obs_qc_conv.f90:</tt>         quality control (QC) for conventional data</li>
+  <li><tt>data_obs_qc_limits.f90:</tt>     QC thresholds (moved from 'data_nudge_local.f90')</li>
+  <li><tt>src_obs_fdbk_in.f90:</tt>        reading obs from feedobs (feedback) files</li>
+  <li><tt>mo_fdbk_io.f90:</tt>             routines and derived type for I/O of feedback files</li>
+  <li><tt>mo_random.f90:</tt>              random number generator</li>
+</ul>
+</p>
+
+
+<!---------------------------------------------------------------------------->
+
+<p align="right"><a href="#content">Back to Contents</a>
+<hr>
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="asyngrb">4. Changes to the asynchronous GRIB-IO: mpe_io2.f90</a></h3>
+  <h4>(by Ulrich Sch&auml;ttler)</h4>
+
+<p>
+Besides the implementation of grib_api interfaces, some more changes have been
+implemented in mpe_io2.f90:
+
+<ul>
+<li>Because of problems with array-bound checking:
+  <ul>
+    <li>Inlined subroutine <tt>buffer_list_probe_head</tt> into subroutine
+        <tt>buffer_list_write_action</tt></li>
+    <li>subroutine <tt>buffer_list_finalize_write</tt>: Removed the last call to 
+        subroutine <tt>buffer_list_write_action</tt>
+          (because of problems on IBM pwr7 when turning on array bound checking)</li>
+  </ul></li>
+
+<li>Implemented different strategies for gathering the data from the compute tasks
+  to the I/O-tasks:
+  <ul>
+     <li> slow and sorted:</br />
+     the different records are sent in an ordered manner to the I/O tasks, as is
+     done in synchronous mode. The records in the grib file appear in the same order
+     as in a pure sequential program.
+     This is the way it always used to be.</li>
+
+     <li> buffered:</br />
+     records are received from any task, but are eventually buffered and written
+     in a sorted manner. Again, the records in the grib file appear in the same
+     order as in a pure sequential program
+     But this can lead to memory problems because of exhausting buffering!</li>
+
+     <li> fast and unsorted:</br />
+     records are received from any task and are directly written to the file
+     without buffering. Therefore records can occur in a different order.</li>
+  </ul></li>
+
+<li><p>To control the way how the I/O communication is done, the 3rd character of the
+    Namelist variable ymode_write is used. Up to now, only the first character of
+    this 3-character string has been really used (the second character is used for
+    model-internal purposes).
+    </p>
+
+    <p>
+    Re-interpretation of the 3 characters in ymode_write
+    <ul>
+     <li>1st:  <tt>'r'</tt>, <tt>'w'</tt> for reading / writing  (used up to now)</li>
+     <li>2nd:  for library used:  <tt>'g','1','2'</tt> for DWD griblib, 
+               grib_api/Grib1, grib_api/Grib2 (can only be used model-internal)</li>
+     <li>3rd:  for speed of I/O communication and writing:
+      <ul>
+        <li><tt>'s'</tt> or <tt>' '</tt>:  slow and sorted (as it was up to now;
+                     the <tt>' '</tt> is for backward compatibility</li>
+        <li><tt>'b'</tt>:  for buffered communication and sorted output</li>
+        <li><tt>'f'</tt>:  for non-buffered, but fast communication and un-sorted output</li>
+      </ul></li>
+    </ul></p></li>
+</ul>
+</p>
+
+<!---------------------------------------------------------------------------->
+
+<p align="right"><a href="#content">Back to Contents</a>
+<hr>
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="lhnudge">5. Changes to the Latent Heat Nudging</a></h3>
+  <h4>(by Klaus Stephan)</h4>
+
+<p>
+Revision of data reading procedure, to avoid the former rewind of the radar data files.
+Now, the data of one file are read only once, shortly after opening the data file.
+The time assignment is done in a next step, as well as the identification as precipitation or
+quality data. The change also affects the subroutine <tt>lhn_sumrad</tT>, where no reading has to be
+performed anymore. In addition this subroutine has been changed a bit, which is 
+slightly changing the results.
+</p>
+
+<p>
+There is a small inconsistency between former and new subroutine considering the precision of
+<tt>KIND=ireals</tt> and <tt>KIND=irealgrib</tt>. In the former version a observation point was added 
+if <tt>ds_rad(ind) &gt; 0.0_irealgrib</tt>.
+</p>
+
+<p>
+In the new version the observation is already converted to ireals (SR lhn_obs_read), therefore the
+condition is changed to <tt>datafield_all(i,j,n) &ge; 0.0_ireals</tt>.
+</p>
+
+<p>
+The former normalisation term <tt>ndata</tt> is now space dependend, which better accounted 
+for data outage of single radar stations (ie. <tt>datafield_all(i,j,n) &lt; 0.0_ireals</tt>).
+</p>
+
+<p>
+All input procedures have been extended to work also with grib_api (GRIB1)
+</p>
+
+<!---------------------------------------------------------------------------->
+
+<p align="right"><a href="#content">Back to Contents</a>
+<hr>
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="cosmart">6. Adapted COSMO-ART to new tracer version</a></h3>
+  <h4>(by KIT)</h4>
+
+<p>
+All COSMO-ART and POLLEN tracers are now handled by the new tracer module.
+Therefore, the corresponding code could be eliminated again in most COSMO-modules.
+
+</p>
+
+<!---------------------------------------------------------------------------->
+
+<p align="right"><a href="#content">Back to Contents</a>
+<hr>
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="bugfixe">7. Technical Changes and (minor) Bug Fixes</a></h3>
+
+<ul>
+ <li><tt>data_io.f90</tt>:<br />
+  <ul>
+    <li>changes to the data type <tt>pp_nl</tt>:
+    <p>
+    added:
+      <ul>
+        <li><tt>igribapi_id</tt>: to store the handler for the grib sample for every output group</li>
+        <li><tt>lsfc_ana</tt>:    to indicate whether a surface analysis field will be written</li>
+      </ul>
+    </p>
+
+    <p>
+    removed: 
+      <ul>
+        <li><tt>n_num</tt>:       for current grid number, when nesting (which was never done)</li>
+        <li><tt>ysystem</tt>:     only 'file' accepted anyhow</li>
+        <li><tt>ydbid</tt>:       database handling has been eliminated</li>
+        <li><tt>ydbtype</tt>:     database handling has been eliminated</li>
+        <li><tt>ydbpw</tt>:       database handling has been eliminated</li>
+      </ul>
+    </p></li>
+
+    <li> New Namelist variables to set additional GRIB2 meta data
+      <ul>
+        <li><tt>nlocaldefnr</tt>:  local definition number for GRIB2 local section</li>
+        <li><tt>nsubcenter</tt>:   originating sub-center identification</li>
+      </ul></li>
+  </ul></li>
+
+ <li><tt>data_modelconfig.f90:</tt>
+  <ul>
+    <li>Introduced <tt>endlon_tot</tt>, <tt>endlat_tot</tt> as global variables
+        (are computed in <tt>src_setup.f90</tt>)</li>
+    <li>Removed vertical grid and reference atmosphere variables and put them
+        to <tt>vgrid_refatm_utils.f90</tt></li>
+  </ul></li>
+
+ <li><tt>data_satellites.f90:</tt>
+  <ul>
+    <li>Extensions to provide GRIB2 shortnames and additional meta data
+        <tt>ychan_name</tt>:   Names of channels used (IRx.y,  WVx.y)</li>
+    <li>Renamed <tt>nlist_chan</tt> to <tt>nchan_list</tt> (for consistent naming)</li>
+  </ul></li>
+
+ <li><tt>fast_waves_sc.f90:</tt>
+   <ul>
+    <li>Improved 3D divergence damping by correct calling of subroutine  
+        <tt>l_calc_lhs_at_1st_RKstep</tt> and setting appropriate rhs (dependent on 
+        switches <tt>l_no_div_damping_in_1st_step</tt>, ...</li>
+    <li>Adaptation of the dynamical bottom boundary condition to the newer formulation
+        of the buoyancy term and small bug fix in the use of <tt>dw_dt_slow</tt>.
+        (changes in results only, if <tt>ldyn_bbc=.TRUE.</tt> or 3D div.-damping is used,
+        which must be activated by an internal switch <tt>l_3D_div_damping=.TRUE.</tt>)</li>
+   </ul></li>
+
+ <li><tt>mpe_io2.f90:</tt><br />
+  testing with array-bound checking on the IBM pwr7 showed two problems:
+  <ul>
+   <li>subroutine <tt>buffer_list_write_action</tt>: call to subroutine 
+       <tt>buffer_list_probe_head</tt> could be eliminated by inlining this 
+       subroutine (?? problems when passing non-associated variables?)</li>
+   <li>subroutine <tt>buffer_list_finalize_write</tt>:
+     just commented the last call to <tt>buffer_list_write_action</tt>
+     (which had a comment: "paranoia" anyhow)</li>
+  </ul></li>
+
+ <li><tt>organize_data.f90:</tt>
+  <ul>
+   <li>Removed Nest-handling from this subroutine</li>
+   <li>Initialize variables <tt>ylevltypes, ysteptypes, rscalefac</tt></li>
+   </ul></li>
+
+ <li><tt>organize_dynamics.f90:</tt><br />
+    Conditional namelist setting of lw_freeslip (Uli Blahak).
+    (no change of results; prevents model breaks  in idealised tests)
+   </li>
+
+ <li><tt>organize_physics.f90:</tt><br />
+     Compute depth of soil half layers (czhls) in all subdomains (US)
+   </li>
+
+ <li><tt>organize_satellites.f90:</tt><br />
+     Extensions to provide GRIB2 shortnames and additional meta data
+   </li>
+
+ <li><tt>parallel_utilities.f90:</tt>
+  <ul>
+  <li>new routines <tt>reports_all2all</tt>, <tt>scatterv_values</tt>, and <tt>gatherv_values</tt>;</li>
+  <li><tt>if(n)def NOMPI</tt>: compiling option introduced to make this shared module
+     compatible with the 3DVAR-LETKF package (so that binaries of the latter
+     can also be made without using the MPI library).</li>
+  </ul></li>
+
+ <li><tt>src_artifdata.f90:</tt>
+  <ul>
+   <li>Clarified example given for usage of COSMO-Tracer construct</li>
+   <li>Use subroutines and variables for vertical grid and reference atmospheres
+     from module <tt>vgrid_refatm_utils.f90</tt></li>
+  </ul></li>
+
+<li><tt>src_input.f90:</tt>
+<ul>
+<li>reorganized <tt>check_required</tt>, <tt>fill_gribarray</tt> and 
+<tt>get_vertcoord</tt> slightly to adapt to grib_api meta data 
+usage and handling</li>
+<li>extended the read_loop to also read HHL-files</li>
+</ul></li>
+
+<li><tt>src_output.f90:</tt><br />
+Moved subroutines for setting I/O meta data to new module io_metadata.f90
+</li>
+
+<li><tt>src_runge_kutta.f90:</tt>
+<ul>
+<li>Proper calling of subroutine <tt>l_calc_lhs_at_1st_RKstep</tt> in the case of 
+3D divergence damping;  (changes only, if 3D div.-damping is used)</li>
+<li>Changes to adapt COSMO-ART to new tracer module: some dependencies to
+COSMOART and POLLEN deleted, because this is now handled by the tracer module
+</ul></li>
+
+<li><tt>src_setup_vartab.f90:</tt><br />
+Added new fiels <tt>SP_10M</tt> for output of near-surface analysis fields
+</li>
+
+<li><tt>src_tracer.f90:</tt><br />
+Correction of a tracer-index
+</li>
+
+<li><tt>turbulence_interface.f90:</tt><br />
+Removed memory leak: if <tt>h_ice_p</tt> is allocated, it has to be deallocated again
+</li>
+</ul>
+
+<!---------------------------------------------------------------------------->
+<p align="right"><a href="#content">Back to Contents</a>
+<hr>
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="namelis">8. Changes to the Namelists</a></h3>
+
+<p>There were new Namelist variables in the following groups:</p>
+
+<center>
+<table border="1" cellspacing="3" class="namelist">
+<tbody>
+   <tr>
+     <th>Group</th>
+     <th colspan="2">Name</th>
+     <th>Meaning</th>
+     <th align="center", width="5%">Default</th>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td class="hilit" rowspan="1"><tt>/RUNCTL/</tt></td>
+     <td><tt>lroutine</tt></td>
+     <td align="center"><span class="blau">NEW</span></td>
+     <td class="middl" rowspan="1">to indicate an operational run (if <tt>.TRUE.</tt>).
+         This variable is used to set GRIB2 meta data.</td>
+     <td class="middl" align="center" rowspan="1"><tt>.FALSE.</tt></td>
+   </tr>
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td class="hilit" rowspan="3"><tt>/IOCTL/</tt></td>
+     <td><tt>nsubcenter</tt></td>
+     <td align="center"><span class="blau">NEW</span></td>
+     <td class="middl" rowspan="1">originating sub-center identification for GRIB</td>
+     <td class="middl" align="center" rowspan="1"><tt>255</tt></td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td><tt>nlocaldefnr</tt></td>
+     <td align="center"><span class="blau">NEW</span></td>
+     <td class="middl" rowspan="1">to specify local definition number for GRIB 
+         local sections. The default value of -1 means,that no local section is
+         present.</td>
+     <td class="middl" align="center" rowspan="1"><tt>-1</tt></td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td><tt>yform_read</tt></td>
+     <td align="center"><span class="hell">new values</span></td>
+     <td class="middl" rowspan="1">To specify the format of the input files.<br >
+         New value <tt>apix</tt> is now accepted to read GRIB data with ECMWF's
+         grib_api.</td>
+     <td class="middl" align="center" rowspan="1"><tt>-1</tt></td>
+   </tr>
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td class="hilit" rowspan="2"><tt>/GRIBIN/</tt></td>
+     <td><tt>ydirhhl</tt></td>
+     <td align="center"><span class="blau">NEW</span></td>
+     <td class="middl" rowspan="1">directory that contains the HHL-file 
+         (which is necessary for reading / writing the GRIB2 general vertical 
+         coordinate).</td>
+     <td class="middl" align="center" rowspan="1"><tt>' '</tt></td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td><tt>ynamhhl</tt></td>
+     <td align="center"><span class="blau">NEW</span></td>
+     <td class="middl" rowspan="1">name of the file that contains the HHL field
+         (which is necessary for reading / writing the GRIB2 general vertical 
+         coordinate).</td>
+     <td class="middl" align="center" rowspan="1"><tt>' '</tt></td>
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td class="hilit" rowspan="4"><tt>/GRIBOUT/</tt></td>
+     <td><tt>yform_write</tt></td>
+     <td align="center"><span class="hell">new values</span></td>
+     <td class="middl" rowspan="1">to specify the format of output files
+         New values are now accepted:
+          <ul>
+            <li><tt>api1</tt> to write GRIB1 data with ECMWF's grib_api.</li>
+            <li><tt>api2</tt> to write GRIB2 data with ECMWF's grib_api.</li>
+          </ul></td>
+     <td class="middl" align="center" rowspan="1"><tt>'grb1'</tt></td>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td><tt>ysystem</tt></td>
+     <td align="center"><span class="rot">DELETED</span></td>
+     <td class="middl" rowspan="1">to specify a data handling system.<br />
+         But only <tt>file</tt> was used up to now.</td>
+     <td class="middl" align="center" rowspan="1"><tt></tt></td>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td><tt>ydbtype</tt></td>
+     <td align="center"><span class="rot">DELETED</span></td>
+     <td class="middl" rowspan="1">to specify the data base type.
+                 But this option is not supported any more.</td>
+     <td class="middl" align="center" rowspan="1"><tt></tt></td>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td><tt>n_num</tt></td>
+     <td align="center"><span class="rot">DELETED</span></td>
+     <td class="middl" rowspan="1">to specify the nest number
+         But the nesting was never finally implemented and has been removed now.</td>
+     <td class="middl" align="center" rowspan="1"><tt></tt></td>
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td class="hilit" rowspan="5"><tt>/NUDGING/</tt></td>
+     <td><tt>qcflbcp</tt></td>
+     <td align="center"><span class="blau">NEW</span></td>
+     <td class="middl" rowspan="1">enhancement factor to the threshold used for the check of
+                 surface pressure obs against lateral boundary (LBC) fields
+                 (if equal to zero then this LBC-QC is not performed at all).
+          </td>
+     <td class="middl" align="center" rowspan="1"><tt>1.4</tt></td>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td><tt>irun_osse</tt></td>
+     <td align="center"><span class="blau">NEW</span></td>
+     <td class="middl" rowspan="1">switch for the model run to derive obs values 
+                 from the feedback file 'fof':
+           <ul style="list-style-type:none">
+             <li>= 0: the original observations are used as obs values (default)</li>
+             <li>&gt; 0: index of model run (in dimension 'd_veri' of 'fof' file)
+                      from which the simulated obs are used as obs values;</li>
+            </ul></td>
+     <td class="middl" align="center" rowspan="1"><tt>0</tt></td>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td><tt>losse_fg</tt></td>
+     <td align="center"><span class="blau">NEW</span></td>
+     <td class="middl" rowspan="1">decides whether first guess check flags 
+           from the feedback file 'fof' is used:
+           <ul style="list-style-type:none">
+             <li><tt>= true.</tt> : first guess check flags from 'fof' are converted into
+                           'dataset' pre-processing flag; observation status
+                           remains 'rejected'</li>
+             <li><tt>= false.</tt>: first guess check flags are discarded, and the
+                           related observation may be used actively; (default)</li>
+            </ul></td>
+     <td class="middl" align="center" rowspan="1"><tt>.FALSE.</tt></td>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td><tt>fperturb</tt></td>
+     <td align="center"><span class="blau">NEW</span></td>
+     <td class="middl" rowspan="1">factor to the obs error variances to define the size of random
+                 perturbations added to the observation values (only for
+                 (simulated or original) obs values from feedback file 'fof').
+          </td>
+     <td class="middl" align="center" rowspan="1"><tt>0.0</tt></td>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td><tt>iseed</tt></td>
+     <td align="center"><span class="blau">NEW</span></td>
+     <td class="middl" rowspan="1">external seed for random number generator.</td>
+     <td class="middl" align="center" rowspan="1"><tt>0</tt></td>
+<!---------------------------------------------------------------------------->
+ </tbody>
+</table>
+</center>
+
+
+
+<!---------------------------------------------------------------------------->
+<p align="right"><a href="#content">Back to Contents</a>
+<hr>
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="results">9. Changes of Results</a></h3>
+
+<h4>Nudging:</h4>
+
+<p>
+With default settings, the main changes, limited to some occasions, are due to
+the new quality control of surface pressure observations against the fields
+that provide the lateral boundary conditions (LBC-QC).
+</p>
+
+<p>
+Without LBC-QC, changes are usually very small, due various minor bug
+corrections in the quality control and due to different rounding errors.
+However, there is no backward bit reproducibility.
+</p>
+
+
+<h4>Latent Heat Nudging:</h4>
+
+<p>
+The results of the latent heat nudging have been changed slightly due to changes
+of precision for some variables (see comments above).
+</p>
+
+
+<h4>Dynamics:</h4>
+
+<p>
+Due to the bug fixes, the results are changed in the case itype_fast_waves=2
+(and also for ldyn_bbc=.TRUE. in connection with itype_fast_waves=2).
+(See above)
+</p>
+
+<p>
+Results of applications not using data assimilation or the new fast waves solver
+have not been changed!
+</p>
+
+<!---------------------------------------------------------------------------->
+
+<p align="right"><a href="#content">Back to Contents</a>
+<hr>
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+</body>
+</html>

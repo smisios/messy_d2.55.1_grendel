@@ -1,0 +1,576 @@
+#!/bin/sh
+#
+###################################################
+# script that modifies kpp to allow vectorization #
+###################################################
+. ../decomp/locate_f90.sh
+echo $F90
+#
+OUTSC=smcl
+if [ ! -d $OUTSC ] ; then
+  mkdir -p $OUTSC
+fi
+#
+#############################################################################
+# change module messy_scav_l_kpp_s_mem
+#############################################################################
+#
+cp -f ../messy_scav_l_kpp_s_mem.f90 .
+cp -f messy_scav_l_kpp_s_mem.f90 tmp_file
+sed '/MODULE messy_scav_l_kpp_s_mem/,/END MODULE messy_scav_l_kpp_s_mem/{
+/IMPLICIT NONE/i\
+\
+
+s/MODULE messy_scav_l_kpp_s_mem/MODULE messy_scav_l_kpp_s_mem/g
+}
+' tmp_file > tmp_sprsdata
+cp -f tmp_sprsdata ./$OUTSC/messy_scav_l_vec_kpp_s_mem.f90
+#
+cp -f messy_scav_l_kpp_s_mem.f90 tmp_file
+sed '{
+/END MODULE messy_scav_l_kpp_s_mem/d
+s/MODULE messy_scav_l_kpp_s_mem/PROGRAM decomp/g
+}
+' tmp_file > tmp_decomp_top
+#
+##############################################################################
+# change module messy_scav_l_kpp_g_mem
+##############################################################################
+#
+cp -f ../messy_scav_l_kpp_g_mem.f90 .
+cp -f messy_scav_l_kpp_g_mem.f90 tmp_file
+#
+sed '/MODULE messy_scav_l_kpp_g_mem/,/END MODULE messy_scav_l_kpp_g_mem/{
+/SAVE/a\
+\
+\
+! this variable is used for the vector-length\
+      INTEGER :: nvect\
+      INTEGER, ALLOCATABLE, DIMENSION(:) :: IDONE
+/! C_DEFAULT - Default concentration for all species/d
+/REAL(dp), DIMENSION(NSPEC) :: C_DEFAULT/d
+/REAL(dp), DIMENSION(NSPEC) :: C/d
+/C - Concentration for all species/a\
+      REAL(dp), TARGET, ALLOCATABLE, DIMENSION(:,:) :: C
+s/INTEGER :: INFO(5)/INTEGER, ALLOCATABLE, DIMENSION(:,:) :: INFO/g
+s/REAL(dp), DIMENSION(NVAR) :: VAR/REAL(dp), POINTER, DIMENSION(:,:) :: VAR/g
+s/REAL(dp), DIMENSION(NRAD) :: RAD/REAL(dp), POINTER, DIMENSION(:,:) :: RAD/g
+s/REAL(dp), DIMENSION(NFIX) :: FIX/REAL(dp), POINTER, DIMENSION(:,:) :: FIX/g
+s/REAL(dp), DIMENSION(NFIX) :: F/REAL(dp), POINTER, DIMENSION(:,:) :: F/g
+/EQUIVALENCE( C(1+NVARST),VAR(1) )/,/EQUIVALENCE( C(1+NFIXST),F(1) )/d
+s/REAL(dp), DIMENSION(NREACT) :: RCONST/REAL(dp), ALLOCATABLE, DIMENSION(:,:) :: RCONST/g
+s/MODULE messy_scav_l_kpp_g_mem/MODULE messy_scav_l_kpp_g_mem/g
+}
+' tmp_file > tmp_gdata
+cp -f tmp_gdata ./$OUTSC/messy_scav_l_vec_kpp_g_mem.f90
+#
+##############################################################################
+# change module messy_scav_l_kpp.f90
+##############################################################################
+#
+cp -f ../messy_scav_l_kpp.f90 .
+cp -f messy_scav_l_kpp.f90 tmp_file
+#
+##############################################################################
+# change call of mem modules
+##############################################################################
+#
+sed ' /MODULE messy_scav_l_kpp/,/END MODULE messy_scav_l_kpp/{
+s/messy_scav_l_kpp_g_mem/messy_scav_l_kpp_g_mem/g
+s/messy_scav_l_kpp_s_mem/messy_scav_l_kpp_s_mem/g
+}
+' tmp_file > tmp_mem
+cp -f tmp_mem tmp_file
+#
+##############################################################################
+# change subroutine JACVAR_SP
+##############################################################################
+#
+sed ' /SUBROUTINE JACVAR_SP/,/END SUBROUTINE JACVAR_SP/{
+s/SUBROUTINE JACVAR_SP ( V, R, JVS )/SUBROUTINE JACVAR_SP ( iwstop, V, R, JVS, RCONST_LOC, F_LOC )/g
+/REAL(dp), DIMENSION(LU_NONZERO_V+1) :: JVS/a\
+! iwstop - number of boxes with unfinished calculations\
+      INTEGER  :: iwstop\
+      REAL(dp) :: RCONST_LOC(nvect,nreact)\
+      REAL(dp) :: F_LOC(nvect,nfix)
+s/B(/B(i,/g
+s/b(/B(i,/g
+s/V(/V(i,/g
+s/v(/V(i,/g
+s/JVS(/JVS(i,/g
+s/jvs(/JVS(i,/g
+s/RCONST(/RCONST_LOC(i,/g
+s/rconst(/RCONST_LOC(i,/g
+s/F(/F_LOC(i,/g
+s/f(/F_LOC(i,/g
+/REAL(dp), DIMENSION(NTMPB) :: B/a\
+! loop counter\
+      INTEGER :: i\
+\
+    DO i=1,iwstop
+/END SUBROUTINE JACVAR_SP/i\
+\
+    END DO ! loop over nvect boxes\
+
+/REAL(dp), DIMENSION(LU_NONZERO_V+1) :: JVS/s/REAL(dp), DIMENSION(LU_NONZERO_V+1) :: JVS/REAL(dp), DIMENSION(nvect,LU_NONZERO_V+1) :: JVS/
+/REAL(dp), DIMENSION(NVAR) :: V/s/REAL(dp), DIMENSION(NVAR) :: V/REAL(dp), DIMENSION(nvect,NVAR) :: V/
+/REAL(dp), DIMENSION(NRAD) :: R/s/REAL(dp), DIMENSION(NRAD) :: R/REAL(dp), DIMENSION(nvect,NRAD) :: R/
+/REAL(dp), DIMENSION(NTMPB) :: B/s/REAL(dp), DIMENSION(NTMPB) :: B/REAL(dp), DIMENSION(nvect,NTMPB) :: B/
+}
+' tmp_file > tmp_jacvar_sp
+cp -f tmp_jacvar_sp tmp_file
+#
+##############################################################################
+# change subroutine F_VAR
+##############################################################################
+#
+sed ' /SUBROUTINE F_VAR/,/END SUBROUTINE F_VAR/{
+s/F_VAR ( V, R, A_VAR )/F_VAR ( iwstop, V, R, A_VAR, RCONST_loc, F_loc )/g
+/REAL(dp), DIMENSION(NVAR) :: A_VAR/a\
+! iwstop - number of boxes with unfinished calculations\
+      INTEGER  :: iwstop\
+      REAL(dp) :: RCONST_loc(nvect,nreact)\
+      REAL(dp) :: F_loc(nvect,nfix)
+s/A(/A(i,/g
+s/A_VAR(/A_VAR(i,/g
+s/V(/V(i,/g
+s/F(/F_loc(i,/g
+s/RCONST(/RCONST_loc(i,/g
+/      REAL(dp), DIMENSION(NREACT) :: A/a\
+! local loop counter\
+      INTEGER  :: i\
+
+/Computation of equation rates/a\
+\
+    DO i=1,iwstop
+/END SUBROUTINE F_VAR/i\
+\
+    END DO ! loop over boxes\
+
+/REAL(dp), DIMENSION(NVAR) :: V/s/REAL(dp), DIMENSION(NVAR) :: V/REAL(dp), DIMENSION(nvect,NVAR) :: V/
+/REAL(dp), DIMENSION(NRAD) :: R/s/REAL(dp), DIMENSION(NRAD) :: R/REAL(dp), DIMENSION(nvect,NRAD) :: R/
+/REAL(dp), DIMENSION(NVAR) :: A_VAR/s/REAL(dp), DIMENSION(NVAR) :: A_VAR/REAL(dp), DIMENSION(nvect,NVAR) :: A_VAR/
+/REAL(dp), DIMENSION(NREACT) :: A/s/REAL(dp), DIMENSION(NREACT) :: A/REAL(dp), DIMENSION(nvect,NREACT) :: A/
+}
+' tmp_file > tmp_f_var
+cp -f tmp_f_var tmp_file
+#
+##############################################################################
+# change subroutine SOLVE
+##############################################################################
+#
+sed '/SUBROUTINE SOLVE/,/END SUBROUTINE SOLVE/{
+s/SUBROUTINE SOLVE ( JVS, X )/SUBROUTINE SOLVE ( iwstop, JVS, X )/g
+/REAL(dp), DIMENSION(NVAR) :: X/a\
+! iwstop - number of boxes with unfinished calculations\
+      INTEGER  :: iwstop
+s/X(/X(i,/g
+s/JVS(/JVS(i,/g
+/REAL(dp), DIMENSION(NVAR) :: X/a\
+! local loop counter\
+      INTEGER :: i\
+\
+    DO i=1,iwstop
+/END SUBROUTINE SOLVE/i\
+\
+    END DO ! loop over boxes\
+
+/REAL(dp), DIMENSION(LU_NONZERO_V+1) :: JVS/s/REAL(dp), DIMENSION(LU_NONZERO_V+1) :: JVS/REAL(dp), DIMENSION(nvect,LU_NONZERO_V+1) :: JVS/
+/REAL(dp), DIMENSION(NVAR) :: X/s/REAL(dp), DIMENSION(NVAR) :: X/REAL(dp), DIMENSION(nvect,NVAR) :: X/
+}
+' tmp_file > tmp_solve
+cp -f tmp_solve tmp_file
+#
+##############################################################################
+# change subroutine UPDATE_RCONST
+##############################################################################
+#
+sed '/SUBROUTINE UPDATE_RCONST/,/END SUBROUTINE UPDATE_RCONST/{
+s/RCONST(/RCONST(i,/g
+s/temp/vtemp(i)/g
+s/cv_l/vcv_l(i)/g
+s/C(KPP/C(i,KPP/g
+s/k_exf(KPP/vk_exf(i,KPP/g
+s/k_exb(KPP/vk_exb(i,KPP/g
+s/k_exf_N2O5/vk_exf_N2O5(i)/g 
+s/k_exf_ClNO3/vk_exf_ClNO3(i)/g 
+s/k_exf_BrNO3/vk_exf_BrNO3(i)/g
+s/k_exf_Hg/vk_exf_Hg(i)/g  
+s/k_exf_RGM/vk_exf_RGM(i)/g  
+s/JX(/JX_vec(i,/g
+/USE messy_scav_mem/a\
+\
+INTEGER :: i\
+\
+    DO i=1,nvect\
+
+/END SUBROUTINE UPDATE_RCONST/i\
+\
+    END DO ! loop over kproma\
+
+}
+' tmp_file > tmp_update_rconst
+cp -f tmp_update_rconst tmp_file
+#
+##############################################################################
+# remove unneeded time-dependence in jac_sp
+##############################################################################
+#
+sed '/SUBROUTINE JAC_SP/,/END SUBROUTINE JAC_SP/{
+s/SUBROUTINE JAC_SP(N, T, Y, J)/SUBROUTINE JAC_SP(iwstop,Y, J, RCONST_LOC, F_LOC)/g
+s/REAL(dp)   Y(NVAR), J(LU_NONZERO_V+1)/REAL(dp) Y(nvect,NVAR), J(nvect,LU_NONZERO_V+1)/g
+/INTEGER N/a\
+        INTEGER  iwstop\
+        REAL(dp) RCONST_LOC(nvect,nreact)\
+        REAL(dp) F_loc(nvect,nfix)
+s/CALL JACVAR_SP( Y, RAD, J )/CALL JACVAR_SP( iwstop, Y, RAD, J, RCONST_LOC, F_LOC )/g
+/CALL JACVAR_SP/i\
+\
+!CDIR NOIEXPAND
+/INTEGER N/d
+/REAL(dp)   Told, T/d
+/Told = TIME/d
+/TIME = T/d
+/CALL UPDATE_SUN/d
+/CALL UPDATE_PHOTO/d
+/TIME = Told/d
+}
+' tmp_file > tmp_jac_sp
+cp -f tmp_jac_sp tmp_file
+#
+##############################################################################
+# remove unneeded time-dependence in fun
+##############################################################################
+#
+sed '/SUBROUTINE FUN/,/END SUBROUTINE FUN/{
+s/SUBROUTINE FUN(N, T, Y, P)/SUBROUTINE FUN( iwstop, Y, P, RCONST_LOC, F_LOC )/g
+/REAL(dp)   Y(NVAR), P(NVAR)/a\
+! iwstop - number of boxes with unfinished calculations\
+        INTEGER   iwstop\
+        REAL(dp)  RCONST_LOC(nvect,nreact)\
+        REAL(dp)  F_LOC(nvect,nfix)
+s/REAL(dp)   Y(NVAR), P(NVAR)/REAL(dp)   Y(nvect,NVAR), P(nvect,NVAR)/g
+s/CALL F_VAR( Y, RAD, P )/CALL F_VAR( iwstop, Y, RAD, P, RCONST_LOC, F_LOC )/g
+/CALL F_VAR/i\
+\
+!CDIR NOIEXPAND
+/INTEGER N/d
+/REAL(dp)   T, Told/d
+/Told = TIME/d
+/TIME = T/d
+/CALL UPDATE_SUN/d
+/CALL UPDATE_PHOTO/d
+/TIME = Told/d
+}
+' tmp_file > tmp_fun
+cp -f tmp_fun tmp_file
+#
+##############################################################################
+# remove subroutine update_sun
+#############################################################################
+#
+sed '/UPDATE_SUN - update SUN light using TIME/,/End of UPDATE_SUN function/d' tmp_file > tmp_update_sun
+cp -f tmp_update_sun tmp_file
+#
+##############################################################################
+# remove subroutine update_photo
+##############################################################################
+#
+sed '/UPDATE_PHOTO - function to update photolitical rate constants/,/End of UPDATE_PHOTO function/d' tmp_file > tmp_update_photo
+cp -f tmp_update_photo tmp_file
+#
+##############################################################################
+# remove subroutine jacvar_sp_vec
+##############################################################################
+#
+sed '/JACVAR_SP_VEC - function for sparse multiplication: sparse Jacobian times vector/,/End of JACVAR_SP_VEC function/d' tmp_file > tmp_jacvar_sp_vec
+cp -f tmp_jacvar_sp_vec tmp_file
+#
+##############################################################################
+# change subroutine decomp
+##############################################################################
+#
+sed '/subroutine DECOMP(N,V,IER)/,/end subroutine decomp/{
+s/subroutine DECOMP(N,V,IER)/subroutine DECOMP(iwstop, V)/g
+/REAL(dp) V(LU_NONZERO_V+1), W(NSPEC)/a\
+! iwstop - number of boxes with unfinished calculations\
+        INTEGER  :: iwstop
+s/REAL(dp) V(LU_NONZERO_V+1), W(NSPEC)/REAL(dp) V(nvect,LU_NONZERO_V+1), W(nvect,NSPEC)/g
+s/integer k, kk, j, jj/integer i/g
+/end subroutine decomp/a\
+      END SUBROUTINE decomp
+/IER = 0/,/end subroutine decomp/d
+}
+' tmp_file > tmp_decomp
+cp -f tmp_decomp tmp_file
+#
+##############################################################################
+# cut into 3 files
+##############################################################################
+#
+sed '/END SUBROUTINE decomp/,/! end of messy_scav_l_kpp.f90/d' tmp_file > tmp_p1
+#
+cp -f tmp_decomp tmp_file
+#
+sed '/this file was created automatically by xscav, do not edit/,/REAL(dp) a/d' tmp_file > tmp_p2
+mv tmp_p2 tmp_file
+sed '/SUBROUTINE ROS3/,/! end of messy_scav_l_kpp.f90/d' tmp_file > tmp_p2
+#
+cp -f tmp_decomp tmp_file
+sed '/this file was created automatically by xscav, do not edit/,/END SUBROUTINE ROS3/d' tmp_file > tmp_p3
+#
+##############################################################################
+# remove all indirect adressing
+##############################################################################
+#
+#
+# fortran program
+#
+cat > tmp_decomp_mid << eof
+
+      integer k, kk, j, jj
+
+! unrolling in ros3
+      open(unit=10,file='tmp_decomp_opt00.out')
+      open(unit=11,file='tmp_decomp_opt01.out')
+      open(unit=12,file='tmp_decomp_opt02.out')
+      open(unit=13,file='tmp_decomp_opt03.out')
+      open(unit=14,file='tmp_decomp_opt04.out')
+      open(unit=15,file='tmp_decomp_opt05.out')
+      open(unit=16,file='tmp_decomp_opt06.out')
+      open(unit=17,file='tmp_decomp_opt07.out')
+      open(unit=18,file='tmp_decomp_opt08.out')
+      open(unit=19,file='tmp_decomp_opt09.out')
+      open(unit=20,file='tmp_decomp_opt10.out')
+      open(unit=21,file='tmp_decomp_opt11.out')
+! unrolling in decomp
+      open(unit=30,file='tmp_decomp_opt30.out')
+
+!
+!manipulate subroutine ros3
+!    
+      DO j=1,NREACT
+        write(10,'(9x,a13,i6,a14,i6,a1)') &
+        'RCONST_LOC(i,',j,') = RCONST(jl,',j,')'
+      ENDDO     
+      DO j=1,NVAR
+        write(10,'(9x,a8,i6,a9,i6,a1)') &
+        'y_loc(i,',j,') = y(jl,',j,')'
+      ENDDO     
+      DO j=1,NFIX
+        write(10,'(9x,a8,i6,a9,i6,a1)') &
+        'F_LOC(i,',j,') = F(jl,',j,')'
+      ENDDO     
+      write(10,'(9x,a14)') 'H_loc(i)=H(jl)'
+      write(10,'(9x,a14)') 'T_loc(i)=T(jl)'
+      write(10,'(9x,a30)') 'IsReject_loc(i) = IsReject(jl)'
+      write(10,'(9x,a24)') 'idone_loc(i) = idone(jl)'
+!
+      DO j=1,LU_NONZERO_V
+        write(11,'(9x,a11,i6,a16,i6,a1)') &
+        'JAC_LOC(jl,',j,') = -JAC_LOC(jl,',j,')'
+      ENDDO
+!
+      DO j=1,NVAR
+        write(12,'(9x,a11,i6,a15,i6,a13)') &
+        'JAC_LOC(jl,',lu_diag_v(j),') = JAC_LOC(jl,',lu_diag_v(j),') - gHinv(jl)'
+      ENDDO
+!
+      DO j = 1,NVAR
+        write(13,'(9x,a6,i6,a12,i6,a8,i6,a11)') &
+        'K3(jl,',j,') = ( K2(jl,',j,')-F1(jl,',j,') )/tau(jl)'
+      ENDDO
+!
+      DO j = 1,NVAR
+        write(14,'(9x,a6,i6,a11,i6,a17,i6,a1)') &
+        'K1(jl,',j,') =  F1(jl,',j,') + x1(jl)*K3(jl,',j,')'
+      ENDDO
+!
+      DO j = 1,NVAR
+        write(15,'(9x,a8,i6,a13,i6,a10,i6,a1)') &
+        'ynew(jl,',j,') = y_loc(jl,',j,') + K1(jl,',j,')'
+      ENDDO
+!
+      DO j = 1,NVAR
+        write(16,'(9x,a6,i6,a10,i6,a17,i6,a1)') &
+        'K2(jl,',j,') = F1(jl,',j,') + x1(jl)*K1(jl,',j,')'
+      ENDDO
+!
+      DO j = 1,NVAR
+        write(17,'(9x,a6,i6,a10,i6,a17,i6,a17,i6,a1)') &
+        'K3(jl,',j,') = F1(jl,',j,') + x1(jl)*K1(jl,',j,') + x2(jl)*K2(jl,',j,')'
+      ENDDO
+!
+      DO j = 1,NVAR
+        write(18,'(9x,a8,i6,a13,i6,a13,i6,a13,i6,a13,i6,a1)') &
+        'ynew(jl,',j,') = y_loc(jl,',j,') + b1*K1(jl,',j,') + b2*K2(jl,',j,') + b3*K3(jl,',j,')'
+      ENDDO
+!
+      DO j = 1,NVAR
+        write(19,'(9x,a19,i6,a11,i6,a14,i6,a2)') &
+        'ytol_help = AbsTol(',j,') + RelTol(',j,')*abs(ynew(jl,',j,'))'
+        write(19,'(9x,a27,i6,a11,i6,a11,i6,a16)') &
+        'ERR(jl)=ERR(jl)+((d1*K1(jl,',j,')+d2*K2(jl,',j,')+d3*K3(jl,',j,'))/ytol_help)**2'
+      ENDDO
+!
+      DO j=1,NVAR
+        write(20,'(11x,a9,i6,a12,i6,a1)') &
+        'y_loc(jl,',j,') = ynew(jl,',j,')'
+      ENDDO
+      write(20,'(11x,a21)') 'T_loc(jl) = Tplus(jl)'
+!
+      DO j=1,NVAR
+        write(21,'(9x,a5,i6,a12,i6,a1)') &
+        'y(jl,',j,') = y_loc(i,',j,')'
+      ENDDO     
+!
+!manipulate subroutine decomp
+!
+!      write(30,'(a11)')'!CDIR NODEP'
+      write(30,*)'   DO i=1,iwstop'
+!      write(30,*)'     i=iwork(jl)'
+      do k=1,NVAR
+
+        do kk = LU_CROW_V(k), LU_CROW_V(k+1)-1
+              write(30,'(6x,a4,i6,a8,i6,a1)') &
+              'W(i,',LU_ICOL_V(kk),') = V(i,',kk,')'
+!              W( LU_ICOL_V(kk) ) = V(kk)
+        end do
+        do kk = LU_CROW_V(k), LU_DIAG_V(k)-1
+            j = LU_ICOL_V(kk)
+            write(30,'(6x,a9,i6,a8,i6,a1)') &
+            'a = -W(i,',j,') / V(i,',LU_DIAG_V(j),')'
+!            a = -W(j) / V( LU_DIAG_V(j) )
+            write(30,'(6x,a4,i6,a6)') &
+            'W(i,',j,') = -a'
+!            W(j) = -a
+            do jj = LU_DIAG_V(j)+1, LU_CROW_V(j+1)-1
+               write(30,'(6x,a4,i6,a8,i6,a10,i6,a1)') &
+               'W(i,', LU_ICOL_V(jj),') = W(i,', LU_ICOL_V(jj),') + a*V(i,',jj,')'
+!               W( LU_ICOL_V(jj) ) = W( LU_ICOL_V(jj) ) + a*V(jj)
+            end do
+        end do
+        if( LU_DIAG_V(k)-1 .GE. LU_CROW_V(k) ) THEN
+          do kk = LU_CROW_V(k), LU_CROW_V(k+1)-1
+             write(30,'(6x,a4,i6,a8,i6,a1)') &
+             'V(i,',kk,') = W(i,',LU_ICOL_V(kk),')'
+!             V(kk) = W( LU_ICOL_V(kk) )
+          end do
+        endif
+      end do
+      write(30,*)'   ENDDO'
+
+stop
+end
+
+eof
+cat tmp_decomp_top tmp_decomp_mid > tmp_decomp.f90
+$F90 tmp_decomp.f90
+./a.out
+rm -f a.out
+cat tmp_p1 tmp_decomp_opt30.out tmp_p2 messy_scav_l_kpp_ros3_vec_1.f90 tmp_decomp_opt00.out messy_scav_l_kpp_ros3_vec_2.f90 tmp_decomp_opt01.out messy_scav_l_kpp_ros3_vec_3.f90 tmp_decomp_opt02.out messy_scav_l_kpp_ros3_vec_4.f90 tmp_decomp_opt05.out messy_scav_l_kpp_ros3_vec_5.f90 tmp_decomp_opt06.out messy_scav_l_kpp_ros3_vec_6.f90 tmp_decomp_opt07.out messy_scav_l_kpp_ros3_vec_7.f90 tmp_decomp_opt08.out messy_scav_l_kpp_ros3_vec_8.f90 tmp_decomp_opt09.out messy_scav_l_kpp_ros3_vec_9.f90 tmp_decomp_opt10.out messy_scav_l_kpp_ros3_vec_10.f90 tmp_decomp_opt11.out messy_scav_l_kpp_ros3_vecc.f90 tmp_p3 > tmp_semifinal
+#cat tmp_p1 tmp_decomp_opt30.out tmp_p2 messy_scav_l_kpp_ros3_vec_1.f90 tmp_decomp_opt00.out messy_scav_l_kpp_ros3_vec_1b.f90 tmp_decomp_opt01.out messy_scav_l_kpp_ros3_vec_2.f90 tmp_decomp_opt02.out messy_scav_l_kpp_ros3_vec_3.f90 tmp_decomp_opt03.out messy_scav_l_kpp_ros3_vec_4.f90 tmp_decomp_opt04.out messy_scav_l_kpp_ros3_vec_5.f90 tmp_decomp_opt05.out messy_scav_l_kpp_ros3_vec_6.f90 tmp_decomp_opt06.out messy_scav_l_kpp_ros3_vec_7.f90 tmp_decomp_opt07.out messy_scav_l_kpp_ros3_vec_8.f90 tmp_decomp_opt08.out messy_scav_l_kpp_ros3_vec_9.f90 tmp_decomp_opt09.out messy_scav_l_kpp_ros3_vec_10.f90 tmp_decomp_opt10.out messy_scav_l_kpp_ros3_vecc.f90 tmp_p3 > tmp_semifinal
+
+cp -f tmp_semifinal tmp_file
+#
+##############################################################################
+# cleanup subroutine initval
+##############################################################################
+#
+sed '/SUBROUTINE INITVAL/,/END SUBROUTINE INITVAL/{
+/INTEGER :: i/,/! Set dummy default value for RCONST to avoid that the/d
+/! non temperature-dependent elements remain undefined/i\
+! Set dummy default value for RCONST to avoid that the
+/RCONST(:)=-999/d 
+}
+' tmp_file > tmp_initval
+cp -f tmp_initval tmp_file
+#
+#############################################################################
+# change subroutine integrate
+#############################################################################
+#
+sed '/SUBROUTINE INTEGRATE/,/END SUBROUTINE INTEGRATE/{
+s/STEPSTART,VAR,ATOL,RTOL, &/STEPSTART,VAR,ATOL,RTOL)/g
+s/INFO(/INFO(1:nvect,/g
+s/Info)//g
+s/MODULE messy_scav_l_kpp/MODULE messy_scav_l_kpp/g
+/CALL ROS3/i\
+\
+!CDIR NOIEXPAND
+
+}
+' tmp_file > tmp_integrate
+#
+##############################################################################
+# change module name
+##############################################################################
+#
+cp -f tmp_integrate tmp_file
+sed '/MODULE messy_scav_l_kpp/,/END MODULE messy_scav_l_kpp/{
+s/MODULE messy_scav_l_kpp/MODULE messy_scav_l_kpp/g
+}
+' tmp_file > tmp_modulename
+#
+cp -f tmp_modulename ./$OUTSC/messy_scav_l_vec_kpp.f90
+#
+##############################################################################
+# make new links
+##############################################################################
+
+pwd
+cd ..
+mv ./vector_exp/$OUTSC/messy_scav_l_vec_kpp.f90 messy_scav_l_kpp.f90
+mv ./vector_exp/$OUTSC/messy_scav_l_vec_kpp_g_mem.f90 messy_scav_l_kpp_g_mem.f90
+mv ./vector_exp/$OUTSC/messy_scav_l_vec_kpp_s_mem.f90 messy_scav_l_kpp_s_mem.f90
+
+
+cd vector_exp
+#
+rm -f tmp_decomp
+rm -f tmp_decomp_top
+rm -f tmp_f_var
+rm -f tmp_fun
+rm -f tmp_gdata
+rm -f tmp_initval
+rm -f tmp_integrate
+rm -f tmp_jac_sp
+rm -f tmp_jacvar_sp
+rm -f tmp_jacvar_sp_vec
+rm -f tmp_mem
+rm -f tmp_p1
+rm -f tmp_p2
+rm -f tmp_p3
+rm -f tmp_semifinal
+rm -f tmp_solve
+rm -f tmp_sprsdata
+rm -f tmp_update_photo
+rm -f tmp_update_rconst
+rm -f tmp_update_sun
+rm -f tmp_file
+rm -f messy_scav_l_kpp.f90
+rm -f messy_scav_l_kpp_g_mem.f90
+rm -f messy_scav_l_kpp_s_mem.f90
+rm -f tmp_decomp_mid
+rm -f tmp_decomp_opt00.out
+rm -f tmp_decomp_opt01.out
+rm -f tmp_decomp_opt02.out
+rm -f tmp_decomp_opt03.out
+rm -f tmp_decomp_opt04.out
+rm -f tmp_decomp_opt05.out
+rm -f tmp_decomp_opt06.out
+rm -f tmp_decomp_opt07.out
+rm -f tmp_decomp_opt08.out
+rm -f tmp_decomp_opt09.out
+rm -f tmp_decomp_opt10.out
+rm -f tmp_decomp_opt11.out
+rm -f tmp_decomp_opt30.out
+rm -f tmp_decomp.f90
+rm -f tmp_modulename
+
+cd ..
+
+##############################################################################
+# done
+##############################################################################
+exit

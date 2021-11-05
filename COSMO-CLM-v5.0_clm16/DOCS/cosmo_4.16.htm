@@ -1,0 +1,410 @@
+<!DOCTYPE html 
+     PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+     "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xml:lang="en" lang="en">
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="GENERATOR" content="Mozilla/4.7C-SGI [en] (X11; I; IRIX64 6.5 IP27) [Netscape]">
+   <title>Changes in the COSMO-Model 4.15/4.16</title>
+<style type="text/css">
+  body { font-family:       Arial;
+         font-size:         12pt;
+         background-repeat: no-repeat; 
+         margin:            1em; }
+
+  tt   { font-size:         12pt;}
+
+  li   { margin-top:         5pt;
+         margin-bottom:      5pt }
+
+  th   { border:           1px solid black;
+         padding:          3pt;
+         vertical-align:   top;
+         background-color: lightblue;}
+
+  td   { border:           1px solid black;
+         padding:          3pt;
+         vertical-align:   top;}
+
+  td.middl   { border:           1px solid black;
+               padding:          3pt;
+               vertical-align:   middle;}
+
+  td.hilit       { border:           1px solid black;
+                   padding:          1pt;
+                   vertical-align:   top;
+                   background-color: lightblue;}
+
+  td.clean       { padding:          0pt;
+                   border-style:     none;
+                   vertical-align:   top;}
+
+  td.notes       { padding:          3pt;
+                   border-style:     none;
+                   vertical-align:   top;}
+
+  td.nomid       { padding:          3pt;
+                   border-style:     none;
+                   vertical-align:   middle;}
+
+  table.note     { border-width:     0pt;
+                   border-style:     none;
+                   margin-left:      5pt;
+                   margin-top:       1pt;
+                   margin-bottom:    1pt;
+                   cell-padding:     5pt;
+                   vertical-align:   top;
+                   text-align:       left;}
+  
+  table.atte     { border-width:     0pt;
+                   border-style:     none;
+                   margin-left:      5pt;
+                   margin-top:       1pt;
+                   margin-bottom:    1pt;
+                   cell-padding:     5pt;
+                   vertical-align:   top;
+                   text-align:       left;
+                   background-color: red;}
+  
+  table.namelist { border-width:  2pt;
+                   border-style:  groove;
+                   border-color:  black;
+                   width:         90%;
+                   text-align:    left;
+                   margin-top:    1pt;
+                   margin-bottom: 1pt;
+                   padding:       3pt;
+                   align:         center;}
+  
+  tr.headings    { text-align:       left;
+                   vertical-align:   top;
+                   border-width:     1pt;
+                   border-style:     groove;
+                   border-color:     grey;
+                   padding:          2pt;
+                   font-weight:      bold;}
+
+</style>
+
+</head>
+  <body text="#000000" bgcolor="#FFFFFF" link="#0000EE" vlink="#551A8B" alink="#FF0000">
+
+<center>
+<h1>
+<a NAME="begin">Documentation of the Changes in the COSMO-Model <br /> Versions 4.15/4.16</a></h1></center>
+
+<p>
+This short report documents the changes in the COSMO-Model versions 4.15 (implemented into
+the VCS on 2010-11-19) and 4.16 (implemented into the VCS on 2010-12-07). Version 4.16 is 
+running operational at DWD since 2010-12-15. Version 4.16 only was a small technical update.
+The modifications are marked below.
+</p>
+
+<h4><a NAME="content">Contents:</a></h4>
+
+<ol>
+<li><a href="#chandyn">Changes in the Dynamics</a></li>
+  <ul>
+    <li><a href="#IVA">Implicit vertical advection for the Runge-Kutta dynamics</a></li>
+    <li><a href="#FWR">Changes in fast_waves_rk</a></li>
+  </ul>
+<li><a href="#chanphy">Changes in the Physics</a></li>
+  <ul>
+    <li><a href="#SEC">Limited range of Namelist variable <tt>securi</tt></a></li>
+  </ul>
+<li><a href="#chanass">Changes in the Assimilation</a></li>
+  <ul>
+    <li><a href="#LHN">Changes in the Latent Heat Nudging</a></li>
+    <li><a href="#NUD">Changes in the Nudging</a></li>
+  </ul>
+<li><a href="#chantec">Technical Changes</a></li>
+<li><a href="#namelis">Summary of Namelist Variables Changes</a></li>
+<li><a href="#results">Changes of Results</a></li>
+</ol>
+<p>
+<hr>
+
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="chandyn">1. Changes in the Dynamics</a></h3>
+
+<!---------------------------------------------------------------------------->
+
+<h4><a NAME="IVA">Implicit vertical advection for the Runge-Kutta dynamics<br />
+   (by Michael Baldauf)</a></h4>
+
+<p>
+A new option for 3rd order implicit vertical advection has been implemented in
+the Runge-Kutta scheme. At the same time the namelist control of vertical advection
+has been changed (in the group <tt>/DYNCTL/</tt>
+
+<ul>
+  <li>the logical namelist variable <tt>lva_impl_dyn</tt> has been eliminated.</li>
+  <li>it has been replaced by a string<tt>y_vert_adv_dyn</tt> which can have
+      the following options:</li>
+    <ul>
+      <li><tt>'expl'</tt>: explicit           (as was <tt>lva_impl_dyn=.FALSE.</tt> before)</li>
+      <li><tt>'impl2'</tt>: 2nd order implicit (as was <tt>lva_impl_dyn=.TRUE.</tt> before)</li>
+      <li><tt>'impl3'</tt>: 3rd order implicit (this is new).</tt> before)</li>
+    </ul>
+</ul>
+</p>
+
+<p>
+New subroutines have been implemented for the new scheme in <tt>src_runge_kutta.f90</tt>
+(<tt>calc_wcon_sqrtg</tt>), in <tt>src_slow_tendencies.f90</tt> (<tt>complete_tend_uvwtpp_CN3Crow</tt>)
+and in <tt>numeric_utilities.f90</tt> (<tt>solve_5banddiag</tt>, <tt>bandec</tt>, <tt>banbks</tt>).
+</p>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+
+<h4><a NAME="FWR">Changes in fast_waves_rk<br />
+   (by G&uuml;nther Z&auml;ngl)</a></h4>
+
+<p>
+A new subroutine <tt>weighting_factors_full2half</tt> has been implemented in 
+<tt>fast_waves_rk.f90</tt> to summarize the calculation of weighting coefficients
+for vertical interpolation.
+</p>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+
+<p align="right"><a href="#content">Back to Contents</a>
+
+<hr>
+
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="chanphy">2. Changes in the Physics</a></h3>
+
+<!---------------------------------------------------------------------------->
+
+<h4><a NAME="SEC">Limited range of Namelist variable <tt>securi</tt><br />
+    (by Oliver Fuhrer)</a></h4>
+
+<p>
+The value of the <tt>/TUNING/</tt> Namelist variable <tt>securi</tt>
+has been limited.  According to numerical stability tests, the range from 0 to 1 
+is too big. The default value and the allowed range therefore have been reduced:
+</p>
+
+<p>
+Default: <tt>securi_d = 0.5</tt>  and the range:  <tt>0 <= securi <= 0.5</tt>
+</p>
+
+<p>
+This will change the results, if a value greater than 0.5 has been chosen before
+with <tt>limpltkediff=.FALSE.</tt>
+For <tt>limpltkediff=.TRUE.</tt>, this security value has no effect any more.
+</p>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+
+<p align="right"><a href="#content">Back to Contents</a>
+
+<hr>
+
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="chanass">3. Changes in the Assimilation</a></h3>
+
+<!---------------------------------------------------------------------------->
+
+<h4><a NAME="LHN">Changes in the Latent Heat Nudging<br />
+       (by Klaus Stephan)</a></h4>
+
+<p>
+There were bug fixes in <tt>src_lheat_nudge</tt> to correct bugs when applying 
+bright band detection. This also includes a tuning of the parameter used for
+the detection. These fixes will change the results for LHN analysis.
+</p>
+
+<p>
+The default value of namelist parameter nradar has been changed to 33 to
+consider the additional radar station "MEM" which will be operational
+soon.
+</p>
+
+<!---------------------------------------------------------------------------->
+
+<h4><a NAME="NUD">Changes in the Nudging<br />
+       (by Christoph Schraff and Klaus Stephan)</a></h4>
+
+Introduction of a new subroutine to correct the dry bias of Vaisalla RS92
+radiosonde measurements. This includes changes in <tt>data_nudge_all.f90</tt>, 
+<tt>organize_assimilation.f90</tt>, <tt>src_obs_proc_cdf.f90</tt> and 
+<tt>src_obs_processing.f90</tt>.
+
+A new namelist parameter <tt>mqcorr92</tt> has been introduced to control the 
+bias correction
+
+<center>
+<table border="1" cellspacing="3" class="namelist">
+ <tbody>
+   <tr>
+     <th>Group</th>
+     <th>Name</th>
+     <th>Meaning</th>
+     <th align="center", width="5%">Default</th>
+   </tr>
+   <tr>
+     <td class="hilit" rowspan="12"><tt>/NUDGING/</tt></td>
+     <td><tt>mqcorr92</tt></td>
+     <td class="middl" rowspan="1">switch for bias correction for Vaisala RS92
+       <ul><li>= 0: no correction for humidity (default)</li>
+	   <li>= 1: correct only solar radiation bias</li>
+	   <li>= 2: correct total bias (incl. nighttime bias)</li></ul></td>
+     <td class="middl" rowspan="1"><tt>0</tt></td>
+   </tr>
+ </tbody>
+</table>
+</center>
+
+Also this bias correction causes a change in results. The analysis will become
+wetter during day time and drier during night time (if <tt>mqcorr92</tt> set to 2).
+In case of <tt>mqcorr92=0</tt> results do not change.
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+
+<p align="right"><a href="#content">Back to Contents</a>
+
+<hr>
+
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="chantec">4. Technical Changes</a></h3>
+
+<ul>
+ <li><tt>src_input.f90</tt>:<br />
+     Eliminated use of <tt>T_S_LAKE</tt> again, because the SST analysis now
+     provides <tt>T_S</tt> as it is wanted by FLake.</li>
+
+ <li><tt>numeric_utilities.f90</tt>:<br />
+     In the subroutine <tt>curl</tt> the dimension of <tt>tgrlat</tt> and 
+     <tt>acrlat</tt> was erroneously done with <tt>ie</tt> instead of <tt>je</tt>. 
+     In the subroutine <tt>potential_vorticity_rho</tt> (from module 
+     <tt>pp_utilities.f90</tt>) these parameters were not used at all and 
+     have therefore been eliminated.</li>
+
+ <li><tt>src_output.f90</tt><br />
+     Use time level <tt>nnow</tt> instead of preset variable <tt>itl</tt>
+     for the variables <tt>VORTIC_U</tt>, <tt>VORTIC_V</tt>, <tt>VORTIC_W</tt>, 
+     <tt>POT_VORTIC</tt>, <tt>T_WATER</tt> and also in the calls to the
+     subroutines <tt>caliq</tt>, <tt>calztd</tt> and <tt>calomega</tt>.</li>
+
+ <li><tt>src_output.f90</tt><br />
+     Increase value of <tt>lbm</tt> to 25000 for handling
+     bigger frames (by Lucio Torrisi).</li>
+
+ <li><tt>src_soil_multlay.f90</tt><br />
+     Introduced <tt>ibot_w_so</tt> and <tt>snow_melt</tt> (from CLM Version):<br />
+     The soil model uses a local index <tt>i250</tt>, which corresponds to the last soil
+     layer completely above 2.5 meter soil depth. This index is used to compute
+     the subsoil runoff (<tt>runoff_g</tt>) as drainage flux through bottom of this layer
+     and to control switching off the soil moisture gradient related flux below.
+     For climate applications this index should be variable and there is a
+     Namelist variable <tt>czbot_w_so</tt>, with which the desired soil depth for this
+     layer can be given. The variable <tt>ibot_w_so</tt> has been introduced to replace
+     <tt>i250</tt>. The default is chosen, so that the old settings are reproduced.
+   </li>
+
+ <li>From Version 4.16: <tt>src_flake.f90</tt><br />
+     Adaptation to the two time level scheme, update of I/O 
+     (in the subroutine <tt>flake_init</tt>).</li>
+
+ <li>From Version 4.16: <tt>src_input.f90</tt><br />
+     Initialization of <tt>t_ice</tt> for all time levels (according to <tt>t_so</tt>).
+     </li>
+</ul>
+
+<!---------------------------------------------------------------------------->
+
+<p align="right"><a href="#content">Back to Contents</a>
+<hr>
+
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="namelis">5. Summary of Namelist Variables Changes</a></h3>
+
+<p>There were the following changes for the Namelist variables:</p>
+
+<center>
+<table border="1" cellspacing="3" class="namelist">
+ <tbody>
+   <tr>
+     <th>Group</th>
+     <th>Name</th>
+     <th>Meaning</th>
+     <th align="center", width="5%">Default</th>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td class="hilit" rowspan="2"><tt>/DYNCTL/</tt></td>
+     <td><tt>lva_impl_dyn</tt></td>
+     <td class="middl" rowspan="1">eliminated</td>
+     <td class="middl" align="center" rowspan="1"><tt>-</tt></td>
+   </tr>
+   <tr>
+     <td><tt>y_vert_adv_dyn</tt></td>
+     <td>string to specify the vertical advection scheme in the Runge-Kutta dynamics:
+      <ul>
+        <li><tt>'expl'</tt>: explicit           (as was <tt>lva_impl_dyn=.FALSE.</tt> before)</li>
+        <li><tt>'impl2'</tt>: 2nd order implicit (as was <tt>lva_impl_dyn=.TRUE.</tt> before)</li>
+        <li><tt>'impl3'</tt>: 3rd order implicit (this is new).</tt> before)</li>
+      </ul></td>
+     <td class="middl"><tt>'impl2'</tt></td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td class="hilit" rowspan="1"><tt>/NUDGING/</tt></td>
+     <td><tt>mqcorr92</tt></td>
+     <td class="middl" rowspan="1">switch for bias correction for Vaisala RS92
+       <ul><li>= 0: no correction for humidity (default)</li>
+	   <li>= 1: correct only solar radiation bias</li>
+	   <li>= 2: correct total bias (incl. nighttime bias)</li></ul></td>
+     <td class="middl" align="center"><tt>1</tt></td>
+   </tr>
+<!---------------------------------------------------------------------------->
+ </tbody>
+</table>
+</center>
+
+<p align="right"><a href="#content">Back to Contents</a>
+<spacer type=vertical size=10>
+<hr>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="results">6. Changes of Results</a></h3>
+
+<p>
+Due to the bug fixes in the latent heat nudging the result will change for LHN analysis
+(for COSMO-DE).
+
+The bias correction also causes a change in results. The analysis will become
+wetter during day time and drier during night time (if <tt>mqcorr92</tt> set to 2).
+In case of <tt>mqcorr92=0</tt> results do not change.
+</p> 
+
+<p align="right"><a href="#content">Back to Contents</a>
+
+</body>
+</html>

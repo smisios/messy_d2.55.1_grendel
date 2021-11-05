@@ -1,0 +1,17 @@
+cancel data/all
+cancel var/all
+use output10.nc
+let pi = 3.14159265359
+let delxx = (grid_center_lon[i=@shf:1]-grid_center_lon)*pi/180
+let delxy = (grid_center_lat[i=@shf:1]-grid_center_lat)*pi/180
+let delyx = (grid_center_lon[j=@shf:1]-grid_center_lon)*pi/180
+let delyy = (grid_center_lat[j=@shf:1]-grid_center_lat)*pi/180
+let delxxcos = delxx  * cos(grid_center_lat*pi/180)
+let delyxcos = delyx  * cos(grid_center_lat*pi/180)
+let sqrt = (delxxcos ^ 2 + delxy ^ 2) ^ (1/2)
+let outx = (ue * delxxcos + ve * delxy) / sqrt
+let outy = (ue * delyxcos + ve * delyy) / sqrt
+!let out = (awust[d=2,i=2:121,l=1] * delxxcos + awvst[d=2,i=2:121,l=1] * delxy) / ((delxxcos ^ 2 + delxy ^ 2) ^ (1/2))
+!let awuout = awust[i=2:121,l=1] * out
+!shade out,grid_center_lon[d=1,i=2:121],grid_center_lat[d=1,i=2:121]
+vector outx,outy,grid_center_lon,grid_center_lat

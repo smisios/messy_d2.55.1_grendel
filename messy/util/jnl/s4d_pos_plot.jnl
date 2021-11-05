@@ -1,0 +1,138 @@
+\cancel mode verify
+cancel data/all
+cancel variable/all
+cancel region/all
+cancel viewport
+
+! ------------------------------------------------------------------
+! THIS FERRET-JNL PLOTS THE POSITION INFORMATION OF A S4D FILE
+! - ASCII (pressure in hPa) OR netCDF (pressure in Pa) !!!
+! ------------------------------------------------------------------
+! EXAMPLES:
+! go s4d_pos_plot C1F_F_20000118.pos
+! go s4d_pos_plot C1F_F_20000118.pos.nc
+! ------------------------------------------------------------------
+
+! ------------------------------------------------------------------
+! USER INTERFACE
+! ------------------------------------------------------------------
+! S4D position information
+define symbol s4dfile = $1
+
+! ------------------------------------------------------------------
+! SEPERATE PATH AND FILNAME
+! ------------------------------------------------------------------
+let s4dbase = {spawn:"basename ($s4dfile)"}
+define symbol s4dbase = `s4dbase[i=1]`
+let s4dpath = {spawn:"dirname ($s4dfile)"}
+define symbol s4dpath = `s4dpath[i=1]`
+cancel variable s4dbase
+cancel variable s4dpath
+
+! ------------------------------------------------------------------
+! CHECK, IF netCDF, multi-netCDF or ASCII (S4D) file
+! ------------------------------------------------------------------
+let n = STRLEN("($s4dbase)")-1
+define symbol ext = `SUBSTRING("($s4dbase)",n,2)`
+cancel variable n
+!
+! +++++++++++
+! +++ D=1 +++
+! +++++++++++
+let mostr = {'Jan','Feb','Mar','Apr','May','Jun',\
+             'Jul','Aug','Sep','Oct','Nov','Dec'}
+
+IF ($ext%|mc>TRUE|nc>TRUE|*>FALSE%) THEN
+   ! read transect information from netCDF-file
+   set data "($s4dpath)/($s4dbase)"
+   ! define (correct !) time axis for transect
+   define symbol l1 = `month[l=1]`
+   define symbol mstr = `mostr[i=($l1)]`
+   define symbol tzero = `day[l=1],zw=2`-($mstr)-`year[l=1],zw=4`
+   define axis/from/t0="($tzero)"/name=tax/unit=hours \
+     (DAYS1900(year,month,day) - DAYS1900(year[i=1],month[l=1],day[l=1]))*24 +\
+           hour +minute/60 + second/3600
+   !
+   define variable/title="longitude"/unit=degrees_east tlon = lon[gt=tax]
+   define variable/title="latitude"/unit=degrees_north tlat = lat[gt=tax]
+   ! NOTE: pressure in netCDF files is in Pa
+   define variable/title="pressure"/unit=hPa tpress = press[gt=tax]/100
+ELSE
+   ! read transect information from ASCII-file (9 columns)
+   ! time UTC !
+   ! year month day hour minute second latitude longitude pressure [hPa]
+   ! NOTE: for long files an index-grid must be defined ...
+   let nlines = {spawn: "wc -l ($s4dpath)/($s4dbase)"}
+   let tdim = `STRFLOAT(nlines[i=1])`
+   define axis/x=1:`tdim`:1 xtdim
+   define grid/x=xtdim g1d
+   ! year month day hour minute second latitude longitude pressure [hPa]
+   file/grid=g1d/var="qyy, qmo, qdy, qhr, qmi, qse, qlon, qlat, qpress" \
+       "($s4dpath)/($s4dbase)"
+   ! define time axis for transect
+   define symbol l1 = `qmo[i=1]`
+   define symbol mstr = `mostr[i=($l1)]`
+   define symbol tzero = `qdy[i=1],zw=2`-($mstr)-`qyy[i=1],zw=4`
+   define axis/from/t0="($tzero)"/name=tax/unit=hours \
+          (DAYS1900(qyy,qmo,qdy) - DAYS1900(qyy[i=1],qmo[i=1],qdy[i=1]) )*24 +\
+           qhr +qmi/60 + qse/3600
+   ! ... for same strange reason, this definition must occur twice to make
+   ! it work correctly - weird!
+   define axis/from/t0="($tzero)"/name=tax/unit=hours \
+          (DAYS1900(qyy,qmo,qdy) - DAYS1900(qyy[i=1],qmo[i=1],qdy[i=1]) )*24 +\
+           qhr +qmi/60 + qse/3600
+   ! put lat/lon/press information onto time axis
+   define variable/title="longitude"/unit=degrees_east \
+          tlon = RESHAPE(qlon, T[gt=tax])
+   define variable/title="latitude"/unit=degrees_north \
+          tlat = RESHAPE(qlat, T[gt=tax])
+   ! NOTE: pressure in S4D files is in hPa !!!
+   define variable/title="pressure"/unit=hPa \
+          tpress = RESHAPE(qpress, T[gt=tax])
+   ! put time onto time axis
+   define variable/title="year"/unit="UTC"   year   = RESHAPE(qyy, T[gt=tax])
+   define variable/title="month"/unit="UTC"  month  = RESHAPE(qmo, T[gt=tax])
+   define variable/title="day"/unit="UTC"    day    = RESHAPE(qdy, T[gt=tax])
+   define variable/title="hour"/unit="UTC"   hour   = RESHAPE(qhr, T[gt=tax])
+   define variable/title="minute"/unit="UTC" minute = RESHAPE(qmi, T[gt=tax])
+   define variable/title="second"/unit="UTC" second = RESHAPE(qse, T[gt=tax])
+ENDIF
+cancel symbol ext
+cancel symbol l1, mstr, tzero
+cancel variable mostr
+
+
+
+ppl pen 0,13
+ppl pen 1,13
+
+
+DEFINE VIEWPORT/XLIM=0.,1/YLIM= 0,.4 V1
+DEFINE VIEWPORT/XLIM=0.,1/YLIM=.4,.9 V2
+
+!go basemap x=-180:180 y=-90:90
+
+set viewport V2
+!                            T     B     L    R
+!margins are  -- GO margins 1.4   1.4   1.2   1
+go margins 0.0 0.6 1.2 1
+use etopo60
+palette land_sea
+ppl labset 0.18,0.18,0.18,0.18
+ppl axlsze 0.18,0.18,0.18,0.18
+shade/title=""/nolab/hlimits=-180:180:30/vlimits=-90:90/nokey/levels=(-8000,8000,1000) ROSE[x=-180:180,y=-90:90]
+go land
+cancel data 2
+plot/over/vs/nolab/thick=3/color=red tlon,tlat
+plot/over/vs/nolab/thick=3/symbol=18/color=blue/l=1 tlon,tlat
+label 0,100,0,0,0.18 @AS($s4dbase)
+
+set viewport V1
+go margins 0.2 1.0 1.2 1
+!plot/set/vlog/vlimits=1000:100/nolab/title=""/thick=3/color=red/symbol tpress
+plot/set/vlimits=1000:100/nolab/title=""/thick=3/color=red/symbol tpress
+!plot/set/vlimits=1000:0/nolab/title=""/thick=3/color=red/symbol tpress
+ppl txlsze 0.18,0.18,0.18,0.18
+ppl ylab `tpress,return=title` @AS[`tpress,return=unit`]
+ppl TXLINT 2
+ppl plot

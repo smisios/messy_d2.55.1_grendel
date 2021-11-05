@@ -1,0 +1,180 @@
+# 1 "wrte_gridinfo.f90"
+      SUBROUTINE WRTE_GRIDINFO(KYEARS,KMONTS,KDAYS)
+!
+!C**** *WRTE_GRIDINFO* - save grid information.
+!C
+!C     CH,    *MPI-Met, HH*    10.04.01
+!
+!     Modified
+!     --------
+!     S.Legutke,        *MPI-MaD, HH*    01.10.01
+!     - separate routine extracted from OLLIE (MAIN)
+!     - netCDF version possible (with cond.comp. PNETCDFO)
+!
+!     Purpose
+!     -------
+!
+!
+!     Method
+!     -------
+!
+!
+!**   Interface.
+!     ----------
+!
+!     *CALL*       *WRTE_GRIDINFO(KYEARS,KMONTS,KDAYS)*
+!
+!     *PARAMETER*  *PARAM1.h*     - grid size parameters for ocean model.
+!     *COMMON*     *COMMO1.h*     - ocean/sediment tracer arrays.
+!     *COMMON*     *UNITS.h*      - std I/O logical units.
+!
+!**   Interface to calling routine (parameter list):
+!     ----------------------------------------------
+!
+!     *INTEGER* *KYEARS*   - actual year.
+!     *INTEGER* *KMONTS*   - actual month.
+!     *INTEGER* *KDAYS*    - actual day.
+!
+!
+!     Externals
+!     ---------
+!     none.
+!
+!**************************************************************************
+
+      USE MO_PARAM1
+      USE MO_PARALLEL
+      USE MO_COMMO1
+      USE MO_UNITS
+      USE MO_KIND
+
+
+      INTEGER(KIND=i4) I4I1,I4I2,I4I3,I4I4,I4I5
+      REAL(KIND=sp) FF_G(IE_G,JE_G)
+
+
+# 60
+
+      REAL dlxp_g(ie_g,je_g), dlyp_g(ie_g,je_g)
+      REAL dlxu_g(ie_g,je_g), dlyu_g(ie_g,je_g)
+      REAL deuto_g(ie_g,je_g), depto_g(ie_g,je_g)
+
+      CALL gather_arr(dlxp,dlxp_g,p_io)
+      CALL gather_arr(dlyp,dlyp_g,p_io)
+      CALL gather_arr(dlxu,dlxu_g,p_io)
+      CALL gather_arr(dlyu,dlyu_g,p_io)
+      CALL gather_arr(deuto,deuto_g,p_io)
+      CALL gather_arr(depto,depto_g,p_io)
+
+      IF(p_pe/=p_io) RETURN ! Only I/O pe does the write
+!
+! Append to NetCDF file : NOTE: the global attribute 'date' is set when
+!                               the file is opened
+
+# 182
+
+!
+! Write to disk (EXTRA format)
+!
+          I4I1=((KYEARS*10000)+(KMONTS*100)+KDAYS)
+          I4I3=0
+          I4I4=(IE_G*JE_G)
+
+!          OPEN(IO_OU_DLXP,STATUS='UNKNOWN',                             &
+!     &                    ACCESS='SEQUENTIAL',                          &
+!     &                    POSITION='APPEND',                            &
+!     &                      FORM='UNFORMATTED')
+          I4I2=85
+
+          WRITE(IO_OU_DLXP)I4I1,I4I2,I4I3,I4I4
+          WRITE(IO_OU_DLXP)real(dlxp_g,sp)
+!          CLOSE(IO_OU_DLXP)
+
+!          OPEN(IO_OU_DLYP,STATUS='UNKNOWN',                             &
+!     &                    ACCESS='SEQUENTIAL',                          &
+!     &                    POSITION='APPEND',                            &
+!     &                      FORM='UNFORMATTED')
+          I4I2=86
+          WRITE(IO_OU_DLYP)I4I1,I4I2,I4I3,I4I4
+          WRITE(IO_OU_DLYP)real(DLYP_G,sp)
+!          CLOSE(IO_OU_DLYP)
+
+
+!          OPEN(IO_OU_DLXU,STATUS='UNKNOWN',                             &
+!     &                    ACCESS='SEQUENTIAL',                          &
+!     &                    POSITION='APPEND',                            &
+!     &                      FORM='UNFORMATTED')
+          I4I2=185
+          WRITE(IO_OU_DLXU)I4I1,I4I2,I4I3,I4I4
+          WRITE(IO_OU_DLXU)real(DLXU_G,sp)
+!          CLOSE(IO_OU_DLXU)
+
+!          OPEN(IO_OU_DLYU,STATUS='UNKNOWN',                             &
+!     &                    ACCESS='SEQUENTIAL',                          &
+!     &                    POSITION='APPEND',                            &
+!     &                      FORM='UNFORMATTED')
+          I4I2=186
+          WRITE(IO_OU_DLYU)I4I1,I4I2,I4I3,I4I4
+          WRITE(IO_OU_DLYU)real(DLYU_G,sp)
+!          CLOSE(IO_OU_DLYU)
+
+
+!          OPEN(IO_OU_DEUT,STATUS='UNKNOWN',                             &
+!     &                    ACCESS='SEQUENTIAL',                          &
+!     &                    POSITION='APPEND',                            &
+!     &                      FORM='UNFORMATTED')
+          I4I2=184
+          WRITE(IO_OU_DEUT)I4I1,I4I2,I4I3,I4I4
+          WRITE(IO_OU_DEUT)real(DEUTO_G,sp)
+!          CLOSE(IO_OU_DEUT)
+
+
+!          OPEN(IO_OU_DEPT,STATUS='UNKNOWN',                            &
+!     &                    ACCESS='SEQUENTIAL',                         &
+!     &                    POSITION='APPEND',                            &
+!     &                      FORM='UNFORMATTED')
+          I4I2=84
+          WRITE(IO_OU_DEPT)I4I1,I4I2,I4I3,I4I4   
+          WRITE(IO_OU_DEPT)real(DEPTO_G,sp)
+!          CLOSE(IO_OU_DEPT)
+
+!          OPEN(IO_OU_GILA,STATUS='UNKNOWN',                            &
+!     &                    ACCESS='SEQUENTIAL',                         &
+!     &                    POSITION='APPEND',                            &
+!     &                      FORM='UNFORMATTED')
+          I4I2=54
+          I4I5=2*IE_G*2*JE_G
+          WRITE(IO_OU_GILA)I4I1,I4I2,I4I3,I4I5   
+          WRITE(IO_OU_GILA)real(GILA_G,sp)
+!          CLOSE(IO_OU_GILA)
+
+!          OPEN(IO_OU_GIPH,STATUS='UNKNOWN',                            &
+!     &                    ACCESS='SEQUENTIAL',                         &
+!     &                    POSITION='APPEND',                            &
+!     &                      FORM='UNFORMATTED')
+          I4I2=55
+          I4I5=2*IE_G*2*JE_G
+          WRITE(IO_OU_GIPH)I4I1,I4I2,I4I3,I4I5  
+          WRITE(IO_OU_GIPH)real(GIPH_G,sp)
+!          CLOSE(IO_OU_GIPH)
+
+!          OPEN(IO_OU_WETO,STATUS='UNKNOWN',                            &
+!     &                    ACCESS='SEQUENTIAL',                         &
+!     &                    POSITION='APPEND',                            &
+!     &                      FORM='UNFORMATTED')
+          DO K=1,KE
+
+          DO i=1,IE_G
+          do j=1,je_g
+            ff_G(i,j)=real(weto_g(i,j,k),sp)
+          enddo
+          enddo
+          I4I2=172
+          I4I3=K
+          WRITE(IO_OU_WETO)I4I1,I4I2,I4I3,I4I4   
+          WRITE(IO_OU_WETO)ff_G
+          ENDDO
+!          CLOSE(IO_OU_WETO)
+
+       RETURN
+       END

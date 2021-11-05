@@ -1,0 +1,53 @@
+dnl Process this file with autoconf to produce a configure script.
+
+dnl GLOBAL
+dnl #####################################################################
+AC_PREREQ(2.57)
+
+AC_INIT(IMPOR_GRID, 0.9b, ncregrid@p-joeckel.de)
+
+AC_CONFIG_SRCDIR(src/import_grid.f90)
+
+AC_PREFIX_DEFAULT(.)
+dnl #####################################################################
+
+dnl Checks for programs.
+AC_CHECK_PROGS(F90, f95 f90 lf95 xlf95 sxf90 ifort)
+
+dnl Checks for files
+AC_CHECKING(for the netCDF library)
+AC_CHECK_FILE(${NC_INC}/netcdf.mod,
+              INCLUDES="-I${NC_INC}",
+    AC_MSG_ERROR(Need netcdf fortran90 module! Please specify path in NC_INC !)
+             )
+
+AC_CHECK_FILE(${NC_LIB}/libnetcdf.a,
+              LIBS="-L${NC_LIB} -lnetcdf",
+           AC_MSG_ERROR(Need netcdf-library! Please specify path in NC_LIB !)
+             )
+
+dnl Checks for libraries.
+
+dnl Checks for header files.
+
+dnl Checks for typedefs, structures, and compiler characteristics.
+
+dnl Checks for library functions.
+
+dnl VARIABLES
+AC_SUBST(F90, $F90)
+AC_SUBST(F90FLAGS, $F90FLAGS)
+AC_SUBST(LIBS, $LIBS)
+AC_SUBST(INCLUDES, $INCLUDES)
+
+AC_OUTPUT(Makefile)
+AC_OUTPUT(Makefile.mpi)
+
+echo ' '
+echo '   Configuration of IMPORT_GRID finished.'
+echo '   Type'
+echo '     gmake [install] or'
+echo '     gmake -f Makefile.mpi [install] (for variable-parallel version)' 
+echo '   to compile/install import_grid'
+echo ' '
+

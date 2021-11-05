@@ -1,0 +1,125 @@
+! -*- f90 -*-
+&CTRL
+ l_tendency     = T  ! tendency of tracers
+ l_whitecap     = F  ! Whitecap coverage calculations
+ l_rain         = F  ! rain effect calculations
+ l_turb         = F  !  Alternative calculation for turbulent velocity 
+ l_salt         = F  ! salinity climatology from other submodel
+ param_kw       = 2  ! 1) Liss (1986)                #M2
+/                    ! 2) Wanninkhof (1992)          #M2
+                     ! 3) Wanninkhof (1999)          #M2
+                     ! 4) Nightingale (2000)         #M2
+                     ! 5) Ho (2006)                  #M2
+                     ! 6) Marandino (2013) 
+                     ! 7) Nightingale modified after Bell (2013)
+
+&CPL
+convect_rain    = 'convect','cv_precflx'
+large_rain      = 'cloud','rainflux'
+salinity        = 'import_grid','salt_salt'       ! use of world ocean atlas 2001
+L_GP        = T, ! AIRSEA CALCULATION  FOR GRIDPOINT TRACERS
+L_LG        = F, ! AIRSEA CALCULATION  FOR LAGRANGIAN TRACERS
+i_lg_method = 1, ! dry deposition method for Lagrangian:
+!                 Flux = [mol/mol] * [Kg/ m2 s] --> tendency = [mol/mol s]
+!                 1] same decrease in mixing ratio as GP model
+!                 2] use area of grid point and mass of air parcel
+!                 3] same density as grid point 
+!!! NOTES:
+!!! - MAX 100 TRACERS !!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!! To inser new tracer:
+!!! 1) new asi_name (max length 24) 
+!!! 2) new henry parameters -> henry_a, henry_b  (see technical note)
+!!! 3) new enhancement factor (ex. 2 for aldehyde, 1 for other OVOC) --> alpha
+!!! 4) molar volume at boiling (molvol) or change subroutine that calculate
+!!!    the Schmidt value
+!!! 5) forcing output (TRUE/FALSE)
+!!! 6) water concentration (maps/climatology/functions...) 
+!!!
+!!!Description of namelist:
+!!!
+!!!ASI_NAME(#)            ! TRACE NAME (as defined in MECCA )
+!!!HENRY_A(#)             ! henry parameter A M/atm
+!!!HENRY_B(#)             ! henry parameter B K -> put zero if no meas of 
+!!!                         that(i.e.no temp dependencies)
+!!!ALPHA(#)               ! enhancement factor --> reactivity of tracer (ex :2 for aldehyde, 1 for other OVOC)
+!!!MOL_VOL(#)             ! Molar volume at boiling point (see Hayduk-1974 AlChE) ! cm^3/mol 
+!!!S_CONST(#)             ! Setschenow constant for solubility in seawater (0= theoretical value) 
+!!!MOL_MASS(#)            ! Molar mass of the tracer  
+!!!USE_MOL_MASS(#) = T/F  ! use the tracer molar mass defined in mecca when they are available 
+!!!EFFECT(#)       = T/F  ! FALSE implies no action of air_sea interaction(testing reasons) 
+!!!                       ! but coupled with other submodel! (optional)
+!!!                       ! DEFAULT TRUE
+!!!OUTPUT(#)       = T/F  ! Forcing output even if no tracer exist (gridpoint calculation) (optional)
+!!!                       ! DEFAULT FALSE
+!!!WATER_CON_CHN(#)       ! Water concentration of tracer (channel amd name) in Kmol/m3
+!!!WATER_CON_CONST(#)     ! Water concentration of tracer (if constant and no channel present) in Kmol/m3
+!!!SATURATION(#)   = T/F  ! Use the water concentration (WATER_CON_CHN/WATER_CON_CONST) as Saturation ratio [0..1]
+!!!                       ! DEFAULT FALSE
+!*********************************** 
+ASI_NAME(1)       = 'C5H8'
+HENRY_A(1)        = 1.3E-2
+HENRY_B(1)        = 0.
+ALPHA(1)          = 1.
+MOL_VOL(1)        = 103.6
+S_CONST(1)        = 0.
+MOL_MASS(1)       = 68.11
+USE_MOL_MASS(1)   = .TRUE.
+EFFECT(1)         = .TRUE.
+OUTPUT(1)         = .TRUE.
+WATER_CON_CHN(1)  = 'import_grid','airsea02_C5H8_w',
+SATURATION(1)     = .FALSE.
+!***********************************
+ASI_NAME(2)       = 'DMS'
+HENRY_A(2)        = 4.8E-1
+HENRY_B(2)        = 3100.
+ALPHA(2)          = 1.
+MOL_VOL(2)        = 77.4  !le bas
+S_CONST(2)        = 0.
+MOL_MASS(2)       = 62.13
+USE_MOL_MASS(2)   = .TRUE.
+EFFECT(2)         = .TRUE.
+OUTPUT(2)         = .TRUE.
+WATER_CON_CHN(2)  = 'import_grid','airsea01_DMS_SEA',
+SATURATION(2)     = .FALSE.
+!***********************************
+ASI_NAME(3)      = 'CH3OH'
+HENRY_A(3)       = 2.2E2
+HENRY_B(3)       = 5600.
+ALPHA(3)         = 1.
+MOL_VOL(3)       = 42.5
+S_CONST(3)       = 0.
+MOL_MASS(3)      = 32.04
+USE_MOL_MASS(3)  = .TRUE.
+OUTPUT(3)        = .TRUE.
+EFFECT(3)        = .TRUE.
+WATER_CON_CONST(3)  = 0.94
+SATURATION(3)   = .TRUE.
+!***********************************
+ASI_NAME(4)       = 'CHBr3'
+HENRY_A(4)        = 1.4
+HENRY_B(4)        = 5000.
+ALPHA(4)          = 1.
+MOL_VOL(4)        = 104.0  !mean of 3 ref: 108.5;99.5;101
+S_CONST(4)        = 0.
+MOL_MASS(4)       = 252.7310
+USE_MOL_MASS(4)   = .TRUE.
+EFFECT(4)         = .TRUE.
+OUTPUT(4)         = .TRUE.
+WATER_CON_CHN(4)  = 'import_grid','airsea03_CHBR3_sea',
+SATURATION(4)     = .FALSE.
+!***********************************
+ASI_NAME(5)       = 'CH2Br2'
+HENRY_A(5)        = 1.1
+HENRY_B(5)        = 3900.
+ALPHA(5)          = 1.
+MOL_VOL(5)        = 80.1   !mean of 2 ref: 84;76.2
+S_CONST(5)        = 0.
+MOL_MASS(5)       = 173.8349
+USE_MOL_MASS(5)   = .TRUE.
+EFFECT(5)         = .TRUE.
+OUTPUT(5)         = .TRUE.
+WATER_CON_CHN(5)  = 'import_grid','airsea04_CH2BR2_sea',
+SATURATION(5)     = .FALSE.
+!**************************************
+/

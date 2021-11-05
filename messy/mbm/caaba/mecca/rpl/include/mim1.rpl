@@ -1,0 +1,253 @@
+// -*- kpp -*- kpp mode for emacs
+
+#REPLACE <G4*>
+// 1C (#G41nn)
+<G4100>  CH4     + O1D     = .75 CH3O2 + .75 OH + .25 HCHO + .4 H + .05 H2 {+ 638. kJmol} : {%UpStG}    1.75E-10{§1.15}; {&2626}
+<G4101>  CH4     + OH {+O2}= CH3O2 + H2O       : {%StTrG}  1.85E-20{§1.2}*EXP(2.82*LOG(temp)-987./temp); {&1627}
+<G4102>  CH3OH   + OH      = HCHO + HO2        : {%TrG}    2.9E-12{§1.10}*EXP(-345./temp); {&2626}
+<G4103>  CH3O2   + HO2     = CH3OOH + O2       : {%StTrG}  4.1E-13{§1.3}*EXP(750./temp); {&2626} // \citet{1945} recommend a zero product yield for \chem{HCHO}.
+<G4104>  CH3O2   + NO      = HCHO + NO2 + HO2  : {%UpStTrG} 2.8E-12{§1.15}*EXP(300./temp); {&2626}
+<G4105>  CH3O2   + NO3     = HCHO + HO2 + NO2  : {%TrG}   1.3E-12{§§0.3}; {&1759}
+<G4106a> CH3O2   + CH3O2   = 2 HCHO + 2 HO2    : {%StTrG}  9.5E-14{§1.2}*EXP(390./temp)/(1.+1./26.2*EXP(1130./temp)); {&2626}
+<G4106b> CH3O2   + CH3O2   = HCHO + CH3OH + O2 : {%StTrG}  9.5E-14{§1.2}*EXP(390./temp)/(1.+26.2*EXP(-1130./temp)); {&2626}
+<G4107>  CH3OOH  + OH      = .7 CH3O2 + .3 HCHO + .3 OH + H2O : {%StTrG} k_CH3OOH_OH; {&1745}
+<G4108>  HCHO    + OH      = CO + H2O + HO2    : {%StTrG}  9.52E-18{§1.05}*EXP(2.03*LOG(temp)+636./temp); {&1634}
+<G4109>  HCHO    + NO3     = HNO3 + CO + HO2   : {%TrG}   3.4E-13{§1.3}*EXP(-1900./temp); {&2626} // The same temperature dependence assumed as for \kpp{CH3CHO}+\kpp{NO3}. At 298 K, $k=5.8\E{-16}$.
+<G4110>  CO      + OH      = H + CO2        {+ 103. kJmol}   : {%UpStTrG}  (1.57E-13+cair*3.54E-33){§1.15}; {&1628}
+<G4111>  HCOOH   + OH {+O2}= CO2 + HO2 + H2O   : {%TrG}    4.0E-13{§1.2}; {&2626}
+<G4112>  CO      + O3P {+M}= CO2       {+ 516. kJmol}        : {%UpG} 6.60E-33*EXP(-1103./temp); {&2615}
+<G4113>  CH4     + O3P {+O2}= CO + 2 OH + H2O {+ 638. kJmol} : {%UpG} 3.50E-11*EXP(-4550./temp); {&2615}
+
+// 2C (#G42nn)
+<G4200>  C2H6    + OH      = C2H5O2 + H2O       : {%TrG}  1.49E-17{§}*temp*temp*EXP(-499./temp); {&1627}
+<G4201>  C2H4    + O3      = HCHO + .63 CO + .13 HO2 + 0.23125 HCOOH + 0.13875 HCHO + 0.13875 H2O2 + .13 OH : {%TrG} 1.2E-14{§1.25}*EXP(-2630./temp); {&2626} // The product distribution is from \citet{2419}, after substitution of the Criegee intermediate by its decomposition products.
+<G4202>  C2H4    + OH {+M} = .6666667 LHOC3H6O2    : {%TrG}   k_3rd(temp,cair,1.0E-28,4.5,7.5E-12,0.85,0.6){§1.2}; {&2626}
+<G4203>  C2H5O2  + HO2     = C2H5OOH            : {%TrG}  7.5E-13{§1.5}*EXP(700./temp); {&2626}
+<G4204>  C2H5O2  + NO      = CH3CHO + HO2 + NO2 : {%TrG} 2.6E-12{§1.2}*EXP(365./temp); {&2626}
+<G4205>  C2H5O2  + NO3     = CH3CHO + HO2 + NO2 : {%TrG} 2.3E-12{§}; {&1745}
+<G4206>  C2H5O2    + CH3O2   = .75 HCHO + HO2 + .75 CH3CHO + .25 CH3OH {+.25EtOH} : {%TrG} 1.6E-13*EXP(195./temp); // The product \chem{C_2H_5OH}, which reacts only with OH, is substituted by its degradation products $\approx$ 0.1 \kpp{HOCH2CH2O2} + 0.9 \kpp{CH3CHO} + 0.9 \kpp{HO2}.
+<G4207>  C2H5OOH   + OH      = .3 C2H5O2 + .7 CH3CHO + .7 OH      : {%TrG} k_CH3OOH_OH; // Same value as for G4107
+<G4208>  CH3CHO  + OH      = CH3CO3 + H2O       : {%TrG}   4.4E-12{§§0.08}*EXP(365./temp); {&1759}
+<G4209>  CH3CHO  + NO3     = CH3CO3 + HNO3          : {%TrG}  1.4E-12*EXP(-1900./temp); {&2626}
+<G4210>  CH3CO2H + OH {+O2}= CH3O2  + CO2 + H2O : {%TrG}  4.2E-14{§§0.15}*EXP(855./temp); {&1759}
+<G4211a> CH3CO3  + HO2     = CH3CO3H            : {%TrG}  4.3E-13{§}*EXP(1040./temp)/(1.+1./37.*EXP(660./temp)); {&1613}
+<G4211b> CH3CO3  + HO2     = CH3CO2H + O3       : {%TrG}  4.3E-13{§}*EXP(1040./temp)/(1.+37.*EXP(-660./temp)); {&1613}
+<G4212>  CH3CO3  + NO {+O2}= CH3O2 + CO2 + NO2  : {%TrG} 8.1E-12{§}*EXP(270./temp); {&1613}
+<G4213>  CH3CO3      + NO2     = PAN                : {%TrG}  k_CH3CO3_NO2; {&2626} // The rate coefficient is: \code{k_CH3CO3_NO2} = \code{k_3rd(temp,cair,9.7E-29,5.6,9.3E-12,1.5,0.6)}.
+<G4214>  CH3CO3  + NO3     = CH3O2 + NO2 + CO2  : {%TrG} 4.E-12{§}; {&1617}
+<G4215a> CH3CO3      + CH3O2   = HCHO + HO2 + CH3O2 + CO2      : {%TrG} 0.9{§1.5}*2.0E-12*EXP(500./temp); {&2626}
+<G4215b> CH3CO3      + CH3O2   = CH3CO2H + HCHO                : {%TrG} 0.1{§1.5}*2.0E-12*EXP(500./temp); {&2626}
+<G4216>  CH3CO3      + C2H5O2    = .82 CH3O2 + CH3CHO + .82 HO2 + .18 CH3CO2H : {%TrG} 4.9E-12*EXP(211./temp); {&1745, 1632}
+<G4217>  CH3CO3      + CH3CO3      = 2 CH3O2 + 2 CO2 + O2          : {%TrG} 2.5E-12*EXP(500./temp); {&1613}
+<G4218>  CH3CO3H + OH      = CH3CO3 + H2O          : {%TrG} 0.6*k_CH3OOH_OH; {&2419}
+<G4219>  NACA    + OH      = NO2 + HCHO + CO    : {%TrG}  5.6E-12*EXP(270./temp); {&1614}
+<G4220>  PAN     + OH      = HCHO + CO + NO2 + H2O : {%TrG}  9.50E-13{§}*EXP(-650./temp); {&2419}
+<G4221>  PAN     {+M}      = CH3CO3 + NO2          : {%TrG}    k_PAN_M; {&2626} // The rate coefficient is}{\code{k_PAN_M} = \code{k_CH3CO3_NO2/9.E-29*EXP(-14000./temp)}, i.e.\ the rate coefficient is defined as backward reaction divided by equilibrium constant.
+<G4222>  C2H2    + OH      = CH3O2              : {%TrG} k_3rd(temp,cair,5.5e-30,0.0,8.3e-13,-2.,0.6){§1.1}; {&2626}
+
+// 3C (#G43nn)
+<G4300>  C3H8    + OH      = .82 IC3H7O2 + .18 C2H5O2 + H2O     : {%TrG} 1.65E-17*temp*temp*EXP(-87./temp); {&1627}
+<G4301>  C3H6    + O3      = .57 HCHO + .47 CH3CHO + .33 OH + .26 HO2 + .07 CH3O2 + .06 C2H5O2 + .23 CH3CO3 + .04 MGLYOX + .06 CH4 + .31 CO + .22 HCOOH + .03 CH3OH                  : {%TrG} 6.5E-15{§1.15}*EXP(-1900./temp); {&2626}
+<G4302>  C3H6    + OH {+M} = LHOC3H6O2            : {%TrG}   k_3rd(temp,cair,8.E-27,3.5,3.E-11,0.,0.5); {&1745}
+<G4303>  C3H6    + NO3     = LC4H9NO3              : {%TrG}  4.6E-13*EXP(-1155./temp); {&1745}
+<G4304>  IC3H7O2    + HO2     = IC3H7OOH             : {%TrG}   k_PrO2_HO2; {&964}
+<G4305>  IC3H7O2    + NO      = .96 CH3COCH3 + .96 HO2 + .96 NO2 + .04 IC3H7NO3                  : {%TrG} k_PrO2_NO; {&1745}
+<G4306>  IC3H7O2    + CH3O2   = CH3COCH3 + .8 HCHO + .8 HO2 + .2 CH3OH                  : {%TrG} k_PrO2_CH3O2; {&1632}
+<G4307>  IC3H7OOH   + OH      = .3 IC3H7O2 + .7 CH3COCH3 + .7 OH  : {%TrG} k_CH3OOH_OH; // Same value as for G4107
+<G4308>  LHOC3H6O2  + HO2     = LHOC3H6OOH           : {%TrG}   6.5E-13*EXP(650./temp); {&803}
+<G4309>  LHOC3H6O2  + NO      = .98 CH3CHO + .98 HCHO + .98 HO2 + .98 NO2 + .02 LC4H9NO3                  : {%TrG} 4.2E-12*EXP(180./temp); {&803}
+<G4310>  LHOC3H6OOH + OH      = .5 LHOC3H6O2 + .5 ACETOL + .5 OH + H2O                  : {%TrG} 3.8E-12*EXP(200./temp); {&803}
+<G4311>  CH3COCH3 + OH     = CH3COCH2O2 + H2O      : {%TrG}   1.33E-13+3.82E-11*EXP(-2000./temp){§}; {&2626}
+<G4312>  CH3COCH2O2  + HO2 = HYPERACET                               : {%TrG} 8.6E-13{§}*EXP(700./temp); {&1613}
+<G4313>  CH3COCH2O2  + NO  = CH3CO3 + HCHO + NO2                     : {%TrG} 2.9E-12{§1.5}*EXP(300./temp); {&2626}
+<G4314>  CH3COCH2O2  + CH3O2   = .5 MGLYOX + .5 CH3OH + .3 CH3CO3 + .8 HCHO + .3 HO2 + .2 ACETOL                  : {%TrG} 7.5E-13*EXP(500./temp); {&1613}
+<G4315>  HYPERACET   + OH      = .3 CH3COCH2O2 + .7 MGLYOX + .7 OH   : {%TrG} k_CH3OOH_OH; // Same value as for G4107
+<G4316>  ACETOL  + OH      = MGLYOX + HO2    : {%TrG}   2.15E-12*EXP(305./temp); {&2156}
+<G4317>  MGLYOX + OH     = CH3CO3 + CO           : {%TrG}   8.4E-13*EXP(830./temp); {&1616}
+<G4320>  IC3H7NO3  + OH      = CH3COCH3 + NO2    : {%TrG}  6.2E-13*EXP(-230./temp); {&1745}
+
+// 4C (#G44nn)
+<G4400>  NC4H10   + OH      = LC4H9O2 + H2O      : {%TrG}   1.81E-17*temp*temp*EXP(114./temp); {&1627}
+<G4401>  LC4H9O2  + CH3O2   = .88 MEK + .68 HCHO + 1.23 HO2 + .12 CH3CHO + .12 C2H5O2 + .18 CH3OH : {%TrG} k_PrO2_CH3O2; // Same value as for G4306
+<G4402>  LC4H9O2  + HO2     = LC4H9OOH           : {%TrG}   k_PrO2_HO2; // Same value as for G4304
+<G4403>  LC4H9O2  + NO      = .84 NO2 + .56 MEK + .56 HO2 + .28 C2H5O2 + .28 CH3CHO + .16 LC4H9NO3 : {%TrG} k_PrO2_NO; // Same value as for G4305
+<G4404>  LC4H9OOH + OH      = .15 LC4H9O2 + .85 MEK + .85 OH + .85 H2O                  : {%TrG} k_CH3OOH_OH; // Same value as for G4107
+<G4405>  MVK     + O3      = .45 HCOOH + .9 MGLYOX + .1 CH3CO3 + .19 OH + .22 CO + .32 HO2                  : {%TrG} .5*(1.36E-15*EXP(-2112./temp)+7.51E-16*EXP(-1521./temp)); {&1614}
+<G4406>  MVK     + OH      = MVKO2             : {%TrG}   .5*(4.1E-12*EXP(452./temp)+1.9E-11*EXP(175./temp)); {&1614}
+<G4407>  MVKO2   + HO2     = MVKOOH            : {%TrG}   1.82E-13*EXP(1300./temp); {&1614}
+<G4408>  MVKO2   + NO      = NO2 + .25 CH3CO3 + .25 ACETOL + .75 HCHO + .25 CO + .75 HO2 + .5 MGLYOX : {%TrG} 2.54E-12*EXP(360./temp); {&1614}
+<G4409>  MVKO2   + NO2     = MPAN              : {%TrG}  .25*k_3rd(temp,cair,9.7E-29,5.6,9.3E-12,1.5,0.6); {&1614}
+<G4410>  MVKO2   + CH3O2   = .5 MGLYOX + .375 ACETOL + .125 CH3CO3 + 1.125 HCHO + .875 HO2 + .125 CO + .25 CH3OH                  : {%TrG} 2.E-12; {&1612}
+<G4411>  MVKO2   + MVKO2   = ACETOL + MGLYOX + .5 CO + .5 HCHO + HO2                  : {%TrG} 2.E-12; {&1614}
+<G4412>  MVKOOH  + OH      = MVKO2             : {%TrG}   3.E-11; {&1614}
+<G4413>  MEK     + OH      = LMEKO2             : {%TrG}   1.3E-12*EXP(-25./temp); {&1745}
+<G4414>  LMEKO2   + HO2     = LMEKOOH            : {%TrG}   k_PrO2_HO2; // Same value as for G4304
+<G4415>  LMEKO2   + NO      = .985 CH3CHO + .985 CH3CO3 + .985 NO2 + .015 LC4H9NO3 : {%TrG} k_PrO2_NO; // Same value as for G4305
+<G4416>  LMEKOOH  + OH      = .8 BIACET + .8 OH + .2 LMEKO2  : {%TrG} k_CH3OOH_OH; // Same value as for G4107
+<G4417>  LC4H9NO3    + OH      = MEK + NO2 + H2O   : {%TrG}  1.7E-12; {&1745}
+<G4418>  MPAN    + OH      = ACETOL + NO2      : {%TrG}  3.2E-11; {&1629}
+<G4419>  MPAN    {+M}      = MVKO2 + NO2       : {%TrG}  k_PAN_M; // Same value as for G4221
+
+// 5C (#G45nn)
+<G4500>  C5H8  + O3        = .28 HCOOH + .65 MVK + .1 MVKO2  + .1 CH3CO3 + .14 CO + .58 HCHO + .09 H2O2 + .08 CH3O2 + .25 OH + .25 HO2                  : {%TrG} 7.86E-15*EXP(-1913./temp); {&1614}
+<G4501>  C5H8  + OH        = ISO2              : {%TrG}   2.54E-11*EXP(410./temp); {&1614}
+<G4502>  C5H8  + NO3       = ISON              : {%TrG}  3.03E-12*EXP(-446./temp); {&1614}
+<G4503>  ISO2  + HO2       = ISOOH             : {%TrG}   2.22E-13*EXP(1300./temp); {&1630}
+// set ISON yield to 4.4% again, i.e. back to ref1614 (Poeschl et al., 2000):
+<G4504> ISO2 + NO = .956 NO2 + .956 MVK + .956 HCHO + .956 HO2 + .044 ISON : {%TrG} 2.54E-12*EXP(360./temp); {&1614}
+<G4505>  ISO2  + CH3O2     = .5 MVK + 1.25 HCHO + HO2 + .25 MGLYOX + .25 ACETOL + .25 CH3OH                  : {%TrG} 2.E-12; {&1612}
+<G4506>  ISO2  + ISO2      = 2 MVK + HCHO + HO2 : {%TrG}  2.E-12; {&1614}
+<G4507>  ISOOH + OH        = MVK + OH          : {%TrG}   1.E-10; {&1614}
+<G4508>  ISON  + OH        = ACETOL + NACA     : {%TrG}  1.3E-11; {&1614}
+#ENDREPLACE
+
+#REPLACE <G6400>
+<> Cl      + CH4    = HCl + CH3O2       : {%StTrG}  6.6E-12*EXP(-1240./temp); {&1759}
+#ENDREPLACE
+
+#REPLACE <G6409>
+<> Cl      + C2H4   = .6666667 LHOC3H6O2 + HCl : {%TrG}    k_3rd_iupac(temp,cair,1.85E-29,3.3,6.0E-10,0.0,0.4); {&1759}
+#ENDREPLACE
+
+#REPLACE <G6410>
+<> Cl      + CH3CHO = HCl + CH3CO3      : {%TrG}   8.0e-11; {&1759}
+#ENDREPLACE
+
+// mz_rs_20160307+
+// reaction is deleted anyway, see below...
+// #REPLACE <G6415>
+// <> Cl + CH3O2  = .5 ClO + .5 HCHO + .5 HO2 + .5 HCl + .5 CH2OO : {%StTrG} 1.6E-10{§1.5}; {&2626}
+// #ENDREPLACE
+// mz_rs_20160307-
+
+#REPLACE <G7402>
+<a> BrO  + CH3O2    = HOBr + HCHO      : {%TrG}   f_BrO_CH3O2*5.7E-12{5.7+/-0.6}; {&822}
+<b> BrO  + CH3O2    = Br + HCHO + HO2  : {%TrG}   (1.-f_BrO_CH3O2)*5.7E-12{5.7+/-0.6}; {&822}
+#ENDREPLACE
+
+#REPLACE <G7404>
+<> Br   + C2H4     = .6666667 LHOC3H6O2 + HBr : {%TrG} 2.8E-13*EXP(224./temp)/(1.+1.13E24*EXP(-3200./temp)/C(ind_O2)); {&1759}
+#ENDREPLACE
+
+#REPLACE <G7405>
+<> Br   + CH3CHO   = HBr + CH3CO3     : {%TrG}  1.8e-11*EXP(-460./temp); {&1759}
+#ENDREPLACE
+
+#REPLACE <G9402>
+<> DMSO   + OH    = .6 SO2 +  HCHO + .6 CH3O2 + .4 HO2 + .4 CH3SO3H : {%TrG} 1.E-10{1.0+/-0.3}; {&746}
+#ENDREPLACE
+
+#REPLACE <G9403>
+<> CH3SO2         = SO2 + CH3O2         : {%TrG}   1.8E13*EXP(-8661./temp); {&749}
+#ENDREPLACE
+
+#REPLACE <J4*>
+// 1C (#J41nn)
+<J4100>  CH3OOH      + hv = HCHO + OH + HO2       : {%StTrGJ} jx(ip_CH3OOH){§}; {&2342}
+<J4101a> HCHO        + hv = H2 + CO               : {%StTrGJ} jx(ip_COH2){§}; {&2342}
+<J4101b> HCHO        + hv = H + CO + HO2          : {%StTrGJ} jx(ip_CHOH){§}; {&2342}
+<J4102>  CO2         + hv = CO + O3P              : {%StGJ}   jx(ip_CO2){§}; {&2342}
+<J4103>  CH4         + hv = CO + 0.31 H + 0.69 H2 + 1.155 H2O : {%StGJ} jx(ip_CH4){§}; {&2342}
+
+// 2C (#J42nn)
+<J4200>  C2H5OOH     + hv = CH3CHO + HO2 + OH     : {%TrGJ}  jx(ip_CH3OOH){§}; {&1612}
+<J4201>  CH3CHO      + hv = CH3O2 + HO2 + CO      : {%TrGJ}  jx(ip_CH3CHO){§}; {&2342}
+<J4202>  CH3CO3H     + hv = CH3O2 + OH  + CO2     : {%TrGJ}  jx(ip_CH3CO3H){§}; {&2342}
+<J4203>  NACA        + hv = NO2 + HCHO + CO       : {%TrGJ} 0.19*jx(ip_CHOH); {&1612}
+<J4204>  PAN         + hv = CH3CO3 + NO2          : {%TrGJ} jx(ip_PAN){§}; {&2342}
+
+// 3C (#J43nn)
+<J4300>  IC3H7OOH    + hv = CH3COCH3 + HO2 + OH      : {%TrGJ}  jx(ip_CH3OOH){§}; {&1612}
+<J4301>  CH3COCH3    + hv = CH3CO3 + CH3O2           : {%TrGJ}  jx(ip_CH3COCH3){§}; {&2342}
+<J4302>  ACETOL      + hv = CH3CO3 + HCHO + HO2      : {%TrGJ}  0.074*jx(ip_CHOH); // It is assumed that J(\kpp{ACETOL}) is 0.074 times that of J4101b.
+<J4303>  MGLYOX      + hv = CH3CO3 + CO + HO2        : {%TrGJ}  jx(ip_MGLYOX){§}; {&2342}
+<J4304>  HYPERACET   + hv = CH3CO3 + HCHO + OH       : {%TrGJ}  jx(ip_CH3OOH){§}; // It is assumed that J(\kpp{HYPERACET}) is the same as J(\kpp{CH3OOH}).
+<J4306>  IC3H7NO3    + hv = CH3COCH3 + NO2 + HO2     : {%TrGJ} 3.7*jx(ip_PAN); {&1584} // Following \citet{1584}, we use J(\kpp{IC3H7NO3}) = \code{3.7*jx(ip_PAN)}.
+
+// 4C (#J44nn)
+<J4400>  LC4H9OOH + hv = OH + .67 MEK + .67 HO2 + .33 C2H5O2 + .33 CH3CHO : {%TrGJ} jx(ip_CH3OOH); {&2419}
+<J4401>  MVK     + hv = CH3CO3 + HCHO + CO + HO2       : {%TrGJ}  0.019*jx(ip_COH2)+.015*jx(ip_MGLYOX); {&2342}
+<J4402>  MVKOOH  + hv = OH + .5 MGLYOX + .25 ACETOL + .75 HCHO + .75 HO2 + .25 CH3CO3 + .25 CO : {%TrGJ} jx(ip_CH3OOH); // It is assumed that J(\kpp{MVKOOH}) is the same as J(\kpp{CH3OOH}).
+<J4403>  MEK     + hv = CH3CO3 + C2H5O2                  : {%TrGJ}  0.42*jx(ip_CHOH); {&1584}
+<J4404>  LMEKOOH  + hv = CH3CO3 + CH3CHO + OH           : {%TrGJ}  jx(ip_CH3OOH); {&2419}
+<J4405>  BIACET  + hv = 2 CH3CO3                       : {%TrGJ}  2.15*jx(ip_MGLYOX); // It is assumed that J(\kpp{BIACET}) is 2.15 times larger than J(\kpp{MGLYOX}), consistent with the photolysis rate coefficients used in the MCM \citep{2419}.
+<J4406>  LC4H9NO3    + hv = NO2 + .67 MEK + .67 HO2 + .33 C2H5O2 + .33 CH3CHO : {%TrGJ} 3.7*jx(ip_PAN); {&1612}
+<J4407>  MPAN        + hv = ACETOL + NO2             : {%TrGJ} jx(ip_PAN); // It is assumed that J(\kpp{MPAN}) is the same as J(\kpp{PAN}).
+
+// 5C (#J45nn)
+<J4500>  ISOOH   + hv = MVK + HCHO + HO2 + OH      : {%TrGJ}  jx(ip_CH3OOH); // It is assumed that J(\kpp{ISOOH}) is the same as J(\kpp{CH3OOH}).
+<J4501>  ISON    + hv = MVK + HCHO + NO2 + HO2     : {%TrGJ} 3.7*jx(ip_PAN); {&1612}
+#ENDREPLACE
+
+// +++ correct chlorine yield +++++++++++++++++++++++++++++++++++++++++
+// 0.09 LCHLORINE added to Cl; this option requires adaptation of
+// all dependent diagtrac-files ...
+//#REPLACE <G6405>
+//<> CH3Cl   + O1D    = 0.1 CH3Cl + 0.1 O3P + 0.46 ClO + 0.44 Cl + 0.09 H + 0.9 LCARBON {+...} : {%StG} 1.65E-10{§}; {&3245}
+//#ENDREPLACE
+// ... therefore we chose the more simple solution
+#REPLACE <G6405>
+<> CH3Cl   + O1D    = OH + Cl {+...}    : {%StG}    1.65E-10{§}; //  \citet{1945}, but simplified shortcut to release all Cl 
+#ENDREPLACE
+
+// assume 100% Cl release
+#REPLACE <J6500>
+<> CFCl3   + hv = 3 Cl + LCARBON + LFLUORINE : {%StGJ}    jx(ip_CFCl3){§}; {&2342}
+#ENDREPLACE
+
+// assume 100% Cl release
+#REPLACE <J6501>
+<> CF2Cl2  + hv = 2 Cl +  LCARBON + 2 LFLUORINE : {%StGJ}    jx(ip_CF2Cl2){§}; {&2342}
+#ENDREPLACE
+
+// assume that Cl is released as well
+#REPLACE <G7605>
+<>  CHCl2Br + OH    = LCARBON + 2 Cl + H2O + Br   {+CH3O2} : {%TrG} 2.0E-12*EXP(-840./temp); // Same value as for G7408: \kpp{CH2Br2}+\kpp{OH} assumed. It is assumed that the reaction liberates all \kpp{Br} and all \kpp{Cl}. The fate of the carbon atom is currently not considered.
+#ENDREPLACE
+
+// assume that Cl is released as well
+#REPLACE <G7606>
+<> CHClBr2 + OH    = LCARBON + Cl + H2O + 2 Br {+CH3O2} : {%TrG} 2.0E-12{§}*EXP(-840./temp); // Same value as for G7408: \kpp{CH2Br2}+\kpp{OH} assumed. It is assumed that the reaction liberates all \kpp{Br} atoms and also \kpp{Cl}. The fate of the carbon atom is currently not considered.
+#ENDREPLACE
+
+// assume that Cl is releases as well
+#REPLACE <G7607>
+<> CH2ClBr + OH    = LCARBON + Cl + H2O + Br   {+CH3O2} : {%TrG} 2.1E-12{§1.07}*EXP(-880./temp); {&3245} // It is assumed that the reaction liberates all \kpp{Br} atoms and also \kpp{Cl}. The fate of the carbon atom is currently not considered.
+#ENDREPLACE
+// --------------------------------------------------------------------------
+
+#REPLACE <J6400>
+<> CH3Cl   + hv = Cl + CH3O2          : {%StGJ}     jx(ip_CH3Cl){§}; {&2342}
+#ENDREPLACE
+
+#REPLACE <J7400>
+<> CH3Br   + hv = Br + CH3O2          : {%StGJ}     jx(ip_CH3Br); {&2342}
+#ENDREPLACE
+
+// remove
+#REPLACE <G9409>
+#ENDREPLACE
+
+#REPLACE <G9410>
+#ENDREPLACE
+
+#REPLACE <G9411>
+#ENDREPLACE
+
+#REPLACE <G9408>
+#ENDREPLACE
+
+#REPLACE <G6413>
+#ENDREPLACE
+
+#REPLACE <G6414>
+#ENDREPLACE
+
+#REPLACE <G6415>
+#ENDREPLACE
+
+#REPLACE <G6416>
+#ENDREPLACE
+
+#REPLACE <G9412>
+#ENDREPLACE

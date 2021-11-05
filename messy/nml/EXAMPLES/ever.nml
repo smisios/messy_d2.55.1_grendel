@@ -1,0 +1,57 @@
+! -*- f90 -*-
+&CPL
+!
+l_gmxe = T,
+!l_tf_corr = T,
+!
+! ### LIST OF AEROSOL EMISSION PARAMETERS SETS
+! ###     - includes all information needed to derive the increase in number concentration
+! ###       of the log-normal size distribution based on the emitted mass for aerosols
+! ###
+! ### diameter: median diameter of the log-normal distribution in m
+! ###
+! ### sigma:    width of log-normal distribution of aerosol size distribution,
+! ###           only needed when GMXe is not used or should be overwritten;
+! ###           has to be set when l_gmxe = FALSE OR USE_GMXe = FALSE in switch
+! ###
+! ### mode:     mode in which the aerosols are emitted;
+! ###           has to match one of the modes in GMXe, should always be checked;
+! ###           DEFAULT: 'ns;ks;as;cs;ki;ai;ci';
+! ###           has to be set when l_gmxe = TRUE AND USE_GMXe = TRUE in switch
+! ### 
+! ### !!IMPORTANT!! Either sigma of mode has to be filled, see rules above
+!
+! SYNTAX:
+!   'parameter-set-name', density[g/cm3], diameter[m], sigma(semi-optional), mode (GMXe, semi-optional) 
+!
+!
+AER(1) = 'Ash_1um', 2.5, 1e-06, 0.5, 'ai',
+AER(2) = 'Ash_6um', 2.5, 6e-06, 0.8, 'ci',
+!
+! ### LIST OF VOLCANIC ERUPTIONS
+! ### LON [-180 ... 180], LAT [-90 ... 90]
+! ### SHAPE:
+! ###     = 1 : linear vertical distribution
+! ###     = 2 : Gaussian vertical distribution
+! ### MEAN ALTITUDE: mean value of vertical distribution (only needed for Gaussian -> shape 2)
+! ### SIGMA_VERTICAL: width of vertial distribution (only needed for Gaussian -> shape 2)
+! ###
+! ### IMPORTANT: LENGTH OF ;-separated lists have to be identically, otherwise eruption will be skipped
+! SYNTAX:
+!   LON, LAT,
+!   SHAPE, MIN ALTITUDE [km], MAX ALTITUDE [km], 
+!   MEAN ALTITUDE [km], SIGMA_VERTICAL [km],
+!   YYYY, MM, DD, HH, MI, SE, YYYY, MM, DD, HH, MI, SE,
+!   |=======================| |======================|
+!            START                    STOP             
+!   ';-separated list of tracers', ';-sep. masses of tracers [Tg]', ';-sep. parameter sets for aerosol tracers (empty for non-aerosols species)'
+!
+!
+! ERUPTIONS
+POINT(1) =  14.995, 37.775,
+            1,9,11,
+            10,1,
+            2017,01,03,00,00,00,2017,01,04,00,00,00, 
+            'SO2;DU_ai;DU_ci','0.26;0.3;0.09',';Ash_1um;Ash_6um',
+
+/

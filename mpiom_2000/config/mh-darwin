@@ -1,0 +1,28 @@
+# Mac OS X and its free operating system base
+#   with libraries installed by fink
+ARCH = darwin
+case "$mh_setup" in
+# someone with a license should perhaps
+# add setups for xlc on ppc and ifort on intel here
+  gfortran*|*)
+    NETCDFROOT = /sw/lib/netcdf-gfortran
+    MPIROOT = /sw
+    MPI_LIB = -lmpi_f90 -lmpi_f77 -lmpi
+    FC     = gfortran
+    FCFLAGS = -fconvert=big-endian -x f95-cpp-input -std=f2003
+    case "$mh_setup" in
+      gfortran-debug)
+        FCFLAGS = -Wnonstd-intrinsics -Waliasing -Wampersand -Wline-truncation -Wcharacter-truncation -Wtabs -Wunderflow -Wconversion -g $FCFLAGS
+	CFLAGS=-g -DNAGf90Fortran
+        ;;
+      *)
+        FCFLAGS = -O3 $FCFLAGS
+        ;;
+    esac
+    ;;
+esac
+
+CFLAGS   = ${CFLAGS--O -DNAGf90Fortran}
+
+FPP_DEFOPT = -D
+

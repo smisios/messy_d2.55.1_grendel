@@ -1,0 +1,1697 @@
+#!/bin/bash
+#++
+#
+# A COSMO runscript for setting up idealized cases
+# on different computer platforms (see below)
+#
+# This runscript contains a documented namelist ARTIFCTL
+# in a cookbook-like fashion. In comparison with
+# *run_ideal*, it is a reduced namelist which contains not
+# all namelist parameters, but some more than
+# *run_ideal_hill*. It is intended as a base for the
+# user to experiment a little, e.g., to set
+# up a case with flow over 3 hills, taking into account
+# surface friction and surface heat fluxes.
+#
+#
+# AUTHOR:
+#  Ulrich Blahak, FE 13, DWD
+#  Tel. +49 69 8062 2393
+#  ulrich.blahak@dwd.de
+#
+# HISTORY:
+# Version      Date       Name
+# ------------ ---------- ----
+# V4_17        2011/02/24 Ulrich Blahak
+#  Initial release
+# V4_20        2011/08/31 Ulrich Blahak
+#  Adaptation to modified src_artifdata
+#  Adaptation to changed namelist parameters
+#   in "the rest" of the model
+#  Introduced function "sichere_src" to copy
+#   all necessary files for reproduction of the run
+#   into the output directory.
+#   (src-code in a tar-ball, Makefiles, runscript,
+#   rasofile if necessary)
+#  Introduced new platform "xc2kit", one of the KIT supercomputers
+# V4_25        2012/09/28 Ulrich Blahak
+#  Added new TUNING parameters mu_rain and rain_n0_factor
+#  Added new namelist parameter itype_fast_waves, changed choice
+#   of fast waves solver for RK from old to new itype_fast_waves=2.
+#  Removed obsolete namelist parameters lprogprec and ltrans_prec.
+# @VERSION@    @DATE@     Ulrich Blahak
+#  Renamed hd_corr_q_XX --> hd_corr_trcr_XX
+#  Renamed itype_bbc_w from 14 (no longer valid) to 114 (new valid value)
+#  Eliminated no longer existing parameter ysystem
+#  Added new namelist parameter t_surf_c to initialize the surface temperature
+#   t_s to a value differently from the lowest atmosphere temperature.
+#   Takes effect:    1) at all sea and lake points for both lsoil=.true. and .false.,
+#                    2) everywhere if lsoil=.false., 
+#                    3) at land points if lsoil=.true. and t_soil_c < 0
+#
+#--
+#
+#
+#===========================================================================
+#===========================================================================
+# The COSMO Job for an idealized case.
+# The namelist settings below do NOT represent any "standard"
+# COSMO configuration such as "COSMO-DE" or "COSMO-EU". It is
+# YOUR responsibility that the chosen values make sense. Please
+# consult the documentation or seek help with a more experienced
+# COSMO user!
+#===========================================================================
+#===========================================================================
+
+#===============================================================================
+#===============================================================================
+#
+#  BEGIN OF USER PARAMETER SETTINGS
+#
+#===============================================================================
+#===============================================================================
+
+#===========================================================================
+#
+#  Which machine are we on?
+#
+#  machine='xc2kit'   --> XC2 at KIT Karlsruhe
+#  machine='sx9dwd'   --> SX9 at DWD Offenbach
+#  machine='sx8dwd'   --> SX8r at DWD Offenbach
+#  machine='ibmham'   --> IBM at DKRZ Hamburg
+#  machine='localpc'   --> a local PC
+#
+#===========================================================================
+
+machine='sx9dwd'
+#machine='ibmham'
+#machine='localpc'
+#machine='xc2kit'
+
+#===========================================================================
+#
+#  Number of Processors (PEs):
+#
+#===========================================================================
+
+# in X-dir:
+NPX=1
+# in Y-dir:
+NPY=1
+# PEs For asynchroneous IO (normally 0):
+NPIO=0
+
+
+#===========================================================================
+# Root-directory of the model src-code (for backup).
+# This is the master directory of the model source, i.e,
+# where the directories src/ and obj/ reside.
+#===========================================================================
+
+lmcodedir=..
+
+#===========================================================================
+#
+#  Names of the executable and files for stdout/stderr:
+#
+#===========================================================================
+
+
+lmexecutable=${lmcodedir}/tstlm_f90
+lmoutput=lm.out
+lmerrput=lm.err
+jobname_in_queue=lmtest
+
+#===========================================================================
+#
+# if itype_artifprofiles = 1 (idealized runs) the following radiosonde file
+# will be used for initial profiles:
+#
+#===========================================================================
+
+rasopfad=`pwd`
+rasodatei=${rasopfad}/raso_wk_q14_u05.dat
+
+
+#===========================================================================
+#
+# model start time (provide dummy time in case of idealized runs)
+# in Format YYYYMMDDHH
+#
+#===========================================================================
+
+modelstarttime=2003032100
+
+
+#===========================================================================
+# Output directory:
+#===========================================================================
+
+outputdir=~/TEMP/COSMO/IDEAL_3HILLS
+
+# NOTE: If the output directory exists, the name will be incremented by a 
+# counter to avoid unwanted data losses!
+
+
+#===========================================================================
+# Input directory (not needed for idealized cases):
+#===========================================================================
+
+inputdir=$WORK/COSMO/IDEAL_3HILLS_IN
+
+
+#===========================================================================
+# Machine dependent settings:
+#===========================================================================
+
+
+if [ ${machine}0 = sx9dwd0 ]
+then
+
+    jobklasse=normal   # SX9
+
+    # maxcputime in s, max. allowed 86400 s, that is 24 h 0 min:
+    #    maxcputime=24:00:00
+    #    maxmemory=150gb
+    maxcputime=2:00:00
+    maxmemory=40gb
+
+    # Tasks per node: No. of PEs has to be smaller
+    # -- NEC-SX8R nodes have 8 PEs pro Node;  SX9 has 16.
+    # -- IBMs normally have 16, but check in case of doubt.
+    # -- One may choose less than the maximum number, if one wants
+    #    to use only parts of nodes to decrease job waiting time.
+    tasks_per_node=16
+
+    # NEC-SX8R nodes haben 8 Prozessoren pro Node, SX9 16:
+    NP1=`expr $NPX \* $NPY`
+    NP=`expr $NP1 + $NPIO`
+    N1=`expr $NP + $tasks_per_node - 1`
+    NODES=`expr $N1 \/ $tasks_per_node`
+    
+    # Check, if less than or an entire multiple of tasks_per_node are used:
+    if [ $NP -ge $tasks_per_node ]
+    then
+	let CHECKNODES=(NP/tasks_per_node)*tasks_per_node
+    else
+	CHECKNODES=$NP
+    fi
+    if [ $NP -ne $CHECKNODES ]
+    then
+	echo =====================================================
+	echo   The number of processors \($NP\) must be an integer 
+	    echo   multiple of tasks_per_node = $tasks_per_node
+	    echo   Abort!
+	    echo =====================================================
+	    exit 1
+    fi
+
+elif [ ${machine}0 = sx8dwd0 ]
+then
+
+    jobklasse=normal@sx8esiox   # SX8
+
+    # maxcputime in s, max. allowed 86400 s, that is 24 h 0 min:
+    #    maxcputime=24:00:00
+    #    maxmemory=150gb
+    maxcputime=2:00:00
+    maxmemory=5gb
+
+    # Tasks per node: No. of PEs has to be smaller
+    # -- NEC-SX8R nodes have 8 PEs pro Node;  SX9 has 16.
+    # -- IBMs normally have 16, but check in case of doubt.
+    # -- One may choose less than the maximum number, if one wants
+    #    to use only parts of nodes to decrease job waiting time.
+    tasks_per_node=8
+
+    # NEC-SX8R nodes haben 8 Prozessoren pro Node, SX9 16:
+    NP1=`expr $NPX \* $NPY`
+    NP=`expr $NP1 + $NPIO`
+    N1=`expr $NP + $tasks_per_node - 1`
+    NODES=`expr $N1 \/ $tasks_per_node`
+    
+    # Check, if less than or an entire multiple of tasks_per_node are used:
+    if [ $NP -ge $tasks_per_node ]
+    then
+	let CHECKNODES=(NP/tasks_per_node)*tasks_per_node
+    else
+	CHECKNODES=$NP
+    fi
+    if [ $NP -ne $CHECKNODES ]
+    then
+	echo =====================================================
+	echo   The number of processors \($NP\) must be an integer 
+	    echo   multiple of tasks_per_node = $tasks_per_node
+	    echo   Abort!
+	    echo =====================================================
+	    exit 1
+    fi
+
+elif [ ${machine}0 = ibmham0 ]
+then
+
+#    jobklasse=cluster   # IBM
+#    jobklasse=serial   # IBM 1 Proc
+    jobklasse=express   # IBM max. 120 min CPU-time
+
+    # maxcputime in s, max. allowed 86400 s, that is 24 h 0 min:
+    #    maxcputime=24:00:00
+    #    maxmemory=150gb
+    maxcputime=01:00:00
+    maxmemory=750mb
+
+    # Tasks per node: No. of PEs has to be smaller
+    # -- IBM pwr6 nodes have 6644 PEs pro Node.
+    # -- One may choose less than the maximum number, if one wants
+    #    to use only parts of nodes to decrease job waiting time.
+    tasks_per_node=64
+
+    NP1=`expr $NPX \* $NPY`
+    NP=`expr $NP1 + $NPIO`
+    N1=`expr $NP + $tasks_per_node - 1`
+    NODES=`expr $N1 \/ $tasks_per_node`
+    
+    # Check, if less than or an entire multiple of tasks_per_node are used:
+    if [ $NP -ge $tasks_per_node ]
+    then
+	let CHECKNODES=(NP/tasks_per_node)*tasks_per_node
+        NPPN=tasks_per_node
+    else
+	CHECKNODES=$NP
+	NPPN=$NP
+    fi
+    if [ $NP -ne $CHECKNODES ]
+    then
+	echo =====================================================
+	echo   The number of processors \($NP\) must be an integer 
+	    echo   multiple of tasks_per_node = $tasks_per_node
+	    echo   Abort!
+	    echo =====================================================
+	    exit 1
+    fi
+
+elif [ ${machine}0 = xc2kit0 ]
+then
+
+    jobklasse=p #p #d
+
+    maxcputime=120 # maxcputime in min
+    maxmemory=2000 #4000 #maxmemory in mega bytes
+
+    # Tasks per node: No. of PEs has to be smaller
+    # -- NEC-SX8R nodes have 8 PEs pro Node;  SX9 has 16.
+    # -- IBMs normally have 16, but check in case of doubt.
+    # -- One may choose less than the maximum number, if one wants
+    #    to use only parts of nodes to decrease job waiting time.
+    tasks_per_node=4
+
+    # NEC-SX8R nodes haben 8 Prozessoren pro Node, SX9 16:
+    NP1=`expr $NPX \* $NPY`
+    NP=`expr $NP1 + $NPIO`
+    N1=`expr $NP + $tasks_per_node - 1`
+    NODES=`expr $N1 \/ $tasks_per_node`
+
+    # Check, if less than or an entire multiple of tasks_per_node are used:
+    if [ $NP -ge $tasks_per_node ]
+    then
+        let CHECKNODES=(NP/tasks_per_node)*tasks_per_node
+    else
+        CHECKNODES=$NP
+    fi
+    if [ $NP -ne $CHECKNODES ]
+    then
+        echo =====================================================
+        echo   The number of processors \($NP\) must be an integer
+            echo   multiple of tasks_per_node = $tasks_per_node
+            echo   Abort!
+            echo =====================================================
+            exit 1
+    fi
+
+elif [ ${machine}0 = localpc0 ]
+then
+
+    echo Running on local PC ...
+
+    NP1=`expr $NPX \* $NPY`
+    NP=`expr $NP1 + $NPIO`
+
+    if [ $NP -gt 1 ]
+    then
+	echo Specified number of PEs is \> 1, which is wrong!
+	echo Please correct! \(usually NPX=1, NPY=1, NPIO=0 on a local PC\)!
+	exit 1
+    fi
+
+else
+
+    echo
+    echo Unknown machine ${machine}! STOP!
+    echo
+
+fi
+
+#===============================================================================
+#===============================================================================
+#
+#  END OF USER PARAMETER SETTINGS !!!  NOW MODIFY THE NAMELISTS BELOW !!!
+#
+#===============================================================================
+#===============================================================================
+
+
+
+#################################################
+#
+# Set LMDIR and check other parameters:
+#
+#################################################
+
+LMDIR=`pwd`
+
+if [ ! -f  $lmexecutable ]
+then
+    echo
+    echo ERROR: The COSMO-executable
+    echo ==== $lmexecutable ====
+    echo does not exist!
+    echo
+    exit 1
+fi
+
+
+lmrunname=`echo $0 | awk -F/ '{print $NF;}' -`
+lmrunpfad=`pwd`
+
+
+jobdatei=$LMDIR/make_lm_job
+rm -f $jobdatei
+
+
+# If the output directory exists, increment the name by a counter to
+# avoid unwanted data losses:
+let iii=1
+outputdirtmp=$outputdir
+while [ -d $outputdirtmp ]
+do
+  outputdirtmp=${outputdir}_$iii
+  let iii=iii+1
+done
+mkdir -p $outputdirtmp
+outputdir=$outputdirtmp  
+
+ln -sf ${outputdir}/${lmoutput} ${LMDIR}/${lmoutput}
+ln -sf ${outputdir}/${lmerrput} ${LMDIR}/${lmerrput}
+
+if [ ${machine}0 = sx9dwd0 -o ${machine}0 = sx8dwd0 ]
+then
+
+    # Startscript of the parallel jobs (e.g., "mpirun", "startmpi", ...)
+    if [ $NODES -gt 1 ]
+	then
+	parstartscript="mpirun -nn $NODES -nnp ${tasks_per_node}"
+    else
+	parstartscript="mpirun -np $NP"
+    fi
+
+#################################################
+# load leveler commands depending on machine
+#################################################
+
+cat > $jobdatei << markee
+#!/usr/bin/ksh
+#PBS -q ${jobklasse}
+#PBS -l cpunum_job=${NP}
+#PBS -b ${NODES}
+#PBS -l elapstim_req=${maxcputime}
+#PBS -l cputim_prc=${maxcputime}
+#PBS -l memsz_job=${maxmemory}
+###PBS -T mpisx
+#PBS -o ${outputdir}/$lmoutput
+#PBS -e ${outputdir}/$lmerrput
+###PBS -j o      # join stdout/stderr
+#PBS -N ${jobname_in_queue}
+
+markee
+
+elif [ ${machine}0 = ibmham0 ]
+then
+
+    # Startscript of the parallel jobs (e.g., "mpirun", "startmpi", ...)
+    parstartscript=poe
+
+#################################################
+# load leveler commandos
+#################################################
+
+cat > $jobdatei << markee
+
+# @ shell = /client/bin/ksh
+# @ class = ${jobklasse}
+# @ job_type = parallel
+# @ job_name = ${jobname_in_queue}
+# @ node_usage= shared
+# @ network.MPI = sn_all,not_shared,us
+# @ rset = rset_mcm_affinity
+# @ mcm_affinity_options = mcm_accumulate
+# @ node = ${NODES}
+### @ tasks_per_node = 64 # for SMT
+# @ tasks_per_node = ${NPPN}
+# @ resources = ConsumableMemory(${maxmemory})
+#### @ task_affinity = cpu(1) # for SMT
+# @ task_affinity = cpu(1)
+# @ wall_clock_limit = $maxcputime
+# @ output = ${outputdir}/$lmoutput
+# @ error =  ${outputdir}/$lmerrput
+# @ notification     = never
+# @ queue
+
+markee
+
+elif [ ${machine}0 = xc2kit0 ]
+then
+
+    # Startscript of the parallel jobs (e.g., "mpirun", "startmpi", ...)
+    parstartscript="job_submit -c ${jobklasse} -p ${NP} -t ${maxcputime} -m ${maxmemory} \
+                               -o ${outputdir}/${lmoutput} -e ${outputdir}/${lmerrput} -d t time  mpirun"
+
+fi
+
+
+
+###====================================================
+###
+### Local functions:
+###
+###====================================================
+
+sichere_src () {
+
+    #################################################
+    # As first action after submitting the job, 
+    # archive the source code and copy it to
+    # the output directory. This is to prevent
+    # saving changes made to the code (e.g., through normal code development)
+    # between program start and job end.
+    #################################################
+
+    cd ${lmcodedir}
+    tar czf ${outputdir}/lmsrc.tgz src/
+    cp Makefile* Obj* Fopts* ${outputdir}/.
+    
+    cd ${LMDIR}
+    
+    if [ -f ${rasodatei} ]
+    then
+	cp ${rasodatei} ${outputdir}/.
+    fi
+    cp ${lmrunpfad}/${lmrunname} ${outputdir}/.
+    
+
+}
+
+
+#===========================================================================
+#===========================================================================
+#
+#  Generate necessary input files (e.g., namelist files) and start
+#  the model run:
+#
+#  YOU MAY MODIFY THE FOLLOWING NAMELISTS ACCORDING TO YOUR NEEDS !!!
+#
+#===========================================================================
+#===========================================================================
+
+
+
+#################################################
+# global settings
+#################################################
+
+rm -f YU* OUTPUT*
+
+#################################################
+# cat together the INPUT*-files
+#################################################
+
+cat > INPUT_ORG << end_input_org
+ &LMGRID
+  ! Definition of the grid structure:
+  ! dlon = dx / earthradius * (180 / PI); in degrees
+    dlon=0.05,
+  ! dlat = dy / earthradius * (180 / PI); in degrees
+    dlat=0.05,
+    ie_tot=401,
+    je_tot=7,
+    ke_tot=40,
+    startlon_tot=-10.0,
+    startlat_tot=-0.15,
+    pollon=-180.00,
+    pollat=90.00,
+ /
+ &RUNCTL
+    ! Idealized run with artificial initial and lateral boundary conditions and
+    ! possibly other artificial elements like convection triggers?
+    lartif_data=.true.,
+    ! 2D oder 3D ? wenn l2dim=.true., dann je_tot = 7 !!!:
+    l2dim=.true.,
+    ! timestep in sec:
+    dt=30.0,
+    ! Starting hour of the forecast relative to to the starting date ydate_ini below:
+    ! (normally 0.0, except for restart runs)
+    hstart=0.0,
+    ! End hour of the forecast:
+    hstop=24.0,
+    ! Produces additional control output:
+    idbg_level = 5,
+    ldebug_dyn = .true.,
+    ldebug_gsp = .FALSE.,
+    ldebug_rad = .FALSE.,
+    ldebug_tur = .FALSE.,
+    ldebug_con = .FALSE.,
+    ldebug_soi = .FALSE.,
+    ldebug_io  = .FALSE.,
+    ldebug_dia = .FALSE.,
+    ldebug_ass = .FALSE.,
+    ldebug_lhn = .FALSE.,
+    ! Use digital filtering scheme in model initialisation:
+    ldfi=.false.,
+    ! compute syntetic satellite images:
+    luse_rttov=.false.,
+    ! main switch to include diagnostic calculations:
+    ldiagnos=.true.,
+    ! main switch to include physical parameterizations:
+    lphys=.true.,
+    ! Periodic lateral boundary conditions:
+    lperi_x=.true.,
+    lperi_y=.false.,
+! Radiative lateral BCs can be switched on by lradlbc=.true. in namelist DYNCTL!
+!    lradlbc=.true.,
+    ! Type of timing (?)
+    itype_timing = 4,
+    ! type of calendar:
+    itype_calendar = 0,
+    ! set to .true.:
+    lreproduce=.true.,
+    lreorder=.false.,
+    ! main switch to use observations for assimilation purposes:
+    luseobs=.false.,
+    ldatatypes=.false.,
+    ! number of additional boundary lines to store values from neighbouring processors:
+    nboundlines=3,
+    ! Type of MPI-CommuniCation:
+    ncomm_type=1,
+    ! Number of PEs:
+    nprocio=$NPIO,
+    nprocx=$NPX,
+    nprocy=$NPY,
+    ydate_ini='${modelstarttime}',
+    ydate_bd='${modelstarttime}',
+! New in Version 4.14:
+    linit_fields = .FALSE.,
+    ydate_end = '',
+    l_cosmo_art = .FALSE.,
+    l_pollen = .FALSE.,
+/
+ &TUNING
+  ! Parameter mu of the assumed rain DSD:
+  mu_rain = 0.5,
+  ! Tuning factor for the N0 parameter of the assumed rain DSD:
+  rain_n0_factor = 0.1,
+  ! pat_len: Length scale (m) of subscale surface patterns over land.
+  pat_len=250.0, 
+  z0m_dia=0.2,
+  ! rlam_heat: scaling factor for the thickness of the laminar boundary layer for heat (default=-1.0)
+  rlam_heat=1.0,
+  ! rlam_mom: scaling factor for the thickness of the laminar boundary layer for momentum (default=-1.0)
+  rlam_mom=0.0,
+  ! rat_sea: ratio of laminar scaling factors for heat over sea and land (default=1.0)
+  rat_sea=20.0,
+  ! rat_lam: ratio of thickness of laminar boundary layer for water vapour and sensible heat (default=1.0)
+  rat_lam=1.0,
+  ! rat_can: Scaling factor for the calculation of canopy height (default=1.0)
+  rat_can=1.0,
+  ! c_lnd: Surface Area Index for gridpoints over land (excluding LAI), default=2.0
+  c_lnd=2.0,
+  ! c_soil: Surface Area Index of the evaporating fraction for gridpoints over land, default=2.0
+  c_soil=1.0,
+  ! c_sea: Surface Area Index for gridpoints over sea, default=1.0
+  c_sea=1.2,
+ /
+end_input_org
+
+cat > INPUT_IO  << end_input_io
+ &IOCTL
+  lasync_io=.false.,
+  ! Nummer des WMO-Centers, an dem die Berechnung stattfindet :-) 
+  ! sollte 78 (=DWD) sein, damit die vom LM erzeutgen grib-files auch gelesen werden koennen.
+  ncenter=78,
+  ! Number of gribout namelists:
+  ngribout=1,
+ /
+
+ &DATABASE
+ /
+
+ &GRIBIN
+  hincbound=1.0,
+  newbc = 0,
+  hnewbcdt = 0.0
+  lan_t_s=.false.,
+  lan_t_so0=.true.,
+  lan_t_cl=.true., 
+  lan_w_cl=.true., 
+  lan_vio3=.true.,
+  lan_hmo3=.true., 
+  lan_plcov=.true., 
+  lan_lai=.true., 
+  lan_rootdp=.true.,
+  lan_t_snow=.true., 
+  lan_w_i=.true., 
+  lan_w_snow=.true., 
+  lan_rho_snow=.false.,
+  lbdana=.false.,
+  ydirini='${inputdir}/',
+  lchkini=.TRUE.,
+  ydirbd='${inputdir}/',
+  lchkbd=.TRUE.,
+  lana_qi=.TRUE., 
+  llb_qi=.TRUE., 
+  lana_qr_qs=.TRUE., 
+  llb_qr_qs=.true., 
+  lana_qg=.true., 
+  llb_qg=.true., 
+  lana_rho_snow=.true.,
+  nlgw_ini = 2,
+  lbd_frame = .FALSE.,
+  npstrframe = 8,
+ /
+ &GRIBOUT
+  ! 4. Zeichen in den Grib-Ausgabedateien, spezifiziert die Art der Zeitverschluesselung im Dateinamen:
+  ytunit='f',
+  ! Format der Ausgabe: grib1 (grb1) oder NetCDF (ncdf):
+  yform_write='grb1',
+  ! Tripel of values for defining the output time steps in h:
+  ! hcomb = 0.0, 6.0, 0.1 means: from hour 0 to hour 6 in steps of 6 minutes
+  ! (Several triples may be given one after another!)
+  hcomb=0.0, 40.0, 1.0,
+  nrbit=16,
+  ! Indikator for the time unit in grib-output (0=min, 1=stunde):
+  nunit_of_time=0,
+  l_p_filter=.true.,
+  l_z_filter=.false.,
+  ! Additional suffix for the grib files defined in this namelist:
+  ysuffix='',
+  ! Unit for output of cloud variables QX, QNXXXX 
+  !  loutput_q_densities =.true.  :  kg/m**3 resp. 1/m**3
+  !  loutput_q_densities =.false. :  kg/kg   resp. 1/kg
+  loutput_q_densities = .false.,
+  ! Output variables for the eta-system (max. 130)
+  yvarml='U         ','V         ','W         ','T         ','P         ','QV        ',
+         'PRR_GSP   ','PRS_GSP   ','PRG_GSP   ','RAIN_GSP  ','SNOW_GSP  ','GRAU_GSP  ',
+         ,'QC        ','QR        ','QS        ','QI        ','QG        ','PS        ','RELHUM    ',
+  ! Type of vertical averaging for yvarpl and yvarzl (p- and z-levels interpolated values):
+  ! itype_vertint = 1 : cubic spline (default)
+  ! itype_vertint = 2 : linear interpolation
+  itype_vertint=1,
+  ! Output variables at const. p-surfaces (max. 50)
+  yvarpl='U         ','V         ','FI        ','OMEGA     ',
+  ! P-surfaces for output of yvarpl (in increasing order)
+  plev=  500.0,  700.0,  850.0, 900.0,
+  ! Output variables for const. z-surfaces (max. 20)
+  yvarzl='U         ','V         ','W         ','T         ','P         ',
+         'QC        ','QR        ','QS        ','QI        ','QG        ',
+	 'RELHUM    ','QV        ',
+  ! Z-surfaces for output of yvarzl (in increasing order):
+  zlev=    0.,  250.,  500.,  750., 1000., 1250., 1500., 1750., 2000.,
+        2250., 2500., 2750., 3000., 3500., 
+        4000., 4500., 5000., 5500., 6000., 6500., 7000.,
+        7500., 8000., 8500., 9000., 9500.,10000.,10500.,11000.,
+       11500.,12000.,12500.,13000.,13500.,14000.,
+  ! Max, Min and Mean of each output record are written to the file 'YUCHKDAT'
+  lcheck=.true.,
+  ! Flag for writing of the constant fields at model start:
+  lwrite_const=.true.,
+  ! Interpolation of u and v from the staggered grid to the mass points on output:
+  ! (only effective for the eta-levels-output; is done for z- oder p-levels in any case):
+  luvmasspoint=.false.,
+  ! Directory for the output files:
+  ydir='${outputdir}/',
+ /
+end_input_io
+
+cat > INPUT_DYN << end_input_dyn
+ &DYNCTL
+    ! Rayleigh-damping layer at the model top:
+    lspubc=.true.,
+      ! type of Rayleigh damping in the upper levels
+          ! itype_spubc = 1 : damping to constant boundary fields
+          ! itype_spubc = 2 : damping to smoothed model fields
+      itype_spubc = 1, 
+      ! rdheight: bottom height of Rayleigh damping layer 
+      ! (should be something like 2/3 * hmax, hmax beeing defined in src_artifdata.f90)
+      rdheight=6500.,
+      ! Number of time steps in Rayleigh damping time scale (default = 10):
+      nrdtau=10,
+    ! beta-variable for treatment of soundwaves: zwischen 0 und 1; 0.4 bewirkt leichte Daempfung von vertikal laufenden Schallwellen
+    betasw=0.4, 
+    ! Coeffizient of the divergence damping:
+    xkd=0.10,
+    ! Type of microphysics BC relaxation: 
+       ! itype_outflow_qrsg = 1 : same weights as dyn. variables, 
+       ! itype_outflow_qrsg = 2 : relaxation only on inflow boundaries
+    itype_outflow_qrsg = 1,
+    ! Fall back solution if no boundary fields are found, but are required (e.g., at the end of a real-case simulation)
+       ! itype_lbc_qrsg = 1 : set boundary values to first interior row
+       ! itype_lbc_qrsg = 2 : set boundary values to 0.0
+    itype_lbc_qrsg = 1,
+    ! explicit or implicit formulation of the lateral relaxation boundary condition:
+    lexpl_lbc=.true.,
+      ! width of relaxation layer in m: (should be set to about 5-20 * dx)
+      rlwidth=20000.0,
+    ! Include/ exclude cloud water condensation and evaporation (effective only for itype_gscp < 100):
+    lcond=.true.,
+    ! Parameters for the artificial fourth-order diffusion terms:
+    lhordiff=.true.,
+      itype_hdiff=2,
+      hd_corr_u_bd = 1.00,
+      hd_corr_t_bd = 0.75,
+      hd_corr_trcr_bd = 0.50,
+      hd_corr_p_bd = 0.75,
+      hd_corr_u_in = 1.00,
+      hd_corr_t_in = 0.75,
+      hd_corr_trcr_in = 0.50,
+      hd_corr_p_in = 0.75,
+      hd_dhmax=250.0,
+    ! Choose the time integration scheme:
+      ! Runge-Kutta: l2tls = .true.
+      ! Leapfrog:    l2tls = .false.
+      ! Semi-implicit scheme: lsemi_imp = .true.
+    lsemi_imp=.false., 
+      ! dimension of the Krylow space used in the elliptic
+      ! solver for the semi-implicit scheme
+      ikrylow_si = 20,
+      eps_si = 1.0E-8,
+      maxit_si = 200,
+      iprint_si = 0,
+    l2tls=.true.,
+      irunge_kutta=1,
+        irk_order=3,
+        iadv_order=5,
+      ! Type of fast waves solver: 1 = previous fast_waves_rk.f90, 2 = new fast_waves_sc.f90:
+      itype_fast_waves = 2,
+      ! type of bottom boundary condition for w (see DOCS/misc.global):
+      itype_bbc_w = 114,
+      ! Dynamic bottom boundary condition:
+      ldyn_bbc = .FALSE.,
+      ! Type of T-advection: 0 = Adv. T, 1 = Adv. Theta:
+      itheta_adv = 0,
+      ltadv_limiter = .FALSE.,
+      ! Type of the scheme for horizontal advection of moisture quantities: 
+      !   Semi Lagrangian with multiplicative filling  'SL3_MF'
+      !   Semi Lagrangian with selective filling       'SL3_SFD'
+      !   Eulerian:                          'vanLeer', 'PPM', 'Bott_2' oder 'Bott_4'
+      !   Eulerian with Strang splitting:    'vanLeer_Strang', 'PPM_Strang', 'Bott_2_Strang' oder 'Bott_4_Strang'
+      y_scalar_advect='Bott2',
+      ! choice of the vertical advection scheme for the dynamic variables: "impl2", "impl3" or "expl"
+      y_vert_adv_dyn='expl',
+      ! order of explicit vertical advection scheme in case of y_vert_adv_dyn='expl':
+      ieva_order=3,
+      ! Take the microphysics tendency from the last timestep into account in the Runge-Kutta fast waves solver:
+      ldiabf_lh=.true.,
+    ! lw_freeslip: if .TRUE.: with free slip lateral boundary condition for w and
+    ! if .FALSE. specified lateral boundary values for w (recommended for real-data simulations is .true.):
+    lw_freeslip=.true.,
+    ! max. allowed integer courant number in cr-indep. adv. (recommended is intcr_max = 1)
+    intcr_max = 1,
+    ! if =.TRUE.: take cos(phi) coriolis terms into account (Ronny Petrik)
+    lcori_deep = .FALSE.,
+    ! IF ladv_deep=.True. then add deep atmosphere terms: u*w/r and v*w/r and (u**2+v**2)/r
+    ladv_deep = .FALSE.,
+    ! Take Coriolis force into account:
+    lcori = .false.,
+    ! Take the metrical terms due to the earth curvature into account:
+    ! Only effective if lartif_data=.true.!!!
+    ! (precisely: if lmetr=.false.: tan(phi)=0, cos(phi)=1; that is: f-plane at the equator
+    ! of the rotated geographical system. 
+    ! If additionally lcori=.true., then the Coriolis parameter f takes the value for 
+    ! 45 Grad geograph. latitude.)
+    ! For smallscale idealized runs, we recommend lmetr=.false.
+    lmetr = .false.,
+    ! Radiative lateral boundary conditions:
+    lradlbc = .false.,
+      relax_fac = 0.02,
+    alphaass = 1.0,
+ /END
+end_input_dyn
+
+cat > INPUT_EPS << end_input_eps
+ &EPSCTL
+  iepsmem = -(1),
+  iepstot = -(1),
+  iepstyp = -(1),
+  fac_lai = 1.,
+  rmin_lai = 0.,
+  rmax_lai = 8.,
+  fac_plcov = 1.,
+  rmin_plcov = 0.,
+  rmax_plcov = 1.,
+  fac_rootdp = 1.,
+  rmin_rootdp = 0.,
+  rmax_rootdp = 2.,
+ /
+end_input_eps
+
+cat > INPUT_PHY << end_input_phy
+ &PHYCTL
+    ! grid scale precipitation:
+    lgsp=.false.,
+    ! Type of cloud microphysics:
+    itype_gscp=4,
+      ldiniprec=.false.,
+    ! Radiation scheme:
+    lrad=.false.,
+    hincrad=1.0,
+      lradf_avg=.true.,
+      nradcoarse=2,
+      ico2_rad=0,
+      lradtopo=.false.,
+    ! Master switch for turbulent diffusion:
+    ltur=.true.,
+      ! type of turbulent diffusion parametrization 3=progrnostic TKE-based standard scheme; 7=LES-Scheme, 100=const. diff. coeff.:
+      itype_turb=3,
+      ! prognostic treatment of TKE (for itype_turb=5/7)
+      lprog_tke=.true.,
+      limpltkediff = .FALSE.,
+      ! Mode of turbulent diffusion parametrization in case of itype_turb=3:
+      imode_turb=1,
+      ! time step increment for running the turbulent diffusion scheme:
+      ninctura=1,
+      ! 3D-turbulence --- erst ab Version 3.13!!!
+      l3dturb=.true.,
+        l3dturb_metr=.true.,
+      ! type of TKE shear production (itype_turb=3 only):
+      ! 1 = only vertical shear production
+      ! 2 = full 3D isotropic shear production
+      ! 3 = vertical shear and separted horizontal shear mode
+      itype_sher = 2,
+      ! explicit corrections of the implicit calculated
+      ! turbulent diffusion (only if itype_turb=3)
+      lexpcor=.true.,
+      ! consideration of thermal TKE-sources in the 
+      ! enthalpy budget:
+      ltmpcor=.false.,
+      ! using the profile values of the lowest main level instead
+      ! of the mean value of the lowest layer for surface flux
+      ! calulations, should be .false. (.true. not tested!!!):
+      lprfcor=.false.,
+      ! nonlocal calculation of vertical gradients used:
+      ! for turbulent diffusion (only if itype_turb=3)
+      lnonloc=.false.,
+      ! consideration of fluctuations of the heat capacity of air:
+      lcpfluc=.false.,
+      !  main parameter to select surface-layer parameterization (2=TKE based scheme including a laminar sublayer)
+      ! itype_wcld: type of water cloud diagnosis (1=relative humidity based scheme, 2=statistical scheme):
+      itype_wcld=2,
+      icldm_rad=4,
+      icldm_turb=2,
+      icldm_tran=0,
+      itype_tran=2,
+      ! different parameters in case of itype_tran=2:
+        ! imode_tran: type of surface-atmosphere transfer (1=based on diagnostic TKE, 2=prognostic TKE)
+        imode_tran=1,
+      ! itype_synd: type of diagnosis of synoptic station values:
+      itype_synd=2,
+    ! Master switch for the soil model
+    lsoil=.false.,
+      lmulti_layer=.true.,
+      lmelt=.true.,
+      lmelt_var=.true.,
+      itype_evsl=2,
+      itype_trvg=2,
+      ! Number of soil levels (lmulti_layer=.true.):
+      ke_soil=7,
+      czml_soil=0.005,0.02,0.06,0.18,0.54,1.62,4.86,14.58,
+      ! number of prognostic soil water levels (lmulti_layer=.false.)
+      nlgw=2,
+      lmulti_snow = .FALSE.,
+      ke_snow = 2,
+    ! to run with forest data (evergreen and deciduous):
+    lforest=.false.,
+    ! To run with lake model FLAKE:
+    llake=.FALSE.
+    ! Convection scheme:
+    lconv=.false.,
+      ! time step increment for running the convection scheme:
+      nincconv=10,
+      itype_conv = 0,
+      lcape=.false.,
+      lctke=.false.,
+      lconf_avg=.true.,
+      ! output of instantaneous values of top_con/bas_con instead of min/max (Tiedke)
+      lconv_inst=.false.,
+    ! sea ice model:
+    lseaice = .FALSE.,
+    ! run with subscale orography scheme (SSO):
+    lsso = .FALSE.,
+    nincsso = 5,
+    ltkesso = .FALSE.,
+    lemiss = .FALSE.,
+    lstomata = .FALSE.,
+    itype_aerosol = 1,
+    itype_root = 1,
+    itype_heatcond = 1,
+    itype_hydbound = 1,
+ /
+end_input_phy
+
+cat > INPUT_DIA << end_input_dia
+ &DIACTL
+  n0meanval=0, 
+  nincmeanval=1, 
+  lgplong=.true., 
+  lgpshort=.false., 
+  lgpspec=.false., 
+  n0gp=0,
+  h0gp = 0.0,
+  hincgp=1,
+  ! Indices (:) for desired grid point output:
+  !  i_gp,  j_gp, have priority over lat_gp,  lon_gp!
+  !                  i_gp,  j_gp,   lat_gp,  lon_gp,  stationname
+  stationlist_tot=      5,     5,      0.0,     0.0,   "station_1",
+  l_integrals = .FALSE.,
+  itype_diag_t2m = 1,
+  itype_diag_gusts = 1,
+ /
+end_input_dia
+
+cat > INPUT_INI << end_input_ini
+ &INICTL
+  ! Nur wichtig, wenn ldfi=.true. in RUNCTL
+  ! indicator for kind of filtering:
+  ndfi=2,
+  tspan=3600.0, 
+  taus=3600.0,
+  ! time step for the backward/forward filtering stage; should be = dt
+  dtbak=30.0, 
+  dtfwd=30.0,
+ /
+end_input_ini
+
+cat > INPUT_ASS << end_input_ass
+ &NUDGING
+  lnudge=.false.,
+ /
+end_input_ass
+
+cat > INPUT_IDEAL << end_input_artifctl
+ &ARTIFCTL
+!
+!=========================================================
+!=========================================================
+! Namelist file for idealized simulations:
+!=========================================================
+!=========================================================
+!
+! 
+!=========================================================
+! 0) Debug mode
+!=========================================================
+!
+! In debug mode, one gets additional runtime messages
+! from the code, which might be useful for debugging.
+! To enable the debug mode, set below ldebug_artif = .true. 
+! and idbg_level to some value > 0.
+!
+! Currently implemented messages/mechanisms depending on idbg_level:
+!
+! idbg_artif_level > 0 : print the subroutine name at the 
+!                        beginning of each (major) subroutine
+! idbg_artif_level > 3 : additionally, write ASCII-files 
+!                        (or BIN-files on the NEC) containing
+!                        the T- and QV- increment resp. heating rate for each artif. 
+!                        temperature-, moisture or heating rate disturbance
+!                        triggered in the simulation.
+!                    *** On the NEC, you need the conversion program 
+!                        "bin2ascii_convrates3d.f90" by Ulrich Blahak to
+!                        generate ASCII-files from the BIN-files ***
+! idbg_artif_level > 4 : print additional checking output for the iterative hydrostatic
+!                        pressure initialization
+!
+ldebug_artif = .true.,
+!
+  idbg_artif_level = 5
+!
+! 
+!
+!=========================================================
+! 2) Variables for the vertical coordinate specifications:
+!=========================================================
+!
+ivctype = 2,
+  zspacing_type = 'linear',! sub-type of coordinate spec.
+  vcflat = 11000.0,         ! height, above which coordinate levels become flat [m]
+  zz_top = 20000.0,         ! height of model top, if it has to be specified explicitly [m]
+!
+!
+!=================================================================
+! 3) Initialization of the artificial orography and soil parameters:
+!=================================================================
+!
+href_oro=0.0,
+!
+!
+itype_topo = 1, 
+!
+!   lhill is the "master" switch. Set as much elements to true as much
+!     hills/valleys you want, e.g., lhill=.true.,.true.,.true., generates
+!     3 hills/valleys.
+  lhill = .true.,
+!
+!       lhill_2d determines if the resp. hill/valley is 2-dim. (oriented along the
+!       y-axis) or 3-dim. in the case of lhill_2d=.false.:
+      lhill_2d = .true.,
+!
+!       shape of mountain: 
+!         - 'gauss' (symmetric)
+!         - 'bellshaped' (symmetric)
+!         - 'gauss-asym' (asymmetric)
+!         - 'bellshaped-asym' (asymmetric)
+      hill_type = 'gauss',
+!
+!       Coordinates of mountain center point(s) in GPs, can be real numbers, not just integers:
+      hill_i = 200.5,
+      hill_j = 4.0,
+!
+!     hillheight (in m):
+!       top height of the mountain(s) (if negative, depth of the valley(s)):
+      hillheight = 100.0,
+!
+!     hill_width_x (in m):  
+!       Half width radius to mountain center in X-direction:
+!       (both for 2D- and 3D-mountain(s)):
+      hill_width_x = 50000.0,,
+!
+!     hill_width_y (in m):
+!       For 3D-mountain(s) (lhill_2d=.false.)
+!       - Half width radius to mountain center in Y-direction:
+!       For 2D-mountain(s) (lhill_2d=.true.)
+!       - 1/2 overall width, centered around the mountain center in Y-direction:
+      hill_width_y = 300000.0, 
+!
+!     Asymetric hills: (if chill_type = 'gauss-asym' or 'bellshaped-asym') 
+!       Asymmetry factors for the hill(s)/valley(s) in X- and Y-direction, defined
+!       as the ratio between the west (south) and east (north) side half widths.
+!       E.g., a factor of hillasym_x=1.5 means that the west side is 1.5 times as wide
+!       as the east side, and that the west side has a half width radius of
+!       hillwidth_x.
+      hillasym_x = 1.0, 1.0, 2.0
+      hillasym_y = 1.0, 1.0, 1.0,
+!
+!
+!====================================================================
+!====================================================================
+!
+!
+!=================================================================
+! 4) Now come the soil parameters:
+!=================================================================
+!
+! The first thing to note is that, regardless of using the soil model
+! or not, the surface temperature t_s (for snow free areas!)
+! as a baseline, is initialized to be the atmospheric temperature at the surface,
+! so that minimal sensible heat fluxes would occur. If the soil model
+! is used, it might, depending on the below settings, overtaken also
+! for all the soil levels at land points. If it is not overtaken by the soil levels,
+! it will be reset to the value of the uppermost soil level.
+! In any case, it is relevant at sea and lake points.
+!
+! However, this baseline initialization can be replaced by a
+! user chosen constant value t_surf_c:
+!
+!================
+t_surf_c = -1.0,   ! baseline t_s (if < 0, the atmosphere temperature at the surface is used)
+!================
+!
+! The switch "itype_soil_c" determines how the (more or less) 
+! time constant soil parameters are initialized (these are held 
+! constant during the simulation):
+!
+!     itype_soil_c = 1 :  spatially constant values are specified via the below
+!                         namelist parameters for constant fields.
+!
+!     itype_soil_c = 2 :  constant fields are read from A2D SCII-files 
+!                         (same format as orography file)
+!
+!
+! If itype_soil_c = 2, then files for the following constant parameters are necessary
+!     (probably more in the future):
+!
+! z0      : roughness length [m] (Give filename in NL-parameter "z0file"       )
+! fr_land : land fraction    [-] (                              "frlandfile"   )
+! plcov   : plant cover      [-] (                              "plcovfile"    )
+! lai     : leaf area index  [-] (                              "laifile"      )
+! if lsoil=.true.:
+!   soiltyp : type of soil     [-] (                            "soiltypefile" )
+!   rootdp  : root depth       [m] (                            "rootdpfile"   )
+! if lforest=.true.:
+!   for_e   : aerea fraction of evergreen forest   [-] (        "forefile"     )
+!   for_d   : aerea fraction of deciduous forest   [-] (        "fordfile"     )
+! if seaice=.true. .or. llake=.true.:
+!   h_ice   : ice thickness   [m] (                             "hicefile"     )
+!   t_ice   : temperature at the snow-ice or air-ice interface [K] ( "ticefile" )
+! if lsso=.true.:
+!   sso_stdh : std. dev. of sub-grid scale orography [m] (      "ssostdhfile"  )
+!   sso_gamma: anisotr. of sub-grid scale orography [-] (       "ssogammafile" )
+!   sso_theta: angle betw. princ. axis of orogr. and E [rad] (  "ssothetafile" )
+!   sso_sigma: mean slope of sub-grid scale orography [-] (     "ssosigmafile" )
+!
+! ----------------------------------------------------------------
+!
+!
+! The switch "itype_soil_tw" determines how the (more or less) 
+! time varying soil parameters are initialized (these have a time 
+! index in the model and may change over time):
+!
+!     itype_soil_tw = 1 :  spatially constant values are specified via the below
+!                          namelist parameters for varying fields.
+!
+!     itype_soil_tw = 2 :  varying fields are read from 2D ASCII-files 
+!                          (same format as orography file)
+!
+! If itype_soil_tw = 2, then files for the following time varying 
+!   parameters are necessary:
+!     
+! if lsoil=.true.:
+!   t_soil  : soil temperature [K] (Give filename in NL-parameter "tsoilfile"  )
+!   wf_soil : soil water saturation [-] (                         "wfsoilfile" )
+!   t_snow  : snow temperature [K]      (                         "tsnowfile"  )
+!   w_snow  : snow water equivalent [m H2O]  (                    "wsnowfile"  )
+!   w_i     : interception storage on plants [m H2O]   (          "wifile"     )
+!
+! ----------------------------------------------------------------
+!
+!
+! These ASCII-files should be generated by the users themselves. This is
+! achievable with some phantasy, the DWD web interface, int2lm, wgrib, Fortran,
+!   matlab, idl, ...
+!
+! For example, ASCII files may be extracted from the extpar-grib-files
+! by wgrib or the script "grib_decode" from Ulrich Blahak.
+!
+!
+! FORMAT OF THE FILES:
+!         - arbitrary number of header lines (starting with '#' or '!')
+!         - 1 line with field dimensions i,j
+!         - 1 long column with the data (first index varies first).
+!
+! FOR EXAMPLE:
+!
+!>> BEGIN ASCII-FILE:
+! # roughness length [m]
+! 461 421
+! 0.001
+! 0.002
+! 0.001
+! ...
+!<< END ASCII-FILE
+!
+!
+!================
+itype_soil_c = 1, 
+!================
+!
+! For itype_soil_c = 1: Constant fields
+!======================================
+  z0_c      = 0.01,        ! z_0 in m
+  fr_land_c = 1.0,         ! land fraction, dimensionless
+  soiltyp_c = 3.0,         ! soiltype, dimensionless
+  plcov_c   = 0.6,         ! plant cover, dimensionless
+  lai_c     = 3.0,         ! LAI, dimensionless
+  rootdp_c  = 0.7,         ! root depth in m
+  for_e_c   = 0.2,         ! area fraction of evergreen forests
+  for_d_c   = 0.2,         ! area fraction of decidious forests
+  h_ice_c   = 0.1,         ! ice thickness in m
+  t_ice_c   = 270.0,       ! T at the snow-ice or air-ice interf. in K
+!
+! itype_soil_c = 2: File names for 2D ASCII-reading of fields:
+!=============================================================
+  z0file       = 'dummy.dat',  ! z_0 in m
+  frlandfile   = 'dummy.dat',  ! land fraction, dimensionless
+  soiltypefile = 'dummy.dat',  ! soiltype, dimensionlessx
+  plcovfile    = 'dummy.dat',  ! plant cover, dimensionless
+  laifile      = 'dummy.dat',  ! LAI, dimensionless
+  rootdpfile   = 'dummy.dat',  ! root depth in m
+  forefile     = 'dummy.dat',  ! area fraction of evergreen forests
+  fordfile     = 'dummy.dat',  ! area fraction of decidious forests
+  hicefile     = 'dummy.dat',  ! ice thickness in m
+  ticefile     = 'dummy.dat',  ! T at the snow-ice or air-ice interf. in K
+  ssostdhfile  = 'dummy.dat',  ! std. dev. of sub-grid scale orography [m]
+  ssogammafile = 'dummy.dat',  ! anisotr. of sub-grid scale orography [-]
+  ssothetafile = 'dummy.dat',  ! angle betw. princ. axis of orogr. and E [rad]
+  ssosigmafile = 'dummy.dat',  ! mean slope of sub-grid scale orography [-]
+!
+!
+!================
+itype_soil_tw = 1, 
+!================
+!
+! For itype_soil_tw = 1: Constant fields
+!=======================================
+  t_soil_c  = -1.0,     ! t_soil in K (if <0, t_s is taken instead)
+  wf_soil_c = 0.3,      ! soil water saturation, dimensionless (0 ... 1)
+  t_snow_c  = -1.0,     ! t_snow in K (if <0, t_s is taken instead)
+  w_snow_c  = 0.0,      ! snow water equivalent in m H2O
+  w_i_c     = 0.0,      ! interception storage on plants in m H2O
+!
+! itype_soil_tw = 2: File names for 2D ASCII-reading of fields:
+!==============================================================
+  tsoilfile  = 'dummy.dat',   ! t_soil in K
+  wfsoilfile = 'dummy.dat',   ! soil water saturation, dimensionless (0 ... 1)
+  tsnowfile  = 'dummy.dat',   ! t_snow in K
+  wsnowfile  = 'dummy.dat',   ! snow water equivalent in m H2O
+  wifile     = 'dummy.dat',   ! interception storage on plants in m H2O
+!
+!
+!
+!====================================================================
+!====================================================================
+!
+!
+!====================================================================
+! 5) Variables for the initialization of the (thermo)dynamic profiles:
+!====================================================================
+! 
+!
+itype_artifprofiles = 2, 
+!
+!====================================================================
+!
+! For itype_artifprofiles = 2, one has to specify the type of the T / Qv - profiles
+! in "itype_anaprof_tqv":
+!    itype_anaprof_tqv = 1 :   Weisman-Klemp (1982) - type T and Qv-profiles,
+!                              determined by the namelist variables with suffix "_wk"
+!    itype_anaprof_tqv = 2 :   Arbitrary number of polytrope layers, specified by namelist
+!                              *vectors* with suffix "_poly". These layers have
+!                              a constant vertical T-gradient (for simplicity: ordinary
+!                              temperature, not virtual temperature).
+!    itype_anaprof_tqv = 3 :   Arbitrary number of layers with const. 
+!                              Brunt-Vaisala-freq. N, specified by namelist
+!                              *vectors* with suffix "_nconst". These layers have
+!                              a constant N with respect to moist unsaturated air.
+! 
+! For itype_artifprofiles = 2/4, one has to specify the type of the U / V - profiles
+! in "itype_anaprof_uv":
+!
+!    itype_anaprof_uv  = 1 :    Weisman-Klemp (1982) - type U - profile 
+!                               U(z) = u_infty * tanh((z-hmin_wk)/href_wk)
+!    itype_anaprof_uv  = 2 :    Arbitrary numbers of constand gradient U(z) - layers
+!    itype_anaprof_uv  = 3 :    U = const. = u_infty (West-East-Flow)
+!    itype_anaprof_uv  = 4 :    V = const. = u_infty (South-North-Flow)
+!
+  itype_anaprof_tqv = 3,
+  itype_anaprof_uv = 3,
+!
+!====================================================================
+!
+!
+!====================================================================
+!   Parameters for the analytic T- and Qv-profiles:
+!====================================================================
+!
+!--------------------------------------------------------------------
+!   Parameters for the Weisman/Klemp-testcase (itype_anaprof_tqv = 1): 
+!--------------------------------------------------------------------
+!
+! Base height for the profiles, has to be lower than MINVAL(hsurf):
+    hmin_wk = 0.0,
+!
+! Pressure at height hmin_wk in Pa:
+    p_base_wk = 1e5,
+!
+! Tropopause height in m:
+    h_tropo_wk = 12000.0,
+!
+! Potential temperature at height hmin_wk:
+    theta_0_wk = 300.0,
+!
+! Potential temperature at tropopause height:
+    theta_tropo_wk = 338.0,
+!
+! t_tropo_wk:
+!  Estimate of temperature at tropopause height,
+!  which is a parameter in the analytic Theta(z)-formula for an isothermal layer and is NOT
+!  really a specification of the *true* tropopause temperature! 
+!  The true tropopause temperature is determined by theta_tropo_wk and the resulting
+!  pressure at that height. Because pressure is not known a priori, WK82 introduced
+!  t_tropo_wk as an a priori estimate. However, this only leads to
+!  a constant temperature in the whole tropopause layer if the "correct" t_tropo_wk
+!  is specified. Otherwise a non-constant T-profile results, which is also the case 
+!  with the original literature value, which is 213.0 K and which is off by about
+!  4 K compared to the "true" resulting value of about 217 K.
+!  If t_tropo_wk < -900, then the exact tropopause temperature is determined and the 
+!  temperature in the tropopause layer is truly constant.
+!  THE DEFAULT VALUE IS -999.99. IF YOU SPECIFY 213.0, YOU CAN REPRODUCE THE 
+!  ERROR IN THE ORIGINAL LITERATURE!
+    t_tropo_wk = 213.0,
+!
+! Exponent of the potential temperature profile in the troposphere:
+    expo_theta_wk = 1.25,
+!
+! Exponent of the relative humidity profile in the troposphere:
+    expo_relhum_wk = 1.25,
+!
+! Constant relative humidity in the tropopause region:
+    rh_min_wk = 0.25,
+!
+! Relative humidity at height hmin_wk:
+    rh_max_wk = 1.0,
+!
+! Max. specific humidity, which is imposed after specifying the relhum profile:
+    qv_max_wk = 0.014, 
+!
+!--------------------------------------------------------------------
+!   For piecewise polytrope atmosphere layers (itype_anaprof_tqv = 2): 
+!--------------------------------------------------------------------
+!
+! number of layers
+    nlayers_poly = 3,
+! Pressure at height h_poly(1) in Pa:
+    p_base_poly = 1e5,
+! For each layer, the base heights in m:
+    h_poly = 0.0, 2000.0, 12000.,
+! For each layer, temperature at base height in K:
+    t_poly = 293.16, 273.66, 213.66, 
+! For each layer, temperature gradient in K/m:
+!  (POSITIVE for DECREASING temperature with height):
+    tgr_poly = 0.00975, 0.006, 0.0, 
+! For each layer, relative humidity at base height:
+    rh_poly = 0.5, 0.9, 0.3, 
+! For each layer, gradient of relative humidity in 1/m:
+!  (POSITIVE for DECREASING relhum with height):
+    rhgr_poly = -2.0e-4, 6e-5, 0.0,
+!
+!--------------------------------------------------------------------
+!   For piecewise const. Brunt-Vaisala-freq. (N) layers (itype_anaprof_tqv = 3): 
+!--------------------------------------------------------------------
+!
+! number of layers
+    nlayers_nconst = 1,
+! Pressure at height h_nconst(1) in Pa:
+    p_base_nconst = 1e5,
+! Pot. temp. at height h_nconst(1) in K:
+    theta0_base_nconst = 270.0,
+! For each layer, the base heights in m:
+    h_nconst = 0.0, 
+! For each layer, the value of N in 1/s:
+    N_nconst = 0.01, 
+! For each layer, relative humidity at base height:
+    rh_nconst = 0.0, 
+! For each layer, gradient of relative humidity in 1/m:
+!  (POSITIVE for DECREASING relhum with height):
+    rhgr_nconst = 0.0,
+!
+!
+!====================================================================
+!   Wind profile (horizontal components):
+!====================================================================
+!
+!--------------------------------------------------------------------
+!   for Weisman-Klemp tanh-profile (itype_anaprof_uv = 1): 
+!--------------------------------------------------------------------
+! U(z) =  U_infty * tanh(z/href_wk)
+    href_wk = 3000.0, 
+    u_infty = 10.0,
+!
+!--------------------------------------------------------------------
+!   for piecewise linear wind layers (itype_anaprof_uv = 2): 
+!--------------------------------------------------------------------
+!
+! Number of layers:
+    nlayers_linwind = 3,
+! For each layer, base height in m:
+    h_linwind = 0.0, 1500.0, 12000.0,
+! For each layer, windspeed at base height in m/s: 
+    u_linwind = 10.0, 15.0, 20.0,
+! For each layer, windspeed gradient in 1/s 
+!  (POSITIVE for INCREASING windspeed with height):
+    ugr_linwind = 0.0, 0.0, 0.0, 
+!
+!--------------------------------------------------------------------
+!   const. U = u_infty (itype_anaprof_uv = 3):
+!--------------------------------------------------------------------
+!
+!  ... set u_infty above!
+!
+!--------------------------------------------------------------------
+!   const. V = u_infty (itype_anaprof_uv = 4):
+!--------------------------------------------------------------------
+!
+!  ... set u_infty above!
+!
+!
+!
+!====================================================================
+!   Initialization of w: Switch to enable w in a way 
+!   that the streamlines follow the terrain following 
+!   vertical coordinate surfaces:
+!====================================================================
+!
+linitw_followeta = .true.,
+!
+!
+!====================================================================
+!   Additional analytic uv-boundary-layer:
+!====================================================================
+!
+! Here one may impose an analytic boundary layer wind profile
+! in case of non-vanishing windspeed at the ground and at the
+! same time no-slip boundary conditions. The following formula
+! (so-called "exponent wind profile") is applied, in the notation
+! of the two relevant namelist parameters "zo_boundary" and 
+! "exponent_windprof_boundary":
+!
+!    if zo_boundary > 0.0:
+!      if z < zo_boundary:
+!        U(z) = U(zo_boundary) * ( (z-hsurf)/(zo_boundary) )**exponent_windprof_boundary
+!
+zo_boundary = 0.0, 
+exponent_windprof_boundary = 0.25,
+! 
+!
+!====================================================================
+!====================================================================
+!
+!
+!
+!====================================================================
+!====================================================================
+!
+!
+!====================================================================
+! 8) Possibility to specify "no-surface-fluxes" lower boundary
+!    condition, i.e., no heat-, moisture-, and/or momentum fluxes
+!    at the ground. This includes the free-slip momentum BC.
+!====================================================================
+!
+! if lnosurffluxes_m = .true., there are no surface momentum fluxes:
+!   (technically, the exchange coefficient tcm at the
+!    surface is set to 0.0). THIS IS THE FREE-SLIP BOUNDARY CONDITION.
+!
+lnosurffluxes_m = .true.,
+!
+! if lnosurffluxes_h = .true., there are no surface heat/moisture fluxes:
+!   (technically, the exchange coefficient tch at the
+!    surface is set to 0.0)
+!
+lnosurffluxes_h = .true.,
+!
+!
+/
+end_input_artifctl
+
+#################################################
+# load leveler commands depending on machine
+#################################################
+
+if [ ${machine}0 = sx9dwd0 -o ${machine}0 = sx8dwd0 ]
+then
+
+    cat >> $jobdatei << marke
+
+cd ${LMDIR}
+
+#################################################
+# run the program
+#################################################
+
+# cp /e/rhome/routfor/routfox/lm/const/rtcoef_meteosat_7_mviri.dat .
+# cp /e/rhome/routfor/routfox/lm/const/rtcoef_msg_2_seviri.dat .
+  
+rm -f mon.out* ftrace.out*
+
+#export MPISUSPEND=on
+export F_PROGINF=DETAIL
+export MPIPROGINF=ALL_DETAIL
+export F_FTRACE=yes
+export F_SETBUF=32768
+#====================================
+# either no error trapping:
+export F_ERROPT1=0,255,0,0,2,2,2,2
+# or trapping nearly all errors (in conjunction with the FTNDEB options):
+#export F_ERROPT1=255,255,0,0,2,2,2,2
+#export F_ERROPT2=0,254,0,0,1,1,1,1
+#====================================
+export F_ERRCNT=32768
+export MPIEXPORT="F_ERROPT1 F_ERROPT2 F_ERRCNT F_SETBUF MPIPROGINF F_PROGINF LIBDWD_MPIEXPORT"
+
+
+${parstartscript} ${lmexecutable}
+
+ftrace -all -f ftrace.out* -fmt1
+
+#################################################
+# debug the program
+#################################################
+
+#export DISPLAY=141.38.29.200:0.0
+#xrdb -merge /uhome/$(logname)/Bin/totalview.xrdb
+#totalview_4.1 -no_stop_all poe -a ${lmexecutable}
+
+
+#################################################
+# save some files documenting the model run
+#################################################
+
+# Save a copy of all output files and all external files:
+cp ${LMDIR}/YU* ${outputdir}/.
+
+
+marke
+
+    chmod u+x $jobdatei
+
+    sichere_src
+
+    nqsub $jobdatei
+
+
+
+elif [ ${machine}0 = ibmham0 ]
+then
+
+    cat >> $jobdatei << marke
+
+cd ${LMDIR}
+
+#################################################
+# run the program
+#################################################
+
+export MEMORY_AFFINITY=MCM
+export MP_PRINTENV=YES
+export MP_LABELIO=YES
+export MP_INFOLEVEL=0
+export MP_EAGER_LIMIT=64k
+export MP_BUFFER_MEM=64M,256M
+export MP_USE_BULK_XFER=NO
+export MP_BULK_MIN_MSG_SIZE=128k
+export MP_RFIFO_SIZE=4M
+export MP_SHM_ATTACH_THRESH=500000
+export LAPI_DEBUG_STRIPE_SEND_FLIP=8
+
+export LIBDWD_FORCE_CONTROLWORDS=1
+
+${parstartscript} ${lmexecutable} -procs $NP
+
+#################################################
+# save some files documenting the model run
+#################################################
+
+# Save a copy of all output files and all external files:
+cp ${LMDIR}/YU* ${outputdir}/.
+
+marke
+
+    chmod u+x $jobdatei
+
+    sichere_src
+
+    llsubmit $jobdatei
+
+
+elif [ ${machine}0 = xc2kit0 ]
+then
+
+    sichere_src
+
+    cd ${LMDIR}
+
+#################################################
+# run the program
+#################################################
+
+    export LIBDWD_FORCE_CONTROLWORDS=1
+    ulimit -s 200000
+
+    ${parstartscript} ${lmexecutable}
+
+    # Save a copy of all output files and all external files:
+    cp ${LMDIR}/YU* ${outputdir}/.
+
+
+elif [ ${machine}0 = localpc0 ]
+then
+
+    cat >> $jobdatei << marke
+#!//usr/bin/ksh
+
+cd ${LMDIR}
+
+#################################################
+# run the program
+#################################################
+
+export LIBDWD_FORCE_CONTROLWORDS=1
+${lmexecutable}
+
+marke
+
+
+##############################################################
+# Strip comments from INPUT-files using ed
+# (is necessary for the gfortran-compiler and does not
+#  do any harm for other compilers)
+##############################################################
+
+    for infi in INPUT_*
+    do
+	
+        # First, strip entire-lines-comments:
+	echo Stripping comments from $infi ...
+	
+	ed $infi <<EOF
+.
+1,\$g/^ *!.*/d
+.
+w
+q
+EOF
+    
+        # Then, strip comments appearing on 
+        # the same lines as namelist parameters:
+	cat $infi | awk -F! '{gsub(" *$","",$1); print $1}' - > tmptmp.tmp
+	mv tmptmp.tmp $infi
+
+    done
+
+    chmod u+x $jobdatei
+
+    sichere_src
+
+    ${jobdatei} 1> ${outputdir}/$lmoutput 2> ${outputdir}/$lmerrput
+
+    # Save a copy of all output files and all external files:
+    cp ${LMDIR}/YU* ${outputdir}/.
+
+fi

@@ -1,0 +1,124 @@
+# 1 "../modules/mo_memory_g1a.f90"
+MODULE mo_memory_g1a
+
+  USE mo_kind,        ONLY: dp
+  USE mo_linked_list, ONLY: t_stream
+  USE mo_memory_base, ONLY: delete_stream, add_stream_element, &
+                            default_stream_setting
+  USE mo_netCDF,      ONLY: max_dim_name
+# 11
+
+! mz_pj_20040325+
+  USE messy_main_tracer_mem_bi, ONLY: xtm1, xtm1_a, xtm1_c
+!!$  USE messy_main_tracer_mem_bi, ONLY: pxtm1, pxtm1_a, pxtm1_c
+! mz_pj_20040325-
+
+
+  IMPLICIT NONE
+  SAVE !mz_ht_20030901
+  PRIVATE
+
+
+! mz_pj_20040325+
+  PUBLIC :: xtm1, xtm1_a, xtm1_c ! op_sb_20191007
+! mz_pj_20040325-
+
+  PUBLIC :: construct_g1a ! construct the g1a table
+  PUBLIC :: destruct_g1a  ! destruct  the g1a table
+
+  PUBLIC :: g1a           ! the g1a table
+
+  PUBLIC :: add_stream_element
+
+! declaration of predefined fields within this module
+
+  REAL(dp), POINTER, PUBLIC :: vom1(:,:,:)
+  REAL(dp), POINTER, PUBLIC :: dm1(:,:,:)
+  REAL(dp), POINTER, PUBLIC :: tm1(:,:,:)
+  REAL(dp), POINTER, PUBLIC :: alpsm1(:,:)
+  REAL(dp), POINTER, PUBLIC :: dalpslm1(:,:)
+  REAL(dp), POINTER, PUBLIC :: dalpsmm1(:,:)
+  REAL(dp), POINTER, PUBLIC :: qm1(:,:,:)
+  REAL(dp), POINTER, PUBLIC :: xlm1(:,:,:)
+  REAL(dp), POINTER, PUBLIC :: xim1(:,:,:)
+# 47
+
+
+! declaration of table with 3d-field entries
+
+  TYPE (t_stream), POINTER :: g1a
+
+! private storage for tracer fields
+
+# 57
+
+
+CONTAINS
+
+# 67
+
+  SUBROUTINE construct_g1a (lnlon, lnlev, lngl, &
+                             nlon,  nlev,  ngl)
+
+    INTEGER, INTENT (in) :: lnlon, lnlev, lngl
+    INTEGER, INTENT (in) ::  nlon,  nlev,  ngl
+
+
+    INTEGER                      :: dim1(3), dim1p(3)
+    INTEGER                      :: dim2(2), dim2p(2)
+# 82
+
+    CHARACTER (max_dim_name)     :: dim1n(3), dim2n(2)
+
+
+! construct the g1a table
+!
+! all information specific to this table is set in this subroutine
+
+! overwrite default entries for the predefined fields
+! allocate the predefined fields
+
+! assign pointers
+
+    dim1p = (/ lnlon,  lnlev, lngl  /)
+    dim1  = (/  nlon,   nlev,  ngl  /)
+    dim1n = (/  "lon ","lev ","lat "/)
+
+    dim2p = (/ lnlon, lngl  /)
+    dim2  = (/  nlon,  ngl  /)
+    dim2n = (/  "lon","lat" /)
+
+# 107
+
+
+    CALL default_stream_setting (g1a, lrerun=.TRUE.)
+
+    CALL add_stream_element (g1a, 'vom1',    vom1,    dim1p,dim1,dimnames=dim1n)
+    CALL add_stream_element (g1a, 'dm1',     dm1,     dim1p,dim1,dimnames=dim1n)
+    CALL add_stream_element (g1a, 'tm1',     tm1,     dim1p,dim1,dimnames=dim1n)
+    CALL add_stream_element (g1a, 'alpsm1',  alpsm1,  dim2p,dim2,dimnames=dim2n)
+    CALL add_stream_element (g1a, 'dalpslm1',dalpslm1,dim2p,dim2,dimnames=dim2n)
+    CALL add_stream_element (g1a, 'dalpsmm1',dalpsmm1,dim2p,dim2,dimnames=dim2n)
+    CALL add_stream_element (g1a, 'qm1',     qm1,     dim1p,dim1,dimnames=dim1n)
+    CALL add_stream_element (g1a, 'xlm1',    xlm1,    dim1p,dim1,dimnames=dim1n)
+    CALL add_stream_element (g1a, 'xim1',    xim1,    dim1p,dim1,dimnames=dim1n)
+!
+! Special handling for tracers
+!
+
+# 164
+
+
+
+  END SUBROUTINE construct_g1a
+
+  SUBROUTINE destruct_g1a
+
+    CALL delete_stream (g1a)
+
+# 175
+
+
+  END SUBROUTINE destruct_g1a
+
+END MODULE mo_memory_g1a

@@ -1,0 +1,50 @@
+!-*- f90 -*-
+
+&CTRL                        ! read in messy_airtrf.f90
+  nwaypoints = 101     !GC30,     !13      ! nwaypoints should take large number. See note 20120822-5,6.
+!                              nwaypoints should be even number, which can be devided by nwaypoints_out.
+  ngroutes = 103,  !86,    ! =1840 (original), this value should be modified to be determined from flightplan.
+  nwaypoints_out = 101,   !GC30, !13    ! nwaypoints_out = 6(original) !see note 20120703-1,-4, 1<= nwaypoints_out <= nwaypoints
+!                              nwaypoints_out is a measure of nwaypoints. See descriptions in subroutine compress_traj in SMCL.
+  ngroutes_out = 103,   !86,       ! =1840 (orignal)                 !see note 20120703-1,-4, 20120906-1, ngroutes_out <= ngroutes
+!
+!# An aircraft flight routing option is set by option_traj_calc:
+! - 0: Great circle
+! - 1: Time optimal
+! - 2: Fuel_use optimal
+! - 3: NOx emission optimal
+! - 4: H2O emission optimal
+! - 5: Contrail potential coverage optimal (contrail avoidance), developed by FY
+! - 6: Flight Cost optimal
+! - 7: COC (Cash operating cost) optimal
+! - 8: ATR20, climate_optimized based on aCCFs
+! - 9: COSTCLIM, cost and climate optimized
+! - 10: COSTCPC, cost and contrail optimized
+  option_traj_calc = 8, 
+  option_output = 0,         ! 0:standard, 1:ac locations in addition
+  option_max_ac_reached = 0, ! 0:stop, 1:ignore ac flight
+  lupdate_traj = .FALSE.,    !
+  ldaily_fp = .TRUE.         ! repeat flight next day; useage of flightplan daily aircraft.
+/
+&CPL                         ! read in messy_airtraf_e5.f90
+! HY,DLR-IPA
+! flightplan_filename = "/athome/yama_hi/_data/EMAC/AirTraf/messy_2.41/messy/flightplan/flightplan_1day.nc",   !
+ flightplan_filename = "$INPUTDIR_MESSY/airtraf/flightplan_REACT4C_WP1_A330.nc",   !20160926-8
+! flightplan_filename = "/export/pa_data01/MESSy/MESSy2/raw/airtraf/flightplan_REACT4C_WP1_A330.nc",  !
+! FY,TUDelft
+! flightplan_filename = "/home/fyin/EMAC/flightplan_REACT4C_WP1_A330.nc",   
+!  flightplan_filename = "/home/fyin/EMAC/ATM4E_reference_traffic_A33X_flights.nc",   
+!
+  flightplan_varname  = "dep_lon","dep_lat","dep_time","arr_lon","arr_lat", ! ,"dep_code","arr_code",              !
+  lfeedback_NO  = .FALSE.,   !
+  lfeedback_H2O = .FALSE.,   !
+!
+! FY,TUDelft
+! Submodel coupling with AIRTRAF
+  c_potcov = 'contrail_gp','potcov',
+  c_atr20_o3 = 'accfs_gp','atr20_o3',
+  c_atr20_ch4 = 'accfs_gp','atr20_ch4',
+  c_atr20_h2o = 'accfs_gp','atr20_h2o',
+  c_atr20_co2 = 'accfs_gp','atr20_co2',
+  c_atr20_contrail = 'accfs_gp','atr20_contrail'
+/

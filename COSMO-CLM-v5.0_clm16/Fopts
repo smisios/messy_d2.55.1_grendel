@@ -1,0 +1,75 @@
+#
+#  change compiler, options and libraries according to your needs
+#
+#########
+#  Mistral (DKRZ) / Intel Compiler
+#########
+#
+# modules and libraries
+#
+
+#... MPI
+MPI_INC  = 
+MPI_LIB  =
+
+#... netCDF
+NETCDFC_ROOT = /home/stergios/sw/netcdf-3.6.3-intel
+NETCDFF_ROOT = /home/stergios/sw/netcdf-3.6.3-intel
+#HDF5_ROOT = /sw/rhel6-x64/hdf5/hdf5-1.8.14-threadsafe-gcc48
+#SZIP_ROOT = /sw/rhel6-x64/sys/libaec-0.3.2-gcc48
+#
+NC_INC  = -I${NETCDFF_ROOT}/include
+NC_LIB  =  -L${NETCDFF_ROOT}/lib -lnetcdff 
+NC_LIB  += -L${NETCDFC_ROOT}/lib -lnetcdf
+#NC_LIB  += -L${HDF5_ROOT}/lib -lhdf5_hl -lhdf5 -lz
+#NC_LIB  += -L${SZIP_ROOT}/lib -lsz -lm
+#
+
+#... GRIB
+#
+GRIB_LIB= 
+
+#
+# name and path of standard binary to be produced
+PROGRAM      = bin/cosmo.exe
+#
+
+#... other libs, if needed on the computer system (e.g. mathematical packages)
+OTHLIBS1=
+#
+# compiler, options and libraries
+#
+# important note with respect to the compiler
+# I recommend to use the BULL MPI environmet. For this the nake of the compiler is "mpif90"
+# If you want to use the INTEL MPI environment, then you have to change the name to "mpiifort"
+# 
+F90          = mpifort
+
+# if you want to use GRIB you have to at -DGRIB to the CPPFLAGS and 
+#          define the GRIBLIB library above
+CPPFLAGS     = -DNETCDF -DCLM 
+
+#
+# for purposes of first tests you may use in addition to the option below the options -fpe0 -traceback
+#COMFLG = -c -cpp -Os -no-vec -fp-model source $(CPPFLAGS) $(MPI_INC) ${NC_INC} -I$(SRCDIR) 
+COMFLG = -c -cpp -Os -no-vec -fp-model source  $(CPPFLAGS) $(MPI_INC) ${NC_INC} -I$(SRCDIR)
+
+
+
+
+COMFLG1      = $(COMFLG)
+COMFLG2      = $(COMFLG)
+COMFLG3      = $(COMFLG)
+#
+# Compile src_setup_vartab.f90 with optimization level -O0; speeds up the compilation very much!!
+# for pruposes of first tests I recommend to use in addition to the option below the optiopn -fpe0 -traceback
+#
+#COMFLG4       = -c -cpp -O0 -no-vec -fp-model source $(CPPFLAGS) $(MPI_INC) ${NC_INC} -I$(SRCDIR)
+COMFLG4       = -c -cpp -O0 -no-vec -fp-model source $(CPPFLAGS) $(MPI_INC) ${NC_INC} -I$(SRCDIR)
+
+#
+LDSEQ        = ${F90}
+LDPAR        = ${F90}
+LDFLG        = -shared-intel -I$(SRCDIR) 
+LIB          = ${GRIB_LIB} ${NC_LIB} ${MPI_LIB} ${OTHLIBS1}
+LIB         += -Wl,-rpath,$(NETCDFF_ROOT)/lib:$(NETCDFC_ROOT)/lib

@@ -1,0 +1,149 @@
+! -*- f90 -*-
+&CPL
+! For spe_method==1
+spe_data_ion='import_ts','ionrate',
+! For spe_method==0
+spe_data_int='import_ts','pflux',
+! For spe_method==2
+AIMOS_channel='offemis',
+! Protons
+AIMOS_p_object='jmionrates_p_ionrate_p',
+! Electrons
+AIMOS_e_object='jmionrates_e_ionrate_e',
+! Alpha Particles
+AIMOS_a_object='jmionrates_a_ionrate_a',
+! For spe_method==3
+spe_kp='import_ts','kp',
+!ka_sb_20161109+
+spe_flux107='import_ts','flux107',  ! be aware: flux needs current value and 81-day running mean
+spe_cossza = 'orbit', 'cossza', ! cos(zenith angle)
+!ka_sb_20161109-
+! For spe_method==4
+CMIP6_channel='import_grid',
+! Protons
+CMIP6_p_object='CMIP6_protons_iprp',
+! Electrons
+CMIP6_e_object='CMIP6_electrons_iprm',
+! Galactic Cosmic Rays
+CMIP6_g_object='CMIP6_gcr_iprg',
+
+/
+&CTRL
+!------------------------------------------------
+! region of ionization
+!  only used for spe_method 0 and 1
+!
+r_lat1      = 60.         ! full ionization for |geomagnlatitude| >= r_lat1 [deg]
+r_lat2      = 60.         ! no   ionization for |geomagnlatitude| <  r_lat2 [deg]
+!------------------------------------------------
+! IONIZATION RATES
+!
+! 0: internal calculation (Andreas Baumgärtner)
+! 1: use externally calculated ionization rates (rates from Charles Jackman; old standard for longer time series)
+! 2: use Jan Maik Wissings AIMOS ionization rates (AIMOS objects in CPL needed in import.nml; only available for short time period (2000 to 2010))
+! 3: use parameterization from Holger Nieder based on AIMOS rates (kp-index needed in import.nml; recommended for L74 model runs; DON'T USE FOR MODEL RUNS WITH UPPER BOUNDARY OF 1 PA OR LOWER)
+!    remark: geomagnetic cycle is underestimated, mainly due to too high ionization rate in minimum conditions; if you are simulating time ranges where AIMOS data is available better use AIMOS data
+! 4: use CMIP6 ionization rates (CMIP6 objects in CPL needed in import.nml)
+!    CMIP6 rates are on geomagnetic latitudes with a moving magnetic pole. To use them in EMAC use the code provided on CMIP6 webpage and create file with ionization rates on geographic coordinates.
+! 5: use original AIMOS data format (data is read within the SPE model code)
+spe_method = 5
+
+! Calculate production rates for N2+, N+, O2+, O+ and NO+ directly (true) or calculate parameterized rates for N and NO production (see npe_method)
+! true only works with spe_method=3 and 5 and only if you have selected up in your meccanism
+calc_pos_ions = .TRUE.
+
+! Calculate O+ (as in gas.eqn) or three different O+-ions (Sinnhuber et al 2012; replacement file needed in mecca)
+calc_three_o_ions = .TRUE.
+
+! Branching for N4S and N2D production by particles if ions are calculated
+! Sinnhuber 2012
+! br_n4s=0.4925
+! br_n2d=0.4925
+! Nieder parameterization
+br_n4s=0.5694
+br_n2d=0.5355
+!
+!-------- METHOD 0 --------
+! CONTROL FOR INTERNAL CALCULATION OF ION RATES USING PROTON FLUX DATA
+!
+! number of bins in interpolated proton flux spectrum
+nbin        = 300
+! determines smallest energy in interpolated spectrum
+minoffs     = 44
+! spectrum interpolation method:
+! 0 : smooth
+! 1 : rough, still experimental
+! 2 : Vitt and Jackman (1996) method, recommended
+spect_interp_method = 2
+! properties for the range-energy relation-ship (Bethe, 1953): range[m]=(E[MeV]/a)^b
+rangerela=12.3
+rangerelb=1.8 ! mz_ab_20091215 previously 1.9 but that was overwritten by default
+!
+!-------- METHOD 1 --------
+! CONTROL FOR EXTERNALLY CALCULATED IONRATES
+!
+! Nothing to set here
+!
+!-------- METHOD 2 --------
+! see &CPL
+!
+!ka_sb_20160620+
+! 0: constant values (Jackman et al. 2005)
+! 1: using internally set values
+! 2: using linearly interpolated external SAP values by Holger Nieder (recommended; but no big difference below 1 Pascal; For L74 use this one)
+npe_method = 2
+!INPUT SAP file: 
+! Lookup-Table by Holger Nieder based on his model results
+input_sap_file = "$INPUTDIR_MESSY/spe/misc/Database_Phioniz"
+!ka_sb_20160620-
+!ka_sb_20161116+
+!photoionization included (=1) should be standard, turned off (=0)
+switchphi = 1
+!ka_sb_20161116-
+
+!ka_sb_20160705+
+!---------METHOD 3 --------------
+!parameterization from Holger Nieder based on AIMOS rates (kp-index needed in import.nml)
+input_spe3_file = "$INPUTDIR_MESSY/spe/misc/IonEMAC.nc" 
+!ka_sb_20160705-
+
+!ka_sv_20170427+
+! N2O production by particles; Does not work at the moment (way too high N2O production) -> directly deactivated in the source code
+n2oprod=0
+!ka_sv_20170427-
+
+!-------- GENERAL SETTINGS ------------
+! N/NO production efficiency
+! Only needed for npe_method == 1
+!!$ion_km      = 1.,  43.,  44.,  45.,  46.,  47.,  48.,  49.,  50.,  59.,  59.5,  60.,  60.5, 61.,  62.5, 63.,  63.5, 66.0, 66.5, 67.0
+!!$Nperion_km  = 0.,  0.05, 0.1,  0.16, 0.2,  0.2,  0.2,  0.2,  0.2,  0.19, 0.17,  0.16, 0.12, 0.1,  0.08, 0.06, 0.05, 0.04, 0.03, 0.02
+!!$NOperion_km = 0.9, 0.9,  0.9,  0.9,  0.9,  0.92, 0.95, 0.97, 1.0,  1.0,  1.0,   1.0,  0.82, 0.66, 0.46, 0.3,  0.26, 0.22, 0.18, 0.15
+!ion_km      = 1.,  43.,  44.,  45.,  46.,  47.,  48.,  49.,  50.,  57.,  59.,  60.,  61.,  62.,  63.,  63.5, 66.0, 66.5, 67.0
+!Nperion_km  = 0.,  0.05, 0.1,  0.16, 0.2,  0.2,  0.2,  0.2,  0.2,  0.2,  0.19, 0.16, 0.1,  0.08, 0.06, 0.05, 0.04, 0.03, 0.02
+!NOperion_km = 0.9, 0.9,  0.9,  0.9,  0.9,  0.92, 0.95, 0.97, 1.0,  0.85, 0.8,  0.75, 0.6,  0.4,  0.3,  0.26, 0.20, 0.18, 0.15
+!!ion_km =      1.000,41.000,42.000,43.000,44.000,45.000,46.000,47.000,48.000,49.000,50.000,51.000,52.000,53.000,54.000,55.000,56.000,57.000,58.000,59.000,60.000,61.000,62.000,63.000,64.000,65.000,66.000,67.000
+!!Nperion_km  = 0.000, 0.000, 0.000, 0.038, 0.075, 0.113, 0.150, 0.163, 0.175, 0.188, 0.200, 0.213, 0.225, 0.237, 0.250, 0.212, 0.175, 0.138, 0.100, 0.088, 0.075, 0.062, 0.050, 0.038, 0.025, 0.012, 0.000, 0.000
+!!NOperion_km = 0.700, 0.700, 0.700, 0.762, 0.825, 0.887, 0.950, 1.000, 1.050, 1.100, 1.150, 1.137, 1.125, 1.113, 1.100, 0.888, 0.675, 0.463, 0.250, 0.237, 0.225, 0.213, 0.200, 0.163, 0.125, 0.087, 0.050, 0.050
+ion_km =      1.000,41.000,42.000,43.000,44.000,45.000,46.000,47.000,48.000,49.000,50.000,51.000,52.000,53.000,54.000,55.000,56.000,57.000,58.000,59.000,60.000,61.000,62.000,63.000,64.000,65.000,66.000,67.000
+Nperion_km  = 0.550, 0.550, 0.550, 0.550, 0.550, 0.550, 0.550, 0.550, 0.550, 0.550, 0.550, 0.550, 0.550, 0.550, 0.550, 0.550, 0.550, 0.550, 0.550, 0.550, 0.550, 0.550, 0.550, 0.550, 0.550, 0.550, 0.550, 0.550
+NOperion_km = 0.700, 0.700, 0.700, 0.700, 0.700, 0.700, 0.700, 0.700, 0.700, 0.700, 0.700, 0.700, 0.700, 0.700, 0.700, 0.700, 0.700, 0.700, 0.700, 0.700, 0.700, 0.700, 0.700, 0.700, 0.700, 0.700, 0.700, 0.700
+!ka_sv_20180514+
+!For reading of original AIMOS files
+! to get your own files register at: http://helios.usf.uos.de/~maik/AIMOS/index.php
+! needed input parameters for T42L74 are available
+spe_aimos_dir="$INPUTDIR_MESSY/spe/misc/AIMOS/T42L74/2h/"
+spe_aimos_prefix="sversick_ionisationrates_year"
+! set the following to your model grid (probably can be replaced with model internal values)
+spe_nlat=64
+spe_nlon=128
+spe_nlev=74
+! aimos_time: number of AIMOS output time steps per daily file
+! aimos_time=1       ! 24h output
+! aimos_time=12      ! 2h output
+aimos_time=12
+! logical switches for proton, electron and alpha ionization
+aimpro=.TRUE.
+aimele=.TRUE.
+aimalp=.TRUE.
+!ka_sv_20180514-
+/

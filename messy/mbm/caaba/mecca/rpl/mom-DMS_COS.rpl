@@ -1,0 +1,188 @@
+// -*- kpp -*- kpp mode for emacs
+
+// Author: Domenico Taraborrelli 
+
+// Syntax of this replacement file is similar to kpp syntax, but...
+// - Only the commands "#REPLACE" and "#ENDREPLACE" are allowed.
+// - Comments must start with "//", curly braces ("{}") cannot be used here.
+
+// known limitation:
+// - The reaction number (e.g. "<G9876>") in the input equation file
+//   (gas.eqn) must be the first (non-whitespace) item in the line. If it is
+//   preceded by a comment in curly braces, replace.awk will not be able to
+//   find it.
+
+// Apply by running xmecca1 or using:
+//gawk -f replace1.awk -v infile=gas.eqn.org -v outfile=gas.eqn gas.rpl
+
+// add new reactions, specify an empty reaction number
+
+
+// this has been suggested by Ch. Bruehl, maybe with an original rate coefficient prior to JPL-2011
+// #REPLACE <G9200>
+// <a>  SO2    + OH    = SO3 + HO2 : {%TrStG}   k_3rd(temp,cair,3.E-31,3.3,1.5E-12,0.,0.6); {&1555}
+// #ENDREPLACE
+//
+// this is the original reaction in gas_mim1.eqn (JPL-2011):
+// <G9200>  SO2 + OH {+O2+H2O} = H2SO4 + HO2  : {%StTrG}   k_3rd(temp,cair,3.3E-31,4.3,1.6E-12,0.,0.6){§1.1}; {&2626}
+// keeping the same reaction rate coefficient splitting the reaction yields:
+#REPLACE <G9200>
+#ENDREPLACE
+
+// compared to CCMI-aero-01.rpl 
+// - G9202, J9002 and J9003 are new
+// - <J9001>  SO2 + hv  = SO  + O3P   : {%TrStGJ} JX(ip_SO2); {&SGN}
+//   not used, because J_SO2 not correct, apply scaled J_OCS instead
+//
+#REPLACE <>
+<G9100>  SO + O2   = SO2 + O3P   : {%TrStG} 1.25e-13*exp(-2190/temp); {&2626}
+<G9101>  SO + O3   = SO2 + O2    : {%TrStG} 3.4e-12*exp(-1100/temp); {&2626}
+<G9102>  S  + O2   = SO  + O3P   : {%TrStG} 2.3e-12; {&2626}
+<G9200>  SO2 + OH  = SO3 + HO2   : {%StTrG}   k_3rd(temp,cair,3.3E-31,4.3,1.6E-12,0.,0.6){§1.1}; {&2626}
+<G9201>  SH  + O2  = OH  + SO    : {%TrStG} 4.e-19; {&2626}
+<G9202>  H2S + OH  = SH  + H2O   : {%TrStG} 6.1E-12*EXP(-75./temp); {&2626}
+<G9203>  SO3 + H2O = H2SO4       : {%TrStG} 8.5e-41*exp(6540./temp)*C(ind_H2O); {&&1555}
+<J9001>  SO2 + hv  = SO  + O3P   : {%TrStGJ} 60.*JX(ip_OCS); {&SGN}
+<J9002>  SO3 + hv   = SO2 + O3P  : {%TrStGJ} JX(ip_SO3); {&SGN}
+<J9003>  H2SO4 + hv = SO3 + H2O  : {%TrStGJ} JX(ip_H2SO4); {&SGN}
+#ENDREPLACE
+
+#REPLACE <G9400a>
+#ENDREPLACE
+#REPLACE <G9400b>
+#ENDREPLACE
+#REPLACE <G9401>
+#ENDREPLACE
+#REPLACE <G9402>
+#ENDREPLACE
+#REPLACE <G9403>
+#ENDREPLACE
+#REPLACE <G9404>
+#ENDREPLACE
+#REPLACE <G9405>
+#ENDREPLACE
+
+#REPLACE <>
+<G9401>  CS {+ O2} = OCS + O3P   : {%TrStG} 2.90E-19{§§0.6}*c(ind_O2); {&1759}
+<G9402>  CS + O3P  = CO + S      : {%TrStG} 2.7E-10{§§0.1}*EXP(-760./temp); {&1759}
+<G9406>  OCS + OH  = SH  + CO2   : {%TrStG} 1.1e-13*exp(-1200./temp); {&2626}
+<G9407>  OCS + O3P = CO  + SO    : {%TrStG} 2.1e-11*exp(-2200./temp); {&2626}
+<J9000>  OCS + hv  = CO  + S     : {%TrStGJ} JX(ip_OCS); {&SGN}
+
+#ENDREPLACE
+
+CS2
+
+CS
+
+// Add the RO2 
+//! DMS-related
+//  IF (ind_CH3SCH2O2>0)  RO2 = RO2 + C(ind_CH3SCH2O2)
+//  IF (ind_HODMSO2>0)    RO2 = RO2 + C(ind_HODMSO2)
+//  IF (ind_DMSO2O2>0)    RO2 = RO2 + C(ind_DMSO2O2)
+//  IF (ind_CH3SOO>0)     RO2 = RO2 + C(ind_CH3SOO)
+//  IF (ind_CH3SOO2>0)    RO2 = RO2 + C(ind_CH3SOO2)
+//  IF (ind_CH3SO2O2>0)   RO2 = RO2 + C(ind_CH3SO2O2)
+
+CH3SH + OH  = CH3S + H2O : 9.9E-12*exp(356./temp);  
+CH3SH + NO3 = CH3S + HNO3 : 9.2E-13;  
+
+CH3SH + Cl = CH3S + HCl
+CH3SH + Cl = HSCH2O2 + HCl : ; {&2626,dt-2156}    
+
+
+CH2S
+
+// CH3S
+{20.} 	 CH3S + NO2 = CH3SO + NO : 	6.00E-11*EXP(240/temp) 	;
+{21.} 	 CH3S + O3 = CH3SO : 	1.15E-12*EXP(430/temp) 	;
+{22.} 	 CH3S = CH3SOO : 	1.20E-16*EXP(1580/temp)*c(ind_O2) 	;
+
+// CH3SO
+{43.} 	 CH3SO + NO2 = CH3O2 + SO2 + NO : 	1.20E-11*0.25 	;
+{44.} 	 CH3SO + NO2 = CH3SO2 + NO : 	1.20E-11*0.75 	;
+{45.} 	 CH3SO + O3 = CH3O2 + SO2 : 	4.00E-13 	;
+{46.} 	 CH3SO = CH3SOO2 : 	3.12E-16*EXP(1580/temp)*O2 	;
+{47.} 	 CH3SOO + NO = CH3SO + NO2 : 	1.1E-11 	;
+{48.} 	 CH3SOO + NO2 = CH3SO + NO3 : 	2.2E-11 	;
+{49.} 	 CH3SOO = CH3O2 + SO2 : 	5.60E+16*EXP(-10870/temp) 	;
+{50.} 	 CH3SOO = CH3S : 	3.50E+10*EXP(-3560/temp) 	;
+
+
+{33.} 	 MSIA + OH = CH3O2 + SO2 : 	9.00E-11 	;
+
+{67.} 	 CH3SO2 + O3 = CH3SO3 : 	3.00E-13 	;{&749}
+{68.} 	 CH3SO2 = CH3O2 + SO2 : 	5.00E+13*EXP(-9673/temp) 	;
+{69.} 	 CH3SO2 = CH3SO2O2 : 	1.03E-16*EXP(1580/temp)*O2 	;
+{70.} 	 CH3SOO2 + HO2 = CH3SO2 + OH : 	KAPHO2*0.44 	;
+{71.} 	 CH3SOO2 + HO2 = CH3SOOOH : 	KAPHO2*0.41 	;
+{72.} 	 CH3SOO2 + HO2 = MSIA + O3 : 	KAPHO2*0.15 	;
+{73.} 	 CH3SOO2 + NO = CH3SO2 + NO2 : 	1.00E-11 	;
+{74.} 	 CH3SOO2 + NO2 = CH3SOO2NO2 : 	1.20E-12*(temp/300)**-0.9 	;
+{75.} 	 CH3SOO2 + NO3 = CH3SO2 + NO2 : 	KRO2NO3*1.74 	;
+{76.} 	 CH3SOO2 = CH3SO : 	9.10E+10*EXP(-3560/temp) 	;
+{77.} 	 CH3SOO2 = CH3SO2 : 	1.00E-11*RO2*0.7 	;
+{78.} 	 CH3SOO2 = MSIA : 	1.00E-11*RO2*0.3 	;
+{79.} 	 CH3SO3 + HO2 = MSA : 	5.00E-11 	;
+{80.} 	 CH3SO3 = CH3O2 + SO3 : 	5.00E+13*EXP(-9946/temp) 	;
+{81.} 	 CH3SO2O2 + HO2 = CH3SO2OOH : 	KAPHO2*0.41 	;
+{82.} 	 CH3SO2O2 + HO2 = CH3SO3 + OH : 	KAPHO2*0.44 	;
+{83.} 	 CH3SO2O2 + HO2 = MSA + O3 : 	KAPHO2*0.15 	;
+{84.} 	 CH3SO2O2 + NO = CH3SO3 + NO2 : 	1.00E-11 	;
+{85.} 	 CH3SO2O2 + NO2 = CH3SO4NO2 : 	1.20E-12*(temp/300)**-0.9 	;
+{86.} 	 CH3SO2O2 + NO3 = CH3SO3 + NO2 : 	KRO2NO3*1.74 	;
+{87.} 	 CH3SO2O2 = CH3SO2 : 	3.01E+10*EXP(-3560/temp) 	;
+{88.} 	 CH3SO2O2 = CH3SO3 : 	1.00E-11*RO2*0.7 	;
+{89.} 	 CH3SO2O2 = MSA : 	1.00E-11*RO2*0.3 	;
+{90.} 	 CH3SOOOH + OH = CH3SOO2 : 	9.00E-11 	;
+{91.} 	 CH3SOOOH = CH3SO2 + OH : 	J(41) 	;
+{92.} 	 CH3SOO2NO2 + OH = MSIA + NO2 : 	1.00E-11 	;
+{93.} 	 CH3SOO2NO2 = CH3SOO2 + NO2 : 	5.40E+16*EXP(-13112/temp) 	;
+{94.} 	 MSA + OH = CH3SO3 : 	2.24E-14 	;
+{95.} 	 CH3SO2OOH + OH = CH3SO2O2 : 	3.60E-12 	;
+{96.} 	 CH3SO2OOH = CH3SO3 + OH : 	J(41) 	;
+{97.} 	 CH3SO4NO2 + OH = CH3SO2O2 + HNO3 : 	3.60E-13 	;
+{98.} 	 CH3SO4NO2 = CH3SO2O2 + NO2 : 	5.40E+16*EXP(-13112/temp) 	;
+
+DMDS(CH3SSCH3)
+
+{1.} 	 DMS + NO3 = CH3SCH2O2 + HNO3 : {%TrGNS} 	1.9E-13*EXP(520./temp) 	;
+{2.} 	 DMS + OH = CH3SCH2O2 : {%TrGS}	1.12E-11*EXP(-250./temp) 	;
+{3.} 	 DMS + OH = HODMSO2 : {%TrGS}	KMT18 	;
+{4.} 	 CH3SCH2O2 + HO2 = CH3SCH2OOH : {%TrGS}	KRO2HO2*0.387 	;
+{5.} 	 CH3SCH2O2 + NO = CH3SCH2O + NO2 : {%TrGNS}	4.9E-12*EXP(260./temp) 	; {&1759}
+{6.} 	 CH3SCH2O2 + NO3 = CH3SCH2O + NO2 : {%TrGNS}	KRO2NO3 	;
+{7.} 	 CH3SCH2O2 = CH3SCH2O : {%TrGS}	2*(k_CH3O2*1.0E-11)**(0.5)*RO2 	; {&1759} // The channels producing \kpp{CH3SCH2OH} and \kpp{CH3SCHO} in MCM are neglected as they are not recommended by IUPAC.  
+{10.} 	 HODMSO2 + NO = DMSO2 + HO2 + NO2 : {%TrGNS}	KRO2NO 	;
+{11.} 	 HODMSO2 = DMSO + HO2 : {%TrGS}	8.90E+10*EXP(-6040./temp) 	;
+{12.} 	 CH3SCH2OOH + OH = CH3SCHO + OH : {%TrGS}	7.03E-11 	;
+{13.} 	 CH3SCH2OOH = CH3SCH2O + OH : {%TrGS}	J(41) 	;
+{14.} 	 CH3SCH2O = CH3S + HCHO : {%TrGS}	KDEC 	;
+//{15.} 	 CH3SCH2OH + OH = CH3SCHO + HO2 : 	2.78E-11 	;
+{16.} 	 CH3SCHO + OH = CH3S + CO : 	1.11E-11 	;
+{17.} 	 CH3SCHO = CH3S + CO + HO2 : 	J(15) 	;
+{18.} 	 DMSO2 + OH = DMSO2O2 : 	4.40E-14 	;
+{19.} 	 DMSO + OH = MSIA + CH3O2 : 	6.10E-12*EXP(800/temp) 	;
+{27.} 	 DMSO2O2 + HO2 = DMSO2OOH : 	KRO2HO2*0.387 	;
+{28.} 	 DMSO2O2 + NO = DMSO2O + NO2 : 	KRO2NO 	;
+{29.} 	 DMSO2O2 + NO3 = DMSO2O + NO2 : 	KRO2NO3 	;
+{30.} 	 DMSO2O2 = CH3SO2CHO : 	2.00E-12*RO2*0.2 	;
+{31.} 	 DMSO2O2 = DMSO2O : 	2.00E-12*RO2*0.6 	;
+{32.} 	 DMSO2O2 = DMSO2OH : 	2.00E-12*RO2*0.2 	;
+{51.} 	 DMSO2OOH + OH = CH3SO2CHO + OH : 	1.26E-12 	;
+{52.} 	 DMSO2OOH + OH = DMSO2O2 : 	3.60E-12 	;
+{53.} 	 DMSO2OOH = DMSO2O + OH : 	J(41) 	;
+{54.} 	 DMSO2O = CH3SO2 + HCHO : 	KDEC 	;
+{55.} 	 CH3SO2CHO + OH = CH3SO2 + CO : 	1.78E-12 	;
+{56.} 	 CH3SO2CHO = CH3SO2 + CO + HO2 : 	J(15) 	;
+{57.} 	 DMSO2OH + OH = CH3SO2CHO + HO2 : 	5.23E-13 	;
+{58.} 	 DMSO2OH + OH = DMSO2O : 	1.40E-13 	;
+
+#REPLACE <G9600>
+<n>  DMS + Cl       = CH3SCH2O2 + HCl : {%TrG} 3.3E-10{§§0.15}; {&1610}
+#ENDREPLACE
+
+#REPLACE <G9700>
+<n>  DMS + Br       = CH3SCH2O2 + HBr : {%TrG} 9.E-11{§1.32}{9.0+/-2.9}*EXP(-2386.{§1.06}{2386+/-151}/temp); {&299}
+#ENDREPLACE
+

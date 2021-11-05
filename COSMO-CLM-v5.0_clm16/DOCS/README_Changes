@@ -1,0 +1,589 @@
+README_CHANGES gives an overview
+of changes introduced in cosmo_131108_5.00_clm..
+
+The basis for the new CCLM versions is
+
+COSMO_131108_5.0  
+
+The history of changes for COSMO can be found in the misc.global files
+that can be found also in the directory DOCS.
+
+//////////////////////////////
+cosmo_131108_5.0_clm16
+//////////////////////////////
+
+August, 2019 Burkhardt Rockel HZG
+
+* corrected a bug for netCDF restart files when running long time simulations:
+    change some variable definitions to higher precision
+_affected modules:_
+
+  * src_input.f90
+
+* add cell_method "time: point" to instantaneous quantities.
+_affected modules:_
+
+  * netcdf_io.f90
+
+* allow for missing_value==-1.E20 in CIN_MU, CIN_ML, CAPE_MU, CAPE_ML in case of netCDF output
+_affected modules:_
+
+  * src_output.f90
+
+//////////////////////////////
+cosmo_131108_5.0_clm15
+//////////////////////////////
+
+January, 2019  Burkhardt Rockel HZG
+
+* corrected output precision of the variable time and time_bnds
+_affected modules:_
+
+  * netcdf_io.f90
+
+* prevent model from crashing when no output parameter is defined in a gribout namelist block
+_affected modules:_
+
+  * organize_data.f90
+
+* prevent model from eventually crashing when writing restart files
+_affected modules:_
+
+  * src_output.f90
+
+//////////////////////////////
+cosmo_131108_5.0_clm14
+//////////////////////////////
+
+December 19, 2018  Ronny Petrik HZG, Burkhardt Rockel HZG, Hans-Juergen Panitz KIT
+
+* correct output dimension of T_SO
+_affected modules:_
+
+  * netcdf_io.f90
+
+* check whether VABS_10M_SECAV and WDIRGEO_10M_FREQ are in the same gribout block
+_affected modules:_
+
+  * organize_data.f90
+  
+ATTENTION: If you want to write out both VABS_10M_SECAV and WDIRGEO_10M_FREQ, you must put them in the same gribout block!
+
+* move the definition of the constant nwdirsec form data_fields.f90 to data_io.f90
+_affected modules:_
+
+  * data_fields.f90
+  * data_io.f90
+  * io_metadata.f90
+  * near_surface.f90
+  * netcdf_io.f90
+  * src_allocation.f90
+  * src_input.f90
+  
+* corrections for starting the wind rose at 0 degrees
+_affected modules:_
+
+  * io_metadata.f90 
+  * netcdf_io.f90
+  * src_input.f90
+
+* add "1" for the unit of the frequency distribution
+_affected modules:_
+
+  * near_surface.f90
+  * src_setup_vartab.f90
+
+* add threshold parameter and account for calm wind situations (needed for wind rose frequencies)
+_affected modules:_
+
+  * near_surface.f90
+  * src_output.f90
+
+* correct call to uvrot2uv_vec 
+_affected modules:_
+
+  * near_surface.f90
+
+* add _FillValue attribute to WDIRGEO_10M
+_affected modules:_
+
+  * netcdf_io.f90
+
+* correction in several field indices
+  * src_setup_vartab.f90 
+
+//////////////////////////////
+cosmo_131108_5.0_clm13
+//////////////////////////////
+
+December 07, 2018 Burkhardt Rockel HZG
+
+correct a bug in organize_data.f90 which came in by a mistyping in 5.0_clm12
+
+New diagnostics is implemented for model output: 
+
+ - mean cloud cover over an output time interval, CLCT_AV
+ 
+_affected modules:_
+  data_fields.f90
+  near_surface.f90
+  organize_data.f90
+  src_allocation.f90
+  src_setup_vartab.f90
+
+Rename of WDIRLAT... to WDIRGEO...
+
+affected modules
+  data_fields.f90
+  near_surface.f90
+  organize_data.f90
+  src_allocation.f90
+  src_output.f90
+  src_setup_vartab.f90
+
+
+//////////////////////////////
+cosmo_131108_5.0_clm12
+//////////////////////////////
+
+November 12, 2018 Ronny Petrik HZG, Burkhardt Rockel HZG
+
+New diagnostics is implemented for model output: 
+
+ - wind direction at 10 m height and its frequency, WDIRLAT_10M, WDIRLAT_10M_FREQ
+ - total density, RHO_TOT
+ - average wind speed (3D) based on the output interval, VABS_AV
+ - average wind speed at 10 m based on the output interval, VABS_10M_AV
+ - the turbulence intensity maximum based on the interval defined by hincmxu, TURB_INTENS
+ - wind sector statistics at 10M height (frequency distribution of wind direction, maximum wind speed and mean wind speed), VABS_10M_SECAV, VABS_10M_SECMAX
+ - averaged direct downward sw radiation on a plane directed normal to the sun (including and excluding orographic shading), ASWDIR_SN, ASWDIR_SNO
+ - solar elevation and azimuth angles, SUN_EL, SUN_AZI
+
+_affected modules:_
+  data_fields.f90
+  data_io.f90
+  io_metadata.f90
+  lmorg.f90
+  near_surface.f90
+  organize_data.f90
+  src_allocation.f90
+  src_input.f90
+  src_output.f90
+  src_radiation.f90
+  src_setup_vartab.f90
+  src_sfcana.f90
+  src_spectral_nudging.f90
+
+Restart functionality is fixed for netcdf-files using sub-hourly increments.
+
+_affected modules:_
+  src_input.f90
+
+The interpolation for producing model output on constant height levels above Earth surface was fixed for method itype_vertint=2.
+
+_affected modules:_
+  utilities.f90
+
+wave lengths in netCDF output for RTTOV
+
+_affected modules:_
+  netcdf_io.f90
+
+//////////////////////////////
+cosmo_131108_5.0_clm11 
+//////////////////////////////
+
+October 12, 2018 Burkhardt Rockel HZG, Katherine Oesterried ETHZ
+
+- added support for netcdf formatted restart files
+- several minor modification
+
+_affected modules:_
+  data_io.f90
+  io_utilities.f90
+  netcdf_io.f90
+  src_input.f90
+  src_output.f90
+
+new namelist parameter in IOCTL:
+yform_restart
+default: yform_restart='bina'
+in case of netcdf restart I/O:
+yform_restart='ncdf'
+
+//////////////////////////////
+cosmo_131108_5.0_clm10
+//////////////////////////////
+
+February 2, 2018   H.-J. Panitz, IMK/KIT, U. Schaettler, DWD, Burkhardt Rockel HZG
+ 
+-  added new Namelist parameter lzint_above_ground to choose z-interpolation to
+    height levels above ground
+    relevant Namelist group: GRIBOUT
+    parameter: lzint_above_ground
+    lzint_above_ground=.FALSE. (Default): z-interpolation above Sea Level
+    lzint_above_ground=.TRUE.           : z-interpolation above ground
+    modules affected:
+    - data_io.f90
+    - io_metadata.f90
+    - organize_data.f90
+    - src_output.f90
+    - netcdf_io.f90
+   
+-  set the 'l'-flag (land-sea dependency) for HORIZON, SKYVIEW, SLO_ANG, SLO_ASP, and SWDIR_COR
+    which are only defined over land; corresponding initial data coming from INT2LM are undefined 
+    over water bodies since the 'l'-flag is also used in INT2LM
+    modules affected:
+    - src_setup_vartab.f90
+
+-  changes to correct a bug which causes a crash for the namelist option lradtopo=.TRUE.
+    Shadowing effects (lradtopo=.TRUE.) should work now.
+    module affected:
+    - src_input.f90
+     in case of lradtopo=.TRUE. reset values of slo_ang, slo_asp, and horizon to
+     zero for non-land-points only
+     in case of lradtopo=.TRUE. reset values of skyview to
+     one for non-land-points only
+
+    IMPORTANT NOTE: 
+    - applying lradtopo=.TRUE. requires nradcoarse=1; otherwise job would stop
+    - nradcoarse=1 requires lradf_avg=.FALSE.; otherwise job would stop
+
+- src_soil_multlay.f90
+     delete factor 0.5 in definition of zalpha to be in accordance to ICON coding
+
+- netcdf_io.f90
+     added a "T" in the time units attribute
+     changes due to the new option lzint_above_ground
+     
+- src_spectral_nudging.f90
+     added option to nudge over all wave numbers (this is grid nudging actually) by setting
+        isc_sn=-1, jsc_sn=-1 for lspecnudge=.TRUE. Other spectral nudging otions can be used
+        as usual.
+     
+
+//////////////////////////////
+cosmo_131108_5.0_clm9
+//////////////////////////////
+
+September 09, 2016  B. Rockel, HZG
+    bug fix to correctly write output files after a restart in case of asynchronous I/O
+    module affected:
+    - netcdf_io.f90
+
+July 06, 2016 H.-J. Panitz, IMK/KIT  
+    bug fix related to ISBA version of bare soil evaporation (itype_evsl=3)
+    module affected:
+    - src_soil_multlay.f90
+    does change results in case of itype_evsl=3
+    short explanation (for details see source code):
+     The coefficients b2 and b4, used in the calculation of saturation vapor pressure,
+     have to be calculated in dependence of the location(grid point i,j).
+     This had not been done before, the coefficients had fixed values that changed
+     when the domain decomposition changed. 
+     Thus, b2 and b4 have to be recalculated taking into account the grid point position.
+     This is done taking into account whether the surface temperature t_s is higher or lower than the melting
+     temperature t0_melt.
+     Depending on this the coefficients b2 for water or ice, and b4 for water
+     or ice are chosen for their usage in the function to determine the
+     saturation vapor pressure
+
+June 28, 2016 H.-J. Panitz, IMK/KIT  
+    avoid call of SR hydci in case of restart together with case ldiniprec=.TRUE.
+    otherwise restart job would crash at once
+    module affected:
+      organize_physics.f90
+    In case of  ldiniprec=.TRUE. SR hydci must only be called once for
+    initialization during the very first time-step of a simulation
+    But: the  "action=init" branch n organize_physics.f90 is also excecuted in case of restart;
+        thus SR hydci was called again and the simulation crashed
+    Solution: SR hydci is called only if ldiniprec=.TRUE. and ntstep==0
+    - does not change the results; avoids crashes in case of restart only
+
+May, 11, 2016 H.-J. Panitz, IMK/KIT  
+  Implemented F2003 IOMSG-mechanism for better namelist error messages
+   -modules affected: 
+   src_setup.f90
+   dfi_initialization.f90
+   organize_assimilation.f90
+   organize_data.f90
+   organize_diagnosis.f90 
+   organize_dynamics.f90
+   organize_eps.f90
+   organize_physics.f90
+   organize_satellites.f90
+   src_artifdata.f90
+   src_obs_rad.f90
+   - does not change the results
+   
+May, 11, 2016 H.-J. Panitz, IMK/KIT
+  in main program lmorg.F90
+     change sequence of calculation for nzdays in case of lbdclim=T
+      - necessary to get a meaningful value in cases of very large ntstep
+      - on MISTRAL change was necessary to avoid crash of long-term simulation when
+        simulation time > 68 years is reached
+      - does not change the results
+
+May, 11, 2016 J.-P. Schulz, DWD; H.-J. Panitz, IMK/KIT
+- module src_soil_multlay.f90
+   new option for calculation of bare soil evaportion
+   Calculation of bare soil evaporation using a resistance formulation.
+   For a review see Schulz et al. (1998)
+   option can be chosen by namelist parameter itype_evsl=4 (Physics Group)
+   Does change the results if the new option is chosen
+
+   extend model abort if resistance version of parameterization of bare soil evaporation
+    (itype_evsl=4) is chosen together with one layer soil model;
+    resistance version is only applicable in connection with multi-layer soil model
+    modules affected:
+    - organize_physics.f90
+
+
+//////////////////////////////
+cosmo_131108_5.0_clm8
+//////////////////////////////
+
+Jan, 29, 2016  J.-P. Schulz, DWD
+  Bug fix to avoid negative runoff_g in case of itype_root == 2
+    Limit transpiration such that the soil water content does not
+    fall below the wilting point
+   module affected:
+   - src_soil_multlay.f90
+   - does change results if option itype_root ==2 is chosen
+
+Jan, 29, 2016  H.-J. Panitz (HJP)
+   Increase value of SELECTED_INT_KIND from 12 to 18 
+    (suggested by U. Schaettler) in order to avoid a
+     possible crash of the model after a total simulation time of 68 years,
+     which had been reported by Delei Li
+   -module affected
+    data_parameters.f90
+
+Jan, 29, 2016  H.-J. Panitz (HJP)
+   For a correct representation of the value of real variables
+    being converted to Integer, the "int_dp" parameter, 
+    respectivly "iintegers" parameter have been included in
+    the corresponding conversion statements
+    modules affected:
+    - lmorg.f90
+    - src_meanvalues.f90
+
+//////////////////////////////
+cosmo_131108_5.0_clm7
+//////////////////////////////
+
+Dec, 04, 2015   B. Rockel, HZG
+ 
+   Bug fix to correctly write all attributes into the header of NetCDF files
+   in case of asynchronous I/O
+   It had been forgotten to distribute the irefatm=2 parameters delta_t and h_scal to all
+   I/O processes. The consequence was that the values of these parameters, which are attributes of the
+   vertical coordinate "vcoord", were wrong, namely -9999. And this then might lead to problems/crashes in 
+   subsequent INT2LM runs, if one wants to perform a further downscaling (lm2lm=.TRUE.)
+   The bug did not affect the results of the the model!
+   module affected:
+   - netcdf_io.f90, SR distribute_values_asynio
+
+//////////////////////////////
+cosmo_131108_5.0_clm6
+//////////////////////////////
+
+Sep, 11, 2015  H.-J. Panitz, IMK/KIT, B. Rockel, HZG
+
+1)
+  Due to consistency reason change name of wet bulb temperature to wbtemp_13c
+  module affected:
+  - netcdf_io.f90, SR write_nc_gdefs
+
+2)
+  Bug fix in src_soil_multlay.f90 in case of restarts when using the option itype_heatcond=2. 
+  Without the bug fix restart runs will not produce binary identical results compared to continuous runs.
+  The bug was related to a missing setting of w_so_ice at time-level nnew.
+  This has been corrected by Burkhardt Rockel
+  module affected:
+  - src_soil_multlay.f90
+
+
+//////////////////////////////
+cosmo_131108_5.0_clm5
+//////////////////////////////
+
+Aug, 24, 2015 U. Schaettler, DWD, H.-J. Panitz, IMK/KIT
+
+   re-initialization of field ds_real (end of SR output_data) which is
+   necessary to avoid model crashes in case of usage of large number of processors
+   module affected:
+   - src_output.f90
+
+//////////////////////////////
+cosmo_131108_5.0_clm4
+//////////////////////////////
+
+June, 05, 2015 K. Osterried and D. Luethi, ETHZ
+   for use in the calibration of COSMO 5.0 the following changes were
+   added to the code:
+   * The former internal constant parameter uc1 was converted into a tuning
+     parameter, which can be specified in the /TUNING/ namelist block of
+     INPUT_ORG (default value as before 0.8_ireals).
+   * Three additional tuning namelist parameters were defined in INPUT_ORG
+   - radfac (fraction of cloud water/ice used in radiation scheme) before this
+     was hardcoded to be 0.5_ireals (which is still the default value)
+   - fac_rootdp2 (uniform multiplication factor for the prescribed root depth values)
+     default: 1.0_ireals (tested range [0.5_ireals,1.5_ireals])
+   - soilhyd (uniform multiplication factor for hydraulic conductivity and
+     diffusivity in the soil)
+     default: 1.0_ireals (tested range [0.1_ireals,10.0_ireals])
+    modules affected:
+    - data_constants.f90
+      uc1 is no longer a constant
+    - data_radiation.f90
+      define tuning namelist parameter radfac
+    - data_soil.f90
+      define tuning namelist parameters fac_rootdp2, soilhyd
+    - src_radiation.f90
+      use parameter radfac instead of hardcoded value 0.5_ireals
+    - src_setup.f90
+      append namelist /TUNING/ with the new tuning parameters
+    - src_soil_multlay.f90
+      multiply rootdp with factor fac_rootdp2
+      multiply cdw0 and ckw0 with factor soilhyd
+
+
+//////////////////////////////
+cosmo_131108_5.0_clm3a
+//////////////////////////////
+
+June   11, 2015    H.-J. Panitz
+ additional test in check_record whether U, V, and T initial- and boundary data 
+ are o.k.
+ It is checked whether the  mean value in a layer is very small, respectively < ABS(1.E-30).
+ If this is the case, it is assumed that the mean value is actually zero what means that the whole layer
+ contains only zero values. A WARNING is written at the end of the corresponding control record in file YUCHKDAT.
+ This helps to identify such a crazy situation which indicates that either the boundary data are wrong themselves
+ or that an Input error occurred while reading the data record.
+ Of course,  in order to identify the problem it is necessary and recommended to write the ckeck records
+ of the initial and boundary data into the YUCHKDAT file, namely that the Namelist parameters "lchkini" and "lckbd" are set to .TRUE.!
+ module affected:
+  - io_utilities, SR check_record
+ 
+April, 28, 2015    H.-J. Panitz
+ missing #ifdef GRIBDWD #endif corrected when defining EXTERNAL function IREFTS
+   module affected
+    - io_metadata.f90, SR makegds
+    - src_sfcana.f90,  SR sfcout 
+
+
+February, 05, 2015 H.-J. Panitz, Felix Ament
+   new option for parameterization of bare soil evapoaration according to 
+    Noilhan and Planton (1989) (ISBA version); the new scheme can be activated by Namelist parameter itype_evsl
+    itype_evsl=3
+    modules affected:
+    - src_soilmultlay.f90
+ 
+   model abort if this new ISBA version of parameterization of bare soil evaporation
+    (itype_evsl=3) is chosen together with one layer soil model;
+    ISBA version is only applicable in connection with multi-layer soil model
+    modules affected:
+    - organize_physics.f90
+
+//////////////////////////////
+cosmo_131108_5.0_clm3
+//////////////////////////////
+
+December, 01, 2014 D. Luethi, ETHZ
+    change to allow itype_albedo=3 in climate mode
+    modules affected:
+    - lmorg.f90
+    - data_fields.f90
+    - organize_data.f90
+    - src_allocation.f90
+    - src_setup_vartab.f90
+
+November, 27, 2014 and January, 23, 2015 B. Rockel, HZG /H.-J. Panitz (IMK-TRO, KIT)
+    further bug fixes in snow model avoid division by Zero and corrects a bug
+    in case of very thin snow and large negative heat balance at the snow surface
+    when a one-layer snow model is used instead of a multi-layer model
+   module affected:
+   - io_utilities.f90
+
+November, 17, 2014 B. Rockel, HZG /H.-J. Panitz (IMK-TRO, KIT)
+   in case of climate version allow overwritting of existing restart files
+   steered by #ifdef CLM, conditional compilation -DCLM necessary
+   module affected:
+   - io_utilities.f90
+
+November, 24, 2014 Ekaterina Machulskaya(DWD) /H.-J. Panitz (IMK-TRO, KIT)
+   Bug fixes in multi-layer snow model (EM_bugfix)
+   density of water and ice have been substituted by density of snow (rho_snow_mult)
+   module affected
+   - src_soil_multlay.f90
+
+//////////////////////////////
+cosmo_131108_5.0_clm2
+//////////////////////////////
+
+
+July, 04, 2014, Jan-Peter Schulz, DWD
+
+  bug fix in implicit solver of heat conduction equation
+  changes results only if itype_heatcond=2
+  module affected:
+  - src_soil_multlay.f90
+
+ Here the explanation of Jan-Peter:
+ "In the implicit solver the
+ coefficients "zaga" and "zagc" are computed. Currently, both
+ computations use "zakb" which contains "zalam(i,j,kso)". The latter is
+ the soil thermal conductivity, which is defined on soil layer interfaces
+ (half levels).
+
+ And here is the error: "zaga" and "zagc" need to be computed with
+ "zalam" at the upper and the lower layer interface, respectively. This
+ is done in the code correction.
+
+ This correction will change the model results if itype_heatcond=2 in
+ the physics NAMELIST PHYCTL is set, i.e. when the soil thermal
+ conductivity is not constant in the vertical. In the case
+ itype_heatcond=1, which is usually our operational setup, the soil
+ thermal conductivity is constant in the vertical (and in time),
+ therefore the error has no undesired consequence, but this is more by
+ chance."
+ 
+June, 03, 2014, B. Rockel, HZG
+
+  bug fix when writing variables of the multi-layer snow model
+  module affected:
+  - io_metadata.f90
+
+
+//////////////////////////////
+cosmo_131108_5.0_clm1
+//////////////////////////////
+
+December  17, 2013, H.-J. Panitz, KIT
+
+ -module organize_physics.f90
+  Change of Warning related to the usage of ltkecon=.TRUE.
+   - Change ltkeconv to ltkecon since ltkecon is the name of the Namelistvariable
+   - Change ELSEIF Statment since TKE tendencies due to convection (tket_conv), which are are needed
+      for ltkecon=.TRUE., are calculated also in case of shallow convection (itype_conv=3)
+   - Change the corresponding Warning since ltkecon is presently not supported by IFS convection scheme
+
+November  13, 2013, H.-J. Panitz, KIT
+
+  implementation of optional usage of IFS convection scheme 
+  instead of Tiedtke scheme
+  Version of IFS scheme: IFS_Cy33r1, which has been modified by Anne Roches in order to make
+  it compatible with the tracer module 
+
+  Principle procedure that has been done:
+  If one wants to use the IFS convection scheme one has to do the following steps:
+    1.) copy the  directory "IFS" from "work" into the "src" directory
+    2.) copy the module src_conv_ifs.f90 form "work" into the "src" directory 
+    3.) substitute the "ObjDependencies" and "ObjFiles" by "ObjDependencies_IFS" and "ObjFiles_IFS",
+        but retain the file names "ObjDependencies" and "ObjFiles" 
+    4.) the IFS scheme is conditionally compiled; thus, add the option -DCLM to your compiler flags (in file Fopts)
+        and re-compile
+    5.) if you want to use the IFS scheme, set itype_conv=2 in Namelist-group "phyctl" (yes, itype_conv=2 is correct!!!)
+
+

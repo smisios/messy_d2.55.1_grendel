@@ -1,0 +1,4236 @@
+# 1 "../../messy/bmil/messy_main_channel_bi.f90"
+# 1 "../../messy/bmil/messy_main_ppd_bi.inc" 1 
+! -*- f90 -*-
+# 11
+
+
+! ----------------------------------------------------------------------
+! SETTINGS FOR VARIOUS BASEMODELS
+! ----------------------------------------------------------------------
+! SO FAR FOR ALL MESSy BASEMODES
+
+
+
+
+! ORDER: h,v,[n],h (TRRANK=3)  OR h,v,h,[n] (TRRANK=4)
+
+
+
+
+! ORDER: h,h,[n],v (TRRANK=3)  OR h,h,v,[n] (TRRANK=4)
+# 29
+
+
+# 33
+
+
+
+
+! ----------------------------------------------------------------------
+! GENERIC SETTINGS
+! ----------------------------------------------------------------------
+
+! ----------------------------------------------------------------------
+! ORDER: h,v,[n],h OR h,v,h,[n]
+
+! ----------------------------------------------------------------------
+
+! op_pj_20170228: macros required for TTRANK=3 (messy_main_tracer)
+
+
+
+
+
+
+
+
+
+
+
+
+
+! classical RI to pass one `jrow` to SMCL:
+
+
+
+
+
+! only ONEMIS, BIOBURN, GMXE, VEG:
+
+
+
+
+
+
+! op_pj_20170228: macros required for TTRANK=4 (messy_main_tracer)
+# 97
+
+!
+! ----------------------------------------------------------------------
+
+! ----------------------------------------------------------------------
+
+! ----------------------------------------------------------------------
+! ORDER: h,h,[n],v OR h,h,v,[n]
+# 160
+
+! ----------------------------------------------------------------------
+# 2 "../../messy/bmil/messy_main_channel_bi.f90" 2 
+
+! **********************************************************************
+MODULE messy_main_channel_bi
+! **********************************************************************
+
+! -------------------------------------------------------------------
+!  CHANNEL INTERFACE SHARED BETWEEN DIFFERENT BASEMODELS
+! -------------------------------------------------------------------
+
+  USE messy_main_channel_error_bi, ONLY: channel_halt
+
+  USE mo_grib,                  ONLY: L_BM_ORIG_OUTPUT
+
+  USE messy_main_timer_event,   ONLY: &
+                                      time_event, io_time_event  &
+                                    , TIME_INC_MONTHS, TRIG_EXACT
+  USE messy_main_constants_mem, ONLY: DP
+  USE messy_main_channel,       ONLY: NMAXCHANNELS, STRLEN_CHANNEL, NCHANNEL &
+                                    , modstr, IOMODE_OUT, IOMODE_RST         &
+                                    , AMODE_WRITE, AMODE_READ, AMODE_INIT    &
+                                    , REPR_UNDEF, DIMID_UNDEF, FTYPE_MAXIMUM
+  USE messy_main_channel_mem,   ONLY: n_dom
+  USE messy_main_channel_attributes, ONLY: t_attribute_list
+  USE messy_main_blather_bi,    ONLY: start_message_bi, end_message_bi
+  USE messy_main_tools,         ONLY: PTR_4D_ARRAY, PTR_1D_ARRAY
+
+  IMPLICIT NONE
+  INTRINSIC :: NULL
+  PRIVATE
+
+  PUBLIC :: DIMID_UNDEF, REPR_UNDEF, IOMODE_OUT, IOMODE_RST
+  PUBLIC :: n_dom
+
+! DIMENSION IDs ----------------------------------------------------------
+! - TIME
+  INTEGER, SAVE, PUBLIC :: DIMID_TIME     = DIMID_UNDEF
+  INTEGER, SAVE, PUBLIC :: DIMID_TBNDS    = DIMID_UNDEF
+! - GRIDPOINT
+  INTEGER, SAVE, PUBLIC :: DIMID_LEV      = DIMID_UNDEF
+  INTEGER, SAVE, PUBLIC :: DIMID_ILEV     = DIMID_UNDEF
+  INTEGER, SAVE, PUBLIC :: DIMID_ILEVp1   = DIMID_UNDEF
+  INTEGER, SAVE, PUBLIC :: DIMID_LON      = DIMID_UNDEF
+  INTEGER, SAVE, PUBLIC :: DIMID_LAT      = DIMID_UNDEF
+! - SPECTRAL
+  INTEGER, SAVE, PUBLIC :: DIMID_COMPLEX  = DIMID_UNDEF
+  INTEGER, SAVE, PUBLIC :: DIMID_NSP      = DIMID_UNDEF
+! - FOURIER (ANTI-SYMMETRIC, SYMMETRIC)
+  INTEGER, SAVE, PUBLIC :: DIMID_NHGL     = DIMID_UNDEF
+  INTEGER, SAVE, PUBLIC :: DIMID_NMP1     = DIMID_UNDEF
+! - SPECIAL
+  INTEGER, SAVE, PUBLIC :: DIMID_BELOWSF  = DIMID_UNDEF
+  INTEGER, SAVE, PUBLIC :: DIMID_2LEV     = DIMID_UNDEF
+!
+! SPECIFIC BASEMODELS / SUBMODELS:
+! - ATTILA
+  INTEGER, SAVE, PUBLIC :: DIMID_NCELL_ATTILA = DIMID_UNDEF
+!
+! - COSMO
+  INTEGER, SAVE, PUBLIC :: DIMID_SRLON  = DIMID_UNDEF
+  INTEGER, SAVE, PUBLIC :: DIMID_SRLAT  = DIMID_UNDEF
+  INTEGER, SAVE, PUBLIC :: DIMID_BNDS   = DIMID_UNDEF
+  INTEGER, SAVE, PUBLIC :: DIMID_DAV    = DIMID_UNDEF
+  INTEGER, SAVE, PUBLIC :: DIMID_PRESS  = DIMID_UNDEF
+  INTEGER, SAVE, PUBLIC :: DIMID_ALTIT  = DIMID_UNDEF
+  INTEGER, SAVE, PUBLIC :: DIMID_FIXHT  = DIMID_UNDEF
+  INTEGER, SAVE, PUBLIC :: DIMID_H2m    = DIMID_UNDEF
+  INTEGER, SAVE, PUBLIC :: DIMID_H10m   = DIMID_UNDEF
+  INTEGER, SAVE, PUBLIC :: DIMID_HTOA   = DIMID_UNDEF
+  INTEGER, SAVE, PUBLIC :: DIMID_WBT13  = DIMID_UNDEF
+  INTEGER, SAVE, PUBLIC :: DIMID_SOIL   = DIMID_UNDEF
+  INTEGER, SAVE, PUBLIC :: DIMID_SOIL1  = DIMID_UNDEF
+  INTEGER, SAVE, PUBLIC :: DIMID_SOIL2  = DIMID_UNDEF
+  INTEGER, SAVE, PUBLIC :: DIMID_SNOW   = DIMID_UNDEF
+  INTEGER, SAVE, PUBLIC :: DIMID_SNOW1  = DIMID_UNDEF
+  INTEGER, SAVE, PUBLIC :: DIMID_TLV    = DIMID_UNDEF
+  INTEGER, SAVE, PUBLIC :: DIMID_TKE    = DIMID_UNDEF
+  INTEGER, SAVE, PUBLIC :: DIMID_CANOPY = DIMID_UNDEF
+  INTEGER, SAVE, PUBLIC :: DIMID_CANOPY1= DIMID_UNDEF
+  INTEGER, SAVE, PUBLIC :: DIMID_SAT8   = DIMID_UNDEF
+  INTEGER, SAVE, PUBLIC :: DIMID_SAT32  = DIMID_UNDEF
+  INTEGER, SAVE, PUBLIC :: DIMID_2N     = DIMID_UNDEF
+  INTEGER, SAVE, PUBLIC :: DIMID_N5     = DIMID_UNDEF
+  INTEGER, SAVE, PUBLIC :: DIMID_N9     = DIMID_UNDEF
+  INTEGER, SAVE, PUBLIC :: DIMID_NHORI  = DIMID_UNDEF
+  INTEGER, SAVE, PUBLIC :: DIMID_WINDSEC = DIMID_UNDEF
+  INTEGER, SAVE, PUBLIC :: DIMID_ECHOTOP = DIMID_UNDEF
+  INTEGER, SAVE, PUBLIC :: DIMID_NEL_COMP= DIMID_UNDEF
+  INTEGER, SAVE, PUBLIC :: DIMID_TILES   = DIMID_UNDEF
+!
+# 96
+
+
+# 126
+
+
+!!#D clams +
+! - CLaMS
+  INTEGER, SAVE, PUBLIC :: DIMID_TRAJ         = DIMID_UNDEF
+  INTEGER, SAVE, PUBLIC :: DIMID_NTASKS       = DIMID_UNDEF
+  INTEGER, SAVE, PUBLIC :: DIMID_SHUFFLE      = DIMID_UNDEF
+  INTEGER, SAVE, PUBLIC :: DIMID_THETA        = DIMID_UNDEF
+  INTEGER, SAVE, PUBLIC :: DIMID_MIX_GRID     = DIMID_UNDEF
+  INTEGER, SAVE, PUBLIC :: DIMID_POS          = DIMID_UNDEF
+! - CLaMS - SEDI
+  INTEGER, SAVE, PUBLIC :: DIMID_SEDI_PARTICLE = DIMID_UNDEF
+!!#D clams -
+
+# 152
+
+
+! REPRESENTATION IDs -------------------------------------------------------
+! - TIME
+  INTEGER, SAVE, PUBLIC :: REPR_TIMEBNDS    = REPR_UNDEF
+! - GRIDPOINT
+  INTEGER, SAVE, PUBLIC :: GP_3D_MID        = REPR_UNDEF
+  INTEGER, SAVE, PUBLIC :: GP_3D_INT        = REPR_UNDEF
+  INTEGER, SAVE, PUBLIC :: GP_2D_HORIZONTAL = REPR_UNDEF
+  INTEGER, SAVE, PUBLIC :: GP_3D_1LEV       = REPR_UNDEF
+  INTEGER, SAVE, PUBLIC :: GP_1D_LEV        = REPR_UNDEF
+! - SPECTRAL
+  INTEGER, SAVE, PUBLIC :: SP_3D_MID        = REPR_UNDEF
+  INTEGER, SAVE, PUBLIC :: SP_3D_INT        = REPR_UNDEF
+  INTEGER, SAVE, PUBLIC :: SP_2D_HORIZONTAL = REPR_UNDEF
+! - FOURIER
+  INTEGER, SAVE, PUBLIC :: FAS_MID          = REPR_UNDEF
+  INTEGER, SAVE, PUBLIC :: FAS_INT          = REPR_UNDEF
+  INTEGER, SAVE, PUBLIC :: FAS_MID_ZM       = REPR_UNDEF
+! - SPECIAL
+  INTEGER, SAVE, PUBLIC :: SCALAR           = REPR_UNDEF
+  INTEGER, SAVE, PUBLIC :: GP_3D_BELOWSF    = REPR_UNDEF
+  INTEGER, SAVE, PUBLIC :: GP_3D_2LEV       = REPR_UNDEF
+
+! SPECIFIC BASEMODELS / SUBMODELS:
+! - COSMO
+  INTEGER, SAVE, PUBLIC :: GP_4D_MID_TLV    = REPR_UNDEF
+  INTEGER, SAVE, PUBLIC :: GP_4D_INT_TLV    = REPR_UNDEF
+  INTEGER, SAVE, PUBLIC :: GP_4D_SOIL1_TLV  = REPR_UNDEF
+  INTEGER, SAVE, PUBLIC :: GP_4D_SOIL2_TLV  = REPR_UNDEF
+  INTEGER, SAVE, PUBLIC :: GP_4D_SNOW_TLV   = REPR_UNDEF
+  INTEGER, SAVE, PUBLIC :: GP_4D_SNOW1_TLV  = REPR_UNDEF
+  INTEGER, SAVE, PUBLIC :: GP_4D_MID_BND    = REPR_UNDEF
+  INTEGER, SAVE, PUBLIC :: GP_4D_INT_BND    = REPR_UNDEF
+  INTEGER, SAVE, PUBLIC :: GP_3D_MID_SLON   = REPR_UNDEF
+  INTEGER, SAVE, PUBLIC :: GP_3D_MID_SLAT   = REPR_UNDEF
+  INTEGER, SAVE, PUBLIC :: GP_3D_MID_P      = REPR_UNDEF
+  INTEGER, SAVE, PUBLIC :: GP_3D_MID_Z      = REPR_UNDEF
+  INTEGER, SAVE, PUBLIC :: GP_3D_SOIL       = REPR_UNDEF
+  INTEGER, SAVE, PUBLIC :: GP_3D_SOIL1      = REPR_UNDEF
+  INTEGER, SAVE, PUBLIC :: GP_3D_SOIL2      = REPR_UNDEF
+  INTEGER, SAVE, PUBLIC :: GP_3D_SNOW       = REPR_UNDEF
+  INTEGER, SAVE, PUBLIC :: GP_3D_SNOW1      = REPR_UNDEF
+  INTEGER, SAVE, PUBLIC :: GP_3D_NHORI      = REPR_UNDEF
+  INTEGER, SAVE, PUBLIC :: GP_3D_HORIZ_T    = REPR_UNDEF
+  INTEGER, SAVE, PUBLIC :: GP_3D_HORIZ_BND  = REPR_UNDEF
+  INTEGER, SAVE, PUBLIC :: GP_3D_HORIZ_DAV  = REPR_UNDEF
+  INTEGER, SAVE, PUBLIC :: GP_2D_SLONLAT    = REPR_UNDEF
+  INTEGER, SAVE, PUBLIC :: GP_2D_LONSLAT    = REPR_UNDEF
+  INTEGER, SAVE, PUBLIC :: GP_2D_HTOTLON    = REPR_UNDEF
+  INTEGER, SAVE, PUBLIC :: GP_2D_TOT        = REPR_UNDEF
+  INTEGER, SAVE, PUBLIC :: GP_2D_LAT_BND    = REPR_UNDEF
+  INTEGER, SAVE, PUBLIC :: GP_1D_ILEV       = REPR_UNDEF
+  INTEGER, SAVE, PUBLIC :: GP_1D_LAT        = REPR_UNDEF
+  INTEGER, SAVE, PUBLIC :: GP_2D_LAT        = REPR_UNDEF
+  INTEGER, SAVE, PUBLIC :: GP_3D_SAT8       = REPR_UNDEF
+  INTEGER, SAVE, PUBLIC :: GP_3D_SAT32      = REPR_UNDEF
+  INTEGER, SAVE, PUBLIC :: GP_1D_ILEVp1     = REPR_UNDEF
+  INTEGER, SAVE, PUBLIC :: GP_3D_ECHOTOP    = REPR_UNDEF
+  INTEGER, SAVE, PUBLIC :: GP_3D_NEL_COMP   = REPR_UNDEF
+  INTEGER, SAVE, PUBLIC :: GP_3D_HOR_N5       = REPR_UNDEF
+  INTEGER, SAVE, PUBLIC :: GP_3D_HOR_N9       = REPR_UNDEF
+  INTEGER, SAVE, PUBLIC :: GP_3D_WINDSEC      = REPR_UNDEF
+  INTEGER, SAVE, PUBLIC :: GP_1D_WINDSEC      = REPR_UNDEF
+  INTEGER, SAVE, PUBLIC :: GP_1D_WINDSEC_BNDS = REPR_UNDEF
+  INTEGER, SAVE, PUBLIC :: GP_1D_SOIL1_BNDS   = REPR_UNDEF
+  INTEGER, SAVE, PUBLIC :: GP_3D_TILES        = REPR_UNDEF
+  INTEGER, SAVE, PUBLIC :: GP_4D_MID_TILES    = REPR_UNDEF
+  INTEGER, SAVE, PUBLIC :: GP_4D_INT_TILES    = REPR_UNDEF
+  INTEGER, SAVE, PUBLIC :: GP_4D_SOIL1_TILES  = REPR_UNDEF
+  INTEGER, SAVE, PUBLIC :: GP_4D_SOIL2_TILES  = REPR_UNDEF
+  INTEGER, SAVE, PUBLIC :: GP_4D_SNOW_TILES   = REPR_UNDEF
+  INTEGER, SAVE, PUBLIC :: GP_4D_SNOW1_TILES  = REPR_UNDEF
+  INTEGER, SAVE, PUBLIC :: GP_4D_TILES_TLV    = REPR_UNDEF
+# 253
+
+!
+! - ATTILA
+  INTEGER, SAVE, PUBLIC :: LG_ATTILA        = REPR_UNDEF
+  INTEGER, SAVE, PUBLIC :: LG_FMM_POS       = REPR_UNDEF
+!
+! - MPIOM
+  INTEGER, SAVE, PUBLIC :: GP_3D_MPIOM           = REPR_UNDEF
+  INTEGER, SAVE, PUBLIC :: GP_3D_MPIOM_INT       = REPR_UNDEF
+  INTEGER, SAVE, PUBLIC :: GP_2D_MPIOM           = REPR_UNDEF
+  INTEGER, SAVE, PUBLIC :: DIMID_LEV_MPIOM       = DIMID_UNDEF
+  INTEGER, SAVE, PUBLIC :: DIMID_LEV_MPIOM_INT   = DIMID_UNDEF
+  INTEGER, SAVE, PUBLIC :: DIMID_DEPTH_MPIOM     = DIMID_UNDEF
+  INTEGER, SAVE, PUBLIC :: DIMID_DEPTH_MPIOM_INT = DIMID_UNDEF
+  INTEGER, SAVE, PUBLIC :: DIMID_LON_MPIOM       = DIMID_UNDEF
+  INTEGER, SAVE, PUBLIC :: DIMID_LAT_MPIOM       = DIMID_UNDEF
+!
+! - CESM1, for HOMME-SE dynamical core
+  INTEGER, SAVE, PUBLIC :: DIMID_LAT_SE          = DIMID_UNDEF
+  INTEGER, SAVE, PUBLIC :: DIMID_LON_SE          = DIMID_UNDEF
+
+! - CLaMS
+  INTEGER, SAVE, PUBLIC :: REPR_LG_CLAMS         = REPR_UNDEF
+!!#D clams +
+  INTEGER, SAVE, PUBLIC :: REPR_CLAMS_SHUFFLE    = REPR_UNDEF
+  INTEGER, SAVE, PUBLIC :: REPR_3DINP_CLAMS      = REPR_UNDEF
+  INTEGER, SAVE, PUBLIC :: REPR_3DINP_CLAMSTHETA = REPR_UNDEF
+  INTEGER, SAVE, PUBLIC :: REPR_NTASKS           = REPR_UNDEF
+  INTEGER, SAVE, PUBLIC :: REPR_MIX_GRID         = REPR_UNDEF
+  INTEGER, SAVE, PUBLIC :: REPR_POS              = REPR_UNDEF
+! - CLaMS - SEDI
+  INTEGER, SAVE, PUBLIC :: REPR_SEDI_PARTICLE = REPR_UNDEF
+!!#D clams -
+
+# 313
+
+
+! DECOMPOSITION TYPES
+  INTEGER, PARAMETER, PUBLIC :: DC_BC = 0  ! BROADCAST (IO-PE ONLY)
+  INTEGER, PARAMETER, PUBLIC :: DC_GP = 1  ! GRIDPOINT
+  INTEGER, PARAMETER, PUBLIC :: DC_SP = 2  ! SPECTRAL
+  INTEGER, PARAMETER, PUBLIC :: DC_SA = 3  ! FOURIER (SYM. AND ANTISYM.)
+  INTEGER, PARAMETER, PUBLIC :: DC_IX = 4  ! INDEX
+  INTEGER, PARAMETER, PUBLIC :: DC_GP_MPIOM   =  5 ! GRIDPOINT MPIOM
+  INTEGER, PARAMETER, PUBLIC :: DC_I2C        =  6 ! GRIDPOINT INT2COSMO
+  INTEGER, PARAMETER, PUBLIC :: DC_I2C_IN     =  7 ! GRIDPOINT INT2COSMO INPUT
+  INTEGER, PARAMETER, PUBLIC :: DC_MMD_OUT    =  8 ! GRIDPOINT CHILD OUTPUT
+! FIELD TRANSFERED TO PARENT
+  INTEGER, PARAMETER, PUBLIC :: DC_AG         = 10 ! ALL_GATHER
+  INTEGER, PARAMETER, PUBLIC :: DC_MMD_OUTACC = 11 ! GRIDPOINT ACCUMULATED
+! CHILD OUTPUT
+! ICON GRIDPOINT AGGREGATION ON REGULAR LON-LAT GRIDS
+  INTEGER, PARAMETER, PUBLIC :: DC_AGG_SUM     = 12 ! SUM e.g for average
+  INTEGER, PARAMETER, PUBLIC :: DC_AGG_PDF     = 13 ! handling PDFs
+  INTEGER, PARAMETER, PUBLIC :: DC_LATLON_NONE = 14 ! alreday (manually) synced
+  INTEGER, PARAMETER, PUBLIC :: DC_TRIX        = 15 ! LaMETTA trajectory index
+
+! GP-DECOMPOSITION INFORMATION
+
+  INTEGER, PARAMETER, PUBLIC             :: gp_nseg = 2
+
+# 342
+
+# 345
+
+# 348
+
+# 351
+
+# 354
+
+!
+  INTEGER, DIMENSION(:,:), POINTER, PUBLIC :: gp_start => NULL()
+  INTEGER, DIMENSION(:,:), POINTER, PUBLIC :: gp_cnt   => NULL()
+  INTEGER, DIMENSION(:,:), POINTER, PUBLIC :: gp_meml  => NULL()
+  INTEGER, DIMENSION(:,:), POINTER, PUBLIC :: gp_memu  => NULL()
+
+! OUTPUT TIME
+! qqq need for PUBLIC needs to be checked
+  TYPE(time_event), DIMENSION(:), ALLOCATABLE, PUBLIC :: OUTPUT_EVENT
+  LOGICAL,          DIMENSION(:), ALLOCATABLE, PUBLIC :: LOUTPUT_NOW
+  LOGICAL, SAVE                               :: LFORCE_NEW_OUTPUT = .FALSE.
+  INTEGER, SAVE,    DIMENSION(:), ALLOCATABLE         :: I_PATCH
+
+  TYPE(PTR_1D_ARRAY), DIMENSION(:), ALLOCATABLE :: TIME_BNDS
+  INTEGER, PARAMETER :: tbnds = 2
+
+
+! SPECIAL INDICES FOR 1
+! NOTE: CHANNEL OUTPUT OF tdiag, tdiag_gp, nudg, nudg_gp
+!       WILL BE SYNCHRONIZED TO THE SHORTEST OUTPUT INTERVAL (IF PRESENT !)
+  INTEGER, SAVE :: js_tdiag     = 0
+  INTEGER, SAVE :: js_tdiag_gp  = 0
+  INTEGER, SAVE :: js_nudg      = 0
+  INTEGER, SAVE :: js_nudg_gp   = 0
+
+! TRIGGER NEW FILE
+  TYPE(time_event), DIMENSION(:), ALLOCATABLE         :: TNF_EVENT
+  LOGICAL,          DIMENSION(:), ALLOCATABLE, PUBLIC :: LTNF_NOW
+
+! SPECIAL INDICES FOR COSMO
+! NOTE: CHANNEL OUTPUT OF COSMOm, COSMOp and COSMOz
+  INTEGER, ALLOCATABLE, DIMENSION(:), SAVE, PUBLIC :: js_COSMOm
+  INTEGER, ALLOCATABLE, DIMENSION(:), SAVE, PUBLIC :: js_COSMOz
+  INTEGER, ALLOCATABLE, DIMENSION(:), SAVE, PUBLIC :: js_COSMOp
+  INTEGER, ALLOCATABLE, DIMENSION(:), SAVE, PUBLIC :: js_COSMOs
+  INTEGER, ALLOCATABLE, DIMENSION(:), SAVE, PUBLIC :: js_COSMOc
+
+! SPECIAL RESTART ATTRIBUTES
+  TYPE(t_attribute_list), POINTER, SAVE :: restart_att => NULL()
+
+! SPECIAL FOR PARALLEL I/O OPTIMISATION
+  INTEGER, DIMENSION(:), ALLOCATABLE :: nodeid
+
+
+! <EXP_NAME> + _YYYYMMDD_HHMM_  = 14 + 15 (+1)
+  INTEGER, PARAMETER :: BASENAME_LEN = 30
+! YYYYMMDD hhmm[ss]
+  INTEGER, PARAMETER :: DATE_TIME_STR_LEN = 15
+
+# 409
+
+# 416
+
+
+! ====================================================================
+! FOR CPL-NAMELIST
+!
+  TYPE t_channel_timer
+     CHARACTER(LEN=STRLEN_CHANNEL) :: cname    = ''       ! CHANNEL NAME
+     TYPE(io_time_event)          :: io_event = &
+          io_time_event(1, TIME_INC_MONTHS,TRIG_EXACT,0) ! DEFAULT
+  END TYPE t_channel_timer
+!
+  TYPE(t_channel_timer),                          SAVE :: TIMER_DEFAULT
+  TYPE(t_channel_timer), DIMENSION(NMAXCHANNELS), SAVE :: TIMER_CHANNEL
+!
+  TYPE(t_channel_timer),                          SAVE :: TIMER_TNF_DEFAULT
+  TYPE(t_channel_timer), DIMENSION(NMAXCHANNELS), SAVE :: TIMER_TNF_CHANNEL
+!
+! METHOD FOR PSEUDO PARALLEL OUTPUT
+  INTEGER, DIMENSION(FTYPE_MAXIMUM),              SAVE :: CHANNEL_PPIO_TYPE
+! ====================================================================
+
+
+! ====================================================================
+! SPECIAL HANDLING FOR 1-STREAM-ELEMENTS WITH laccu = .TRUE.
+  TYPE(PTR_4D_ARRAY), DIMENSION(:), POINTER, SAVE :: ptr_accu
+  INTEGER,                                   SAVE :: naccu = 0
+! ====================================================================
+
+
+# 463
+
+
+# 468
+
+
+! CALCULATE COSMO DIAGNOSIC VARIABLE EACH TIME STEP
+! (independent of output interval)
+  LOGICAL, PUBLIC :: L_CALCOUT_EACH_STEP = .FALSE.
+
+! CALLED FROM BMIL (messy_main_control_<basemodel>.f90)
+  PUBLIC   :: main_channel_setup
+!-> channel_init_restart_bi
+  PUBLIC   :: main_channel_initialize
+!                         |-> main_channel_read_nml_ctrl (CORE !)
+!                         |-> main_channel_initialize_gatts
+!                         |-> main_channel_initialize_dims
+!                         |-> main_channel_initialize_reprs
+!                         |-> main_channel_initialize_parallel_io
+  PUBLIC   :: main_channel_init_memory
+!                         |-> associate_streams_to_channels
+!                         |-> set_COSMO_ORI_attributes
+  PUBLIC   :: main_channel_init_coupling
+!                         | case 0 (COSMO only!)
+!                         |-> messy_channel_cosmo_output
+!                                    |-> make_cosmo_channel
+!                         | case 1
+!                         |-> modify_attributes
+!                         | case 2
+!                         |-> messy_channel_cosmo_vcatt
+!                         |-> fixate_channels (CORE !)
+!                         !-> distribute_channels_io
+!                         |-> main_channel_init_timer
+!                                    |-> main_channel_read_nml_cpl
+!                         |-> write_attribute
+!                         |-> write_dimension
+!                         |-> write_representation
+!                         |-> write_channel
+  PUBLIC   :: main_channel_global_start
+!                         |-> set_channel_output (COSMOc)
+!                         |-> main_channel_update_timer
+!                             |-> trigger_channel_output(_part)
+  PUBLIC   :: main_channel_write_output
+!                         |-> trigger_channel_output(_full)
+!                         !-> channel_write_output_bi
+  PUBLIC   :: main_channel_write_restart
+!                         |-> channel_write_output_bi
+  PUBLIC   :: main_channel_free_memory
+!                         |-> channel_finish_io
+!                         |-> clean_representations (CORE !)
+!                         |-> clean_dimensions (CORE !)
+!                         |-> clean_channels (CORE !)
+!                         |-> write_channel
+  PUBLIC   :: main_channel_read_restart
+!                         !-> initialize_restart_attributes
+!
+# 532
+
+# 538
+
+# 541
+
+!
+! CALLED FROM SMIL
+!
+  PUBLIC   :: p_bcast_attribute
+!
+! SHARED BETWEEN DIFFERENT BASEMODELS
+!
+!PRIVATE :: initialize_restart_attributes  ! INIT RESTART ATTRIBUTES
+!PRIVATE :: main_channel_init_timer        ! INITIALIZE OUTPUT TIMERS
+!PRIVATE :: main_channel_update_timer
+!PRIVATE :: main_channel_read_nml_cpl
+!PRIVATE :: bi_decompose
+!PRIVATE :: bi_vector
+!PRIVATE :: distribute_channels_io
+!
+!PRIVATE :: channel_write_output_bi
+!                         !-> reset_accu_stream_elements(1)
+!                             (reset accu elements to instantaneous values)
+!                         !-> reset_accu_cosmo_elements(1)
+!                             (reset accu elements to instantaneous values)
+!                         |-> update_channels(1) (CORE !)
+!                             ( ACCUMULATE 2ndary DATA )
+!                         |-> update_channels(2) (CORE !)
+!                             ( PREPARE FOR OUTPUT )
+!                         !-> channel_finish_io
+!                         !-> reset_accu_stream_elements(2)
+!                             (set accu elements to zero)
+!                         !-> reset_accu_cosmo_elements(2)
+!                             (set accu elements to zero)
+!                         |-> update_channels(3) (CORE !)
+!                             ( RESET AFTER OUTPUT )
+!                         !-> initialize_restart_attributes
+!
+!PRIVATE :: channel_init_restart_bi
+!                         !-> initialize_parallel_io
+!                         !-> initialize_restart_attributes
+!
+! BASEMODEL SPECIFIC: SEE messy_main_channel_xx.inc
+!PRIVATE :: main_channel_initialize_gatts  ! SET GLOBAL ATTRIBUTES
+!PRIVATE :: main_channel_initialize_dims   ! DEFINE DIMENSIONS
+!PRIVATE :: main_channel_initialize_reprs  ! DEFINE REPRESENTATIONS
+!
+! ... 1
+!PRIVATE :: associate_streams_to_channels
+!PRIVATE :: reset_accu_stream_elements
+!PRIVATE :: timer_sync
+!
+! ... COSMO
+!PRIVATE :: set_cosmo_channel_attributes
+!PRIVATE :: messy_channel_cosmo_output
+!PRIVATE :: reset_accu_cosmo_elements
+!PRIVATE :: set_COSMO_ORI_attributes
+!PRIVATE :: set_cosmo_attributes
+
+CONTAINS
+
+
+# 1 "../../messy/bmil/messy_main_channel_echam5.inc" 1 
+! -*- f90 -*-
+! -------------------------------------------------------------------
+!  CHANNEL INTERFACE FOR 1 / MPIOM OUTPUT
+! -------------------------------------------------------------------
+
+!PRIVATE SUBROUTINE main_channel_initialize_gatts
+!PRIVATE SUBROUTINE main_channel_initialize_dims
+!PRIVATE SUBROUTINE main_channel_initialize_reprs
+!PRIVATE SUBROUTINE associate_streams_to_channels
+!PRIVATE SUBROUTINE reset_accu_stream_elements
+!PRIVATE SUBROUTINE timer_sync
+
+! -------------------------------------------------------------------
+  SUBROUTINE main_channel_initialize_gatts
+
+! 1
+    USE mo_advection,             ONLY: iadvec, no_advection, semi_lagrangian &
+                                      , spitfire, tpcore
+
+! MESSy
+    USE messy_main_mpi_bi,          ONLY: p_bcast, p_io, p_parallel_io
+    USE messy_main_data_bi,         ONLY: modstr_ECHAM5 => modstr &
+                                        , modver_ECHAM5 => modver
+    USE messy_main_grid_def_mem_bi, ONLY:  nn, nm, nk, lmidatm
+    USE messy_main_timer,         ONLY: delta_time                     &
+                                      , YEAR_START, MONTH_START, DAY_START &
+                                      , HOUR_START, MINUTE_START, SECOND_START
+    USE messy_main_channel,       ONLY: new_attribute, write_attribute &
+                                      , AF_RST_CMP, EXP_NAME &
+                                      , EXEC_CHECKSUM
+    USE messy_main_compilerinfo_mem, ONLY: compiler_version, compiler_call &
+                                         , compiler_flags &
+                                         , compiler_cppdefs, compiler_includes
+    USE messy_main_constants_mem,    ONLY: STRLEN_ULONG
+
+    IMPLICIT NONE
+
+!  EXTERNAL SUBROUTIONES
+    EXTERNAL util_os_system, util_user_name, util_node_name
+
+    INTRINSIC :: DATE_AND_TIME, TRIM, LEN_TRIM
+
+! LOCAL
+    CHARACTER(LEN=*), PARAMETER :: substr = 'main_channel_initialize_gatts'
+    INTEGER :: status
+    INTEGER :: nlena, nlenb, nlenc
+    CHARACTER (256) :: os_name, user_name, host_name
+    CHARACTER (8)   :: ydate
+    CHARACTER (10)  :: ytime
+    CHARACTER (DATE_TIME_STR_LEN) :: str_date_time
+    CHARACTER (LEN=2)            :: istr
+    INTEGER :: i1, i2, il, ic
+
+! INIT
+    IF (p_parallel_io) THEN
+       CALL util_os_system (os_name, nlena)
+       CALL util_user_name (user_name, nlenb)
+       CALL util_node_name (host_name, nlenc)
+    END IF
+    CALL p_bcast (os_name, p_io)
+    CALL p_bcast (nlena, p_io)
+    CALL p_bcast (user_name, p_io)
+    CALL p_bcast (nlenb, p_io)
+    CALL p_bcast (host_name, p_io)
+    CALL p_bcast (nlenc, p_io)
+
+! avoid deviating entries between different PEs;
+! pnetcdf gives an error message about deviating
+! attributes
+    IF (p_parallel_io) THEN
+     CALL DATE_AND_TIME(ydate, ytime)
+    END IF
+    CALL p_bcast (ydate, p_io)
+    CALL p_bcast (ytime, p_io)
+
+! EXPERIMENT NAME
+    CALL new_attribute(status, 'MESSy_experiment', c=TRIM(EXP_NAME))
+    CALL channel_halt(substr, status)
+
+! CHECKSUM OF EXECUTABLE
+    CALL new_attribute(status, 'EXEC_CHECKSUM', c=TRIM(EXEC_CHECKSUM))
+    CALL channel_halt(substr, status)
+
+! 1 SETUP
+! - VERSION
+    CALL new_attribute(status, 'GCM' &
+         , c = modstr_ECHAM5//' version '//modver_ECHAM5//&
+         &', Max-Planck Institute for Meteorology, Hamburg' )
+    CALL channel_halt(substr, status)
+! - TRUNCATION
+    CALL new_attribute(status, 'GCM_spherical_trunc_n', i=nn, iflag=AF_RST_CMP)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, 'GCM_spherical_trunc_m', i=nm, iflag=AF_RST_CMP)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, 'GCM_spherical_trunc_k', i=nk, iflag=AF_RST_CMP)
+    CALL channel_halt(substr, status)
+! - MODI
+    IF (lmidatm) THEN
+       CALL new_attribute(status, 'GCM_vertical_mode' &
+            , c='middle atmosphere (MA)', iflag=AF_RST_CMP)
+    ELSE
+       CALL new_attribute(status, 'GCM_vertical_mode' &
+            , c='normal', iflag=AF_RST_CMP)
+    END IF
+    CALL channel_halt(substr, status)
+!
+    CALL new_attribute(status, 'GCM_horizontal_mode', c='global' &
+         , iflag=AF_RST_CMP)
+    CALL channel_halt(substr, status)
+! - ADVECTION
+    SELECT CASE(iadvec)
+    CASE(no_advection)
+       CALL new_attribute(status, 'GCM_advection', c='no advection')
+    CASE(semi_lagrangian)
+       CALL new_attribute(status, 'GCM_advection', c='Semi-Lagrangian')
+    CASE(spitfire)
+       CALL new_attribute(status, 'GCM_advection', c='SPITFIRE')
+    CASE(tpcore)
+       CALL new_attribute(status, 'GCM_advection', c='Lin&Rood')
+    CASE DEFAULT
+       CALL new_attribute(status, 'GCM_advection', c='unknown')
+    END SELECT
+    CALL channel_halt(substr, status)
+! - SIMULATION TIME
+    WRITE(str_date_time,'(i4,i2.2,i2.2,a1,3(i2.2))') &
+         YEAR_START, MONTH_START, DAY_START,         &
+         ' ',HOUR_START, MINUTE_START, SECOND_START
+    CALL new_attribute(status, 'GCM_start_date_time' &
+         , c=str_date_time)
+    CALL channel_halt(substr, status)
+! - TIMESTEP LENGTH
+    CALL new_attribute(status, 'GCM_timestep' &
+         , r=delta_time)
+    CALL channel_halt(substr, status)
+
+! COMPILER INFORMATION
+    il = LEN_TRIM(compiler_version)
+    IF (il > STRLEN_ULONG) THEN
+       i1 = 1
+       i2 = STRLEN_ULONG
+       ic = 0
+       DO
+          ic = ic + 1
+          WRITE(istr,'(I2.2)') ic
+          CALL new_attribute(status, 'F95_COMPILER_VERSION_'//istr &
+               , c=compiler_version(i1:i2))
+          CALL channel_halt(substr, status)
+          IF (i2 == il) EXIT
+          i1 = i2 + 1
+          i2 = MIN(i2+STRLEN_ULONG, il)
+       END DO
+    ELSE
+       CALL new_attribute(status, 'F95_COMPILER_VERSION' &
+            , c=TRIM(compiler_version))
+       CALL channel_halt(substr, status)
+    ENDIF
+
+    il = LEN_TRIM(compiler_call)
+    IF (il > STRLEN_ULONG) THEN
+       i1 = 1
+       i2 = STRLEN_ULONG
+       ic = 0
+       DO
+          ic = ic + 1
+          WRITE(istr,'(I2.2)') ic
+          CALL new_attribute(status, 'F95_COMPILER_CALL_'//istr &
+               , c=compiler_call(i1:i2))
+          CALL channel_halt(substr, status)
+          IF (i2 == il) EXIT
+          i1 = i2 + 1
+          i2 = MIN(i2+STRLEN_ULONG, il)
+       END DO
+    ELSE
+       CALL new_attribute(status, 'F95_COMPILER_CALL', c=TRIM(compiler_call))
+       CALL channel_halt(substr, status)
+    END IF
+
+    il = LEN_TRIM(compiler_flags)
+    IF (il > STRLEN_ULONG) THEN
+       i1 = 1
+       i2 = STRLEN_ULONG
+       ic = 0
+       DO
+          ic = ic + 1
+          WRITE(istr,'(I2.2)') ic
+          CALL new_attribute(status, 'F95_COMPILER_FLAGS_'//istr &
+               , c=compiler_flags(i1:i2))
+          CALL channel_halt(substr, status)
+          IF (i2 == il) EXIT
+          i1 = i2 + 1
+          i2 = MIN(i2+STRLEN_ULONG, il)
+       END DO
+    ELSE
+       CALL new_attribute(status, 'F95_COMPILER_FLAGS', c=TRIM(compiler_flags))
+       CALL channel_halt(substr, status)
+    END IF
+
+    il = LEN_TRIM(compiler_cppdefs)
+    IF (il > STRLEN_ULONG) THEN
+       i1 = 1
+       i2 = STRLEN_ULONG
+       ic = 0
+       DO
+          ic = ic + 1
+          WRITE(istr,'(I2.2)') ic
+          CALL new_attribute(status, 'F95_PREPROC_DEFINITIONS'//istr &
+               , c=compiler_cppdefs(i1:i2))
+          CALL channel_halt(substr, status)
+          IF (i2 == il) EXIT
+          i1 = i2 + 1
+          i2 = MIN(i2+STRLEN_ULONG, il)
+       END DO
+    ELSE
+       CALL new_attribute(status, 'F95_PREPROC_DEFINITIONS' &
+            , c=TRIM(compiler_cppdefs))
+       CALL channel_halt(substr, status)
+    END IF
+
+    il = LEN_TRIM(compiler_includes)
+    IF (il > STRLEN_ULONG) THEN
+       i1 = 1
+       i2 = STRLEN_ULONG
+       ic = 0
+       DO
+          ic = ic + 1
+          WRITE(istr,'(I2.2)') ic
+          CALL new_attribute(status, 'F95_COMPILER_INCLUDES_'//istr &
+               , c=compiler_includes(i1:i2))
+          CALL channel_halt(substr, status)
+          IF (i2 == il) EXIT
+          i1 = i2 + 1
+          i2 = MIN(i2+STRLEN_ULONG, il)
+       END DO
+    ELSE
+       CALL new_attribute(status, 'F95_COMPILER_INCLUDES' &
+            , c=TRIM(compiler_includes))
+       CALL channel_halt(substr, status)
+    END IF
+
+! OPERATION
+    CALL new_attribute(status, 'operating_date_time' &
+         , c = ydate(1:8)//' '//ytime(1:6) )
+    CALL channel_halt(substr, status)
+
+    CALL new_attribute(status, 'operating_system', c=os_name(1:nlena) )
+    CALL channel_halt(substr, status)
+
+    CALL new_attribute(status, 'operating_host', c=host_name(1:nlenc) )
+    CALL channel_halt(substr, status)
+
+    CALL new_attribute(status, 'operating_user', c=user_name(1:nlenb) )
+    CALL channel_halt(substr, status)
+
+    IF (p_parallel_io) THEN
+       CALL write_attribute(status)
+       CALL channel_halt(substr, status)
+    END IF
+
+  END SUBROUTINE main_channel_initialize_gatts
+! -------------------------------------------------------------------
+
+! -------------------------------------------------------------------
+  SUBROUTINE main_channel_initialize_dims
+
+! MESSy
+    USE messy_main_mpi_bi,           ONLY: p_parallel_io
+    USE messy_main_grid_def_mem_bi,  ONLY: nvclev, vct    &  ! hyai, hybi
+                                         , nlev           &  ! number of levels
+                                         , nlon, ngl      &  !
+                                         , nsp            &
+                                         , nhgl, nmp1
+    USE messy_main_grid_def_bi,      ONLY: philon, philat
+! MESSy/SMCL
+    USE messy_main_timer,     ONLY: &
+                                    delta_time     &
+                                  , current_time_step &
+                                  , YEAR, MONTH, DAY, HOUR, MINUTE, SECOND &
+                                  , YEAR_START, MONTH_START, DAY_START     &
+                                  , HOUR_START, MINUTE_START, SECOND_START
+    USE messy_main_channel_dimensions,   ONLY: new_dimension            &
+                                             , write_dimension          &
+                                             , add_dimension_variable   &
+                                             , add_dimension_variable_att
+
+    IMPLICIT NONE
+
+! LOCAL
+    CHARACTER(LEN=*), PARAMETER :: substr = 'main_channel_initialize_dims'
+    INTEGER                             :: status
+    REAL(DP), ALLOCATABLE, DIMENSION(:) :: array
+    INTEGER                             :: i, n
+    CHARACTER(LEN=80)                   :: start_date_string
+    REAL(dp)                            :: yyyymmdd
+
+! #############
+! ### TIME ####
+! #############
+    CALL new_dimension(status, DIMID_TIME, 'time', 1, .TRUE.)
+    CALL channel_halt(substr, status)
+! - TIME
+    CALL add_dimension_variable(status, 'time', 'time', (/ 0.0_DP /))
+    CALL channel_halt(substr, status)
+!
+    CALL add_dimension_variable_att(status, 'time', 'time', &
+         'long_name', c='time')
+    CALL channel_halt(substr, status)
+!
+    CALL add_dimension_variable_att(status, 'time', 'time', &
+         'bounds', c='time_bnds')
+    CALL channel_halt(substr, status)
+!
+    WRITE(start_date_string, &
+         '("day since ",I4.4,"-",I2.2,"-",I2.2," ",I2.2,":",I2.2,":",I2.2)') &
+         YEAR_START,MONTH_START,DAY_START,HOUR_START,MINUTE_START,SECOND_START
+    CALL add_dimension_variable_att(status, 'time', 'time', &
+         'units', c=start_date_string)
+    CALL channel_halt(substr, status)
+!
+    CALL add_dimension_variable_att(status, 'time', 'time', &
+         'calendar', c='gregorian')
+    CALL channel_halt(substr, status)
+! - YYYYMMDD
+    yyyymmdd = ABS(YEAR)*10000 + MONTH*100 + DAY  &
+         + (HOUR*3600 + MINUTE*60 + SECOND)/86400.
+    IF (YEAR<0) yyyymmdd = -yyyymmdd
+    CALL add_dimension_variable(status, 'time', 'YYYYMMDD', (/ yyyymmdd /))
+    CALL channel_halt(substr, status)
+!
+    CALL add_dimension_variable_att(status, 'time', 'YYYYMMDD', &
+         'long_name', c='time')
+    CALL channel_halt(substr, status)
+!
+    CALL add_dimension_variable_att(status, 'time', 'YYYYMMDD', &
+         'units', c='days as %Y%m%d.%f')
+    CALL channel_halt(substr, status)
+!
+    CALL add_dimension_variable_att(status, 'time', 'YYYYMMDD', &
+         'calendar', c='gregorian')
+    CALL channel_halt(substr, status)
+! - DT
+    CALL add_dimension_variable(status, 'time', 'dt', (/ delta_time /))
+    CALL channel_halt(substr, status)
+!
+    CALL add_dimension_variable_att(status, 'time', 'dt', &
+         'long_name', c='delta_time')
+    CALL channel_halt(substr, status)
+!
+    CALL add_dimension_variable_att(status, 'time', 'dt', &
+         'units', c='s')
+    CALL channel_halt(substr, status)
+! - CURRENT TIME STEP
+    CALL add_dimension_variable(status, 'time', 'nstep' &
+         , (/ REAL(current_time_step, DP) /))
+    CALL channel_halt(substr, status)
+!
+    CALL add_dimension_variable_att(status, 'time', 'nstep', &
+         'long_name', c='current time step')
+    CALL channel_halt(substr, status)
+
+! ##################
+! ### GRIDPOINT ####
+! ##################
+
+! MID-LAYERS (FULL LEVELS)
+    ALLOCATE(array(nlev))
+!
+    CALL new_dimension(status, DIMID_LEV, 'lev', nlev)
+    CALL channel_halt(substr, status)
+!
+    DO i=1, nlev
+       array(i) = REAL(i, DP)
+    END DO
+    CALL add_dimension_variable(status, 'lev', 'lev', array)
+    CALL channel_halt(substr, status)
+!
+    CALL add_dimension_variable_att(status, 'lev', 'lev', &
+         'long_name', c='hybrid level at layer midpoints')
+    CALL channel_halt(substr, status)
+!
+    CALL add_dimension_variable_att(status, 'lev', 'lev', &
+         'standard_name', c='hybrid_sigma_pressure')
+    CALL channel_halt(substr, status)
+!
+    CALL add_dimension_variable_att(status, 'lev', 'lev', &
+         'units', c='level')
+    CALL channel_halt(substr, status)
+!
+    CALL add_dimension_variable_att(status, 'lev', 'lev', &
+         'positive', c='down')
+    CALL channel_halt(substr, status)
+!
+    CALL add_dimension_variable_att(status, 'lev', 'lev', &
+         'formula', c='hyam hybm (press=hyam+hybm*aps)')
+    CALL channel_halt(substr, status)
+!
+    CALL add_dimension_variable_att(status, 'lev', 'lev', &
+         'borders', c='ilev')
+    CALL channel_halt(substr, status)
+
+    array(:) = (vct(1:nvclev-1) + vct(2:nvclev))/2
+    CALL add_dimension_variable(status, 'lev', 'hyam', array)
+    CALL channel_halt(substr, status)
+!
+    CALL add_dimension_variable_att(status, 'lev', 'hyam', &
+         'long_name', c='hybrid A coefficient at layer midpoints')
+    CALL channel_halt(substr, status)
+    CALL add_dimension_variable_att(status, 'lev', 'hyam', &
+         'units', c='Pa')
+    CALL channel_halt(substr, status)
+
+    array(:) = (vct(nvclev+1:2*nvclev-1) + vct(nvclev+2:2*nvclev))/2
+    CALL add_dimension_variable(status, 'lev', 'hybm', array)
+    CALL channel_halt(substr, status)
+!
+    CALL add_dimension_variable_att(status, 'lev', 'hybm', &
+         'long_name', c='hybrid B coefficient at layer midpoints')
+    CALL channel_halt(substr, status)
+    CALL add_dimension_variable_att(status, 'lev', 'hybm', &
+         'units', c='1')
+    CALL channel_halt(substr, status)
+
+    DEALLOCATE(array)
+
+! INTERFCAE-LAYERS (HALF LEVELS)
+    ALLOCATE(array(nlev+1))
+!
+    CALL new_dimension(status, DIMID_ILEV, 'ilev', nlev+1)
+    CALL channel_halt(substr, status)
+!
+    DO i=1, nlev+1
+       array(i) = REAL(i, DP)
+    END DO
+    CALL add_dimension_variable(status, 'ilev', 'ilev', array)
+    CALL channel_halt(substr, status)
+!
+    CALL add_dimension_variable_att(status, 'ilev', 'ilev', &
+         'long_name', c='hybrid level at layer interfaces')
+    CALL channel_halt(substr, status)
+!
+    CALL add_dimension_variable_att(status, 'ilev', 'ilev', &
+         'standard_name', c='hybrid_sigma_pressure')
+    CALL channel_halt(substr, status)
+!
+    CALL add_dimension_variable_att(status, 'ilev', 'ilev', &
+         'units', c='level')
+    CALL channel_halt(substr, status)
+!
+    CALL add_dimension_variable_att(status, 'ilev', 'ilev', &
+         'positive', c='down')
+    CALL channel_halt(substr, status)
+!
+    CALL add_dimension_variable_att(status, 'ilev', 'ilev', &
+         'formula', c='hyai hybi (ilev=hyai+hybi*aps)')
+    CALL channel_halt(substr, status)
+!
+    CALL add_dimension_variable_att(status, 'ilev', 'ilev', &
+         'formula_terms', c='ap: hyai b: hybi ps: aps')
+    CALL channel_halt(substr, status)
+
+    array(:) = vct(1:nvclev)
+    CALL add_dimension_variable(status, 'ilev', 'hyai', array)
+    CALL channel_halt(substr, status)
+!
+    CALL add_dimension_variable_att(status, 'ilev', 'hyai', &
+         'long_name', c='hybrid A coefficient at layer interfaces')
+    CALL channel_halt(substr, status)
+!
+    CALL add_dimension_variable_att(status, 'ilev', 'hyai', &
+         'units', c='Pa')
+    CALL channel_halt(substr, status)
+
+    array(:) = vct(nvclev+1:2*nvclev)
+    CALL add_dimension_variable(status, 'ilev', 'hybi', array)
+    CALL channel_halt(substr, status)
+!
+    CALL add_dimension_variable_att(status, 'ilev', 'hybi', &
+         'long_name', c='hybrid B coefficient at layer interfaces')
+    CALL channel_halt(substr, status)
+!
+    CALL add_dimension_variable_att(status, 'ilev', 'hybi', &
+         'units', c='1')
+    CALL channel_halt(substr, status)
+
+    DEALLOCATE(array)
+
+! LONGITUDES
+    n = nlon
+    ALLOCATE(array(n))
+    array(:) = philon(1:nlon)
+
+    CALL new_dimension(status, DIMID_LON, 'lon', n)
+    CALL channel_halt(substr, status)
+    CALL add_dimension_variable(status, 'lon', 'lon', array)
+    CALL channel_halt(substr, status)
+    CALL add_dimension_variable_att(status, 'lon', 'lon', &
+         'long_name', c='longitude')
+    CALL channel_halt(substr, status)
+    CALL add_dimension_variable_att(status, 'lon', 'lon', &
+         'units', c='degrees_east')
+    CALL channel_halt(substr, status)
+
+    DEALLOCATE(array)
+
+! LATITUDES
+    n = ngl
+    ALLOCATE(array(n))
+    array(:) = philat(1:ngl)
+
+    CALL new_dimension(status, DIMID_LAT, 'lat', n)
+    CALL channel_halt(substr, status)
+    CALL add_dimension_variable(status, 'lat', 'lat', array)
+    CALL channel_halt(substr, status)
+    CALL add_dimension_variable_att(status, 'lat', 'lat', &
+         'long_name', c='latitude')
+    CALL channel_halt(substr, status)
+    CALL add_dimension_variable_att(status, 'lat', 'lat', &
+         'units', c='degrees_north')
+    CALL channel_halt(substr, status)
+
+    DEALLOCATE(array)
+
+! #################
+! ### SPECTRAL ####
+! #################
+
+! COMPLEX
+    CALL new_dimension(status, DIMID_COMPLEX, 'complex', 2)
+    CALL channel_halt(substr, status)
+!
+! SPECTRAL COEFFICIENTS
+    CALL new_dimension(status, DIMID_NSP, 'nsp', nsp)
+    CALL channel_halt(substr, status)
+
+! ############################################
+! ### FOURIER (ANTI-SYMMETRIC, SYMMETRIC) ####
+! ############################################
+
+! HALF NUMBER OF LATITUDES
+    CALL new_dimension(status, DIMID_NHGL, 'nhgl', nhgl)
+    CALL channel_halt(substr, status)
+
+! ZONAL WAVE NUMBER + 1
+    CALL new_dimension(status, DIMID_NMP1, 'nmp1', nmp1)
+    CALL channel_halt(substr, status)
+
+! ################
+! ### SPECIAL ####
+! ################
+
+! BELOWSURFACE
+    CALL new_dimension(status, DIMID_BELOWSF, 'belowsf', 5)
+    CALL channel_halt(substr, status)
+
+    CALL add_dimension_variable(status, 'belowsf', 'belowsf' &
+         , (/0.03_dp, 0.19_dp, 0.78_dp, 2.68_dp, 6.98_dp/) )
+    CALL channel_halt(substr, status)
+    CALL add_dimension_variable_att(status, 'belowsf', 'belowsf', &
+         'long_name', c='levels below surface')
+    CALL channel_halt(substr, status)
+    CALL add_dimension_variable_att(status, 'belowsf', 'belowsf', &
+         'units', c='m')
+    CALL channel_halt(substr, status)
+
+! 2 LEVELS
+    CALL new_dimension(status, DIMID_2LEV, 'l2', 2)
+    CALL channel_halt(substr, status)
+
+! 2 boundaries
+     CALL new_dimension(status, DIMID_TBNDS, 'tbnds', tbnds)
+     CALL channel_halt(substr, status)
+
+! #################
+! DIAGNOSTIC OUTPUT
+! #################
+    IF (p_parallel_io) THEN
+       CALL write_dimension(status)
+       CALL channel_halt(substr, status)
+    END IF
+
+  END SUBROUTINE main_channel_initialize_dims
+! -------------------------------------------------------------------
+
+! -------------------------------------------------------------------
+  SUBROUTINE main_channel_initialize_reprs
+
+! MESSy
+    USE messy_main_mpi_bi,               ONLY: p_parallel_io, p_pe, p_nprocs &
+                                             , dcl, dcg
+    USE messy_main_grid_def_mem_bi,      ONLY: nproma, ngpblks         &
+                                             , snsp, nllev, nllevp1    &
+                                             , nlm
+    USE messy_main_channel_repr,         ONLY: new_representation        &
+                                             , write_representation_dc   &
+                                             , set_representation_decomp &
+                                             , write_representation      &
+                                             , AUTO, IRANK               &
+                                             , PIOTYPE_COL
+
+    IMPLICIT NONE
+
+! LOCAL
+    CHARACTER(LEN=*), PARAMETER :: substr = 'main_channel_initialize_reprs'
+    INTEGER                     :: status
+    INTEGER, DIMENSION(:), POINTER :: scdim => NULL()
+!
+! PARALLEL DECOMPOSITION
+    INTEGER                          :: nseg    = 0  ! max no. of segments
+    INTEGER                          :: nseg_pe = 0  ! segments on this PE
+    INTEGER                          :: n            ! counter
+    INTEGER, DIMENSION(:,:), POINTER :: start => NULL()
+    INTEGER, DIMENSION(:,:), POINTER :: cnt   => NULL()
+    INTEGER, DIMENSION(:,:), POINTER :: meml  => NULL()
+    INTEGER, DIMENSION(:,:), POINTER :: memu  => NULL()
+    INTEGER                          :: mp, mp1, im, np, mpgl ! for SPECTRAL
+    INTEGER                          :: ke, nk ! for FAS
+
+! ##################
+! ### GRIDPOINT ####
+! ##################
+
+    nseg = gp_nseg
+    ALLOCATE(start(nseg,IRANK))
+    ALLOCATE(cnt(nseg,IRANK))
+    ALLOCATE(meml(nseg,IRANK))
+    ALLOCATE(memu(nseg,IRANK))
+
+    start(:,:) = 1
+    cnt(:,:) = 1
+    meml(:,:) = 1
+    memu(:,:) = 1
+
+! ---------------------------------------------
+
+    CALL new_representation(status, GP_3D_MID, 'GP_3D_MID' &
+         , rank = 3, link = 'xxx-', dctype = DC_GP               &
+         , dimension_ids = (/ DIMID_LON, DIMID_LEV, DIMID_LAT /) &
+         , ldimlen       = (/ nproma   , AUTO     , ngpblks   /) &
+         , output_order  = (/ 1,3,2 /)                           &
+         , axis = 'XZY-'                                         &
+         )
+    CALL channel_halt(substr, status)
+
+    start(:,1) = dcl%glons(:)
+    start(:,2) = 1
+    start(:,3) = dcl%glats(:)
+
+    cnt(:,1) = dcl%glone(:)-dcl%glons(:)+1
+    cnt(:,2) = dcl%nlev
+    cnt(:,3) = dcl%glate(:)-dcl%glats(:)+1
+
+    meml(:,1) = 1
+    meml(:,2) = 1
+    meml(:,3) = (/ 1, dcl%nglh(1)+1 /)
+
+    memu(:,1) = dcl%nglon
+    memu(:,2) = dcl%nlev
+    memu(:,3) = (/ dcl%nglh(1), dcl%nglh(1)+dcl%nglh(2)/)
+
+    CALL set_representation_decomp(status, GP_3D_MID &
+         , start, cnt, memu, meml, .FALSE., PIOTYPE_COL)
+    CALL channel_halt(substr, status)
+
+! SAVE GP DECOMPOSITION INFORAMTION FOR USAGE IN SUBMODELS
+    nseg = gp_nseg
+    ALLOCATE(gp_start(nseg,IRANK))
+    ALLOCATE(gp_cnt(nseg,IRANK))
+    ALLOCATE(gp_meml(nseg,IRANK))
+    ALLOCATE(gp_memu(nseg,IRANK))
+
+    gp_start(:,1:2) = start(:,1:2)
+    gp_cnt(:,1:2) = cnt(:,1:2)
+    gp_meml(:,1:2) = meml(:,1:2)
+    gp_memu(:,1:2) = memu(:,1:2)
+
+    gp_start(:,4) = start(:,3)
+    gp_cnt(:,4) = cnt(:,3)
+    gp_meml(:,4) = meml(:,3)
+    gp_memu(:,4) = memu(:,3)
+
+    gp_start(:,3) = 1
+    gp_cnt(:,3) = 1
+    gp_meml(:,3) = 1
+    gp_memu(:,3) = 1
+
+! -----------------------------------------------------
+
+    CALL new_representation(status, GP_3D_INT, 'GP_3D_INT' &
+         , rank = 3, link = 'xxx-', dctype = DC_GP                &
+         , dimension_ids = (/ DIMID_LON, DIMID_ILEV, DIMID_LAT /) &
+         , ldimlen       = (/ nproma   , AUTO      , ngpblks   /) &
+         , output_order  = (/ 1,3,2 /)                            &
+         , axis = 'XZY-'                                          &
+         )
+    CALL channel_halt(substr, status)
+
+    cnt(:,2)  = dcl%nlev+1
+    memu(:,2) = dcl%nlev+1
+
+    CALL set_representation_decomp(status, GP_3D_INT &
+         , start, cnt, memu, meml, .FALSE., PIOTYPE_COL)
+    CALL channel_halt(substr, status)
+
+! -----------------------------------------------------
+
+    CALL new_representation(status, GP_2D_HORIZONTAL, 'GP_2D_HORIZONTAL' &
+         , rank = 2, link = 'xx--', dctype = DC_GP       &
+         , dimension_ids = (/ DIMID_LON, DIMID_LAT /)    &
+         , ldimlen       = (/ nproma   , ngpblks   /)    &
+         , axis = 'XY--'                                 &
+         )
+    CALL channel_halt(substr, status)
+
+    start(:,2) = start(:,3)
+    cnt(:,2)   = cnt(:,3)
+    meml(:,2)  = meml(:,3)
+    memu(:,2)  = memu(:,3)
+
+    start(:,3) = 1
+    cnt(:,3)   = 1
+    meml(:,3)  = 1
+    memu(:,3)  = 1
+
+    CALL set_representation_decomp(status, GP_2D_HORIZONTAL &
+         , start, cnt, memu, meml, .FALSE., PIOTYPE_COL)
+    CALL channel_halt(substr, status)
+
+! -----------------------------------------------------
+
+    CALL new_representation(status, GP_3D_1LEV, 'GP_3D_1LEV' &
+         , rank = 2, link = 'x-x-', dctype = DC_GP       &
+         , dimension_ids = (/ DIMID_LON, DIMID_LAT /)    &
+         , ldimlen       = (/ nproma   , ngpblks   /)    &
+         , axis = 'X-Y-'                                 &
+         )
+    CALL channel_halt(substr, status)
+
+! NOTE: THE RANK IS W.R.T. MEMORY, I.E., ACCORDING TO 'link' !!!
+
+    start(:,3) = start(:,2)
+    cnt(:,3)   = cnt(:,2)
+    meml(:,3)  = meml(:,2)
+    memu(:,3)  = memu(:,2)
+
+    start(:,2) = 1
+    cnt(:,2)   = 1
+    meml(:,2)  = 1
+    memu(:,2)  = 1
+
+    CALL set_representation_decomp(status, GP_3D_1LEV &
+         , start, cnt, memu, meml, .FALSE., PIOTYPE_COL)
+    CALL channel_halt(substr, status)
+
+! -----------------------------------------------------
+
+    CALL new_representation(status, GP_1D_LEV, 'GP_1D_LEV' &
+         , rank = 1, link = '-x--', dctype = DC_BC         &
+         , dimension_ids = (/ DIMID_LEV /)                 &
+         , ldimlen       = (/ AUTO   /)                    &
+         , axis = '-Z--'                                   &
+         )
+    CALL channel_halt(substr, status)
+
+! NOTE: THE RANK IS W.R.T. MEMORY, I.E., ACCORDING TO 'link' !!!
+
+    start(:,:) = 1
+    cnt(:,:)   = 1
+    meml(:,:)  = 1
+    memu(:,:)  = 1
+
+    start(:,2) = 1
+    cnt(:,2)   = dcl%nlev
+    meml(:,2)  = 1
+    memu(:,2)  = dcl%nlev
+
+    CALL set_representation_decomp(status, GP_1D_LEV &
+         , start, cnt, memu, meml, .FALSE., PIOTYPE_COL)
+    CALL channel_halt(substr, status)
+
+! -----------------------------------------------------
+
+    CALL new_representation(status, GP_1D_ILEV, 'GP_1D_ILEV' &
+         , rank = 1, link = '-x--', dctype = DC_BC           &
+         , dimension_ids = (/ DIMID_ILEV /)                  &
+         , ldimlen       = (/ AUTO   /)                      &
+         , axis = '-Z--'                                     &
+         )
+    CALL channel_halt(substr, status)
+
+! NOTE: THE RANK IS W.R.T. MEMORY, I.E., ACCORDING TO 'link' !!!
+
+    start(:,:) = 1
+    cnt(:,:)   = 1
+    meml(:,:)  = 1
+    memu(:,:)  = 1
+
+    start(:,2) = 1
+    cnt(:,2)   = dcl%nlev +1
+    meml(:,2)  = 1
+    memu(:,2)  = dcl%nlev +1
+
+    CALL set_representation_decomp(status, GP_1D_ILEV &
+         , start, cnt, memu, meml, .FALSE., PIOTYPE_COL)
+    CALL channel_halt(substr, status)
+
+! -----------------------------------------------------
+
+    DEALLOCATE(start) ; NULLIFY(start)
+    DEALLOCATE(cnt)   ; NULLIFY(cnt)
+    DEALLOCATE(meml)  ; NULLIFY(meml)
+    DEALLOCATE(memu)  ; NULLIFY(memu)
+
+! -----------------------------------------------------
+
+! #################
+! ### SPECTRAL ####
+! #################
+
+! MAX NUMBER OF SEGMENTS
+    nseg = 0
+    DO n=1, p_nprocs
+       IF (dcg(n)%nsm > nseg) nseg = dcg(n)%nsm
+    END DO
+
+    ALLOCATE(start(nseg,IRANK))
+    ALLOCATE(cnt(nseg,IRANK))
+    ALLOCATE(meml(nseg,IRANK))
+    ALLOCATE(memu(nseg,IRANK))
+
+    nseg_pe = dcl%nsm
+
+    DO im=1,nseg
+       start(im,1) = 1
+       cnt(im,1)   = 0
+       meml(im,1)  = 1
+       memu(im,1)  = 1
+
+       start(im,2) = 1
+       cnt(im,2)   = 2
+       meml(im,2)  = 1
+       memu(im,2)  = 2
+
+       start(im,3) = 1
+       cnt(im,3)   = 0
+       meml(im,3)  = 1
+       memu(im,3)  = 0
+
+       start(im,4) = 0
+       cnt(im,4)   = 0
+       meml(im,4)  = 0
+       memu(im,4)  = 0
+    END DO
+
+! -----------------------------------------------------
+
+    CALL new_representation(status, SP_3D_MID, 'SP_3D_MID' &
+         , rank = 3, link = 'xxx-', dctype = DC_SP         &
+         , dimension_ids = (/ DIMID_LEV, DIMID_COMPLEX, DIMID_NSP /) &
+         , ldimlen       = (/ AUTO     , AUTO         , snsp      /) &
+         , output_order  = (/ 2,3,1 /)                               &
+         , axis = 'Z---'                                             &
+         )
+    CALL channel_halt(substr, status)
+
+    mp=0
+    DO im=1,nseg_pe
+       mp1  = dcl%sm(im)+1
+       np   = dcl%snnp(im)
+       mpgl = dcl%nmp(mp1) + dcl%snn0(im)
+
+       start(im,1) = 1
+       cnt(im,1)   = dcl%nlev
+       meml(im,1)  = 1
+       memu(im,1)  = dcl%nlev
+
+       start(im,2) = 1
+       cnt(im,2)   = 2
+       meml(im,2)  = 1
+       memu(im,2)  = 2
+
+       start(im,3) = mpgl+1
+       cnt(im,3)   = np
+       meml(im,3)  = mp+1
+       memu(im,3)  = mp+np
+
+       mp = mp + np
+    END DO
+
+    CALL set_representation_decomp(status, SP_3D_MID &
+         , start, cnt, memu, meml, piotype=PIOTYPE_COL)
+    CALL channel_halt(substr, status)
+
+! -----------------------------------------------------
+
+    CALL new_representation(status, SP_3D_INT, 'SP_3D_INT' &
+         , rank = 3, link = 'xxx-', dctype = DC_SP         &
+         , dimension_ids = (/ DIMID_ILEV, DIMID_COMPLEX, DIMID_NSP /) &
+         , ldimlen       = (/ AUTO      , AUTO         , snsp      /) &
+         , output_order  = (/ 2,3,1 /)                                &
+         , axis = 'Z---'                                              &
+         )
+    CALL channel_halt(substr, status)
+
+    DO im=1,nseg_pe
+       cnt(im,1)   = dcl%nlev+1
+       memu(im,1)  = dcl%nlev+1
+    END DO
+
+    CALL set_representation_decomp(status, SP_3D_INT &
+         , start, cnt, memu, meml, piotype=PIOTYPE_COL)
+    CALL channel_halt(substr, status)
+
+! -----------------------------------------------------
+
+    CALL new_representation(status, SP_2D_HORIZONTAL, 'SP_2D_HORIZONTAL' &
+         , rank = 2, link = '-xx-', dctype = DC_SP        &
+         , dimension_ids = (/ DIMID_COMPLEX, DIMID_NSP /) &
+         , ldimlen       = (/ AUTO         , snsp      /) &
+!, output_order  = (/ 2,3 /)                      &
+         , axis = '----'                                  &
+         )
+    CALL channel_halt(substr, status)
+
+! NOTE: THE RANK IS W.R.T. MEMORY, I.E., ACCORDING TO 'link' !!!
+
+    DO im=1,nseg_pe
+       start(im,1) = 1
+       cnt(im,1)   = 1
+       meml(im,1)  = 1
+       memu(im,1)  = 1
+    END DO
+
+    CALL set_representation_decomp(status, SP_2D_HORIZONTAL &
+         , start, cnt, memu, meml, piotype=PIOTYPE_COL)
+    CALL channel_halt(substr, status)
+
+! -----------------------------------------------------
+
+    DEALLOCATE(start) ; NULLIFY(start)
+    DEALLOCATE(cnt)   ; NULLIFY(cnt)
+    DEALLOCATE(meml)  ; NULLIFY(meml)
+    DEALLOCATE(memu)  ; NULLIFY(memu)
+
+! -----------------------------------------------------
+
+! ############################################
+! ### FOURIER (ANTI-SYMMETRIC, SYMMETRIC) ####
+! ############################################
+
+! -----------------------------------------------------
+
+! MAX NUMBER OF SEGMENTS
+    nseg = 0
+    DO n=1, p_nprocs
+       IF (dcg(n)%nlm > nseg) nseg = dcg(n)%nlm
+    END DO
+
+    ALLOCATE(start(nseg,IRANK))
+    ALLOCATE(cnt(nseg,IRANK))
+    ALLOCATE(meml(nseg,IRANK))
+    ALLOCATE(memu(nseg,IRANK))
+
+    nseg_pe = dcl%nlm
+    start(:,:) = 1
+    cnt(:,:) = 0
+    meml(:,:) = 1
+    memu(:,:) = 1
+
+! -----------------------------------------------------
+
+    CALL new_representation(status, FAS_MID, 'FAS_MID' &
+         , rank = 4, link = 'xxxx', dctype = DC_SA        &
+         , dimension_ids = (/ DIMID_LEV,   DIMID_COMPLEX  &
+                            , DIMID_NMP1,  DIMID_NHGL /)  &
+         , ldimlen       = (/ nllev, AUTO, nlm , AUTO /)  &
+         , axis = 'Z---'                                  &
+         )
+    CALL channel_halt(substr, status)
+
+    ke = MIN (dcl%lleve,dcl%nlev)
+    nk = MAX(ke - dcl%llevs + 1, 0)
+
+    DO im=1,nseg_pe
+       mp1  = dcl%lm(im)+1
+
+       start(im,1) = dcl%llevs
+       cnt(im,1)   = nk
+       meml(im,1)  = 1
+       memu(im,1)  = nk
+
+       start(im,2) = 1
+       cnt(im,2)   = 2
+       meml(im,2)  = 1
+       memu(im,2)  = 2
+
+       start(im,3) = mp1
+       cnt(im,3)   = 1
+       meml(im,3)  = im
+       memu(im,3)  = im
+
+       start(im,4) = 1
+       cnt(im,4)   = dcl%nlat/2
+       meml(im,4)  = 1
+       memu(im,4)  = dcl%nlat/2
+    END DO
+
+    CALL set_representation_decomp(status, FAS_MID &
+         , start, cnt, memu, meml, piotype=PIOTYPE_COL)
+    CALL channel_halt(substr, status)
+
+! -----------------------------------------------------
+
+    CALL new_representation(status, FAS_INT, 'FAS_INT' &
+         , rank = 4, link = 'xxxx', dctype = DC_SA          &
+         , dimension_ids = (/ DIMID_ILEV,  DIMID_COMPLEX    &
+                            , DIMID_NMP1,  DIMID_NHGL   /)  &
+         , ldimlen       = (/ nllevp1, AUTO, nlm , AUTO /)  &
+         , axis = 'Z---'                                    &
+         )
+    CALL channel_halt(substr, status)
+
+    ke = MIN (dcl%lleve,dcl%nlev+1)
+    nk = MAX(ke - dcl%llevs + 1, 0)
+
+    DO im=1,nseg_pe
+       start(im,1) = dcl%llevs
+       cnt(im,1)   = nk
+       meml(im,1)  = 1
+       memu(im,1)  = nk
+    END DO
+
+    CALL set_representation_decomp(status, FAS_INT &
+         , start, cnt, memu, meml, piotype=PIOTYPE_COL)
+    CALL channel_halt(substr, status)
+
+! -----------------------------------------------------
+
+    DEALLOCATE(start) ; NULLIFY(start)
+    DEALLOCATE(cnt)   ; NULLIFY(cnt)
+    DEALLOCATE(meml)  ; NULLIFY(meml)
+    DEALLOCATE(memu)  ; NULLIFY(memu)
+
+! -----------------------------------------------------
+
+    nseg = 1
+    ALLOCATE(start(nseg,IRANK))
+    ALLOCATE(cnt(nseg,IRANK))
+    ALLOCATE(meml(nseg,IRANK))
+    ALLOCATE(memu(nseg,IRANK))
+
+    start(:,:) = 1
+    cnt(:,:) = 1
+    meml(:,:) = 1
+    memu(:,:) = 1
+
+! -----------------------------------------------------
+
+    CALL new_representation(status, FAS_MID_ZM, 'FAS_MID_ZM' &
+         , rank = 2, link = 'xx--', dctype = DC_SA        &
+         , dimension_ids = (/ DIMID_LEV, DIMID_NHGL   /)  &
+         , ldimlen       = (/ nllev, AUTO             /)  &
+         , axis = 'Z---'                                  &
+         )
+    CALL channel_halt(substr, status)
+
+    ke = MIN (dcl%lleve,dcl%nlev)
+    nk = MAX(ke - dcl%llevs + 1, 0)
+
+    start(:,1) = dcl%llevs
+    cnt(:,1)   = nk
+    meml(:,1)  = 1
+    memu(:,1)  = nk
+
+    start(:,2) = 1
+    cnt(:,2)   = dcl%nlat/2
+    meml(:,2)  = 1
+    memu(:,2)  = dcl%nlat/2
+
+    CALL set_representation_decomp(status, FAS_MID_ZM &
+         , start, cnt, memu, meml, piotype=PIOTYPE_COL)
+    CALL channel_halt(substr, status)
+
+! -----------------------------------------------------
+
+    DEALLOCATE(start) ; NULLIFY(start)
+    DEALLOCATE(cnt)   ; NULLIFY(cnt)
+    DEALLOCATE(meml)  ; NULLIFY(meml)
+    DEALLOCATE(memu)  ; NULLIFY(memu)
+
+! -----------------------------------------------------
+
+! ###############
+! ### SPECIAL ###
+! ###############
+
+    nseg = 2
+    ALLOCATE(start(nseg,IRANK))
+    ALLOCATE(cnt(nseg,IRANK))
+    ALLOCATE(meml(nseg,IRANK))
+    ALLOCATE(memu(nseg,IRANK))
+
+    start(:,:) = 1
+    cnt(:,:) = 1
+    meml(:,:) = 1
+    memu(:,:) = 1
+
+! -----------------------------------------------------
+
+    CALL new_representation(status, GP_3D_BELOWSF, 'GP_3D_BELOWSF'   &
+         , rank = 3, link = 'xxx-', dctype = DC_GP                   &
+         , dimension_ids = (/ DIMID_LON, DIMID_BELOWSF, DIMID_LAT /) &
+         , ldimlen       = (/ nproma   , AUTO     , ngpblks   /)     &
+         , output_order  = (/ 1,3,2 /)                               &
+         , axis = 'XZY-'                                             &
+         )
+    CALL channel_halt(substr, status)
+
+    start(:,1) = dcl%glons(:)
+    start(:,2) = 1
+    start(:,3) = dcl%glats(:)
+
+    cnt(:,1) = dcl%glone(:)-dcl%glons(:)+1
+    cnt(:,2) = 5
+    cnt(:,3) = dcl%glate(:)-dcl%glats(:)+1
+
+    meml(:,1) = 1
+    meml(:,2) = 1
+    meml(:,3) = (/ 1, dcl%nglh(1)+1 /)
+
+    memu(:,1) = dcl%nglon
+    memu(:,2) = 5
+    memu(:,3) = (/ dcl%nglh(1), dcl%nglh(1)+dcl%nglh(2)/)
+
+    CALL set_representation_decomp(status, GP_3D_BELOWSF &
+         , start, cnt, memu, meml, .FALSE., PIOTYPE_COL)
+    CALL channel_halt(substr, status)
+
+! -----------------------------------------------------
+
+    CALL new_representation(status, GP_3D_2LEV, 'GP_3D_2LEV'         &
+         , rank = 3, link = 'xxx-', dctype = DC_GP                   &
+         , dimension_ids = (/ DIMID_LON, DIMID_2LEV, DIMID_LAT /)    &
+         , ldimlen       = (/ nproma   , AUTO     , ngpblks   /)     &
+         , output_order  = (/ 1,3,2 /)                               &
+         , axis = 'XZY-'                                             &
+         )
+    CALL channel_halt(substr, status)
+
+    cnt(:,2)  = 2
+    memu(:,2) = 2
+
+    CALL set_representation_decomp(status, GP_3D_2LEV &
+         , start, cnt, memu, meml, .FALSE., PIOTYPE_COL)
+    CALL channel_halt(substr, status)
+
+! -----------------------------------------------------
+
+    DEALLOCATE(start) ; NULLIFY(start)
+    DEALLOCATE(cnt)   ; NULLIFY(cnt)
+    DEALLOCATE(meml)  ; NULLIFY(meml)
+    DEALLOCATE(memu)  ; NULLIFY(memu)
+
+! -----------------------------------------------------
+
+    ALLOCATE(scdim(0))
+    scdim = 0
+    CALL new_representation(status, SCALAR, 'SCALAR'                 &
+         , rank = 0, link = '----', dctype = DC_BC                   &
+         , dimension_ids = scdim &
+         , ldimlen       = scdim &
+         , axis = '----'                                             &
+         )
+    CALL channel_halt(substr, status)
+    DEALLOCATE(scdim)
+    NULLIFY(scdim)
+
+    nseg = 1
+    ALLOCATE(start(nseg,IRANK))
+    ALLOCATE(cnt(nseg,IRANK))
+    ALLOCATE(meml(nseg,IRANK))
+    ALLOCATE(memu(nseg,IRANK))
+
+    start(:,:) = 1
+    cnt(:,:) = 1
+    meml(:,:) = 1
+    memu(:,:) = 1
+
+    CALL set_representation_decomp(status, SCALAR &
+         , start, cnt, memu, meml, piotype=PIOTYPE_COL)
+    CALL channel_halt(substr, status)
+
+    DEALLOCATE(start) ; NULLIFY(start)
+    DEALLOCATE(cnt)   ; NULLIFY(cnt)
+    DEALLOCATE(meml)  ; NULLIFY(meml)
+    DEALLOCATE(memu)  ; NULLIFY(memu)
+
+! -----------------------------------------------------
+
+    CALL new_representation(status, REPR_TIMEBNDS, 'TIME_BNDS' &
+         , rank = 1, link = 'x---', dctype = DC_BC             &
+         , dimension_ids = (/DIMID_TBNDS/)                     &
+         , ldimlen       = (/ tbnds     /)                     &
+         , axis = 'N---'                                       &
+         )
+    CALL channel_halt(substr, status)
+
+    nseg = 1
+    ALLOCATE(start(nseg,IRANK))
+    ALLOCATE(cnt(nseg,IRANK))
+    ALLOCATE(meml(nseg,IRANK))
+    ALLOCATE(memu(nseg,IRANK))
+
+    start(:,:) = 1
+    cnt(:,:)   = 1
+    meml(:,:)  = 1
+    memu(:,:)  = 1
+
+    cnt(:,1)  = tbnds
+    memu(:,1) = tbnds
+
+    CALL set_representation_decomp(status, REPR_TIMEBNDS &
+         , start, cnt, memu, meml, piotype=PIOTYPE_COL)
+    CALL channel_halt(substr, status)
+
+    DEALLOCATE(start) ; NULLIFY(start)
+    DEALLOCATE(cnt)   ; NULLIFY(cnt)
+    DEALLOCATE(meml)  ; NULLIFY(meml)
+    DEALLOCATE(memu)  ; NULLIFY(memu)
+
+! -----------------------------------------------------
+
+! #################
+! DIAGNOSTIC OUTPUT
+! #################
+    IF (p_parallel_io) THEN
+       CALL write_representation(status)
+       CALL channel_halt(substr, status)
+    END IF
+
+    CALL write_representation_dc(status, p_pe)
+    CALL channel_halt(substr, status)
+
+  END SUBROUTINE main_channel_initialize_reprs
+! -------------------------------------------------------------------
+
+! -------------------------------------------------------------------
+  SUBROUTINE associate_streams_to_channels
+
+! 1
+    USE mo_memory_base, ONLY: ostreams, nstreams, GAUSSIAN, SPECTRAL &
+                            , FOURIER                                &
+                            , t_stream, memory_info
+    USE mo_linked_list, ONLY: list_element
+! MESSy
+    USE messy_main_grid_def_mem_bi, ONLY: nlev, nlevp1
+    USE messy_main_mpi_bi,          ONLY: p_parallel_io
+    USE messy_main_channel,         ONLY: new_channel, new_channel_object &
+                                        , new_attribute                   &
+                                        , AF_RST_CMP
+    USE messy_main_channel_repr,    ONLY: t_representation, get_representation
+
+    IMPLICIT NONE
+
+! LOCAL
+    INTEGER                      :: i
+    TYPE (t_stream),     POINTER :: stream
+    TYPE (list_element), POINTER :: element
+    TYPE (list_element), TARGET  :: element_1st
+    TYPE (memory_info),  POINTER :: info
+!
+    CHARACTER(LEN=*), PARAMETER  :: substr = 'associate_streams_to_channels'
+    INTEGER                      :: status
+    REAL(DP), DIMENSION(:,:,:,:), POINTER :: mem
+    INTEGER                      :: reprid
+    LOGICAL                      :: lok
+    TYPE(t_representation), POINTER :: repr
+    CHARACTER(len=32)            :: grid_type
+
+    CALL start_message_bi(modstr,'STREAMS TO CHANNELS',substr)
+
+    stream_loop: DO i=1, nstreams
+
+       stream => ostreams(i)
+
+! SKIP
+       IF (TRIM(stream%name) == 'ls') CYCLE
+
+! ---------------------------
+! STREAM -> CHANNEL
+! ---------------------------
+       CALL new_channel(status, TRIM(stream%name))
+       CALL channel_halt(substr, status)
+! ---------------------------
+
+       element_1st%next_list_element => stream%first_list_element
+       element => element_1st
+       element_loop: DO ! loop over elements in linked list
+          element => element%next_list_element
+          IF (.NOT.ASSOCIATED(element)) EXIT
+
+          info => element%field%info
+          grid_type = ''
+! ---------------------------
+! ELEMENT -> OBJECT
+! ---------------------------
+          SELECT CASE(info%repr)
+          CASE(GAUSSIAN)
+!
+             SELECT CASE(info%ndim)
+!
+             CASE(1)
+                lok = .FALSE.
+             CASE(2)
+                lok = .TRUE.
+                reprid = GP_2D_HORIZONTAL
+             CASE(3)
+                IF (info%klev == 1) THEN
+                   lok = .TRUE.
+                   reprid = GP_3D_1LEV
+                ELSE IF (info%klev == 2) THEN
+                   lok = .TRUE.
+                   reprid = GP_3D_2LEV
+                ELSE IF (info%klev == 5) THEN
+                   lok = .TRUE.
+                   reprid = GP_3D_BELOWSF
+                ELSE IF (info%klev == nlev) THEN
+                   lok = .TRUE.
+                   reprid = GP_3D_MID
+                ELSE IF (info%klev == nlevp1) THEN
+                   lok = .TRUE.
+                   reprid = GP_3D_INT
+                ELSE
+                   lok = .FALSE.
+                END IF
+             CASE(4)
+                lok = .FALSE.
+             CASE DEFAULT
+                lok = .FALSE.
+!
+             END SELECT
+!
+             grid_type = 'gaussian'
+!
+          CASE(SPECTRAL)
+!
+             SELECT CASE(info%ndim)
+!
+             CASE(1)
+                lok = .FALSE.
+             CASE(2)
+                IF ( (SIZE(element%field%ptr(:,:,:,:),2) == 2) .AND. & ! COMPLEX
+                     (info%klev == 1) ) THEN
+                   lok = .TRUE.
+                   reprid = SP_2D_HORIZONTAL
+                ELSE
+                   lok = .FALSE.
+                END IF
+             CASE(3)
+                IF (info%klev == 1) THEN
+                   lok = .TRUE.
+                   reprid = SP_2D_HORIZONTAL
+                ELSE IF (info%klev == nlev) THEN
+                   lok = .TRUE.
+                   reprid = SP_3D_MID
+                ELSE IF (info%klev == nlevp1) THEN
+                   lok = .TRUE.
+                   reprid = SP_3D_INT
+                ELSE
+                   lok = .FALSE.
+                END IF
+             CASE(4)
+                lok = .FALSE.
+             CASE DEFAULT
+                lok = .FALSE.
+!
+             END SELECT
+!
+             grid_type = 'spectral, triangular truncation'
+!
+          CASE(FOURIER)
+!
+             SELECT CASE(info%ndim)
+!
+             CASE(1)
+                lok = .FALSE.
+             CASE(2)
+                lok = .TRUE.
+                reprid = FAS_MID_ZM
+             CASE(3)
+                lok = .FALSE.
+             CASE(4)
+                IF (info%klev == 1) THEN
+                   lok = .TRUE.
+                   reprid = FAS_MID_ZM
+                ELSE IF (info%klev == nlev) THEN
+                   lok = .TRUE.
+                   reprid = FAS_MID
+                ELSE IF (info%klev == nlevp1) THEN
+                   lok = .TRUE.
+                   reprid = FAS_INT
+                ELSE
+                   lok = .FALSE.
+                END IF
+             CASE DEFAULT
+                lok = .FALSE.
+!
+             END SELECT
+!
+          CASE DEFAULT
+!
+             lok = .FALSE.
+!
+          END SELECT
+
+          IF (lok) THEN
+
+! SPECIAL HANDLING FOR 1-STREAM-ELEMENTS WITH laccu = .TRUE.
+! -> DOWNGRADE TO INSTANTANEOUS VALUES
+             IF (info%laccu) THEN
+                IF (p_parallel_io) THEN
+                   WRITE(*,*) 'WARNING: stream/element ''' &
+                        ,TRIM(stream%name),'/', TRIM(info%name) &
+                        ,''' has laccu = .TRUE. !'
+                END IF
+                naccu = naccu + 1
+             END IF
+
+             mem => element%field%ptr(:,:,:,:)
+
+             CALL new_channel_object(status, TRIM(stream%name) &
+                  , TRIM(info%name)                            &
+                  , mem = mem                                  &
+                  , reprid = reprid                            &
+                  , lrestreq = .NOT. info%contnorest .OR. info%lrerun )
+             CALL channel_halt(substr, status)
+
+             IF (TRIM(info%longname) /= '') THEN
+                CALL new_attribute(status &
+                     , TRIM(stream%name), TRIM(info%name), 'long_name' &
+                     , c=TRIM(info%longname), iflag=AF_RST_CMP)
+                CALL channel_halt(substr, status)
+             END IF
+             IF (TRIM(info%units) /= '') THEN
+                CALL new_attribute(status &
+                     , TRIM(stream%name), TRIM(info%name), 'units' &
+                     , c=TRIM(info%units), iflag=AF_RST_CMP)
+                CALL channel_halt(substr, status)
+             END IF
+
+             CALL get_representation(status, reprid, repr)
+             CALL channel_halt(substr, status)
+             CALL new_attribute(status &
+                  , TRIM(stream%name), TRIM(info%name), 'representation' &
+                  , c=TRIM(repr%name), iflag=AF_RST_CMP)
+             CALL channel_halt(substr, status)
+
+! additional attributes
+             IF (TRIM(grid_type) /= '') THEN
+                CALL new_attribute(status &
+                     , TRIM(stream%name), TRIM(info%name), 'grid_type' &
+                     , c=TRIM(grid_type))
+                CALL channel_halt(substr, status)
+             END IF
+
+             IF (info%gribtable /= 0) THEN
+                CALL new_attribute(status &
+                     , TRIM(stream%name), TRIM(info%name), 'table' &
+                     , i=info%gribtable)
+                CALL channel_halt(substr, status)
+             ENDIF
+
+             IF (info%gribcode /= 0) THEN
+                CALL new_attribute(status &
+                     , TRIM(stream%name), TRIM(info%name), 'code' &
+                     , i=info%gribcode)
+                CALL channel_halt(substr, status)
+             ENDIF
+
+          ELSE
+
+             IF (p_parallel_io) THEN
+                WRITE(*,*) 'WARNING: stream/element ''' &
+                     ,TRIM(stream%name),'/', TRIM(info%name) &
+                     ,''' cannot be associated to channel!'
+             END IF
+
+          END IF
+! ---------------------------
+
+       END DO element_loop
+
+    END DO stream_loop
+
+    CALL end_message_bi(modstr,'STREAMS TO CHANNELS',substr)
+
+  END SUBROUTINE associate_streams_to_channels
+! -------------------------------------------------------------------
+
+! -------------------------------------------------------------------
+  SUBROUTINE reset_accu_stream_elements(flag)
+
+! 1
+    USE mo_memory_base,     ONLY: ostreams, nstreams, t_stream, memory_info
+    USE mo_linked_list,     ONLY: list_element
+    USE messy_main_timer,   ONLY: delta_time
+
+    IMPLICIT NONE
+
+! I/O
+    INTEGER, INTENT(IN)          :: flag
+
+! LOCAL
+    CHARACTER(LEN=*), PARAMETER  :: substr = 'reset_accu_stream_elements'
+    LOGICAL, SAVE                :: lfirst = .TRUE.
+    INTEGER                      :: i, count
+    TYPE (t_stream),     POINTER :: stream
+    TYPE (list_element), POINTER :: element
+    TYPE (list_element), TARGET  :: element_1st
+    TYPE (memory_info),  POINTER :: info
+
+    IF (lfirst) THEN
+       ALLOCATE(ptr_accu(naccu))
+       count = 0
+
+       stream_loop: DO i=1, nstreams
+
+          stream => ostreams(i)
+
+          element_1st%next_list_element => stream%first_list_element
+          element => element_1st
+          element_loop: DO ! loop over elements in linked list
+             element => element%next_list_element
+             IF (.NOT.ASSOCIATED(element)) EXIT
+
+             info => element%field%info
+
+! ---------------------------
+             IF (info%laccu) THEN
+                count = count + 1
+                ptr_accu(count)%ptr => element%field%ptr(:,:,:,:)
+             END IF
+! ---------------------------
+
+          END DO element_loop
+
+       END DO stream_loop
+
+       lfirst = .FALSE.
+    END IF
+
+    SELECT CASE(flag)
+    CASE(1)
+! BEFORE OUTPUT ...
+! DOWNGRADE ALL laccu-FIELDS TO INSTANTANEOUS VALUES
+! -> REPLACE a = 0 + b*dt BY a = 0 + b
+       DO count=1, naccu
+          ptr_accu(count)%ptr(:,:,:,:) = &
+               ptr_accu(count)%ptr(:,:,:,:) / delta_time
+       END DO
+    CASE(2)
+! AFTER OUTPUT ...
+! DOWNGRADE ALL laccu-FIELDS TO INSTANTANEOUS VALUES
+! -> REPLACE a = a + b*dt BY a = 0 + b*dt
+       DO count=1, naccu
+          ptr_accu(count)%ptr(:,:,:,:) = 0.0_DP
+       END DO
+    END SELECT
+
+  END SUBROUTINE reset_accu_stream_elements
+! -------------------------------------------------------------------
+
+! -------------------------------------------------------------------
+  SUBROUTINE timer_sync
+
+    USE mo_time_control,       ONLY: resume_date, start_date
+    USE mo_time_conversion,    ONLY: TC_set, time_native, TC_convert
+    USE messy_main_timer_bi,   ONLY: timer_message
+    USE messy_main_timer,      ONLY: timer_get_date
+
+    IMPLICIT NONE
+
+! synchronize 1 timer with MESSy timer
+
+! LOCAL
+    CHARACTER(LEN=*), PARAMETER :: substr = 'timer_sync'
+    TYPE(time_native)           :: io_date
+    INTEGER                     :: yr, mo, dy, hr, mi, se, status
+
+    CALL timer_get_date(status, "start", yr, mo, dy, hr, mi, se)
+    CALL timer_message(status, substr)
+    CALL TC_set(yr, mo, dy, hr, mi, se, io_date)
+    CALL TC_convert(io_date, start_date)
+
+    CALL timer_get_date(status, "resume", yr, mo, dy, hr, mi, se)
+    CALL timer_message(status, substr)
+    CALL TC_set(yr, mo, dy, hr, mi, se, io_date)
+    CALL TC_convert(io_date, resume_date)
+
+  END SUBROUTINE timer_sync
+! -------------------------------------------------------------------
+# 600 "../../messy/bmil/messy_main_channel_bi.f90" 2 
+
+
+# 608
+
+
+# 612
+
+
+# 616
+
+
+# 628
+
+
+# 632
+
+
+# 636
+
+# 639
+
+
+# 643
+
+
+! -------------------------------------------------------------------
+! PUBLIC SUBROUTINES (MAIN ENTRY POINTS)
+! -------------------------------------------------------------------
+
+! -------------------------------------------------------------------
+
+  SUBROUTINE main_channel_setup
+
+    IMPLICIT NONE
+
+    CALL channel_init_restart_bi
+
+  END SUBROUTINE main_channel_setup
+
+# 689
+
+! -------------------------------------------------------------------
+
+! -------------------------------------------------------------------
+  SUBROUTINE main_channel_initialize
+
+    USE messy_main_blather_bi, ONLY: error_bi
+    USE messy_main_mpi_bi,   ONLY: p_parallel_io, p_io, p_bcast &
+                                 , p_pe, p_all_comm, p_nprocs
+    USE messy_main_channel,  ONLY: main_channel_read_nml_ctrl    &
+                                 , NMAXCHANNELS, NMAXOBJECTS     &
+                                 , NMAXADDCHANNEL, NMAXADDREF    &
+                                 , NMAXADDATT                    &
+                                 , ADD_CHANNEL, ADD_REF, OUT_DEFAULT &
+                                 , ADD_ATT &
+                                 , OUT_PREC &
+                                 , OUT_CHANNEL, OUT_OBJECT, EXP_NAME &
+                                 , EXEC_CHECKSUM &
+                                 , L_FLUSH_IOBUFFER &
+                                 , I_VERBOSE_LEVEL
+    USE messy_main_tools,    ONLY: find_next_free_unit
+
+
+    USE messy_main_channel_io, ONLY: initialize_parallel_io
+# 717
+
+
+
+    IMPLICIT NONE
+
+! LOCAL
+    CHARACTER(LEN=*), PARAMETER :: substr = 'main_channel_initialize'
+    INTEGER :: status
+    INTEGER :: iou
+    INTEGER :: i
+
+    CALL start_message_bi(modstr,'INITIALIZE CHANNELS',substr)
+
+! READ CTRL-NAMELIST FOR FIXATION ( ... AT END OF INIT_COUPLING)
+! INITIALIZE CTRL
+    IF (p_parallel_io) THEN
+       iou = find_next_free_unit(100,200)
+       CALL main_channel_read_nml_ctrl(status, iou)
+       IF (status /= 0) CALL error_bi(' ',substr)
+    END IF
+
+! BROADCAST RESULTS
+    CALL p_bcast(EXP_NAME, p_io)
+    CALL p_bcast(EXEC_CHECKSUM, p_io)
+    CALL p_bcast(L_FLUSH_IOBUFFER, p_io)
+    CALL p_bcast(I_VERBOSE_LEVEL, p_io)
+    DO i=1, NMAXADDCHANNEL
+       CALL p_bcast(ADD_CHANNEL(i)%cname, p_io)
+    END DO
+!
+    DO i=1, NMAXADDREF
+       CALL p_bcast(ADD_REF(i)%cname1, p_io)
+       CALL p_bcast(ADD_REF(i)%oname1, p_io)
+       CALL p_bcast(ADD_REF(i)%cname2, p_io)
+       CALL p_bcast(ADD_REF(i)%oname2, p_io)
+    END DO
+!
+    DO i=1, NMAXADDATT
+       CALL p_bcast(ADD_ATT(i)%cname,   p_io)
+       CALL p_bcast(ADD_ATT(i)%oname,   p_io)
+       CALL p_bcast(ADD_ATT(i)%attname, p_io)
+       CALL p_bcast(ADD_ATT(i)%atttype, p_io)
+       CALL p_bcast(ADD_ATT(i)%attval,  p_io)
+       CALL p_bcast(ADD_ATT(i)%lforce,  p_io)
+       CALL p_bcast(ADD_ATT(i)%lout,    p_io)
+    END DO
+!
+    CALL p_bcast(OUT_DEFAULT%cname, p_io)
+    CALL p_bcast(OUT_DEFAULT%cio%ftype(:), p_io)
+    CALL p_bcast(OUT_DEFAULT%cio%ntpf, p_io)
+    CALL p_bcast(OUT_DEFAULT%oio%lrestart, p_io)
+    CALL p_bcast(OUT_DEFAULT%oio%lignore, p_io)
+    CALL p_bcast(OUT_DEFAULT%oio%lout(:), p_io)
+    CALL p_bcast(OUT_DEFAULT%oio%range(:), p_io)
+!
+    CALL p_bcast(OUT_PREC(:), p_io)
+!
+    DO i=1, NMAXCHANNELS
+       CALL p_bcast(OUT_CHANNEL(i)%cname, p_io)
+       CALL p_bcast(OUT_CHANNEL(i)%cio%ftype(:), p_io)
+       CALL p_bcast(OUT_CHANNEL(i)%cio%ntpf, p_io)
+       CALL p_bcast(OUT_CHANNEL(i)%oio%lrestart, p_io)
+       CALL p_bcast(OUT_CHANNEL(i)%oio%lignore, p_io)
+       CALL p_bcast(OUT_CHANNEL(i)%oio%lout(:), p_io)
+       CALL p_bcast(OUT_CHANNEL(i)%oio%range(:), p_io)
+    END DO
+!
+    DO i=1, NMAXOBJECTS
+       CALL p_bcast(OUT_OBJECT(i)%cname, p_io)
+       CALL p_bcast(OUT_OBJECT(i)%oname, p_io)
+       CALL p_bcast(OUT_OBJECT(i)%io%lrestart, p_io)
+       CALL p_bcast(OUT_OBJECT(i)%io%lignore, p_io)
+       CALL p_bcast(OUT_OBJECT(i)%io%lout(:), p_io)
+       CALL p_bcast(OUT_OBJECT(i)%io%range(:), p_io)
+    END DO
+
+! INTIALIZE GLOBAL ATTRIBUTES
+    CALL main_channel_initialize_gatts
+
+! INTIALIZE DIMENSIONS
+    CALL main_channel_initialize_dims
+
+! INTIALIZE REPRESENTATIONS
+    CALL main_channel_initialize_reprs
+
+    CALL end_message_bi(modstr,'INITIALIZE CHANNELS',substr)
+
+
+    CALL start_message_bi(modstr,'INITIALIZE PARALLEL I/O',substr)
+# 817
+
+
+    CALL initialize_parallel_io(status, p_pe, p_io, p_all_comm, p_nprocs)
+    CALL channel_halt(substr, status)
+    CALL end_message_bi(modstr,'INITIALIZE PARALLEL I/O',substr)
+
+
+! moved here from init_coupling; otherwise L_BM_ORIG_OUTPUT is not defined
+! INITIALIZE CPL
+    IF (p_parallel_io) THEN
+       iou = find_next_free_unit(100,200)
+       CALL main_channel_read_nml_cpl(status, iou)
+       IF (status /= 0) CALL error_bi(' ',substr)
+    END IF
+! BROADCAST RESULTS
+    CALL p_bcast(L_BM_ORIG_OUTPUT, p_io)
+    CALL p_bcast(L_CALCOUT_EACH_STEP, p_io)
+    CALL p_bcast(CHANNEL_PPIO_TYPE, p_io)
+
+  END SUBROUTINE main_channel_initialize
+! -------------------------------------------------------------------
+
+! -------------------------------------------------------------------
+  SUBROUTINE main_channel_init_memory
+
+    IMPLICIT NONE
+
+! LOCAL
+    CHARACTER(LEN=*), PARAMETER :: substr = 'main_channel_init_memory'
+
+    CALL start_message_bi(modstr,'INITIALIZE CHANNEL MEMORY',substr)
+
+
+! ASSOCIATE 1 STREAMS TO MESSy CHANNELS
+    CALL associate_streams_to_channels
+
+
+# 856
+
+
+# 860
+
+
+# 864
+
+
+    CALL end_message_bi(modstr,'INITIALIZE CHANNEL MEMORY',substr)
+
+  END SUBROUTINE main_channel_init_memory
+! -------------------------------------------------------------------
+
+! -------------------------------------------------------------------
+  SUBROUTINE main_channel_init_coupling(flag)
+
+    USE messy_main_mpi_bi,   ONLY: p_parallel_io, p_pe, p_io
+    USE messy_main_channel,  ONLY: fixate_channels, write_channel &
+                                 , write_attribute &
+                                 , I_VERBOSE_LEVEL &
+                                 , modify_attributes
+    USE messy_main_channel_dimensions,  ONLY: write_dimension
+    USE messy_main_channel_repr,        ONLY: write_representation &
+                                            , write_representation_dc
+
+# 899
+
+
+    IMPLICIT NONE
+
+! I/O
+    INTEGER, INTENT(IN)         :: flag
+
+! LOCAL
+    CHARACTER(LEN=*), PARAMETER :: substr = 'main_channel_init_coupling'
+    INTEGER                     :: status
+# 913
+
+    INTEGER          :: js
+    CHARACTER(LEN=STRLEN_CHANNEL) :: cname
+    INTEGER          :: dom_id
+
+
+    SELECT CASE(flag)
+
+# 928
+
+
+    CASE(1)
+       CALL modify_attributes(status)
+       CALL channel_halt(substr, status)
+
+    CASE(2)
+# 940
+
+# 943
+
+       CALL start_message_bi(modstr,'FIXATE CHANNELS PART 1',substr)
+       CALL fixate_channels(status,1)
+       CALL channel_halt(substr, status)
+       CALL end_message_bi(modstr,'FIXATE CHANNELS PART 1',substr)
+
+       CALL main_channel_make_cf_conform
+
+       CALL start_message_bi(modstr,'FIXATE CHANNELS PART 2',substr)
+       CALL fixate_channels(status,2)
+       CALL channel_halt(substr, status)
+       CALL end_message_bi(modstr,'FIXATE CHANNELS PART 2',substr)
+
+       CALL start_message_bi(modstr,'DISTRIBUTE CHANNEL OUTPUT',substr)
+       CALL distribute_channels_io
+       CALL end_message_bi(modstr,'DISTRIBUTE CHANNEL OUTPUT',substr)
+
+# 1099
+
+
+! INITIALIZE CHANNEL OUTPUT TIMERS (via CPL-NAMELIST)
+       CALL main_channel_init_timer
+
+       IF (I_VERBOSE_LEVEL > 0) THEN
+          IF (p_parallel_io) THEN
+             CALL write_attribute(status)
+             CALL channel_halt(substr, status)
+          END IF
+
+          IF (p_parallel_io) THEN
+             CALL write_dimension(status)
+             CALL channel_halt(substr, status)
+          END IF
+
+          IF (p_parallel_io) THEN
+             CALL write_representation(status)
+             CALL channel_halt(substr, status)
+          END IF
+
+          CALL write_representation_dc(status, p_pe)
+          CALL channel_halt(substr, status)
+
+          IF (p_parallel_io) THEN
+             CALL write_channel(status)
+             CALL channel_halt(substr, status)
+          END IF
+       END IF
+
+       CALL end_message_bi(modstr,'FIXATE CHANNELS',substr)
+
+    END SELECT
+
+  END SUBROUTINE main_channel_init_coupling
+! -------------------------------------------------------------------
+
+! -------------------------------------------------------------------
+  SUBROUTINE main_channel_global_start
+
+# 1147
+
+
+! LOCAL
+    CHARACTER(LEN=*), PARAMETER :: substr='main_channel_global_start'
+# 1165
+
+
+    CALL main_channel_update_timer
+
+  END SUBROUTINE main_channel_global_start
+! -------------------------------------------------------------------
+
+! -------------------------------------------------------------------
+  SUBROUTINE main_channel_write_output
+
+    USE messy_main_channel,    ONLY: trigger_channel_output
+
+    IMPLICIT NONE
+
+! LOCAL
+    CHARACTER(LEN=*), PARAMETER :: substr = 'main_channel_write_output'
+    INTEGER :: status
+
+    CALL trigger_channel_output(status, LOUTPUT_NOW, LTNF_NOW &
+         , LFORCE_NEW_OUTPUT) ! full
+    CALL channel_halt(substr, status)
+    LFORCE_NEW_OUTPUT = .FALSE.
+
+    CALL channel_write_output_bi(IOMODE_OUT)
+
+  END SUBROUTINE main_channel_write_output
+! -------------------------------------------------------------------
+
+! -------------------------------------------------------------------
+  SUBROUTINE main_channel_write_restart
+
+    IMPLICIT NONE
+
+    CALL channel_write_output_bi(IOMODE_RST)
+
+  END SUBROUTINE main_channel_write_restart
+! -------------------------------------------------------------------
+
+! -------------------------------------------------------------------
+  SUBROUTINE main_channel_free_memory
+
+    USE messy_main_mpi_bi,              ONLY: p_parallel_io, p_pe
+    USE messy_main_channel_io,          ONLY: channel_finish_io
+    USE messy_main_channel_dimensions,  ONLY: clean_dimensions
+    USE messy_main_channel_repr,        ONLY: clean_representations
+    USE messy_main_channel,             ONLY: clean_channels, write_channel
+
+    IMPLICIT NONE
+
+# 1216
+
+
+! LOCAL
+    CHARACTER(LEN=*), PARAMETER :: substr = 'main_channel_free_memory'
+    INTEGER :: status
+# 1223
+
+
+    CALL start_message_bi(modstr,'FINISH CHANNELS',substr)
+
+! ------------------------------------------
+! CLOSE ALL OUTPUT FILES
+! ------------------------------------------
+    CALL channel_finish_io(status,  IOMODE_OUT, .TRUE., p_pe)
+    CALL channel_halt(substr, status)
+
+    CALL clean_representations(status)
+    CALL channel_halt(substr, status)
+
+    CALL clean_dimensions(status)
+    CALL channel_halt(substr, status)
+
+    CALL clean_channels(status)
+    CALL channel_halt(substr, status)
+
+    IF (p_parallel_io) THEN
+       CALL write_channel(status)
+       CALL channel_halt(substr, status)
+    END IF
+
+# 1254
+
+
+    DEALLOCATE(LOUTPUT_NOW)
+    DEALLOCATE(TIME_BNDS)
+    DEALLOCATE(LTNF_NOW)
+    DEALLOCATE(I_PATCH)
+
+
+    IF (ASSOCIATED(gp_start)) THEN
+       DEALLOCATE(gp_start) ; NULLIFY(gp_start)
+    END IF
+    IF (ASSOCIATED(gp_cnt)) THEN
+       DEALLOCATE(gp_cnt) ; NULLIFY(gp_cnt)
+    END IF
+    IF (ASSOCIATED(gp_meml)) THEN
+       DEALLOCATE(gp_meml) ; NULLIFY(gp_meml)
+    END IF
+    IF (ASSOCIATED(gp_memu)) THEN
+       DEALLOCATE(gp_memu) ; NULLIFY(gp_memu)
+    END IF
+# 1286
+
+
+    IF (ALLOCATED(nodeid)) DEALLOCATE(nodeid)
+
+    CALL end_message_bi(modstr,'FINISH CHANNELS',substr)
+
+  END SUBROUTINE main_channel_free_memory
+! -------------------------------------------------------------------
+
+! -------------------------------------------------------------------
+! PRIVATE (PART I)
+! -------------------------------------------------------------------
+
+! -------------------------------------------------------------------
+  SUBROUTINE channel_write_output_bi(IOMODE)
+
+    USE messy_main_mpi_bi,     ONLY: p_parallel_io, p_pe
+    USE messy_main_blather_bi, ONLY: error_bi
+    USE messy_main_timer,      ONLY: &
+                                     YEAR, MONTH, DAY, HOUR, MINUTE, SECOND &
+                                   , YEAR_NEXT, MONTH_NEXT, DAY_NEXT     &
+                                   , HOUR_NEXT, MINUTE_NEXT, SECOND_NEXT &
+                                   , YEAR_START, MONTH_START, DAY_START     &
+                                   , HOUR_START, MINUTE_START, SECOND_START &
+                                   , MILLISECOND_NEXT &
+                                   , MILLISECOND_START &
+                                   , delta_time, current_time_step &
+                                   , time_step_len
+    USE messy_main_channel_io, ONLY: channel_init_io           &
+                                   , channel_write_header      &
+                                   , channel_write_time        &
+                                   , channel_write_data        &
+                                   , channel_finish_io
+    USE messy_main_channel,    ONLY: EXP_NAME, update_channels &
+                                   , I_VERBOSE_LEVEL &
+                                   , get_channel_info
+    USE messy_main_channel_dimensions, ONLY: update_dimension_variable
+    USE messy_main_timer,      ONLY: time_span_d   &
+                                   , gregor2julian
+# 1327
+
+
+    IMPLICIT NONE
+
+    INTRINSIC :: ABS, ASSOCIATED, LEN, LEN_TRIM, NULL, REAL
+
+! I/O
+    INTEGER, INTENT(IN)         :: IOMODE  ! OUTPUT MODE
+
+! LOCAL
+    CHARACTER(LEN=*), PARAMETER :: substr = 'channel_write_output_bi'
+    INTEGER                     :: status
+    CHARACTER(LEN=BASENAME_LEN) :: fnamebase = ''
+    INTEGER                     :: i
+    REAL(DP)                    :: yyyymmdd
+    REAL(DP)                    :: now
+    LOGICAL                     :: lexit
+    REAL(DP), DIMENSION(:,:,:,:), POINTER :: ptr  => NULL()
+    REAL(DP), DIMENSION(:,:,:,:), POINTER :: gptr => NULL()
+    INTEGER                               :: reprid
+    INTEGER, SAVE    :: nrstcount     = 0
+    CHARACTER(LEN=4) :: nrstcount_str = ''
+    LOGICAL          :: lp
+    INTEGER          :: YEAR_DATE, MONTH_DATE, DAY_DATE
+    INTEGER          :: HOUR_DATE, MINUTE_DATE, SECOND_DATE
+    INTEGER          :: MILLISECOND_DATE
+    LOGICAL          :: l_clams = .FALSE.  ! is CLaMS running ?
+    REAL(DP)         :: julsec  ! time in julian seconds
+    INTEGER           :: js
+    INTEGER          :: p_io_c ! IO PE per CHANNEL, required in bi_decompose
+
+    IF (I_VERBOSE_LEVEL >= 2) &
+         CALL start_message_bi(modstr,'WRITE OUTPUT',substr)
+
+    SELECT CASE(IOMODE)
+!
+    CASE(IOMODE_OUT)   ! ### ---------------- OUTPUT -------------------- ###
+!
+! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! SPECIAL HANDLING FOR 1-STREAM-ELEMENTS WITH laccu = .TRUE.
+! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+       CALL reset_accu_stream_elements(1)
+
+# 1376
+
+! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+       CALL update_channels(status, 1, time_step_len) ! ACCUMULATE 2ndary
+       CALL channel_halt(substr, status)
+!
+       CALL update_channels(status, 2, time_step_len) ! PREPARE FOR OUTPUT
+       CALL channel_halt(substr, status)
+!
+! UPDATE FILENAME BASE
+       fnamebase = EXP_NAME
+       DO i = LEN_TRIM(EXP_NAME)+1, LEN(EXP_NAME)
+          WRITE(fnamebase(i:i),'(a1)') '_'
+       END DO
+
+       YEAR_DATE   = YEAR_NEXT
+       MONTH_DATE  = MONTH_NEXT
+       DAY_DATE    = DAY_NEXT
+       HOUR_DATE   = HOUR_NEXT
+       MINUTE_DATE = MINUTE_NEXT
+       SECOND_DATE = SECOND_NEXT
+       MILLISECOND_DATE = MILLISECOND_NEXT
+
+
+       WRITE(fnamebase(LEN(EXP_NAME)+1:),'(a1,i4,i2.2,i2.2,a1,i2.2,i2.2,a1)') &
+            '_', YEAR_DATE, MONTH_DATE, DAY_DATE, '_' &
+            , HOUR_DATE, MINUTE_DATE, '_'
+
+
+# 1410
+
+
+# 1416
+
+
+# 1430
+
+
+# 1444
+
+
+# 1458
+
+
+! UPDATE TIME STEP - DATA
+! - TIME
+       CALL time_span_d(now   &
+            , YEAR_START, MONTH_START, DAY_START &
+            , HOUR_START, MINUTE_START, SECOND_START, MILLISECOND_START  &
+            , YEAR_DATE, MONTH_DATE, DAY_DATE         &
+            , HOUR_DATE, MINUTE_DATE, SECOND_DATE, MILLISECOND_DATE)
+
+       CALL update_dimension_variable(status, 'time', 'time', (/ now /))
+       CALL channel_halt(substr, status)
+! - YYYYMMDD
+       yyyymmdd = REAL(ABS(YEAR_DATE)*10000 + MONTH_DATE*100 +DAY_DATE, DP) &
+        + REAL((HOUR_DATE*3600 + MINUTE_DATE*60 + SECOND_DATE), DP)/86400.0_DP &
+        + REAL(MILLISECOND_DATE, DP)/86400000.0_DP
+       IF (YEAR<0) yyyymmdd = -yyyymmdd
+       CALL update_dimension_variable(status, 'time', 'YYYYMMDD' &
+            , (/ yyyymmdd /))
+       CALL channel_halt(substr, status)
+! - DT
+       CALL update_dimension_variable(status, 'time', 'dt', (/ delta_time /))
+       CALL channel_halt(substr, status)
+! - TIME STEP
+       CALL update_dimension_variable(status, 'time', 'nstep' &
+            , (/ REAL(current_time_step, DP) /))
+       CALL channel_halt(substr, status)
+!
+       DO js = 1, NCHANNEL
+          TIME_BNDS(js)%ptr(2) = now
+       END DO
+
+       CALL get_channel_info(status, 'clams')
+       l_clams = (status == 0)
+       if (l_clams) then
+          julsec = REAL((HOUR*3600 + MINUTE*60 + SECOND),DP) + &         ! s
+               ( (gregor2julian(YEAR, MONTH, DAY, 0, 0, 0) + 0.5_dp) - & ! ymd2jd()
+               2451545.0_dp ) * &   ! 1.1.2000
+               86400.0_dp
+          julsec = julsec + delta_time
+          CALL update_dimension_variable(status, 'time', 'JULIAN_SECONDS' &
+               , (/ julsec /))
+          CALL channel_halt(substr, status)
+       endif
+!
+    CASE(IOMODE_RST)   ! ### ---------------- RESTART -------------------- ###
+!
+! FORCE NEW OUTPUT FILE IN NEXT STEP
+       LFORCE_NEW_OUTPUT = .TRUE.
+! UPDATE FILENAME BASE
+       nrstcount = nrstcount + 1
+       write(nrstcount_str,'(i4.4)') nrstcount
+! UPDATE FILENAME BASE
+       fnamebase = 'restart_'//nrstcount_str//'_'
+!
+! SET RESTART ATTRIBUTES
+       CALL initialize_restart_attributes(AMODE_WRITE)
+!
+    END SELECT
+
+! PREPARE OUTPUT / RESTART FILE
+! NEW FILE, SAVE I/O-UNITS, FILE-IDs etc.
+! p_pe is passed to determine I/O PE based on CHANNEL-settings, similar for
+! all IO-routines
+    CALL channel_init_io(status, IOMODE, fnamebase, AMODE_WRITE, p_pe)
+    CALL channel_halt(substr, status)
+!
+! WRITE HEADER
+    SELECT CASE(IOMODE)
+    CASE(IOMODE_OUT)
+       CALL channel_write_header(status, IOMODE, DIMID_TIME, p_pe)
+    CASE(IOMODE_RST)
+       CALL channel_write_header(status, IOMODE, DIMID_TIME, p_pe &
+            , restart_att)
+    END SELECT
+    CALL channel_halt(substr, status)
+!
+! WRITE TIME STEP DATA TO OUTPUT FILE
+    CALL channel_write_time(status, IOMODE, DIMID_TIME, p_pe)
+    CALL channel_halt(substr, status)
+! WRITE DATA
+! p_io_c is passed from channel_write_data to bi_decompose to determine PE
+! for gathering fields (IO PE)
+    DO
+! NEXT POINTER
+       CALL channel_write_data(status, lp  &
+            , IOMODE, lexit, ptr, reprid, p_io_c, p_pe)
+       CALL channel_halt(substr, status)
+       IF (lexit) EXIT
+
+       IF (lp) THEN ! parallel I/O
+          CALL bi_vector(status, -1, reprid, gptr, ptr)
+          IF (status /= 0) &
+               CALL error_bi('bi_vector reported an error', substr)
+       ELSE
+          CALL bi_decompose(status, -1, reprid, gptr, ptr, p_io_c)
+          IF (status /= 0) &
+               CALL error_bi('bi_decompose reported an error',substr)
+       END IF
+! OUTPUT
+! NOTE: gptr only associated on I/O-PE
+       CALL channel_write_data(status, lp &
+            , IOMODE, lexit, gptr, reprid, p_io_c, p_pe)
+       CALL channel_halt(substr, status)
+    END DO
+! FLUSH (OUTPUT) / CLOSE (RESTART) BUFFER
+    CALL channel_finish_io(status, IOMODE, (IOMODE==IOMODE_RST),  p_pe)
+    CALL channel_halt(substr, status)
+
+! CLEAN MEMORY
+    IF (ASSOCIATED(gptr)) THEN
+       DEALLOCATE(gptr)
+       NULLIFY(gptr)
+    END IF
+
+    IF (IOMODE == IOMODE_OUT) THEN
+! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! SPECIAL HANDLING FOR 1-STREAM-ELEMENTS WITH laccu = .TRUE.
+! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+       CALL reset_accu_stream_elements(2)
+
+       DO js = 1, NCHANNEL
+          IF (LOUTPUT_NOW(js)) TIME_BNDS(js)%ptr(:) = now
+       END DO
+!
+       CALL update_channels(status, 3, time_step_len) ! RESET AFTER OUTPUT
+       CALL channel_halt(substr, status)
+!
+    END IF
+
+    IF (I_VERBOSE_LEVEL >= 2) &
+         CALL end_message_bi(modstr,'WRITE OUTPUT',substr)
+
+  END SUBROUTINE channel_write_output_bi
+! -------------------------------------------------------------------
+
+! -------------------------------------------------------------------
+  SUBROUTINE channel_init_restart_bi
+
+    USE messy_main_mpi_bi,  ONLY: p_io, p_pe, p_all_comm, p_nprocs
+    USE messy_main_timer,   ONLY: lresume
+    USE messy_main_channel_io, ONLY: initialize_parallel_io
+
+    IMPLICIT NONE
+
+! LOCAL
+    CHARACTER(LEN=*), PARAMETER :: substr = 'channel_init_restart_bi'
+    INTEGER :: status
+
+    IF (.NOT. lresume) RETURN
+
+    CALL initialize_parallel_io(status, p_pe, p_io, p_all_comm, p_nprocs)
+    CALL channel_halt(substr, status)
+
+    CALL initialize_restart_attributes(AMODE_INIT)
+
+  END SUBROUTINE channel_init_restart_bi
+! -------------------------------------------------------------------
+
+! -------------------------------------------------------------------
+  SUBROUTINE main_channel_read_restart(chname, dom_id)
+
+    USE messy_main_mpi_bi,     ONLY: p_parallel_io, p_io, p_bcast, p_pe
+    USE messy_main_blather_bi, ONLY: error_bi
+
+    USE messy_main_channel_io, ONLY: channel_init_io   &
+                                   , channel_read_data &
+                                   , channel_finish_io
+    USE messy_main_channel,    ONLY: t_channel_list, t_channel, GCHANNELLIST &
+                                   , l_cheat
+# 1631
+
+
+    IMPLICIT NONE
+
+    INTRINSIC :: ASSOCIATED, NULL
+
+! I/O
+    CHARACTER(LEN=*), INTENT(IN), OPTIONAL :: chname
+    INTEGER,          INTENT(IN), OPTIONAL :: dom_id
+
+! LOCAL
+    CHARACTER(LEN=*), PARAMETER  :: substr = 'main_channel_read_restart'
+    INTEGER                      :: status
+    CHARACTER(LEN=BASENAME_LEN)  :: fnamebase = ''
+    TYPE(t_channel_list),  POINTER        :: ls
+    TYPE(t_channel),       POINTER        :: channel
+    LOGICAL                               :: lexit
+    REAL(DP), DIMENSION(:,:,:,:), POINTER :: ptr  => NULL()
+    REAL(DP), DIMENSION(:,:,:,:), POINTER :: gptr => NULL()
+    INTEGER                               :: reprid
+    LOGICAL                               :: lok
+    LOGICAL                               :: lp
+    INTEGER                               :: ife
+# 1659
+
+
+    CALL start_message_bi(modstr,'READ RESTART',substr)
+
+    IF (PRESENT(chname)) THEN
+       IF (p_parallel_io) WRITE(*,*) 'chname: ', TRIM(chname)
+       IF (TRIM(chname) == 'tracer_gp') l_cheat = .TRUE.
+    ENDIF
+
+! UPDATE FILENAME BASE
+    fnamebase = 'restart_'
+
+! INITIALIZE RESTART ATTRIBUTES
+    CALL initialize_restart_attributes(AMODE_READ)
+
+! OPEN RESTART FILES AND CHECK HEADER INFORMATION
+! OPEN FILE FOR READ
+    CALL channel_init_io(status,  IOMODE_RST &
+         ,  fnamebase, AMODE_READ, p_pe, restart_att, chname, dom_id &
+# 1680
+
+         , llp_io = p_parallel_io)
+    CALL channel_halt(substr, status)
+
+! BROADCAST %tslo IN ALL CHANNELS
+! this should only be required for non-parallel I/O, however ...
+    ls => GCHANNELLIST
+    channel_loop: DO
+       IF (.NOT. ASSOCIATED(ls)) EXIT
+       channel => ls%this
+! ------------------------------------------------
+       CALL p_bcast(channel%int%tslo, p_io)
+! ------------------------------------------------
+! broadcast deleted filename for missing restart files
+       IF (p_parallel_io) THEN
+          IF (TRIM(channel%int%fname(IOMODE_RST)) == '') THEN
+             ife = 0
+          ELSE
+             ife = 1
+          END IF
+       END IF
+       CALL p_bcast(ife, p_io)
+       IF (ife == 0) channel%int%fname(IOMODE_RST) = ' '
+       ls => ls%next
+    END DO channel_loop
+
+! READ DATA
+    DO
+! NEXT POINTER
+       CALL channel_read_data(status, p_parallel_io &
+            , IOMODE_RST, lexit, gptr, reprid, lp, chname, dom_id &
+# 1714
+
+            )
+       CALL channel_halt(substr, status)
+       IF (lexit) EXIT
+!
+
+       IF (lp) THEN ! parallel I/O
+          IF (ASSOCIATED(gptr)) THEN
+             CALL bi_vector(status, 1, reprid, gptr, ptr)
+             IF (status /= 0) CALL error_bi( &
+                  'bi_vector reported an error', substr)
+          END IF
+       ELSE
+! NOTE: gptr only associated on I/O-PE
+          IF (p_parallel_io) lok = ASSOCIATED(gptr)
+          CALL p_bcast(lok, p_io)
+!
+          IF (lok) THEN
+             CALL bi_decompose(status, 1, reprid, gptr, ptr, p_io)
+             IF (status /= 0) CALL error_bi( &
+                  'bi_decompose reported an error',substr)
+! NOTE: ptr now associated on all PEs
+!       or =>NULL if .NOT. lok
+          END IF
+       END IF
+!
+# 1743
+
+! DISTRIBUTE
+       CALL channel_read_data(status, p_parallel_io, &
+            IOMODE_RST, lexit, ptr, reprid, lp       &
+            )
+       CALL channel_halt(substr, status)
+!
+! RESET MEMORY
+       IF (ASSOCIATED(ptr)) THEN
+          DEALLOCATE(ptr)
+          NULLIFY(ptr)
+       END IF
+       IF (ASSOCIATED(gptr)) THEN
+          DEALLOCATE(gptr)
+          NULLIFY(gptr)
+       END IF
+    END DO
+
+
+! CLOSE ALL RESTART FILES
+    CALL channel_finish_io(status, IOMODE_RST, .TRUE., p_pe, chname &
+         , dom_id, llp_io=p_parallel_io)
+    CALL channel_halt(substr, status)
+
+
+    l_cheat = .FALSE.
+
+    CALL end_message_bi(modstr,'READ RESTART',substr)
+
+# 2123
+
+
+  END SUBROUTINE main_channel_read_restart
+! -------------------------------------------------------------------
+
+! -------------------------------------------------------------------
+! PUBLIC HELPER ROUTINES
+! -------------------------------------------------------------------
+
+! -------------------------------------------------------------------
+  SUBROUTINE p_bcast_attribute(att, p)
+
+    USE messy_main_channel_attributes, ONLY: t_attribute
+    USE messy_main_mpi_bi,             ONLY: p_bcast
+
+    IMPLICIT NONE
+
+! I/O
+    TYPE(t_attribute) :: att
+    INTEGER           :: p
+
+    CALL p_bcast(att%name, p)
+    CALL p_bcast(att%type, p)
+    CALL p_bcast(att%iflag, p)
+    CALL p_bcast(att%i, p)
+    CALL p_bcast(att%c, p)
+    CALL p_bcast(att%r, p)
+
+  END SUBROUTINE p_bcast_attribute
+! -------------------------------------------------------------------
+
+! -------------------------------------------------------------------
+! PRIVATE (PART II)
+! -------------------------------------------------------------------
+
+! -------------------------------------------------------------------
+  SUBROUTINE initialize_restart_attributes(AMODE)
+
+    USE messy_main_data_bi,    ONLY: basemodstr => modstr
+    USE messy_main_mpi_bi,     ONLY: p_parallel_io, p_io, p_bcast
+    USE messy_main_timer_bi,   ONLY: get_time_step => timer_get_time_step &
+                                   , messy_timer_init_manager             &
+                                   , timer_message
+    USE messy_main_timer,      ONLY: INIT_STEP                              &
+                                   , timer_get_date,timer_set_date          &
+                                   , delta_time                             &
+                                   , YEAR_START,MONTH_START,DAY_START       &
+                                   , HOUR_START, MINUTE_START, SECOND_START
+    USE messy_main_channel_io, ONLY: channel_init_restart
+    USE messy_main_channel,    ONLY: new_attribute, get_attribute &
+                                   , AF_RST_CMP, AF_RST_INP, AF_RST_NONE
+    USE messy_main_constants_mem, ONLY: STRLEN_MEDIUM
+
+
+    USE mo_time_control,     ONLY: ec_manager_init &
+                                 , E5_resume_date => resume_date &
+                                 , E5_start_date  => start_date &
+                                 , lresume
+    USE mo_time_conversion,  ONLY: TC_set, time_native, TC_convert, time_intern
+    USE messy_main_timer,    ONLY: timer_get_lresume
+
+
+# 2194
+
+
+# 2198
+
+
+    IMPLICIT NONE
+    INTRINSIC :: INT, MOD, SIGN, TRIM
+
+! I/O
+    INTEGER, INTENT(IN) :: AMODE
+
+! LOCAL
+    CHARACTER(LEN=*), PARAMETER :: substr='initialize_restart_attributes'
+    CHARACTER(LEN=DATE_TIME_STR_LEN) :: str_date_time = ''
+!
+    INTEGER           :: YEAR, MONTH, DAY, HOUR, MINUTE, SECOND
+    INTEGER           :: MILLISECOND
+    INTEGER           :: iflag
+    INTEGER           :: iflag_dt
+    INTEGER           :: yyyymmdd
+    REAL(DP)          :: hhmmss
+! qqq why SAVE?
+    INTEGER, SAVE     :: nstep
+    REAL(DP)          :: timestep
+    INTEGER           :: status
+    LOGICAL           :: lp = .FALSE.
+    INTEGER           :: kyr, kmo, kdy, khr, kmn, kse, iymd
+    INTEGER           :: kms
+    CHARACTER(LEN=STRLEN_MEDIUM) :: zdstr = ''
+
+    TYPE(time_intern) :: io_date
+
+
+
+! set lresume of original 1 timer
+    CALL timer_get_lresume(lresume)
+
+
+    SELECT CASE(AMODE)
+       CASE(AMODE_WRITE)
+          iflag    = AF_RST_NONE
+          iflag_dt = AF_RST_NONE
+
+          zdstr    = 'next'
+# 2244
+
+          nstep    = get_time_step()
+       CASE(AMODE_READ)
+          iflag    = AF_RST_CMP
+          iflag_dt = AF_RST_NONE
+          zdstr    = 'resume'
+       CASE(AMODE_INIT)
+          iflag    = AF_RST_INP
+          iflag_dt = AF_RST_INP
+! use start-date here as restart date ist not yet defined (for TIMER)
+! and will be overwritten anyway
+          zdstr = 'start'
+          nstep    = INIT_STEP
+    END SELECT
+
+! NOTE: The time information in *_START for the 1-TIMER must be
+!       set here, therfore the local variables (YEAR, MONTH, ...)
+!       cannot be used.
+
+    WRITE(str_date_time,'(i4.4,i2.2,i2.2,a1,3(i2.2))') &
+          YEAR_START, MONTH_START,  DAY_START,' '    &
+          ,HOUR_START, MINUTE_START, SECOND_START
+# 2270
+
+!
+    CALL new_attribute(status, restart_att &
+         , 'start_date_time', c=TRIM(str_date_time) &
+         , loverwrite=.TRUE., iflag = iflag)
+    CALL channel_halt(substr, status)
+
+! - RESTART DATE AND TIME
+    IF (AMODE /= AMODE_INIT) THEN
+       CALL timer_get_date(status, TRIM(zdstr)  &
+            ,YEAR,MONTH,DAY,HOUR,MINUTE,SECOND,MILLISECOND)
+       CALL timer_message(status, substr)
+    ELSE
+! in case of restart start_date is not initialised, use
+! start date components directly
+       YEAR        =   YEAR_START
+       MONTH       =  MONTH_START
+       DAY         =    DAY_START
+       HOUR        =   HOUR_START
+       MINUTE      = MINUTE_START
+       SECOND      = SECOND_START
+# 2293
+
+    END IF
+
+
+    WRITE(str_date_time,'(i4.4,i2.2,i2.2,a1,3(i2.2))') &
+         YEAR, MONTH, DAY,' ',HOUR, MINUTE, SECOND
+# 2302
+
+!
+    CALL new_attribute(status, restart_att &
+         , 'restart_date_time', c=TRIM(str_date_time) &
+         , loverwrite=.TRUE., iflag = iflag)
+    CALL channel_halt(substr, status)
+
+! - CURRENT TIME STEP
+    CALL new_attribute(status, restart_att &
+         , 'nstep', i=nstep                &
+         , loverwrite=.TRUE., iflag = iflag)
+    CALL channel_halt(substr, status)
+
+! - TIME STEP LENGTH
+    CALL new_attribute(status, restart_att &
+         , 'timestep', r=delta_time        &
+         , loverwrite=.TRUE., iflag = iflag_dt)
+    CALL channel_halt(substr, status)
+
+# 2378
+
+
+! CONTINUE ONLY DURING INITIALIZATION AFTER RESTART
+    IF (AMODE /= AMODE_INIT) RETURN
+
+
+    CALL channel_init_restart(status, lp, p_parallel_io &
+         , 'restart_g1a', restart_att)
+# 2400
+
+    CALL channel_halt(substr, status)
+
+! READ DATA FROM ATTRIBUTES:
+! - START DATE AND TIME
+    IF (p_parallel_io .OR. lp) THEN
+       CALL get_attribute(status, restart_att, 'start_date_time' &
+            , c=str_date_time)
+       CALL channel_halt(substr, status)
+    END IF
+!
+    IF (.NOT. lp) CALL p_bcast(str_date_time, p_io)
+    READ(str_date_time,*) yyyymmdd, hhmmss
+
+    CALL TC_set (yyyymmdd, INT(hhmmss), io_date)
+    CALL TC_convert(io_date, E5_start_date)
+
+
+    iymd = SIGN(1,INT(yyyymmdd))*INT(yyyymmdd)
+    kyr = INT(iymd/10000)
+    kmo = MOD(iymd,10000)/100
+    kdy = MOD(iymd,100)
+    khr = INT(hhmmss)/10000
+    kmn = MOD(INT(hhmmss),10000)/100
+    kse = MOD(INT(hhmmss),100)
+    kms = INT((hhmmss - REAL(INT(hhmmss),dp)) * 1000._dp)
+    CALL timer_set_date(status,'start',kyr, kmo, kdy, khr, kmn, kse, kms)
+
+! - RESTART DATE
+    IF (p_parallel_io .OR. lp) THEN
+       CALL get_attribute(status, restart_att, 'restart_date_time' &
+            , c=str_date_time)
+       CALL channel_halt(substr, status)
+    END IF
+!
+    IF (.NOT. lp) CALL p_bcast(str_date_time, p_io)
+    READ(str_date_time,*) yyyymmdd, hhmmss
+
+    CALL TC_set (yyyymmdd, INT(hhmmss), io_date)
+    CALL TC_convert(io_date, E5_resume_date)
+
+
+    iymd = SIGN(1,INT(yyyymmdd))*INT(yyyymmdd)
+    kyr = INT(iymd/10000)
+    kmo = MOD(iymd,10000)/100
+    kdy = MOD(iymd,100)
+    khr = INT(hhmmss)/10000
+    kmn = MOD(INT(hhmmss),10000)/100
+    kse = MOD(INT(hhmmss),100)
+    kms = INT((hhmmss - REAL(INT(hhmmss),dp)) * 1000._dp)
+    CALL timer_set_date(status,'resume',kyr, kmo, kdy, khr, kmn, kse, kms)
+
+! - CURRENT TIME STEP
+    IF (p_parallel_io .OR. lp) THEN
+       CALL get_attribute(status, restart_att, 'nstep' &
+            , i=nstep)
+       CALL channel_halt(substr, status)
+    END IF
+!
+    IF (.NOT. lp) CALL p_bcast(nstep, p_io)
+
+! - TIME STEP LENGTH
+    IF (p_parallel_io .OR. lp) THEN
+       CALL get_attribute(status, restart_att, 'timestep' &
+            , r=timestep)
+       CALL channel_halt(substr, status)
+    END IF
+!
+    IF (.NOT. lp) CALL p_bcast(timestep, p_io)
+
+# 2574
+
+
+
+    CALL timer_sync
+! (RE-)INITIALIZE 1 TIME MANAGER
+    CALL ec_manager_init(INT(timestep), nstep)
+
+
+
+    CALL messy_timer_init_manager(timestep, nstep)
+
+
+  END SUBROUTINE initialize_restart_attributes
+! -------------------------------------------------------------------
+
+! -------------------------------------------------------------------
+  SUBROUTINE bi_decompose(status, flag, reprid, gptr, ptr, p_io_c)
+
+    USE messy_main_channel_repr, ONLY: t_representation, get_representation
+    USE messy_main_mpi_bi,       ONLY: p_parallel_io, p_io, p_bcast, p_pe
+    USE messy_main_mpi_bi,       ONLY: p_nprocs, p_allgather, p_scatter
+    USE messy_main_blather_bi,   ONLY: error_bi
+
+
+    USE messy_main_mpi_bi,       ONLY: gather_sa,  gather_sp   &
+                                     , scatter_sa, scatter_sp  &
+                                     , dcg
+    USE messy_main_mpi_bi,       ONLY: gather_field
+
+
+
+    USE messy_main_transform_bi, ONLY: gather_glix, scatter_glix
+
+
+!!#D mpiom +
+
+    USE messy_main_mpi_bi,       ONLY: gather_arr, scatter_arr    ! MPIOM
+
+!!#D mpiom -
+
+# 2616
+
+
+    USE messy_main_mpi_bi,       ONLY: scatter_gp
+
+
+# 2623
+
+
+# 2628
+
+
+# 2632
+
+
+# 2648
+
+
+    IMPLICIT NONE
+
+    INTRINSIC :: ASSOCIATED, SIZE
+
+! I/O
+    INTEGER,                      INTENT(OUT) :: status
+    INTEGER,                      INTENT(IN)  :: flag
+    INTEGER,                      INTENT(IN)  :: reprid
+    REAL(DP), DIMENSION(:,:,:,:), POINTER     :: gptr
+    REAL(DP), DIMENSION(:,:,:,:), POINTER     :: ptr
+! I/O PE of current channel, currently only used in ECHAM's decompositions
+! other decompositions still gather on p_parallel_io
+    INTEGER,                      INTENT(IN)  :: p_io_c
+
+! LOCAL
+    CHARACTER(LEN=*),       PARAMETER :: substr = 'bi_decompose'
+    TYPE(t_representation), POINTER   :: repr
+    INTEGER :: stat
+
+    INTEGER :: k ! needed for MPIOM
+
+    REAL(dp), DIMENSION(:,:,:,:), POINTER :: tmpbuf => NULL()
+# 2687
+
+
+! INIT
+    CALL get_representation(status, reprid, repr)
+    CALL channel_halt(substr, status)
+
+    SELECT CASE(flag)
+    CASE(-1)
+! ################ RE-COMPOSE ##################################
+!
+! INIT
+       IF (ASSOCIATED(gptr)) THEN
+          DEALLOCATE(gptr)
+          NULLIFY(gptr)
+       END IF
+!
+       IF (p_pe == p_io_c) THEN
+          ALLOCATE( gptr( repr%gdimlen(1), repr%gdimlen(2) &
+               , repr%gdimlen(3), repr%gdimlen(4) ), STAT=stat )
+          IF (stat /= 0) THEN
+             status = 1000 ! memory allocation failed
+             CALL channel_halt(substr, status)
+          END IF
+          gptr = 0._dp
+       END IF
+!
+       SELECT CASE(repr%dctype)
+
+       CASE(DC_BC)
+! NOTE: MUST BE SYNCHRONIZED ON ALL PEs
+          IF (p_pe == p_io_c) &
+               gptr(:,:,:,:) = ptr(:,:,:,:)
+
+       CASE(DC_AG)
+          ALLOCATE( gptr( repr%gdimlen(1), repr%gdimlen(2) &
+               , repr%gdimlen(3), repr%gdimlen(4) ), STAT=stat )
+          IF (stat /= 0) THEN
+             status = 1000 ! memory allocation failed
+             CALL channel_halt(substr, status)
+          END IF
+          ALLOCATE (tmpbuf(repr%gdimlen(1), repr%gdimlen(2) &
+               , repr%gdimlen(3), 0:p_nprocs-1))
+          CALL p_allgather(tmpbuf(:,:,:,:), ptr(:,:,:,1))
+          gptr(:,:,:,1:p_nprocs) = tmpbuf(:,:,:,0:p_nprocs-1)
+          DEALLOCATE(tmpbuf)
+
+# 2794
+
+
+# 2799
+
+
+
+       CASE(DC_GP)
+          CALL gather_field(gptr, repr%gdimlen, ptr, p_io_c=p_io_c)
+       CASE(DC_SP)
+          CALL gather_sp(gptr, ptr, dcg, p_io_c=p_io_c)
+       CASE(DC_SA)
+          CALL gather_sa(gptr, ptr, dcg, p_io_c=p_io_c)
+
+
+
+       CASE(DC_IX)
+          CALL gather_glix(gptr, ptr, repr%dcindex &
+               , XNG=repr%gdimlen(repr%dcindex))
+
+
+!!#D mpiom +
+
+       CASE(DC_GP_MPIOM)
+! NOTE: The following allocation / deallocation on non-IO PEs
+!       is required, because a section of the array is
+!       explicitely selected: (:,:,k,1). This is not allowed
+!       for a nullified pointer ...
+          IF (.NOT.p_parallel_io) THEN
+              ALLOCATE( gptr( repr%gdimlen(1), repr%gdimlen(2) &
+               , repr%gdimlen(3), repr%gdimlen(4) ), STAT=stat )
+          ENDIF
+          DO k=1,SIZE(ptr,3)
+            CALL gather_arr(ptr(:,:,k,1), gptr(:,:,k,1), p_io)
+          ENDDO
+          IF (.NOT.p_parallel_io) THEN
+            DEALLOCATE(gptr)
+            NULLIFY(gptr)
+          ENDIF
+
+!!#D mpiom -
+
+# 2851
+
+
+# 3064
+
+
+       CASE DEFAULT
+          CALL error_bi( &
+               'UNKNOWN DECOMPOSITION TYPE FOR RE-COMPOSITION',substr)
+
+       END SELECT
+!
+! ##############################################################
+    CASE(1)
+! ################ DE-COMPOSE ##################################
+!
+! INIT
+       IF (ASSOCIATED(ptr)) THEN
+          DEALLOCATE(ptr)
+          NULLIFY(ptr)
+       END IF
+!
+! subtract bounds
+       ALLOCATE( ptr( repr%ldimlen(1)-2*repr%bounds%nbounds(1) &
+                    , repr%ldimlen(2)-2*repr%bounds%nbounds(2) &
+                    , repr%ldimlen(3)-2*repr%bounds%nbounds(3) &
+                    , repr%ldimlen(4)-2*repr%bounds%nbounds(4) ), STAT=stat )
+       IF (stat /= 0) THEN
+          status = 1000 ! memory allocation failed
+          CALL channel_halt(substr, status)
+       END IF
+!
+       SELECT CASE(repr%dctype)
+
+       CASE(DC_BC)
+! BROADCAST FROM IO-PE TO ALL OTHERS
+          IF (p_parallel_io) ptr(:,:,:,:) = gptr(:,:,:,:)
+          CALL p_bcast(ptr, p_io)
+
+       CASE(DC_AG)
+! this is just a workaround for the Intel compiler ...
+          IF (.NOT. p_parallel_io) THEN
+             IF (ASSOCIATED(gptr)) DEALLOCATE(gptr)
+             NULLIFY(gptr)
+          END IF
+          CALL p_scatter(gptr, ptr(:,:,:,1))
+
+# 3143
+
+
+# 3148
+
+
+
+       CASE(DC_GP)
+          CALL scatter_gp(gptr, ptr, dcg)
+       CASE(DC_SP)
+          CALL scatter_sp(gptr, ptr, dcg)
+       CASE(DC_SA)
+          CALL scatter_sa(gptr, ptr, dcg)
+
+
+
+       CASE(DC_IX)
+          CALL scatter_glix(gptr, ptr, repr%dcindex, xishpg=repr%gdimlen(:))
+
+
+!!#D mpiom +
+
+       CASE(DC_GP_MPIOM)
+! NOTE: The following allocation / deallocation on non-IO PEs
+!       is required, because a section of the array is
+!       explicitely selected: (:,:,k,1). This is not allowed
+!       for a nullified pointer ...
+          IF (.NOT.p_parallel_io) THEN
+              ALLOCATE( gptr( repr%gdimlen(1), repr%gdimlen(2) &
+               , repr%gdimlen(3), repr%gdimlen(4) ), STAT=stat )
+          ENDIF
+          DO k=1,SIZE(gptr, 3)
+            CALL scatter_arr(gptr(:,:,k,1), ptr(:,:,k,1), p_io)
+          ENDDO
+          IF (.NOT.p_parallel_io) THEN
+            DEALLOCATE(gptr)
+            NULLIFY(gptr)
+          ENDIF
+
+!!#D mpiom -
+
+# 3204
+
+
+# 3263
+
+
+       CASE DEFAULT
+          CALL error_bi( &
+               'UNKNOWN DECOMPOSITION TYPE FOR DE-COMPOSITION',substr)
+
+       END SELECT
+!
+! ##############################################################
+    END SELECT
+
+    status = 0
+
+  END SUBROUTINE bi_decompose
+! -------------------------------------------------------------------
+
+! -------------------------------------------------------------------
+  SUBROUTINE bi_vector(status, flag, reprid, ptr, vptr)
+
+    USE messy_main_mpi_bi,       ONLY: dcl, reorder
+    USE messy_main_channel_repr, ONLY: t_representation, get_representation
+
+    IMPLICIT NONE
+
+    INTRINSIC :: ASSOCIATED, SIZE
+
+! I/O
+    INTEGER,                      INTENT(OUT) :: status
+    INTEGER,                      INTENT(IN)  :: flag
+    INTEGER,                      INTENT(IN)  :: reprid
+    REAL(DP), DIMENSION(:,:,:,:), POINTER     :: ptr
+    REAL(DP), DIMENSION(:,:,:,:), POINTER     :: vptr
+
+! LOCAL
+    CHARACTER(LEN=*),       PARAMETER :: substr = 'bi_vector'
+    TYPE(t_representation), POINTER   :: repr
+    INTEGER :: stat
+    INTEGER :: i1, i2, n1, n2
+
+! INIT
+    CALL get_representation(status, reprid, repr)
+    CALL channel_halt(substr, status)
+
+    SELECT CASE(flag)
+    CASE(-1)
+! ################ DE-VECTOR ##################################
+!
+! INIT
+       IF (ASSOCIATED(ptr)) THEN
+          DEALLOCATE(ptr)
+          NULLIFY(ptr)
+       END IF
+!
+       IF (.NOT. repr%pdecomp%lpdecomp) THEN
+! REPRESENTATION DECOMPOSITION TABLE DOES NOT EXIST
+          status = 2025
+          CALL channel_halt(substr, status)
+       END IF
+!
+       ALLOCATE( ptr( repr%pdecomp%shape_mem(1), repr%pdecomp%shape_mem(2) &
+            , repr%pdecomp%shape_mem(3), repr%pdecomp%shape_mem(4) ) &
+            , STAT=stat )
+       IF (stat /= 0) THEN
+          status = 1000 ! memory allocation failed
+          CALL channel_halt(substr, status)
+       END IF
+!
+       SELECT CASE(repr%dctype)
+       CASE(DC_BC)
+!ptr(:,:,:,:) = vptr(:,:,:,:)
+          ptr = vptr
+       CASE(DC_GP)
+          IF (dcl%lreg) THEN
+!ptr(:,:,:,:) = vptr(:,:,:,:)
+             ptr = vptr
+          ELSE
+             SELECT CASE (repr%rank)
+             CASE(1)
+! UNKNOWN REPRESENTATION DECOMPOSITION TYPE / RANK
+                status = 2022
+                CALL channel_halt(substr, status)
+             CASE(2)
+                IF (repr%id == GP_3D_1LEV) THEN
+                   CALL reorder(ptr(:,1,:,1), vptr(:,1,:,1))
+                ELSE
+                   CALL reorder(ptr(:,:,1,1), vptr(:,:,1,1))
+                END IF
+             CASE(3)
+                n1 = SIZE(vptr, 2)
+                DO i1=1, n1
+                   CALL reorder(ptr(:,i1,:,1), vptr(:,i1,:,1))
+                END DO
+             CASE(4)
+                n1 = SIZE(vptr, 2)
+                n2 = SIZE(vptr, 3)
+                DO i1=1, n1
+                   DO i2=1, n2
+                      CALL reorder(ptr(:,i1,i2,:), vptr(:,i1,i2,:))
+                   END DO
+                END DO
+             END SELECT
+          END IF
+       CASE(DC_SP)
+!ptr(:,:,:,:) = vptr(:,:,:,:)
+          ptr = vptr
+       CASE(DC_SA)
+!ptr(:,:,:,:) = vptr(:,:,:,:)
+          ptr = vptr
+       CASE(DC_IX)
+!ptr(:,:,:,:) = vptr(:,:,:,:)
+          ptr = vptr
+       CASE DEFAULT
+          status = 1
+       END SELECT
+!
+! ##############################################################
+    CASE(1)
+! ################ VECTOR ######################################
+!
+! INIT
+       IF (ASSOCIATED(vptr)) THEN
+          DEALLOCATE(vptr)
+          NULLIFY(vptr)
+       END IF
+!
+       ALLOCATE( vptr( repr%ldimlen(1), repr%ldimlen(2) &
+            , repr%ldimlen(3), repr%ldimlen(4) ), STAT=stat )
+       IF (stat /= 0) THEN
+          status = 1000 ! memory allocation failed
+          CALL channel_halt(substr, status)
+       END IF
+!
+       SELECT CASE(repr%dctype)
+       CASE(DC_BC)
+!vptr(:,:,:,:) = ptr(:,:,:,:)
+          vptr = ptr
+       CASE(DC_GP)
+          IF (dcl%lreg) THEN
+!vptr(:,:,:,:) = ptr(:,:,:,:)
+             vptr = ptr
+          ELSE
+             SELECT CASE (repr%rank)
+             CASE(1)
+! UNKNOWN REPRESENTATION DECOMPOSITION TYPE / RANK
+                status = 2022
+                CALL channel_halt(substr, status)
+! NOT EXISTENT
+             CASE(2)
+                IF (repr%id == GP_3D_1LEV) THEN
+                   CALL reorder(vptr(:,1,:,1), ptr(:,1,:,1))
+                ELSE
+                   CALL reorder(vptr(:,:,1,1), ptr(:,:,1,1))
+                END IF
+             CASE(3)
+                n1 = SIZE(ptr, 2)
+                DO i1=1, n1
+                   CALL reorder(vptr(:,i1,:,1), ptr(:,i1,:,1))
+                END DO
+             CASE(4)
+                n1 = SIZE(ptr, 2)
+                n2 = SIZE(ptr, 3)
+                DO i1=1, n1
+                   DO i2=1, n2
+                      CALL reorder(vptr(:,i1,i2,:), ptr(:,i1,i2,:))
+                   END DO
+                END DO
+             END SELECT
+          END IF
+       CASE(DC_SP)
+!vptr(:,:,:,:) = ptr(:,:,:,:)
+          vptr = ptr
+       CASE(DC_SA)
+!vptr(:,:,:,:) = ptr(:,:,:,:)
+          vptr = ptr
+       CASE(DC_IX)
+!vptr(:,:,:,:) = ptr(:,:,:,:)
+          vptr = ptr
+       CASE DEFAULT
+          status = 1
+       END SELECT
+!
+! ##############################################################
+    END SELECT
+
+    status = 0
+
+  END SUBROUTINE bi_vector
+! -------------------------------------------------------------------
+
+! -------------------------------------------------------------------
+  SUBROUTINE distribute_channels_io
+
+    USE messy_main_mpi_bi,     ONLY: p_all_comm, p_nprocs, get_node_ids, p_io
+    USE messy_main_channel_io, ONLY: channel_dist_io
+    USE messy_main_blather_bi, ONLY: error_bi
+
+    IMPLICIT NONE
+
+! LOCAL
+    CHARACTER(LEN=*), PARAMETER :: substr = 'distribute_channels_io'
+    INTEGER                     :: status
+    INTEGER                     :: i
+
+    CALL get_node_ids(status, p_all_comm, nodeid)
+    IF (status /= 0) CALL error_bi(substr, 'get_node_ids reported an error')
+
+    CALL channel_dist_io(status, nodeid, p_io, CHANNEL_PPIO_TYPE(:))
+    CALL channel_halt(substr, status)
+
+  END SUBROUTINE distribute_channels_io
+! -------------------------------------------------------------------
+
+! -------------------------------------------------------------------
+  SUBROUTINE main_channel_init_timer
+
+    USE messy_main_mpi_bi,       ONLY: p_io, p_bcast
+    USE messy_main_timer_bi,     ONLY: timer_event_init, p_bcast_event
+    USE messy_main_channel,      ONLY: get_channel_name
+    USE messy_main_tools,        ONLY: match_wild &
+                                     , int2str
+    USE messy_main_channel_mem,  ONLY: dom_unbound
+# 3487
+
+
+    IMPLICIT NONE
+    INTRINSIC :: ADJUSTL, TRIM
+
+! LOCAL
+    CHARACTER(LEN=*), PARAMETER :: substr = 'main_channel_init_timer'
+    INTEGER          :: status
+    INTEGER          :: i, js
+    CHARACTER(LEN=STRLEN_CHANNEL) :: cname
+    LOGICAL          :: lexplicit
+    CHARACTER(LEN=8) :: evaldate
+    INTEGER          :: dom_id
+    CHARACTER(LEN=2) :: domstr
+# 3510
+
+
+! needs to be done here because of TIMER MANAGER initialization
+! in case of RESTART
+    CALL p_bcast(TIMER_DEFAULT%cname, p_io)
+    CALL p_bcast_event(TIMER_DEFAULT%io_event, p_io)
+    DO i=1, NMAXCHANNELS
+       CALL p_bcast(TIMER_CHANNEL(i)%cname, p_io)
+       CALL p_bcast_event(TIMER_CHANNEL(i)%io_event, p_io)
+    END DO
+
+    CALL p_bcast(TIMER_TNF_DEFAULT%cname, p_io)
+    CALL p_bcast_event(TIMER_TNF_DEFAULT%io_event, p_io)
+    DO i=1, NMAXCHANNELS
+       CALL p_bcast(TIMER_TNF_CHANNEL(i)%cname, p_io)
+       CALL p_bcast_event(TIMER_TNF_CHANNEL(i)%io_event, p_io)
+    END DO
+
+! SPACE FOR ACTIVE OUTPUT EVENTS (ONE PER CHANNEL)
+    ALLOCATE(OUTPUT_EVENT(NCHANNEL))
+    ALLOCATE(LOUTPUT_NOW(NCHANNEL))
+    LOUTPUT_NOW(:) = .FALSE.
+
+    ALLOCATE(I_PATCH(NCHANNEL))
+    I_PATCH(:) = dom_unbound
+
+    ALLOCATE(TNF_EVENT(NCHANNEL))
+    ALLOCATE(LTNF_NOW(NCHANNEL))
+    LTNF_NOW(:) = .FALSE.
+
+! PRESET NON-EXPLICIT TO DEFAULT
+    channel_loop: DO js=1, NCHANNEL
+
+       CALL get_channel_name(status, js, cname, dom_id)
+       CALL channel_halt(substr, status)
+       I_PATCH(js) = dom_id
+
+! SET EXPLICIT OR DEFAULT
+       lexplicit = .FALSE.
+       CALL int2str(domstr, dom_id)
+
+       event_loop: DO i=1, NMAXCHANNELS
+          IF (TRIM(ADJUSTL(TIMER_CHANNEL(i)%cname)) == '') CYCLE
+          IF ( (match_wild(TRIM(ADJUSTL(TIMER_CHANNEL(i)%cname)),&
+               TRIM(cname)) ) .OR. &
+               (TRIM(ADJUSTL(TIMER_CHANNEL(i)%cname)) == &
+                              TRIM(cname)//"_D"//TRIM(domstr)) &
+               ) THEN
+             lexplicit  = .TRUE.
+             EXIT
+          END IF
+       END DO event_loop
+
+! INITIALIZE EVENT
+! Note: to trigger the output to exactly the time choosen in the namelist
+!       the evaluation date depends on the time integration scheme
+# 3568
+
+          evaldate =  'next'
+
+
+       IF (lexplicit) THEN
+          CALL timer_event_init(OUTPUT_EVENT(js), TIMER_CHANNEL(i)%io_event &
+               , TRIM(cname), TRIM(evaldate) &
+# 3577
+
+               )
+       ELSE
+          CALL timer_event_init(OUTPUT_EVENT(js), TIMER_DEFAULT%io_event &
+               , TRIM(cname),  TRIM(evaldate) &
+# 3584
+
+               )
+       END IF
+
+
+! SPECIAL FOR 1
+! NOTE: CHANNEL OUTPUT OF tdiag, tdiag_gp, nudg, nudg_gp
+!       WILL BE SYNCHRONIZED TO THE SHORTEST OUTPUT INTERVAL
+!       (IF PRESENT !)
+       SELECT CASE(TRIM(cname))
+       CASE('tdiag')
+          js_tdiag = js
+       CASE('tdiag_gp')
+          js_tdiag_gp = js
+       CASE('nudg')
+          js_nudg = js
+       CASE('nudg_gp')
+          js_nudg_gp = js
+       CASE DEFAULT
+! DO NOTHING
+       END SELECT
+
+
+# 3628
+
+
+! SET EXPLICIT OR DEFAULT
+       lexplicit = .FALSE.
+       event_loop_tnf: DO i=1, NMAXCHANNELS
+          IF (TRIM(ADJUSTL(TIMER_TNF_CHANNEL(i)%cname)) == '') CYCLE
+          IF (match_wild(TRIM(ADJUSTL(TIMER_TNF_CHANNEL(i)%cname)),&
+               TRIM(cname))) THEN
+             lexplicit  = .TRUE.
+             EXIT
+          END IF
+       END DO event_loop_tnf
+
+! INITIALIZE EVENT
+       IF (lexplicit) THEN
+          CALL timer_event_init(TNF_EVENT(js), TIMER_TNF_CHANNEL(i)%io_event &
+               , 'TNF'//TRIM(cname), TRIM(evaldate) &
+# 3647
+
+               )
+       ELSE
+          CALL timer_event_init(TNF_EVENT(js), TIMER_TNF_DEFAULT%io_event   &
+               , 'TNF'//TRIM(cname), TRIM(evaldate) &
+# 3654
+
+               )
+       END IF
+
+    END DO channel_loop
+
+  END SUBROUTINE main_channel_init_timer
+! -------------------------------------------------------------------
+
+! -------------------------------------------------------------------
+  SUBROUTINE main_channel_update_timer
+
+    USE messy_main_timer_bi,    ONLY: event_state
+    USE messy_main_channel,     ONLY: trigger_channel_output &
+                                    , set_channel_output
+    USE messy_main_channel_mem, ONLY: dom_current
+# 3672
+
+    USE messy_main_timer,       ONLY: next_date, time_days
+
+
+
+    USE mo_diag_tendency,       ONLY: dio_index
+    USE mo_nudging_buffer,      ONLY: nio_index
+    USE mo_nudging_constants,   ONLY: lnudg_out
+    USE mo_time_control,        ONLY: l_putdata
+
+
+# 3686
+
+
+    IMPLICIT NONE
+
+! LOCAL
+    CHARACTER(LEN=*), PARAMETER :: substr = 'main_channel_update_timer'
+    INTEGER :: status
+    INTEGER :: js
+
+    LOGICAL :: lsync
+
+    TYPE(time_days)  :: date
+# 3701
+
+
+! Note: to trigger the output to exactly the time choosen in the namelist
+!       the evaluation date depends on the time integration scheme
+# 3707
+
+    date = next_date
+
+
+    DO js = 1, NCHANNEL
+       IF (I_PATCH(js) /= dom_current) CYCLE
+       LOUTPUT_NOW(js) = event_state(OUTPUT_EVENT(js), date)
+    END DO
+
+    DO js = 1, NCHANNEL
+       IF (I_PATCH(js) /= dom_current) CYCLE
+       LTNF_NOW(js) = event_state(TNF_EVENT(js), date)
+    END DO
+
+# 3725
+
+
+
+! SPECIAL FOR 1
+! NOTE: CHANNEL OUTPUT OF tdiag, tdiag_gp, nudg, nudg_gp
+!       WILL BE SYNCHRONIZED TO THE SHORTEST OUTPUT INTERVAL (IF PRESENT !)
+    lsync = .FALSE.
+    IF (js_tdiag > 0)    lsync = lsync .OR. LOUTPUT_NOW(js_tdiag)
+    IF (js_tdiag_gp > 0) lsync = lsync .OR. LOUTPUT_NOW(js_tdiag_gp)
+    IF (js_nudg > 0)     lsync = lsync .OR. LOUTPUT_NOW(js_nudg)
+    IF (js_nudg_gp > 0)  lsync = lsync .OR. LOUTPUT_NOW(js_nudg_gp)
+!
+    IF (js_tdiag + js_tdiag_gp > 0) l_putdata(dio_index) = lsync
+    IF (js_nudg  + js_nudg_gp  > 0) l_putdata(nio_index) = lsync
+!
+    IF (js_tdiag > 0)    LOUTPUT_NOW(js_tdiag)    = lsync
+    IF (js_tdiag_gp > 0) LOUTPUT_NOW(js_tdiag_gp) = lsync
+    IF (js_nudg > 0)     LOUTPUT_NOW(js_nudg)     = lsync
+    IF (js_nudg_gp > 0)  LOUTPUT_NOW(js_nudg_gp)  = lsync
+
+! SPECIAL FOR 1
+! NUDGING OUTPUT ONLY, IF NUDGING IS CURRENTLY ACTIVE
+! (after nudging stop date has been reached, the nudging memory
+!  is deallocated)
+    IF ((js_nudg > 0) .AND. .NOT. lnudg_out) THEN
+       CALL set_channel_output(status, 'nudg', .FALSE., .FALSE.)
+       CALL channel_halt(substr, status)
+    ENDIF
+    IF ((js_nudg_gp > 0) .AND. .NOT. lnudg_out) THEN
+       CALL set_channel_output(status, 'nudg_gp', .FALSE., .FALSE.)
+       CALL channel_halt(substr, status)
+    END IF
+! PREVENT ALSO FROM WRITING RESTART FILES ...
+    IF ((js_nudg > 0) .AND. .NOT. lnudg_out) THEN
+       CALL set_channel_output(status, 'nudg', .FALSE., .TRUE.)
+       CALL channel_halt(substr, status)
+    ENDIF
+    IF ((js_nudg_gp > 0) .AND. .NOT. lnudg_out) THEN
+       CALL set_channel_output(status, 'nudg_gp', .FALSE., .TRUE.)
+       CALL channel_halt(substr, status)
+    END IF
+
+
+# 3777
+
+
+    CALL trigger_channel_output(status, LOUTPUT_NOW) ! part
+    CALL channel_halt(substr, status)
+
+  END SUBROUTINE main_channel_update_timer
+! -------------------------------------------------------------------
+
+! -------------------------------------------------------------------
+  SUBROUTINE main_channel_read_nml_cpl(status, iou)
+
+! MODULE ROUTINE (SMIL)
+!
+! READ NAMELIST, CHECK IT, AND INITIALIZE GLOBAL VARIABLES
+!
+! Author: Patrick Joeckel, MPICH, Dec 2004
+
+    USE messy_main_tools,   ONLY: read_nml_open, read_nml_check, read_nml_close
+    USE messy_main_channel, ONLY: modstr
+
+    IMPLICIT NONE
+
+! I/O
+    INTEGER, INTENT(OUT) :: status ! error status
+    INTEGER, INTENT(IN)  :: iou    ! logical I/O unit
+
+    NAMELIST /CPL/ L_BM_ORIG_OUTPUT     &
+         , L_CALCOUT_EACH_STEP          &
+         , TIMER_DEFAULT, TIMER_CHANNEL &
+         , TIMER_TNF_DEFAULT, TIMER_TNF_CHANNEL &
+         , CHANNEL_PPIO_TYPE
+
+! LOCAL
+    CHARACTER(LEN=*), PARAMETER :: substr = 'main_channel_read_nml_cpl'
+    LOGICAL                     :: lex          ! file exists ?
+    INTEGER                     :: fstat        ! file status
+
+! INITIALIZE
+    status = 1 ! ERROR
+
+! INITIALIZE GLOBAL CONTROL VARIABLES
+! DO NOT ENABLE ADDITIONAL 1 STANDARD STREAM OUTPUT PER DEFAULT
+! (only needed for GRIB-template generation)
+    L_BM_ORIG_OUTPUT = .FALSE.
+    CHANNEL_PPIO_TYPE(:) = 0
+
+! -> OTHER DEFAULT VALUES ARE SET AT DECLARATION ABOVE
+
+    CALL read_nml_open(lex, substr, iou, 'CPL', modstr)
+    IF (.not.lex) RETURN    ! <modstr>.nml does not exist
+
+    READ(iou, NML=CPL, IOSTAT=fstat)
+    CALL read_nml_check(fstat, substr, iou, 'CPL', modstr)
+    IF (fstat /= 0) RETURN  ! error while reading namelist
+
+    CALL read_nml_close(substr, iou, modstr)
+
+    status = 0  ! no ERROR
+
+  END SUBROUTINE main_channel_read_nml_cpl
+! -------------------------------------------------------------------
+
+! -------------------------------------------------------------------
+
+  SUBROUTINE main_channel_make_cf_conform
+
+
+    USE messy_main_data_bi,        ONLY: basemodstr => modstr
+
+    USE messy_main_channel_repr,   ONLY: IRANK
+    USE messy_main_channel,        ONLY: t_channel_list, t_channel &
+                                       , t_channel_object_list     &
+                                       , t_channel_object          &
+                                       , new_attribute, get_attribute &
+                                       , SND_MAXLEN, GCHANNELLIST &
+                                       , new_channel_object                &
+                                       , new_channel_object_reference      &
+                                       , set_channel_object_inst           &
+                                       , NCHANNEL
+    USE messy_main_constants_mem,  ONLY: STRLEN_ULONG
+    USE messy_main_timer,          ONLY: YEAR_START, MONTH_START, DAY_START &
+                                       , HOUR_START, MINUTE_START, SECOND_START
+# 3861
+
+# 3864
+
+
+    IMPLICIT NONE
+
+! LOCAL
+    CHARACTER(LEN=*), PARAMETER :: substr ='main_channel_make_cf_conform'
+    TYPE(t_channel_list),        POINTER, SAVE :: ls
+    TYPE(t_channel),             POINTER, SAVE :: channel
+    TYPE(t_channel_object_list), POINTER, SAVE :: le
+    TYPE(t_channel_object),      POINTER, SAVE :: object
+! output statistics ? => add timebnds variable
+    LOGICAL                                    :: loutstat = .FALSE.
+! output data on regular lon / lat grid DIMID_LON / DIMID_LAT
+! add lon / lat variables to channel
+    CHARACTER(LEN=STRLEN_ULONG)                :: coordstring = ' '
+    CHARACTER(LEN=STRLEN_ULONG)                :: levstring   = ' '
+    INTEGER                                    :: ix
+    LOGICAL                                    :: llon, llat
+    INTEGER                                    :: status
+    CHARACTER(LEN=STRLEN_ULONG)                :: ydate = ' '
+    INTEGER                                    :: js
+    LOGICAL                                    :: lcell
+# 3888
+
+# 3894
+
+# 3899
+
+
+! **************************
+! ENDLESS LOOP over all CHANNELs
+!
+! allocate pointers for time_bnds object
+    ALLOCATE(TIME_BNDS(NCHANNEL))
+    DO js = 1, NCHANNEL
+       NULLIFY(TIME_BNDS(js)%ptr)
+    END DO
+
+    ls => GCHANNELLIST
+!
+    DO
+       NULLIFY(le)
+       NULLIFY(channel)
+       NULLIFY(object)
+       loutstat  = .FALSE.
+# 3919
+
+# 3923
+
+# 3926
+
+!
+       IF (.NOT. ASSOCIATED(ls)) THEN
+          RETURN
+       ELSE
+          channel => ls%this
+          le => channel%list
+       END IF
+! ********************************
+! LOOK FOR NEXT OBJECT WITH OUTPUT
+       DO
+          IF (.NOT. ASSOCIATED(le)) THEN  ! NO MORE OBJECT
+             EXIT
+          ELSE
+             object => le%this
+! check for lon / lat variable
+             llon  = .FALSE.
+             llat  = .FALSE.
+             lcell = .FALSE.
+# 3949
+
+# 3953
+
+             coordstring = ' '
+             levstring = ' '
+             DO ix = 1, IRANK
+                IF (ASSOCIATED(object%repr%dim(ix)%ptr)) THEN
+
+                   IF (object%repr%dim(ix)%ptr%id == DIMID_LON) THEN
+                      llon = .TRUE.
+                   ELSE IF (object%repr%dim(ix)%ptr%id == DIMID_LAT) THEN
+                      llat = .TRUE.
+# 3970
+
+                   END IF
+# 3986
+
+                END IF
+             END DO
+! COMPOSE COORDINATE STRING
+! add lon-lat variables to channel
+             IF (llon .AND. llat .OR. lcell ) THEN
+                coordstring = TRIM(ADJUSTL(coordstring))//' lon lat'
+# 3995
+
+# 4005
+
+             END IF
+             CALL get_attribute(status, channel%name, object%name &
+                  , 'levelindex', c=levstring, dom_id= channel%dom_id)
+
+             IF (status /= 805 ) THEN ! 805 = ATTRIBUTE DOES NOT EXIST
+                CALL channel_halt(substr, status)
+                coordstring=&
+                     TRIM(ADJUSTL(coordstring))//' '//TRIM(ADJUSTL(levstring))
+                CALL  new_channel_object_reference(status       &
+
+                     , basemodstr, TRIM(ADJUSTL(levstring))     &
+# 4019
+
+                     , channel%name, TRIM(ADJUSTL(levstring))   &
+                     , dom_id1 =  channel%dom_id                &
+                     , dom_id2 =  channel%dom_id                &
+                     )
+                CALL set_channel_object_inst(status           &
+                     , channel%name, TRIM(ADJUSTL(levstring)) &
+                     , dom_id=channel%dom_id)
+                CALL channel_halt(substr//'2',status)
+             END IF
+
+! ADD attribute
+             IF (TRIM(ADJUSTL(coordstring)) /= '') THEN
+                CALL new_attribute(status, channel%name, object%name &
+                     , 'coordinates', c=TRIM(ADJUSTL(coordstring))   &
+                     , loverwrite=.TRUE., dom_id= channel%dom_id)
+                IF (status /= 804) & ! attribute exists already
+                     CALL channel_halt(substr, status)
+# 4041
+
+             END IF
+# 4066
+
+! ******************************
+! LOOK FOR OTHER OUTPUT than instantaneous
+             IF (ANY(object%io%lout(2:SND_MAXLEN))) loutstat = .TRUE.
+          END IF
+          le => le%next
+       END DO
+! END OBJECT LOOP
+
+! ADD required attributes and variables
+! LAT / LON
+! FOR EMAC and CESM1 lon / lat are already dimension variables
+! add dimension variables for ICON
+# 4125
+
+
+# 4233
+
+
+# 4249
+
+
+! TIME_BNDS
+       CALL new_channel_object(status, channel%name, "time_bnds"  &
+            , reprid=REPR_TIMEBNDS, p1=TIME_BNDS(channel%id)%ptr &
+            , lrestreq=loutstat,ldp=.TRUE., dom_id=channel%dom_id)
+       CALL channel_halt(substr,status)
+       CALL new_attribute(status, channel%name, "time_bnds" &
+            , "long_name", c= "time bounds", dom_id=channel%dom_id)
+       CALL channel_halt(substr, status)
+       WRITE(ydate, '(a11,i4,a1,i2.2,a1,i2.2,a1,i2.2,a1,i2.2,a1,i2.2,a1)')&
+            'days since ',YEAR_START,'-',MONTH_START,'-', DAY_START, 'T' &
+         , HOUR_START,':',MINUTE_START,':',SECOND_START,'Z'
+       CALL new_attribute(status, channel%name, "time_bnds" &
+            , "units",c= TRIM(ydate), dom_id=channel%dom_id)
+       CALL channel_halt(substr, status)
+       CALL set_channel_object_inst(status         &
+            , channel%name, 'time_bnds' , dom_id=channel%dom_id)
+       CALL channel_halt(substr//'11',status)
+!
+
+# 4282
+
+! --------------------
+! CHECK next channel
+       ls => ls%next
+    END DO
+
+  END SUBROUTINE main_channel_make_cf_conform
+! -------------------------------------------------------------------
+
+# 4581
+
+
+! **********************************************************************
+END MODULE messy_main_channel_bi
+! **********************************************************************

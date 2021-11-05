@@ -1,0 +1,3096 @@
+\documentclass[11pt,a4paper,fleqn,twoside]{article}
+\usepackage{float}
+\usepackage{amsmath}
+\usepackage{makeidx}
+\usepackage{typearea}
+\areaset[1.5cm]{15cm}{24cm}
+\usepackage{./els1-4}
+\bibliographystyle{./iris_aut1}
+\setlength{\parindent}{0cm}
+\setlength{\mathindent}{0cm}
+\pagestyle{plain}
+\renewcommand{\textfraction}{0}
+\renewcommand{\topfraction}{1}
+\renewcommand{\bottomfraction}{1}
+\renewcommand{\floatsep}{0.5ex}      
+
+%\renewcommand{\baselinestretch}{2}
+% replace *.F90
+%(?i<[\w\\]*.f90>) by \L&
+%
+% model tracer names
+
+% dissolved inorganic
+\def\pho{\text{\textsc{po$_4$}}\,}
+\def\nit{\text{\textsc{no$_3$}}\,}
+\def\ntwo{\text{\textsc{n$_2$}}\,}
+\def\ntwoo{\text{\textsc{n$_2$o}}\,}
+\def\car{\text{\textsc{c$_T^{12}$}}\,}
+\def\cariso{\text{\textsc{c$_T^{14}$}}\,}
+\def\oxy{\text{\textsc{o$_2$}}\,}
+\def\alk{\text{\textsc{a$_T$}}\,}
+\def\sio{\text{\textsc{si(oh)$_4$}}\,}
+\def\dms{\text{\textsc{dms}}\,}
+
+%anthropogenic tracers
+\def\Acar{\text{\textsc{c$_T^A$}}\,}
+\def\Aalk{\text{\textsc{a$_T^A$}}\,}
+\def\Acal{\text{\textsc{caco$_3^A$}}\,}
+
+% dissolved organic
+\def\dom{\text{\textsc{dom}}\,}
+
+% particulate
+\def\phy{\text{\textsc{phy}}\,}
+\def\zoo{\text{\textsc{zoo}}\,}
+\def\det{\text{\textsc{det}}\,}
+\def\opal{\text{\textsc{opal}}\,}
+\def\cal{\text{\textsc{caco$_3$}}\,}
+
+% aggregation
+\def\snow{\text{\textsc{snow}}\,}
+\def\nos{\text{\textsc{nos}}\,}
+\def\adust{\text{\textsc{adust}}\,}
+
+%iron and dust
+\def\fe{\text{\textsc{fe}}\,}
+\def\fdust{\text{\textsc{fdust}}\,}
+\def\dust{\text{\textsc{dust}}\,}
+\def\clay{\text{\textsc{clay}}\,}
+
+
+%others
+\def\dms{\text{\textsc{dms}}\,}
+\def\hi{\text{\textsc{H$^+$}}\,}
+\def\cartwo{\text{\textsc{CO$_3^{2-}$}}\,}
+
+%units
+\newcommand{\concP}{kmol P m$^{-3}$\,}
+\newcommand{\fluxP}{kmol P m$^{-2}$ d$^{-1}$\,}
+\newcommand{\concN}{kmol N m$^{-3}$\,}
+\newcommand{\fluxN}{kmol N m$^{-2}$ d$^{-1}$\,}
+\newcommand{\concC}{kmol C m$^{-3}$\,}
+\newcommand{\fluxC}{kmol C m$^{-2}$ d$^{-1}$\,}
+\newcommand{\concO}{kmol O m$^{-3}$\,}
+\newcommand{\fluxO}{kmol O m$^{-2}$ d$^{-1}$\,}
+\newcommand{\concSi}{kmol Si m$^{-3}$\,}
+\newcommand{\fluxSi}{kmol Si m$^{-2}$ d$^{-1}$\,}
+\newcommand{\concn}{particles cm$^{-3}$\,}
+\newcommand{\conch}{kmol H m$^{-3}$\,}
+\newcommand{\concalk}{kmol eq m$^{-3}$\,}
+\newcommand{\concdust}{kg m$^{-3}$\,}
+\newcommand{\concFe}{kmol Fe m$^{-3}$\,}
+\newcommand{\concDMS}{kmol m$^{-3}$\,}
+
+
+%others
+\def\d{{\mathrm{d}}}
+\newcommand{\degs}{$^{\circ}$}
+\newcommand{\etal}{{\em et~al\,}.\,}
+\newcommand{\concCHL}{mg Chl {\em a} m$^{-3}$\,}
+\newcommand{\sink}{m d$^{-1}$\,}
+\newcommand{\ham}{HAMOCC5.1\,}
+
+\makeindex
+
+\begin{document}
+
+% HEADER RELEVANT TO THE ELSEVIER TEXTSTYLE
+%\title{Technical description of the {\bf HAM}burg {\bf O}cean {\bf C}arbon 
+%{\bf C}ycle model, version 5.1  (\ham), and of its interface to {\em MPI-OM}}
+
+\title{The {\bf HAM}burg {\bf O}cean {\bf C}arbon {\bf C}ycle model \ham - 
+                 Technical Description Release 1.1}
+
+\author{Ernst Maier-Reimer, Iris Kriest, Joachim Segschneider, Patrick Wetzel\\
+Max-Planck-Institute for Meteorology\\Bundesstr. 53\\ D-20146 Hamburg\\ Germany}
+\date{\today}
+%\begin{abstract}
+%blabla
+%\end{abstract}
+
+%\maketitle
+
+% FOR USE WITH RCS
+
+\newpage
+
+\tableofcontents{}
+
+\newpage
+
+\section{Introduction}
+
+This is a technical description for \ham, release 1.1.
+
+\ham is a model that simulates biogeochemical tracers in the oceanic water
+column and in the sediment. It can be interfaced to any Ocean General Circulation
+Model (OGCM). In the version presented here, it is set up as a subroutine of the
+Ocean Model of the Max-Planck-Institute for Meteorology, version 1 ({\em
+MPI-OM}, Marsland \etal, 2003\nocite{marsland:2003}). \ham\ is run forward in
+time with a time step of 0.1 days. All biogeochemical tracers are fully
+advected and mixed by the OGCM. The biogeochemical model itself is driven by
+the same radiation as the OGCM to compute photosynthesis. Temperature and salinity 
+are used to calculate various transformation rates and constants e.g., for solubility 
+of carbon dioxide. 
+
+The flux of carbon dioxide between atmosphere and ocean is computed 
+depending on the local concentrations and the rates for  air-sea gas exchange. 
+With only few modifications any field of atmospheric trace gases or wind stress 
+can be used to drive the fluxes.
+
+The biogeochemistry of \ham is based on that of HAMOCC3.1 (Six and
+Maier-Reimer, 1996\nocite{six:1996}; hereafter referred to as SMR96). 
+Modifications have been made to account for tracers in addition to phosphorous,
+namely nitrogen, nitrous oxide, DMS, dissolved iron and dust. 
+ Additional simulated processes are denitrification and
+N-fixation, formation of calcium carbonate and opaline shells by phytoplankton,
+aggregation and size dependent sinking, DMS production, dissolved iron uptake
+and release by biogenic particles, and dust deposition and sinking. For
+some  specific analyses additional tracers ``anthropogenic DIC and alkalinity''
+where DICANTHR is treated like an isotope of carbon and ALKANTHR monitors the
+effects of carbonate dissolution. It is not recommended to use these options
+routinely. The model
+now also features a sediment module which is based on  Heinze and
+Maier-Reimer (1999)\nocite{heinze:1999b} and Heinze \etal (1999)\nocite{heinze:1999a}. 
+The sediment model basically calculates the same tracers as the 
+water column model. The numerical code of \ham consists of 36 FORTRAN90
+subroutines. Coupling of the biogeochemistry to the ocean circulation requires 3
+subroutines/header files.  
+
+This report is intended to introduce the reader to the model structure of \ham, and to
+assist in setting-up and running \ham driven by {\em MPI-OM}.  First, an
+overview of the simulated biogeochemical processes is given (section
+\ref{description_of_ham}). Second, the modules that compute biogeochemistry are
+described in detail (section \ref{sources}). Third, the interface to 
+{\em MPI-OM} and the coupling between the ocean physics
+and the biogeochemical tracer model are described (section \ref{coupling}). The
+input and output files are described in section \ref{io}. 
+An appendix provides some (hopefully) useful tables
+and cross-references for the usage of the model code.  
+
+
+
+\section{\label{description_of_ham} Description of \ham}
+
+\ham simulates three different components of the carbon cycle
+and the interactions between them: air, water, and sediment. 
+This section describes the simulation of the
+biogeochemical processes within each sub-component, and the interface
+to the whole system. 
+
+\subsection{\label{the_water_column_bgc_model}The biogeochemical model of the water column}
+
+The biogeochemical model for the water column in the standard setup three-dimensionally
+computes eighteen different tracers (see table \ref{tab_water_tracers}). 
+Photosynthesis and zooplankton grazing are restricted to the euphotic zone i.e. the  upper few layers
+(down to about 100m; the value of {\tt kwrbioz} in module {\tt
+mo\_param1\_bgc.f90}, is adjusted according to the vertical grid-spacing of the
+ocean model). Below this
+depth, all organic matter ultimately remineralizes to nutrients. In the
+upper layers only aerobic processes are simulated. Denitrification is computed in
+deeper layers if oxygen falls below a certain level. The following
+subsections describe the simulation of the above processes.
+
+%table1
+\begin{table}[hbt]
+\vspace{.2cm}
+\caption{\label{tab_water_tracers} Biogeochemical tracers in the water
+column: symbol, meaning, index-name and index-number {\tt ix} in the model's tracer field
+{\tt ocetra(ie,je,ke,ix)}. {\tt ie}, {\tt je} and {\tt ke} give the
+number of grid points in $x$ (longitude), $y$ (latitude) and $z$ (depth),
+respectively. They are set in the ocean model and passed to the biogeochemical
+model as an argument in the call to the respective biogeochemical subroutine. 
+The index {\tt ix} is defined in {\tt mo\_param1\_bgc.f90}, and the model's
+tracer field is declared in {\tt mo\_carbch.f90}.} 
+\vspace{.2cm}
+\begin{center}
+\begin{tabular}{lllll} \hline
+symbol & meaning        & index-name   & {\tt ix } & units\\ \hline
+\multicolumn{5}{l}{\rule{0mm}{4mm}{\it default: tracers for
+biogeochemistry}}\\ \hline
+\car & total dissolved inorganic $^{12}$C         & {\tt isco212} & 1     &\concC\\
+\alk & total alkalinity &{\tt ialkali}  & 2     & \concalk\\
+\pho & phosphate        & {\tt iphosph} & 3     &\concP\\
+\oxy & oxygen           &{\tt ioxygen}  & 4     &\concO\\
+\ntwo& dinitrogen       & {\tt igasnit} & 5     &\concN\\
+\nit & nitrate          & {\tt iano3}   & 6     &\concN\\
+\sio & silicate         & {\tt isilica} & 7     &\concSi\\
+\dom & dissolved organic matter & {\tt idoc}& 8 &\concP\\
+\phy & phytoplankton    & {\tt iphy}    & 9     &\concP\\
+\zoo & zooplankton      & {\tt izoo}    &10     &\concP\\
+\det & detritus         & {\tt idet}    &11     &\concP\\
+\cal & calcium carbonate shells         & {\tt icalc}   &12     &\concC\\
+\opal& opal shells            & {\tt iopal}   &13     &\concSi\\ 
+\cariso& total dissolved inorganic $^{14}$C   & {\tt isco214}   &14 &\concC\\ 
+\ntwoo& nitrous oxide  & {\tt ian2o}   &15     &\concN\\ 
+\dms& dimethyl sulfide             & {\tt idms}   &16     &\concDMS\\ 
+\fdust& free (non-aggregated) dust & {\tt ifdust}   &17     &\concdust\\ 
+\fe  & dissolved iron & {\tt iiron}   &18     &\concFe\\ 
+
+\multicolumn{5}{l}{\rule{0mm}{4mm}{\it optional (}{\tt -DAGG}{\it ): tracers for
+aggregation and size-dependent sinking}}\\ \hline
+\nos & number of snow aggregates& {\tt inos}    &19     &\concn\\ 
+\adust & aggregated dust& {\tt iadust}    &20     &\concdust\\ 
+
+\multicolumn{5}{l}{\rule{0mm}{4mm}{\it optional (}{\tt -DPANTHROPOCO2}{\it
+): tracers of anthropogenic origin}}\\ \hline
+\Acar & dissolved inorganic C& {\tt isco212\_ant}    & 19   &\concC\\ 
+\Aalk & alkalinity& {\tt ialk\_ant}    &20     &\concalk\\ 
+\Acal& calcium carbonate & {\tt icalc\_ant}   &21     &\concC\\ 
+
+\multicolumn{5}{l}{\rule{0mm}{4mm}{\it optional (}{\tt -DAGG and -DPANTHROPOCO2}
+{\it ):}}\\ \hline
+\Acar & anthropogenic DIC& {\tt isco212\_ant}    & 21   &\concC\\ 
+\Aalk & anthropogenic alkalinity& {\tt ialk\_ant}    &22     &\concalk\\ 
+\Acal& anthropogenic CaCO$_3$ & {\tt icalc\_ant}   &23     &\concC\\ \hline
+
+\end{tabular}
+\end{center}
+\end{table}
+
+\subsubsection{\label{euphotic_zone}Euphotic zone/upper layers biogeochemistry 
+({\tt ocprod.f90})} 
+
+The computation of the biogeochemistry in the euphotic zone is based on colimitation of  phosphorous, nitrate and iron. It is basically the same as in HAMOCC3.1 (see SMR96).
+In this report only the modifications in \ham will be described in detail. 
+
+HAMOCC3.1 calculates phosphorous concentrations and the associated carbon
+biogeochemistry. \ham also takes into account nitrate, silicate and opal
+production from diatom growth (eqns. \ref{eq_sio_sur} and \ref{eq_opal_sur}),
+and calcium carbonate formation due to coccolithophorides (eq. \ref{eq_cal_sur}
+and associated changes in $C_T$ and $A_T$).  Atmospheric dust input and transport
+in the ocean, release of dissolved iron from dust and its influence on
+photosynthesis, as well as DMS (dimethyl sulfide) dynamics are also modelled. The
+interactions between the different tracers are simulated using stoichiometric
+constants $R_{X:Y}$ (where $X$ and $Y$ stand for the respective tracers, see
+table \ref{tab_bgc_params}). \footnote{The nomenclature for the parameters in
+the text basically follows the suggestions made by Evans and Gar\c{c}on
+(1997)\nocite{jgofs:1997}, where $\mu$ denotes maximum growth/grazing rates,
+$\lambda$ denotes linear loss rates of biomass, and $\kappa$ denotes 
+quadratic loss of biomass, or a loss rate based on the concentration of some
+constituent. $\epsilon$ denotes fractions of fluxes that are gained, $\omega$
+denotes the partioning of fluxes and $K$ denotes half saturation constants.
+Indices (especially for the $\lambda$ terms) describe the direction of fluxes,
+or the compartment to which the parameter is assigned.}
+
+%table2
+\begin{table}[htb]
+{\caption{\label{tab_bgc_params}  Symbols in this text and names in the model code
+of various parameters of \ham. They are declared in {\tt beleg\_bgc.f90} and communicated
+between the modules in {\tt mo\_biomod.f90}.}}
+\vspace{-.2cm}
+\begin{center}
+\renewcommand{\baselinestretch}{1}
+\footnotesize
+\begin{tabular}{llp{7cm}l} \hline 
+symbol & name & variable & units \\ \hline
+\multicolumn{4}{l}{\rule{0mm}{4mm}{\bf upper boundary and vertical delimiters}}\\ \hline
+$I_0$ &{\tt strahl}& net solar radiation at surface& W m${-2}$\\ 
+$k_{eu}$ &{\tt kwrbioz}  &index of deepest layer of euphotic zone & \\
+$kb$ &{\tt kbo}& index field of bottom layer & \\
+$\Delta z_{kb}$ &{\tt bolay}&  local thickness of bottom layer & m\\
+\multicolumn{4}{l}{\rule{0mm}{4mm}\bf stoichiometry}\\ \hline
+$R_{-O2:P}$ &{\tt ro2ut}& -O$_2$:P  ratio & mol O$_2$ mol P$^{-1}$\\
+$R_{C:P}$&{\tt rcar}& C:P  ratio &mol C mol P$^{-1}$\\
+$R_{N:P}$&{\tt rnit}& N:P  ratio &mol N mol P$^{-1}$\\
+$R_{Fe:P}$&{\tt riron}& Fe:P  ratio &mol Fe mol P$^{-1}$\\
+\multicolumn{4}{l}{\rule{0mm}{4mm}\bf upper ocean biogeochemistry: layers
+1 to $k_{eu}$}\\
+ \hline
+\multicolumn{4}{l}{\rule{0mm}{4mm}\it phytoplankton}\\
+$\alpha$  & - & initial slope of P-vs-I curve & d$^{-1}$ (W m${-2})^{-1}$\\
+$k_w$&{\tt atten$_w$ }& light attenuation coeff. of water & m$^{-1}$ (\concP)$^{-1}$\\
+$k_c$&{\tt atten$_c$ }& light attenuation coeff. of chlorophyll & m$^{-1}$ (\concP)$^{-1}$\\
+$R_{C:Chl}$&{\tt ctochl }& C:Chl ratio of phytoplankton  & g C g Chl $^{-1}$\\
+$K_{\phy}^{\pho}$&{\tt bkphy}& half-sat. constant for PO$_4$ uptake & \concP \\
+$K_{\phy}^{\sio}$&{\tt bkopal}& half-sat. constant for Si(OH)$_4$ uptake & \concSi \\
+$R_{Si:P}$&{\tt ropal}& Opal:P uptake ratio & mol Si mol P$^{-1}$\\
+$R_{Ca:P}$&{\tt rcalc}& CaCO$_3$:P uptake ratio  & mol C mol P$^{-1}$\\
+$M_{\cal}$&{\tt calmax}& max. fraction of CaCO$_3$ production & \\
+$\phy_{0}$&{\tt phytomi}& min. concentration of phytoplankton  & \concP \\
+$\lambda_{\phy,\det}^{surf}$&{\tt dyphy}& mortality rate & d$^{-1}$\\
+$\lambda_{\phy,\dom}$&{\tt gammap}& exudation rate & d$^{-1}$\\
+\multicolumn{4}{l}{\rule{0mm}{4mm}\it zooplankton}\\
+$\mu_\zoo$ &{\tt grazra}& max. grazing rate & d$^{-1}$\\
+$K_{\zoo}$&{\tt bkzoo}& half-saturation constant for grazing & \concP \\
+$\zoo_{0}$&{\tt grami}& min. concentration of zooplankton&\concP \\
+$1-\epsilon_{\zoo}$&{\tt epsher}& fraction of grazing egested  & \\
+$\omega_{graz,\zoo}$&{\tt zinges}& assimilation efficiency & \\
+$\lambda_{\zoo,\dom}$&{\tt gammaz}& excretion rate & d$^{-1}$\\
+$\lambda_{\zoo}^{surf}$&{\tt spemor}& mortality rate & d$^{-1}$\\
+$\omega_{mort,\pho}$&{\tt ecan}& fraction of mortality as PO$_4$& \\
+\multicolumn{4}{l}{\rule{0mm}{4mm}\it dissolved organic matter}\\
+$\lambda_{\dom,\pho}^{surf}$&{\tt remido}& remineralization rate & d$^{-1}$\\ 
+\multicolumn{4}{l}{\rule{0mm}{4mm}\it dimethyl silfid (DMS)}\\
+$D_1$ & {\tt dmspar(1)}& temp.-dependent release by phytoplankton& \degs C\\
+$D_2$ & {\tt dmspar(2)}& photo destruction& (W m$^{-2}$)$^{-1}$ d$^{-1}$\\
+$D_3$ & {\tt dmspar(3)}&  temp.-dependent destruction & \degs C$^{-1}$ d$^{-1}$\\
+$D_4$ & {\tt dmspar(4)}& production by coccolithophorides  & kmol DMS (kmol Si)$^{-1}$ d$^{-1}$\\
+$D_5$ & {\tt dmspar(5)}& production by diatoms  & kmol DMS (kmol Ca)$^{-1}$d$^{-1}$\\
+$D_6$ & {\tt dmspar(6)}& microbial half saturation & kmol DMS \\
+\multicolumn{4}{l}{\rule{0mm}{4mm}\bf deep remineralization: layers $(k_{eu}+1)$
+to $kb$}\\ \hline
+$\lambda_{\det,\pho}^{deep}$&{\tt drempoc}& detritus remineralization rate& d$^{-1}$\\
+$\lambda_{\dom,\pho}^{deep}$&{\tt dremdoc}& DOM remineralization rate& d$^{-1}$\\
+$\lambda_{\phy,\det}^{deep}$&{\tt dphymor}& phytoplankton mortality rate& d$^{-1}$\\
+$\lambda_{\zoo,\det}^{deep}$&{\tt dzoomor}& zooplankton mortality rate& d$^{-1}$\\
+\multicolumn{4}{l}{\rule{0mm}{4mm}\bf dissolution of opal and CaCO$_3$}\\ \hline
+$\lambda_{\opal,\sio}$ &{\tt dremopal}& opal dissolution rate& d$^{-1}$\\
+$\lambda_{\cal,\car}$ &{\tt dremcalc}& calcium carbonate dissolution rate& d$^{-1}$\\ 
+\multicolumn{4}{l}{\rule{0mm}{4mm}\bf others}\\ \hline
+$\mu_{NFix}$&{\tt bluefix}& nitrogen fixation rate ({\tt cyano.f90})& d$^{-1}$\\
+$\epsilon_{Fe}\times S_{Fe}$ &{\tt perc\_diron}& weight fraction of iron in dust times iron solubility & \\
+$\fe_{0}$ & -  & maximum value for excess diss. iron & \concFe\\
+$\lambda_{Fe}$ &{\tt relaxfe}& complexation rate of excess diss. iron &
+d$^{-1}$\\ \hline
+\end{tabular}
+\end{center}
+\renewcommand{\baselinestretch}{1.5}
+\normalsize
+\end{table}
+
+\paragraph{Phytoplankton}  Phytoplankton (\phy) \index{phytoplankton} growth
+depends on availability of light ($I$) and nutrients. The local light supply is
+calculated from the temporally and spatially varying solar radiation at the sea surface, $I(0,t)$, 
+as provided by the OGCM.  Below the surface light intensity is reduced due to attuation 
+by sea water ($k_w$) and chlorophyll ($k_c$) using a
+constant conversion factor for C:Chl, $R_{C:Chl}$:
+
+\begin{equation}
+I(z,t) = I(0,t) \, e^{-(k_w+k_c\, \phy \, 12 \, R_{C:P} / R_{C:Chl}) z}  
+\end{equation}
+
+Phytoplankton growth depends linearly on the availability
+of light, without saturation of growth rates for stronger
+irradiance ($I$). The growth rate $J(I(z,t))$,
+is calculated  as $J(I) = \alpha_\phy \, I(z,t)$, where $\alpha_\phy$ is the
+slope of the P-vs-I-curve (production vs. light intensity). 
+The light limited phytoplankton growth rate is then multiplied by the
+nutrient limitation factor, which is calculated from a simple Monod function, 
+limited by the least available nutrient (either phosphate, nitrate, or iron,  see equation
+\ref{eq_phosy}). It is assumed that phytoplankton takes up P, N, and Fe
+in constant proportions determined by the stoichiometric ratios $R_{N:P}$ and
+$R_{Fe:P}$.
+\begin{eqnarray}
+\label{eq_phosy}
+photosynthesis & = & \frac{\phy \, J(I(z,t)) \, X}
+{K_{\phy}^{\pho} + X} \\
+& & \qquad \mbox{with}
+\quad X = \min\left(\pho,\frac{\nit}{R_{N:P}},\frac{\fe}{R_{Fe:P}}\right)
+\nonumber
+\end{eqnarray}
+
+Constant time stepping can cause instabilities (overshoots) in the
+biogeochemical equations. In order to avoid this, nutrient uptake by
+phytoplankton is calculated using a modified backward approach:
+\begin{eqnarray}
+X^{t+\Delta t} & = & X^t - \phy^t \, J(I(z,t)) \, \frac {X^{t+\Delta t}}
+{K_{\phy}^{\pho} + X^t} \, \Delta t\\ \nonumber
+& = & \frac{X^t}{1+\frac{\phy^t \, J(I(z,t)) \,\Delta t}
+{K_{\phy}^{\pho} +X^t}} \nonumber 
+\end{eqnarray}
+
+Thus, photosynthesis per timestep in phosphorous units is given by
+
+\begin{equation*}
+phosy  =  \frac{X^t - X^{t+\Delta t}}{\Delta t}
+\end{equation*}
+
+Phytoplankton exudate dissolved organic matter (\dom) with a constant rate
+$\lambda_{\phy,\dom}$, and dies with a constant rate
+$\lambda_{\phy,\det}^{surf}$, both until a minimum phytoplankton concentration
+of  $2\, \phy_0$ is reached. Dead phytoplankton forms detritus. Thus, the time derivative
+for phytoplankton is 
+\begin{eqnarray}
+\label{eq_phy_sur}
+\frac{\Delta\phy}{\Delta t} & = & phosy - grazing -
+\left(\lambda_{\phy,\det}^{surf}+\lambda_{\phy,\dom}\right) 
+\left( \phy - 2 \,\phy_0 \right)
+\end{eqnarray}
+
+\paragraph{Zooplankton} Phytoplankton is grazed on by zooplankton (\zoo).
+The functional response follows a Monod function, reduced by a minimum
+phytoplankton concentration $\phy_0$ for the onset of grazing:
+
+\begin{equation}
+\label{eq_grazing}
+graze  =  \zoo \, \mu_{\zoo} \frac {\phy-\phy_0}{K_\zoo + \phy} 
+\end{equation}
+
+To avoid negative phytoplankton concentrations due to the constant
+forward time stepping, zooplankton grazing is calculated semi-implicitely:
+\begin{eqnarray}
+\phy^{t+\Delta t} & = & \phy^t + phosy - \zoo^t \, \mu_\zoo \, 
+\frac {(\phy^{t+\Delta t}-\phy_0)} 
+{K_{\zoo} + \phy^t} \, \Delta t \nonumber \\
+ & = & \frac{\phy^t + phosy + \frac{\phy_0 \, \zoo^t \, \mu_\zoo
+\Delta t}{K_\zoo + \phy^t}}
+{1+\frac{\zoo^t \, \mu_\zoo \,\Delta t}{K_{\zoo}+\phy^t}} 
+\end{eqnarray}
+
+Thus, the actual amount of phytoplankton consumed per day is given by 
+
+\begin{equation}
+grazing  =  \frac {\phy^t + phosy - \phy^{t+\Delta t}}{\Delta t}
+\end{equation}
+
+
+Only a fraction of the grazed phytoplankton, $\epsilon_\zoo$, is ingested by
+zooplankton (equation \ref{eq_zoo_sur}), the remaining fraction is immediately egested as
+fecal pellets. Of the fraction ingested, a further fraction,
+$\omega_{graz,\zoo}$, leads to zooplankton growth; the remainder is excreted
+as nutrients (grazing related metabolism). Zooplankton further has a
+basal metabolism, given by the constant rate $\lambda_{\zoo,\dom}$, until a
+mininimum zooplankton concentration, $2\,\zoo_0$ is reached. Zooplankton
+predators (see SMR96 for further details) are parameterized as a constant death rate
+of zooplankton, $\lambda_{\zoo}^{surf}$, down to a minimum concentration of $2\,\zoo_0$.
+Dead zooplankton is either immediately remineralized to phosphate (fraction
+given by $\omega_{mort,\pho}$), or forms detritus.
+\begin{eqnarray}
+\label{eq_zoo_sur}
+\frac{\Delta\zoo}{\Delta t} & = & grazing \, \epsilon_{\zoo} \,\omega_{graz,\zoo}
+- \left( \lambda_{\zoo,\dom}+\lambda_{\zoo}^{surf}\right) \left( \zoo - 2\,\zoo_0 \right)
+\end{eqnarray}
+
+\paragraph{Detritus} Detritus (\det) is formed from dead phytoplankton and
+zooplankton, and zooplankton fecal pellets (equation \ref{eq_det_sur}). In
+contrast to SMR96, this flux is not immediately exported to deeper layers, but
+the sinking of detritus is simulated explicitely (see later section about sinking).
+There is no remineralisation of detritus in the surface layers.
+\begin{eqnarray}
+\label{eq_det_sur}
+\frac{\Delta \det}{\Delta t} & = & \lambda_{\phy,\det}^{surf} \left( \phy - 2 \,\phy_0 \right)
++grazing \, (1-\epsilon_{\zoo}) \\ \nonumber
+& & + \lambda_{\zoo}^{surf} \left( \zoo - 2\,\zoo_0 \right)
+(1-\omega_{mort,\pho})
+\end{eqnarray}
+
+\paragraph{Dissolved organic matter} Dissolved organic matter (\dom) is produced
+by phytoplankton exudation and  zooplankton excretion. It remineralizes to 
+phosphate at a constant rate, $\lambda_{\dom,\pho}^{surf}$.
+\begin{eqnarray} \label{eq_dom_sur} \frac{\Delta \dom}{\Delta t} & = &
+\lambda_{\phy,\dom} \left( \phy - 2 \,\phy_0 \right) +\lambda_{\zoo,\dom}
+\left( \zoo - 2\,\zoo_0 \right) \\ \nonumber & & - \lambda_{\dom,\pho}^{surf}
+\, \dom \end{eqnarray}
+
+\paragraph{Phosphate} Photosynthesis reduces the phosphate concentration (\pho), 
+zooplankton excretion and DOM remineralization increase it:
+\begin{eqnarray}
+\label{eq_pho_sur}
+\frac{\Delta \pho}{\Delta t} & = & - phosy + grazing \, \epsilon_{\zoo} 
+(1-\omega_{graz,\zoo}) \\ \nonumber
+& & + \lambda_{\zoo}^{surf} \left( \zoo - 2\,\zoo_0 \right) \omega_{mort,\pho}
++ \lambda_{\dom,\pho}^{surf} \, \dom
+\end{eqnarray}
+
+Nitrate (\nit) dynamics in the surface layer 
+simply follow the phosphate dynamics, multiplied by a constant
+stoichiometric ratio, $R_{N:P}$. There is no variation of the internal N:P
+ratio of particulate or dissolved constituents from  surface layer processes
+(but see later sections about denitrification and N$_2$ fixation).
+\begin{eqnarray}
+\label{eq_nit_sur}
+\frac{\Delta \nit}{\Delta t} & = & \frac{\Delta \pho}{\Delta t} \, R_{N:P} 
+\end{eqnarray}
+
+\paragraph{Silicate and opal}  It is assumed that phytoplankton consists of
+diatoms, coccolithophorids, and flagellates. It is further assumed, that
+diatoms grow fastest, i.e., if silicate is available,  phytoplankton 
+growth by diatoms ($delsil$) is first computed. 
+
+In the default model set-up only the shells (opal and calcium carbonate) that are part
+of detritus (i.e., that have been grazed and egested as fecal pellets or are
+contained in dead zooplankton and phytoplankton) are
+accounted for, whereas the living parts do not sink but sooner or
+later undergo dissolution:
+\begin{eqnarray}
+\label{eq_delsilnoagg}
+delsil & = & \min\left( \frac{\Delta \det}{\Delta t}\, R_{Si:P} \frac{\sio}
+{K_{\phy}^{\sio} + \sio}
+, 0.5 \, \sio \right)
+\end{eqnarray}
+
+$R_{Si:P}$ denotes the Si:P ratio required by diatoms, $K_{\phy}^{\sio}$ the
+half-saturation constant for silicate uptake.   
+
+If option {\tt -DAGG} is given during compilation, also the living cells
+sink, and we have to consider them as part of the opal pool, as they 
+might sink before dissolution.
+Thus, opal production is determined by photosynthesis:
+(eqn. 14)
+
+\begin{eqnarray}
+\label{eq_delsilagg}
+delsil & = & \min\left(phosy \, R_{Si:P} \frac{\sio}{K_{\phy}^{\sio} + \sio}
+, 0.5 \, \sio \right)
+\end{eqnarray}
+
+Opal (\opal) production by diatoms consumes silicate (\sio). Opal itself
+dissolves with a constant ratio, $\lambda_{\opal,\sio}$. Thus, 
+\begin{eqnarray}
+\label{eq_sio_sur}
+\frac{\Delta \sio}{\Delta t} & = & -delsil + \lambda_{\opal,\sio} \, \opal
+\end{eqnarray}
+\begin{eqnarray}
+\label{eq_opal_sur}
+\frac{\Delta \opal}{\Delta t} & = & + delsil - \lambda_{\opal,\sio} \, \opal
+\end{eqnarray}
+
+\paragraph{Dissolved inorganic carbon, calcium carbonate production and
+alkalinity}  As mentioned above, it is assumed that diatoms grow fastest of all
+groups, i.e., a certain fraction of photosynthesis or detritus production is
+associated with opaline shell formation. The remaining fraction of photosynthesis
+is by coccolithophorides. Again, as for opal in the default case
+we only account for the sinking part of calcite production, i.e., the 
+detritus production:
+%(eqn. 17)
+
+\begin{eqnarray}
+\label{eq_delcarnoagg}
+delcar & = & R_{Ca:P} \frac{\Delta \det}{\Delta t}\,\frac{K_{\phy}^{\sio}}
+{K_{\phy}^{\sio}+\sio} 
+\end{eqnarray}
+%stimmt das?
+
+If option {\tt -DAGG} is given during compilation alive coccolithophorid
+are also subject to sinking.  Production of calcaerous shells is thus 
+tied to photosynthesis, but
+only up  to a limited fraction (M\_{CaCO3}) of total photosynthesis.
+%(eqn 18)
+
+
+\begin{equation}
+\label{eq_delcaragg}
+delcar = R_{Ca:P} \min\left(M_\cal \, phosy, phosy-\frac{delsil}{R_{Si:P}} \right)
+\end{equation}
+
+Thus, the production rate of calcium carbonate is:
+\begin{eqnarray}
+\label{eq_cal_sur}
+\frac{\Delta \cal}{\Delta t} & = & + delcar
+\end{eqnarray}
+
+
+The formation of calcium carbonate (\cal) shells 
+consumes dissolved inorganic carbon and, for each mole of CaCO$_3$ formed,
+it decreases the alkalinity by two. Furthermore, the
+formation and degradation of particulates (phosphorous basis) cause 
+associated changes in dissolved inorganic carbon (\car), given by the constant
+stoichiometric ratio, $R_{C:P}$. The associated changes in nitrate
+concentration lead to changes in alkalinity (\alk; an increase of one for each
+mole of nitrate produced). 
+\begin{eqnarray}
+\label{eq_car_sur}
+\frac{\Delta \car}{\Delta t} & = & \frac{\Delta \pho}{\Delta t} \, R_{C:P} - delcar
+\end{eqnarray}
+\begin{eqnarray}
+\label{eq_alk_sur}
+\frac{\Delta \alk}{\Delta t} & = & - \frac{\Delta \pho}{\Delta t}\, R_{N:P} - 2 \, delcar  
+\end{eqnarray}
+
+\paragraph{Oxygen} Photosynthesis releases oxygen, respiration consumes it. The
+changes of the oxygen concentration are related to the changes in phosphate, multiplied by the
+stoichiometric ratio $R_{-O2:P}$.
+\begin{eqnarray}
+\label{eq_oxy_sur}
+\frac{\Delta \oxy}{\Delta t} & = & - \frac{\Delta \pho}{\Delta t} \, R_{-O2:P} 
+\end{eqnarray}
+
+\paragraph{Dissolved iron}   The model includes iron limitation of
+photosynthesis (identical for all phytoplankton groups), 
+as well as iron release during remineralisation and iron
+complexation by organic substances.  Dissolved, biologically available iron,
+\fe,  released in the surface layer from the freshly deposited dust 
+(see section \ref{dust_input}) is taken up during
+photosynthesis, and released during remineralisation using a fixed Fe:P ratio
+$R_{Fe:P}$.  Applying the model of Johnson \etal (1997)\nocite{johnson:1997},
+there is a relaxation of iron to values of 0.6 nmol L$^{-1}$ ($\fe_0$) using a
+relaxation time constant $\lambda_{\fe}$. This approach assumes that dissolved
+iron beyond this limit is complexed by strong iron binding ligands, and 
+therefor is lost for the biogeochemical cycle.
+
+\begin{equation}
+\frac{\Delta  \fe}{\Delta  t} = \frac{\Delta  \pho}{\Delta  t}\, R_{Fe:P} - \lambda_\fe \, \max \left(0,\fe-\fe_0 \right)
+\end{equation}
+
+\paragraph{DMS} The DMS production in the model depends on the growth of
+diatoms and coccolithophorids, modified by temperature ($T$). DMS decrease
+depends on temperature and irradiance ($I$). DMS is simulated using 6 parameters,
+$D_1 - D_6$. DMS growth only takes place in the euphotic zone, i.e., in the upper few
+layers of the water column. DMS decrease takes place in the total water column.
+\begin{eqnarray}
+\frac{\Delta  \dms}{\Delta  t} & = & \left( D_5 \, delsil + D_4 \, delcar \right)
+            \, \left( 1+\frac{1}{(T+D_1)^2} \right) \\
+        & &     - D_2 \, 8 \, I \,\dms \nonumber
+             -  D_3\, |T+3| \,\dms \, \frac{\dms}{D_6 + \dms} \nonumber
+\end{eqnarray}
+
+\subsubsection{\label{deep_aerobic_remineralization}Deep water aerobic
+remineralization  ({\tt ocprod.f90})} 
+
+Below the maximum depth of primary production ($\approx$ 100 m, depth of layer $k_{eu}$) 
+mortality of the living components of phytoplankton and zooplankton is simulated with constant rates
+$\lambda_{\phy,\det}^{deep}$ and $\lambda_{\zoo,\det}^{deep}$, respectively. Detritus and DOM
+are remineralized to phosphate with constant rates $\lambda_{\det,\pho}^{deep}$ and
+$\lambda_{\dom,\pho}^{deep}$, respectively. These
+processes take place only if sufficient oxygen is available
+since remineralization of detritus and DOM
+requires oxygen for the respiration of the associated carbon:
+\begin{eqnarray}
+remin^{aerob}_\det& = & \min\left(\lambda_{\det,\pho}^{deep} \det
+, \frac{0.5\,\oxy}{R_{-O2:P}\,\Delta t}  \right) \nonumber \\
+remin^{aerob}_\dom& = &  \min\left(\lambda_{\dom,\pho}^{deep} \dom
+, \frac{0.5\,\oxy}{R_{-O2:P}\,\Delta t}  \right) \nonumber \\
+\frac{\Delta \phy}{\Delta t} & = & -\lambda_{\phy,\det}^{deep} \max\left(0, \phy - \phy_0 \right)\\
+\frac{\Delta \zoo}{\Delta t} & = & -\lambda_{\zoo,\det}^{deep} \max\left(0, \zoo - \zoo_0 \right)\\
+\label{eq_det_aerob}\frac{\Delta \det}{\Delta t} & = & 
++ \lambda_{\phy,\det}^{deep} \max\left(0, \phy - \phy_0 \right)\\ \nonumber
+& &+ \lambda_{\zoo,\det}^{deep} \max\left(0, \zoo - \zoo_0 \right) 
+- remin^{aerob}_\det\\
+\frac{\Delta \dom}{\Delta t} & = & - remin^{aerob}_\dom\\
+\frac{\Delta \pho}{\Delta t} & = & remin^{aerob}_\det + remin^{aerob}_\dom
+\end{eqnarray}
+
+The changes of the other (non-phosphorous) components, again, are calculated from
+the changes in phosphate multiplied by the respective stoichiometric ratio. 
+\begin{eqnarray}
+\frac{\Delta \nit}{\Delta t} & = & \frac{\Delta \pho}{\Delta t} \, R_{N:P}\\
+\frac{\Delta \car}{\Delta t} & = & \frac{\Delta \pho}{\Delta t} \, R_{C:P}\\
+\frac{\Delta \alk}{\Delta t} & = & - \frac{\Delta \pho}{\Delta t} \, R_{N:P}\\
+\frac{\Delta \oxy}{\Delta t} & = & - \frac{\Delta \pho}{\Delta t} \, R_{-O2:P}
+\end{eqnarray}
+
+Opal dissolution increases deep ocean silicate concentrations as
+\begin{eqnarray}
+\frac{\Delta \opal}{\Delta  t} & = & -\lambda_{\opal,\sio} \, \opal\\
+\frac{\Delta \sio}{\Delta  t} & = & +\lambda_{\opal,\sio} \, \opal
+\end{eqnarray}
+
+Calcium carbonate dissolution and its effect on alkalinity will be described
+later together with the carbonate cycle.
+
+If sufficient oxygen is available, a fraction of \ntwo is oxidized to
+\ntwoo, depending on the oxygen undersaturation, $Sat_{O2} - \oxy$:
+\begin{eqnarray}
+oxidize & = & 0.0001 \, 
+\left\{ \begin{array}{r@{\quad:\quad}l} 
+1 & Sat_{O2} - \oxy < 1.97 \times 10^{-4}\\ 
+4 & Sat_{O2} - \oxy \ge 1.97 \times 10^{-4}  
+\end{array} \right. \nonumber \\
+\frac{\Delta \ntwo}{\Delta  t} & = &  - 
+\left(remin^{aerob}_\det+remin^{aerob}_\dom\right)\,R_{-O2:P}\,oxidize\\
+\frac{\Delta \ntwoo}{\Delta  t} & = &  
+\left(remin^{aerob}_\det+remin^{aerob}_\dom\right)\,R_{-O2:P}\,oxidize
+\end{eqnarray}
+
+Finally,  associated with the changes in deep phosphate, dissolved iron
+is released during remineralisation, and, as for the surface layers, there is
+complexation of dissolved iron:
+
+\begin{equation}
+\frac{\Delta  \fe}{\Delta  t} = \frac{\Delta  \pho}{\Delta  t}\, R_{Fe:P} - \lambda_\fe \, \max \left(0,\fe-\fe_0 \right)
+\end{equation}
+
+
+%1+3*1 for aou > 1.97e-4
+%1+3*0 for aou < 1.97e-4
+
+\clearpage
+
+\subsubsection{\label{deep_anaerobic_remineralization}Deep water anaerobic
+remineralization and denitrification  ({\tt ocprod.f90})} 
+
+Even in the absence of sufficient oxygen there is still remineralization:
+bacteria (which are not modelled explicitely) take  nitrate as
+final electron acceptor, and nitrate is reduced to N$_2$. So there is a decrease in
+nitrate, because of its reduction. On the other hand there is a gain in nitrate
+because of remineralization of organic matter since
+detritus contains nitrogen, which is released during remineralisation. The
+intermediate step involving ammonium is neglected.  The oxygen from
+two moles of nitrate corresponds to 3 moles of dissolved oxygen. Thus, the
+loss of nitrate from oxidation is 2/3 times the remineralization under
+aerobic conditions ($ 2/3 \, R_{-O2:P} \, remin$) and its gain is $
+R_{N:P} \, remin$.  Again, the change in alkalinity is given by the changes in
+the nitrate component, and the remineralisation of detritus is associated with
+release of dissolved iron.
+\begin{eqnarray}
+remin^{anaerob1}_\det& = & 0.5 \, \lambda_{\det,\pho}^{deep} \,
+\min\left(\det ,\frac{0.5\,\nit}{\frac{2}{3} R_{-O2:P}\, \Delta t}  \right)
+\nonumber\\ 
+\label{eq_det_anaerob1}\frac{\Delta \det}{\Delta  t} & = & - remin^{anaerob1}_\det\\
+\frac{\Delta \nit}{\Delta  t} & = &  \left(R_{N:P} - \frac{2}{3} \, R_{-O2:P}\right) 
+\, remin^{anaerob1}_\det \\
+\frac{\Delta \ntwo}{\Delta  t} & = & \frac{1}{3} \,R_{-O2:P} \, remin^{anaerob1}_\det\\
+\frac{\Delta \pho}{\Delta  t} & = & remin^{anaerob1}_\det\\
+\frac{\Delta \car}{\Delta  t} & = & R_{C:P} \, remin^{anaerob1}_\det\\
+\frac{\Delta \alk}{\Delta  t} & = & -R_{N:P} \, remin^{anaerob1}_\det\\
+\frac{\Delta \fe}{\Delta  t} & = & +R_{Fe:P} \, remin^{anaerob1}_\det
+\end{eqnarray}
+
+Furthermore, detritus remineralizes using the oxygen contained
+in \ntwoo:
+\begin{eqnarray}
+remin^{anaerob2}_\det& = & 0.01 
+\min\left(\det ,\frac{0.003\,\ntwoo}{2\,R_{-O2:P}\, \Delta t}  \right)
+\nonumber\\ 
+\label{eq_det_anaerob2}\frac{\Delta \det}{\Delta  t} & = & 
+- remin^{anaerob2}_\det\\
+\frac{\Delta \nit}{\Delta  t} & = &  R_{N:P} \, remin^{anaerob2}_\det \\
+\frac{\Delta \ntwoo}{\Delta  t} & = & - 2 \,R_{-O2:P} \, remin^{anaerob2}_\det\\
+\frac{\Delta \ntwo}{\Delta  t} & = & 2 \,R_{-O2:P} \, remin^{anaerob2}_\det\\
+\frac{\Delta \pho}{\Delta  t} & = & remin^{anaerob2}_\det\\
+\frac{\Delta \car}{\Delta  t} & = & R_{C:P} \, remin^{anaerob2}_\det\\
+\frac{\Delta \alk}{\Delta  t} & = & -R_{N:P} \, remin^{anaerob2}_\det\\
+\frac{\Delta \fe}{\Delta  t} & = & +R_{Fe:P} \, remin^{anaerob2}_\det
+\end{eqnarray}
+
+
+\subsubsection{\label{dic_chemistry}Dissolved inorganic carbon chemistry and
+calcium carbonate dissolution ({\tt carchm.f90})}
+
+The treatment of carbon chemistry is similar to the one described in 
+Maier-Reimer and Hasselmann  (1987\nocite{maier-reimer:1987}; see also Heinze
+and Maier-Reimer, 1999b\nocite{heinze:1999b}), and is described only briefly here.
+The model explicitely simulates total dissolved inorganic carbon ($C_T$),
+and total alkalinity ($A_T$),  defined as 
+\begin{eqnarray}
+\label{eq_ct}
+\left[C_T\right] & = & \left[H_2CO_3\right] + \left[HCO_3^-\right] + \left[CO_3^{2-}\right] \\
+\label{eq_at}
+\left[A_T\right] & = &  \left[HCO_3^-\right] + 2\,\left[CO_3^{2-}\right] + \left[B(OH)_4^-\right] + \left[OH^-\right] - \left[H^+\right] 
+\end{eqnarray}
+
+Changes in total carbon concentration and alkalinity due to biogeochemical
+processes have been described above. Changes due to sea-air gas exchange (see
+section \ref{air_sea_gas_exchange}) and calcium carbonate dissolution depend on
+surface layer pCO$_2$ and carbonate ion concentration, [CO$_3^{2-}$], which are
+determined numerically from $C_T$ and $A_T$ as follows. 
+The carbonate system is defined by the two dissociation steps from $H_2CO_3$ to
+carbonate, $CO_3^{2-}$, and the borate buffer:
+\begin{eqnarray}
+H_2CO_3 & \rightleftharpoons & HCO_3^- + H^+ \\
+HCO_3^- & \rightleftharpoons & CO_3^{2-} + H^+  \\
+H_2O + B(OH)_3 & \rightleftharpoons & B(OH)_4^- + H^+ \\ 
+H_2O & \rightleftharpoons & (OH)^- + H^+ 
+\end{eqnarray}
+
+with $B_T = \left[B(OH)_3\right] + \left[B(OH)_4^-\right] \propto S$, ($S = $
+salinity) computed at every time step. The constants (see Table \ref{tab_carb_params}
+for definitions)
+\begin{eqnarray}
+K_1& = & \frac{\left[HCO_3^-\right]\left[H^+\right]}{\left[H_2CO_3 \right]} \\
+K_2& = & \frac{\left[CO_3^{2-}\right]\left[H^+\right]}{\left[HCO_3^- \right]}  \\
+K_B& = & \frac{\left[B(OH)_4^-\right]\left[H^+\right]}{\left[B(OH)_3\right]} \\ 
+K_W& = & \left[(OH)^-\right] \left[H^+\right] 
+\end{eqnarray}
+
+are computed from temperature and salinity at the first day of  each
+month. At the end of each simulated year the values are stored. In the
+following year these values are interpolated linearly in time to the 
+current time step. 
+%new emr
+With
+\begin{eqnarray}
+\left[CO_3^{2-}\right]& = &\frac{\left[C_T\right]}{(1+\left[H^+\right]/K_1+\left[H^+\right]^2/(K_1K_2))} \\
+\left[B(OH)_4^-\right]& = &\frac{B_T}{1+\left[H^+\right]/K_B} \\
+\left[(OH)^-\right]& = &\frac{K_W}{\left[H^+\right]}
+\end{eqnarray}
+$[A_T]$ is a function of the local inventories of B and C atoms and $[H^+]$
+as single unknown which is easily solved by a Newton iteration.
+
+The model first inserts equation \ref{eq_ct} into equation \ref{eq_at} to solve
+numerically for [H$^+$]. Then either pCO$_2$ (for air-sea gas exchange of
+CO$_2$) or CO$_3^{2-}$ (for dissolution of calcium carbonate) is computed from
+equation \ref{eq_ct}.
+
+The dissolution of calcium carbonate depends on the CO$_3^{2-}$ undersaturation
+of sea-water and a dissolution rate constant $\lambda_{\cal,\car}$.
+Undersaturation $U_{CO3}$ is calculated from the global mean $Ca^{2+}$ concentration in sea water
+(1.03e-2 kmol/m$^3$) and the apparent solubility product, $S_{Ca}$, of calcite :
+\begin{eqnarray}
+dissol & = & \min\left(\frac{U_{CO3}}{\Delta t},\lambda_{\cal,\car} \,\cal \right) \quad \mbox{with} \nonumber \\ 
+U_{CO3} & = & \max\left(0, CO_3^{2-} - 1./[Ca^{2+}]\,S_{Ca}\right)  \nonumber \\ 
+\frac{\Delta  \cal}{\Delta  t}& = &  - dissol\\
+\frac{\Delta  \car}{\Delta  t}& = &  dissol\\
+\frac{\Delta  \alk}{\Delta  t}& = &  2 \, dissol
+\end{eqnarray}
+
+%table3
+\begin{table}[hbt]
+\caption{\label{tab_carb_params} Variables and parameters for calcium carbonate
+dissolution, defined in {\tt chemcon.f90} and  declared and communicated
+between the modules in {\tt mo\_carbch.f90},  except: $^1$ defined in {\tt
+beleg\_bgc.f90}, declared and passed on by module {\tt mo\_biomod.f90}. 
+See description of module {\tt chemcon.f90} for their evolution in time.} 
+\vspace{.2cm}
+\begin{center}
+\begin{tabular}{llll} \hline
+symbol & variable        & name     & units\\ \hline
+\multicolumn{4}{l}{\rule{0mm}{4mm}\bf diagnostic variables solved for
+numerically}\\ \hline
+\hi      & proton concentration   & {\tt hi(ie,je,ke)}  &\\
+\cartwo  & CO$_3^{2-}$            & {\tt co3(ie,je,ke)} & \\
+\multicolumn{4}{l}{\rule{0mm}{4mm}\bf constants for subsurface layers/calcium
+carbonate dissolution}\\ \hline
+$K_1$    &$K_1$ of carbonic acid  & {\tt ak13(ie,je,ke)} & \\
+$K_2$    &$K_2$ of carbonic acid  & {\tt ak23(ie,je,ke)} & \\
+$K_B$    &$K$ of boric acid       & {\tt akb3(ie,je,ke)} & \\
+$K_W$    &ionic product of water  & {\tt akw3(ie,je,ke)} & \\
+$B_T$    &total borat concentration$^1$  & {\tt rrrcl} & \\
+$S_{Ca}$ &solubility product of calcite  & {\tt aksp(ie,je,ke)} & \\ 
+\multicolumn{4}{l}{\rule{0mm}{4mm}\bf constants for $^{14}$C decay and air-sea gas
+exhange}\\ \hline
+$R^{atm}$ & $^{14}$C:$^{12}$C in the atmosphere & {\tt Ratm} & \\ 
+$\lambda_{\cariso,\car}$ & decay constant for $^{14}$C to $^{12}$C & {\tt c14dec} & $d^{-1}$\\ \hline
+\end{tabular}
+\end{center}
+\end{table}
+
+In addition to the stable \car the model also simulates instable \cariso, which is
+present at a  fixed ratio of \car in the atmosphere, and subject to decay in
+the ocean (resulting in varying ratios of oceanic  $^{14}$C:$^{12}$C). \cariso
+in the model does not interact with the other biogeochemical tracers, i.e. it
+is not taken up during photosynthesis. Thus, the change of
+\cariso in the water column due to local processes is:
+\begin{equation}
+\frac{\Delta  \cariso}{\Delta  t} =   \cariso \, \lambda_{\cariso,\car}
+\end{equation}
+
+
+\subsubsection{\label{anthropogenic_tracers}Anthropogenic carbon ({\tt
+ocprod.f90},  {\tt carchm\_ant.f90})}
+
+If key {\tt -DPANTHROPOCO2} is set before compilation, the model
+computes the natural (preindustrial) plus any anthropogenic carbon (\Acar) 
+and the associated tracers alkalinity (\Aalk)  and
+calcium carbonate (\Acal). Changes by biogeochemical and physical
+processes are computed as for natural carbon, alkalinity and calcium carbonate.
+
+If key {\tt -DDIFFAT} is set before compilation, the model explicitely accounts for
+the various CO$_2$ sources over the continents (see below in section
+\ref{atmospheric_tracers}).
+
+\subsection{\label{interactions_with_the_atmosphere}Interactions with the
+atmosphere}
+
+The water column model interacts with atmospheric components by air-sea
+exchange of gaseous tracers (O$_2$, N$_2$, DMS and CO$_2$), dinitrogen (N$_2$)
+fixation by diazotrophs at the sea-surface, and dust flux from the
+atmosphere to the ocean. If option {\tt
+-DDIFFAT} has been given during compilation, the model in addition accounts for
+transport of atmospheric tracers parameterized as mixing.
+
+\subsubsection{\label{n_fixation}N-fixation ({\tt cyano.f90})}
+
+There is no explicit simulation of blue-green algae (diazotrophs). Instead,
+nitrogen fixation is parameterized as the relaxation of surface layer
+deviation of the N:P ratio of nutrients in the following way: It is assumed
+that the water of the surface layer is always repleted with respect to
+atmospheric nitrogen (N$_2$). If there is more phosphate than nitrate divided
+by the stoichiometric ratio, algae take up atmospheric nitrogen which is
+recycled immediately to nitrate. Thus, N-fixation is parameterized as
+\begin{equation}
+\frac{\Delta \nit}{\Delta  t}  =  \mu_{NFix} \, \max\left(0,\pho\,R_{N:P} - \nit\right)
+\end{equation}
+
+\subsubsection{\label{dust_input}Dust input and iron release ({\tt ocprod.f90})}
+
+Monthly mean values of dust deposition ($Dep_d$) at the ocean surface are taken
+from Timmreck \etal (Timmreck and Schulz, 2004)\nocite{timmreck:2004}. Alternatively,
+other fields of atmospheric dust deposition may be used to drive the model. 
+In \ham it is assumed that all dust particles (\fdust) have the same diameter ($l_d$), and sinking
+speed ($w_\fdust$) which is computed from the diameter. This is a
+simplification - in reality, the smallest dust particles would be transported much
+further, and thus the size distribution and sinking rates of 
+dust particles would change with distance from the source.
+
+\begin{equation}
+\frac{\Delta  \fdust}{\Delta  t} = \frac{Dep_d}{\Delta z_1^t}
+\end{equation}
+
+where $\Delta z_1^t$ denotes the depth of the surface layer. Dust is 
+treated as chemically inert and loss occurs only by sinking and sedimentation
+(see section 2.3).
+
+Dissolved iron is released from the dust immediately after deposition in 
+the surface layer assuming a fixed weight percentage of iron and a constant
+solubility:
+\begin{equation}
+\frac{\Delta  \fe}{\Delta  t} = \frac{Dep_d}{\Delta z_1^t}\times \epsilon_{Fe}\times S_{Fe}
+\end{equation}
+
+\subsubsection{\label{air_sea_gas_exchange}Air-sea gas exchange of O$_2$,
+N$_2$, DMS and CO$_2$  ({\tt carchm.f90})}
+
+Air sea gas exchange of $O_2$, $CO_2$ and $N_2$ in the default case is computed
+assuming constant atmospheric concentrations of the atmospheric tracers. If
+option {\tt -DDIFFAT} is given during compilation,  the change of atmospheric
+concentrations due to air-sea gas exchange is accounted for, and a (rather simple) 
+atmospheric transport model (see below) computes the distribution of the atmospheric tracers
+$O^{atm}_2$, $N^{atm}_2$, and $CO^{atm}_2$.  
+
+%table5
+\begin{table}[hbt]
+\caption{\label{tab_air_sea_params} Variables and parameters for air-sea gas
+exchange, defined in {\tt chemcon.f90} and  declared and communicated between
+the modules in {\tt mo\_carbch.f90},  except: $^1$ defined in {\tt
+beleg\_bgc.f90}, declared and communicated by module {\tt mo\_biomod.f90}. Note
+that constants {\tt chemcm} for the surface layer are stored in fields over
+latitude and longitude and for 12 months at the end of each year.
+See description of module {\tt chemcon.f90} for their evolution with time.} 
+\vspace{.2cm}
+\begin{center}
+\begin{tabular}{llll} \hline
+symbol & meaning        & code     & units \\ \hline
+\multicolumn{4}{l}{\rule{0mm}{4mm}\bf non-advected tracers solved for
+numerically}\\ \hline
+\hi      & proton concentration   & {\tt hi(ie,je,ke)}  &\\
+\cartwo  & CO$_3^{2-}$            & {\tt co3(ie,je,ke)} & \\
+\multicolumn{4}{l}{\rule{0mm}{4mm}\bf constants for air-sea gas exchange}\\ \hline
+$K_1$    &$K_1$ of carbonic acid & {\tt chemcm(ie,je,4,12)} & \\
+$K_2$    &$K_2$ of carbonic acid & {\tt chemcm(ie,je,3,12)} & \\
+$K_B$    &$K$ of boric acid   & {\tt chemcm(ie,je,1,12)} & \\
+$K_W$    &ionic product of water  & {\tt chemcm(ie,je,2,12)} & \\
+$B_T$    &borat concentration$^1$  & {\tt rrrcl} & \\
+$S_{CO2}$&solubility of $CO_2$ in seawater & {\tt chemcm(ie,je,5,12)} & \\
+$S_{O2}$ &solubility of O$_2$ in seawater & {\tt chemcm(ie,je,7,12)} & \\
+$S_{N2O}$ &solubility of N$_2$O in seawater & {\tt chemcm(ie,je,8,12)} & \\
+$V_\oxy$ &relaxation constant for surface O$_2$ saturation & {\tt oxyex} & \\
+$V_\ntwo$ &sea-air gas exchange rate for N$_2$ & {\tt an2ex} & \\
+$V_\dms$ &sea-air gas exchange rate  for DMS & {\tt dmsex} & \\ \hline
+\end{tabular}
+\end{center}
+\end{table}
+
+All air-sea gas exchange rates, $V_{X}$,  (where $X$ stands for the respective
+gas) are calculated using the Schmidt number and piston velocity according to
+Wanninkhof (1992)\nocite{wanninkhof:1992}. Gas exchange is
+divided by the actual thickness of the surface layer, $\Delta z^t_1$.
+
+\paragraph{O$_2$} Oxygen solubility, $S_\oxy$,  is calculated from temperature
+and salinity at the start of each month, according to Weiss
+(1970)\nocite{weiss:1970} and interpolated linearly as explained for the
+dissociation constants above. The oxygen Schmidt number is
+calculated after Keeling \etal (1998)\nocite{keeling:1998}. 
+
+\begin{equation}
+\frac{\Delta  \oxy}{\Delta  t} = \frac{-V_\oxy}{\Delta z^t_1}\, 
+\left(\oxy-S_\oxy\, \frac{pO^{atm}_2}{196800}\right)
+\end{equation}
+
+Note that in the default case $pO_2^{atm} = 196800$, i.e., the atmosphere is
+considered to remain on the preindustrial content of oxygen. Changes of the 
+oxygen cycle can be diagnosed form the oceanic inventory.
+
+\paragraph{N$_2$ and N$_2$O ({\tt carchm.f90})} \ntwo solubility , $S_\ntwo$, 
+is calculated from temperature and salinity at the beginning of each month,
+according to Weiss (1970)\nocite{weiss:1970} and interpolated linearly as
+explained above. Solubility of laughing gas, \ntwoo, is assumed to be
+constant in time. It is calculated at the beginning of each year from temperature
+and salinity  according to Weiss (1974)\nocite{weiss:1974}. The \ntwo and \ntwoo
+Schmidt number and piston  velocity are assumed to be the same as for oxygen.
+\begin{eqnarray}
+\frac{\Delta  \ntwo}{\Delta  t} & = & \frac{-V_\oxy}{\Delta z^t_1}\, 
+\left(\ntwo-S_\ntwo\,\frac{pN^{atm}_2}{802000}\right)\\
+\frac{\Delta  \ntwoo}{\Delta  t} & = & \frac{ -V_\oxy}{\Delta z^t_1}\, 
+\left(\ntwoo-S_\ntwoo\right)
+\end{eqnarray}
+
+\paragraph{DMS} Air-sea gas exchange of \dms is calculated from
+its Schmidt number and piston velocity following Saltzman (1993)
+\nocite{saltzman:1993} assuming zero concentrations of atmospheric \dms:
+\begin{equation}
+\frac{\Delta  \dms}{\Delta  t} = \frac{-V_\dms}{\Delta z^t_1}\, \dms
+\end{equation}
+
+
+\paragraph{CO$_2$} Schmidt number and piston velocity of CO$_2$ are calculated
+according to Wanninkhof (1992)\nocite{wanninkhof:1992}. From the CO$_2$, computed
+as explained in the previous section, pCO$_2^{water}$ is computed as
+pCO$_2^{water} =$ CO$_2 / $S$_{CO2}$, where S$_{CO2}$ is the solubility of
+carbon dioxide. Solubility is calculated monthly according to Weiss
+(1974)\nocite{weiss:1974},  and interpolated in time as explained
+above.  In the present version, atmospheric pCO$_2^{atm}$ is either set to a 
+constant value of 278 ppmv in the default case, or is derived from explicit calculation of
+atmospheric concentration (option {\tt -DDIFFAT}).  Air-sea CO$_2$ flux is then
+computed from the difference in partial pressure between atmosphere and water,
+multiplied by gas exchange rate and solubility, V$_{CO2} \times$ S$_{CO2}$, and
+divided by the thickness of the surface layer, $\Delta z^t_1$:
+
+\begin{equation}
+\frac{\Delta  \car}{\Delta  t} = \frac{V_{CO2}}{\Delta z^t_1}\,
+S_{CO2}\,\left(pCO_2^{atm}-pCO_2^{water}\right)
+\end{equation}
+ 
+where $\Delta z_1^t$ denotes the actual thickness of the surface layer.  Finally,
+the changes of oceanic \cariso are calculated similar to the changes of \car,
+with the concentration of atmospheric \cariso calculated as a fixed fraction of
+\car ($R_{atm})$: 
+\begin{eqnarray}
+R^{water} & = & \frac{\cariso}{\car} \nonumber \\
+\frac{\Delta  \cariso}{\Delta  t} & = & \frac{V_{CO2}}{\Delta z^t_1}\,
+S_{CO2}\,\left(R^{atm}\, pCO_2^{atm}-R^{water}\,pCO_2^{water}\right)
+\end{eqnarray}
+ 
+
+\subsubsection{\label{atmospheric_tracers}Computation of atmospheric 
+O$_2$, N$_2$ and CO$_2$ ({\tt atmotr.f90})}
+
+If key {\tt -DDIFFAT} is set before compilation, the model explicitely computes
+the change in atmospheric tracer concentrations of CO$_2$, O$_2$, and N$_2$.
+
+%table5
+\begin{table}[hbt]
+\caption{\label{tab_atmospheric_tracers} Gaseous tracers in the atmosphere, their
+names in the text and the model code, and index {\tt ix} in the model's tracer field {\tt
+atm(ie,je,ix)}.  The index is defined in {\tt mo\_param1\_bgc.f90},  and the
+model's tracer field is declared in {\tt mo\_carbch.f90}.} 
+\vspace{.2cm}
+\begin{center}
+\begin{tabular}{lllll} \hline
+symbol & meaning        & {\tt name }     & {\tt ix} & unit\\ \hline
+\car$^{atm}$ & CO$_2$              & {\tt iatmco2} & 1     &kmol C m$^{-2}$\\
+\oxy$^{atm} $& O$_2$           &{\tt iatmo2}  & 2     &kmol O$_2$ m$^{-2}$\\
+\ntwo$^{atm}$& N$_2$            & {\tt iatmn2} & 3     &kmol N$_2$ m$^{-2}$\\
+\multicolumn{5}{l}{\rule{0mm}{4mm}{\it optional (}{\tt -DPANTHROPOCO2}{\it )}}\\ \hline
+\Acar$^{atm}$ & anthropogenic CO$_2$& {\tt iantco2}    & 4   &kmol C m$^{-2}$\\ \hline
+\end{tabular}
+\end{center}
+\end{table}
+
+Processes that affect these tracers are the air-sea gas exchange and horizontal
+mixing. The model atmosphere is defined on the same grid as the ocean model but has no vertical resolution. 
+The gain (loss) of tracers is simply the flux out of (into)  the ocean:
+\begin{eqnarray}
+\frac{\Delta  \car^{atm}}{\Delta  t} & = & - V_{CO2}\,
+S_{CO2}\,\left(pCO_2^{atm}-pCO_2^{water}\right)\\
+\frac{\Delta  \oxy^{atm}}{\Delta  t} & = & V_\oxy\, 
+\left(\oxy-S_\oxy\, \frac{pO^{atm}_2}{196800}\right)\\\
+\frac{\Delta  \ntwo^{atm}}{\Delta  t} & = & V_\oxy\, \left(
+\left(\ntwo-S_\ntwo\,\frac{pN^{atm}_2}{802000}\right) + 
+ \left(\ntwoo-S_\ntwoo\right) \right)
+\end{eqnarray}
+
+Note that both oceanic \ntwo and \ntwoo contribute to the atmospheric
+\ntwo$^{atm}$. Diffusion in $x$ and $y$ direction in the atmosphere is
+computed in analogy to the oceanic diffusion over both oceanic and land 
+grid points.
+
+If key {\tt -DPANTHROPOCO2} is set, total annual mean emissions of anthropogenic CO$_2$ 
+are distributed over the different continents in fixed proportions 
+and homogenous in time (see also section \ref{io}).
+
+
+\subsection{\label{sinking}Sinking of particles ({\tt ocprod.f90})}
+
+The flux of particles through the water column redistributes phosphorous and
+associated tracers in the vertical. Fluxes from the bottom layer in each
+grid cell provide the boundary condition for the sediment module.
+
+Presently, the model provides two different ways to assign sinking speeds to
+the particles. In the default case particles have constant sinking
+speeds, $w_\det$, $w_\cal$, $w_\opal$ and $w_\dust$ for \det, \cal, \opal, and
+\fdust, respectively. In the second case (key {\tt -DAGG}) the model computes the aggregation
+of marine snow and the associated change in sinking speed with depth and time
+following Kriest (2002)\nocite{kriest:2002}. The second method requires two
+additional state variables: one, \nos, for the number of aggregates, and another one, \adust,
+for dust in aggregates.  Key {\tt -DAGG} automatically sets up the model for the 
+additional state variables. 
+
+%table6
+\begin{table}[htb]
+{\caption{\label{tab_agg_params}  Parameters of \ham that determine sinking and aggregation 
+They are defined in {\tt beleg\_bgc.f90} and  communicated between the modules in {\tt
+mo\_biomod.f90}.}}
+\renewcommand{\baselinestretch}{1}
+\vspace{.2cm}
+\footnotesize
+\begin{center}
+\begin{tabular}{llp{7cm}l} \hline 
+symbol & name & meaning & units \\ \hline
+$l_d$&{\tt dustd1}& diameter of a dust particle& cm \\
+\multicolumn{4}{l}{\rule{0mm}{4mm}{\it constant sinking: layers 1 to $(kb-1)$}}\\ \hline
+$w_\det$&{\tt wpoc}& constant sinking speed of detritus  &\sink\\
+$w_\cal$&{\tt wcal}& constant sinking speed of calcium carbonate &\sink\\
+$w_\opal$&{\tt wopal}& constant sinking speed of opal &\sink\\ 
+$w_\fdust$&{\tt wdust}& sinking speed of dust, computed from $l_d$ &\sink\\ 
+\multicolumn{4}{l}{\rule{0mm}{4mm}{\it variable sinking and aggregation (option
+{\tt -DAGG}): layers 1 to $kb$}}\\ \hline
+$\eta$&{\tt SinkExp}& exponent of sinking speed-vs-diameter relationship & \\
+$\zeta$&{\tt FractDim}& exponent of P-vs-diameter relationship & \\
+$Stick$&{\tt Stick}& maximum stickiness & \\
+$m_l$&{\tt cellmass}& minimum mass (P) of a particle& nmol P \\
+$w_l$&{\tt cellsink}& minimum sinking speed of a particle& \sink\\
+$l$&{\tt alow1}& minimum diameter of a particle& cm \\
+$L$&{\tt alar1}& max. diameter for size dependent sinking and aggregation & cm \\
+$zdis$&{\tt  zdis}& size distribution coefficient of dead zooplankton & \\ \hline
+\end{tabular}
+\end{center}
+\renewcommand{\baselinestretch}{1.5}
+\normalsize
+\end{table}
+
+\subsubsection{\label{sinking_constant}Sedimentation using a constant sinking rate}
+
+The loss of particles by sedimentation for the upper box to the deepest grid cell is computed by
+\begin{eqnarray}
+\frac{\Delta \det}{\Delta  t} & = & w_\det \, \frac{\Delta\det}{\Delta z}\\
+\frac{\Delta \cal}{\Delta  t} & = & w_\cal \, \frac{\Delta\cal}{\Delta z}\\
+\frac{\Delta \opal}{\Delta  t} & = & w_\opal \, \frac{\Delta\opal}{\Delta z}\\
+\frac{\Delta \fdust}{\Delta  t} & = & w_\fdust \, \frac{\Delta\fdust}{\Delta z}
+\end{eqnarray}
+
+using a downward implicit scheme. 
+
+\subsubsection{\label{sinking_variable}Aggregation and sedimentation using
+variable sinking rates}
+
+Using the option {\tt -DAGG}, the model explicitely calculates the particle
+size distribution of marine snow (phytoplankton + detritus), and its variations
+in time and with depth caused by aggregation, sinking, and zooplankton mortality. The
+approach follows the one presented in Kriest and Evans (2000)\nocite{kriest:2000},
+modified by Kriest (2002)\nocite{kriest:2002}, and details for the aggregation
+model can be found there. Here, only the modifications specific to \ham are
+presented.
+
+For the computation of aggregation it is necessary to consider an additional 
+state variable, the number of marine snow aggregates (\nos). \nos represents
+the number of marine snow particles, which consist of alive phytoplankton (\phy)
+and detritus (\det). The approach assumes that the relation between particle
+diameter and phosphorous content follows a power law with parameters $\zeta$
+for the slope on a logarithmic scale, and $m_l$ for the phosphorous content of
+the minimum size particles (see table \ref{tab_agg_params}). It is also assumed that the 
+sinking speed of individual particles depends on their diameter to the power of
+$\eta$, and a minimum sinking speed, $w_l$. It is further assumed that the size
+distribution of particles can be approximated by a power law function. The
+parameters of the latter (in particular its exponent $\epsilon$) can then be
+computed from the number and mass of the aggregates at every time step and
+location. 
+
+Number of particles and mass of particles change independently. 
+The number of particles changes due to aggregation (i.e. collision
+and subsequent adherence of particles, term $\xi$ in equation
+\ref{eq_nos_surface} and \ref{eq_nos_deep}; for further details see Kriest,
+2002, and citations therein), and sinking of particles, which especially
+removes the larger particles. Thus the relationship between particle numbers and mass
+(e.g., the average particle size) changes with time and location, and so does the
+mean sinking speed of the particle population.
+
+\paragraph{Effects of biogeochemical processes  on particle size} Except for
+zooplankton mortality neither of the biogeochemical processes that shift mass
+between the dissolved phase and either phytoplankton or detritus (see eqns.
+\ref{eq_phy_sur} and \ref{eq_det_sur} for surface, and eqns.
+\ref{eq_det_aerob}, \ref{eq_det_anaerob1} and \ref{eq_det_anaerob2} for deep
+ocean processes)  is assumed to change the particle size distribution.  
+In contrast to former implementations  of the aggregation
+model, in \ham it is assumed that dead zooplankton corpses (or the fecal
+pellets of the predators) always add large particles to marine snow. This is
+parameterized by a constant flat slope of the size distribution of this flux
+from zooplankton to detritus in the following way: if the slope $\epsilon^*$ of
+the size distribution of any process with mass flux $P$ is given by
+
+\begin{equation}
+\epsilon^* = \frac {(\zeta + 1) \, P - m_l \, \nos_P}{ P - m_l \, \nos_P},
+\end{equation}
+
+solving for  $\nos_P$ then gives the appropriate number of marine snow aggregates for any
+desired slope of size distribution. In particular, if the slope is 
+$\zeta + 1 + \epsilon_0$, then
+\begin{equation}
+\nos_P = P \, \frac {\epsilon_0}{ (\zeta+\epsilon_0)\, m_l}
+= P \, zdis
+\end{equation}
+
+By choosing a very small $\epsilon_0$, a flat size distribution (a large
+average size for particles) for the flux $P$ is parameterized. Thus for surface
+water the number of dead zooplankton / predator fecal pellets is:
+\begin{equation}
+zmort =  \lambda_{\zoo}^{surf} \, (1-\omega_{mort,\pho}) \, \zoo \, zdis
+\end{equation}
+
+And for deep water:
+\begin{equation}
+zmort =  \lambda_{\zoo,\det}^{deep} \, \zoo \, zdis
+\end{equation}
+
+\paragraph{Aggregation} Aggregation ($\xi$) depends on the particle abundance,
+their size distribution, rate of turbulent shear and the difference in particle
+sinking speeds, and the stickiness (the probability that two particles  stick
+together after contact). The approach implemented in the \ham follows the one
+described in Kriest (2002; see there for term $\xi$ and its computation).
+Currently it is assumed that turbulent shear is high in the upper $k_{eu}$ layers, and
+zero below. Summing-up the number of collisions due to turbulent shear and differential
+settlement, $C_{sh}$ and $C_{se}$, respectively, the decrease of the number of particles due to
+aggregation then is
+
+\begin{equation}
+\xi = Stick^* \, \left( C_{sh} + C_{se} \right)
+\end{equation}
+
+While previous implementations of the aggregation model assumed a constant
+stickiness e.g. for a phytoplankton community dominated by diatoms, in \ham,
+because it explicitely considers  diatoms, coccolithophorids, and flagellates,
+stickiness is supposed to vary. Although little is known about the stickiness
+of the non-diatom groups, it seems that diatoms are the main contributors to
+formation of marine snow. Thus, in the approach applied here, the actual stickiness
+($Stick^*$) depends on the abundance of \opal, i.e. living or dead diatoms. If
+there is no opal, stickiness is zero; if all of the phytoplankton and detrital
+mass  is as diatoms, it is half of its maximum value, $Stick$; if there is only
+opal, but no organic matter (i.e. ``aged'' diatom detritus), its stickiness is
+at its maximum value.
+
+\begin{equation}
+Stick^*=Stick\,\frac{\frac{\opal}{R_{Si:P}}}{\frac{\opal}{R_{Si:P}}+\phy+\det}
+\end{equation} 
+
+Thus, stickiness varies with the (present and past) phytoplankton community
+composition, and with the ``age'' of sinking matter. 
+
+\paragraph{Sinking rates of number and mass of aggregates} Sinking of particles with
+regard to their number and mass is
+simulated as described in Kriest and Evans (2000) and Kriest (2002) (see there
+for term $\Phi$ for number sinking and  term $\Psi$ for mass sinking). In
+particular, assuming that the relationship between diameter and mass of a
+particle can be described by a power law defined by the parameters $\eta$ and
+$w_l$ (see table \ref{tab_agg_params}), the {\em average} sinking rates of
+numbers ($\bar{w}_{\nos}$) and mass ($\bar{w}_{\phy}=\bar{w}_{\det}$) can be 
+computed  from
+\begin{eqnarray}
+\bar{w}_{\phy} & = & \bar{w}_{\det} = w_l \, \frac{\zeta+1-\epsilon
++\left(\frac{L}{l}\right)^{1+\eta+\zeta-\epsilon}\,\eta}{1+\zeta+\eta-\epsilon}\\
+\bar{w}_{\nos} & = & w_l \, \frac{1-\epsilon
++\left(\frac{L}{l}\right)^{1+\eta-\epsilon}\,\eta}{1+\eta-\epsilon}
+\end{eqnarray}
+
+\paragraph{Equation for the number of aggregates}  Combining the effect of biogeochemical processes,
+aggregation and sedimentation, the time derivative for the number of marine snow
+aggregates in the euphotic zone is 
+\begin{eqnarray}
+\label{eq_nos_surface}
+\frac{\Delta \nos}{\Delta  t} & = & 
+ zmort - \xi + \frac{\Delta \left(\bar{w}_{\nos} \nos\right)}{\Delta z}\\
+&&+ \left( phosy - \left(\phy-2\,\phy_0\right) \lambda_{\phy,\dom}
+- grazing \, \epsilon_\zoo 
+\right) \, \frac{\nos}{\phy+\det} \nonumber 
+\end{eqnarray}
+
+and for deep water 
+\begin{eqnarray}
+\label{eq_nos_deep}
+\frac{\Delta \nos}{\Delta  t} & = & 
+ zmort - \xi + \frac{\Delta \left(\bar{w}_{\nos} \nos\right)}{\Delta z}\\
+&& - \left( remin^{aerob}_\det+remin^{anaerob}_\det \right) \, \frac{\nos}{\phy+\det} \nonumber 
+\end{eqnarray}
+
+
+\paragraph{Sedimentation of mass} No attempt has been made to change the
+sinking speed with respect to the amount of calcium carbonate or opal in the
+particles. Assuming that opal and calcium carbonate shells sink with the same
+rate as organic matter ($\bar{w}_{\opal} = \bar{w}_{\cal} = \bar{w}_{\phy}$)
+the sedimentation of organic matter then reads:
+\begin{eqnarray}
+\frac{\Delta \phy}{\Delta  t} & = & \frac{\Delta \left(\bar{w}_{\phy} \phy\right)}{\Delta z}\\
+\frac{\Delta \det}{\Delta  t} & = & \frac{\Delta \left(\bar{w}_{\det} \det\right)}{\Delta z}\\
+\frac{\Delta \opal}{\Delta  t} & = & \frac{\Delta \left(\bar{w}_{\opal} \opal\right)}{\Delta z}\\
+\frac{\Delta \cal}{\Delta  t} & = & \frac{\Delta \left(\bar{w}_{\cal} \cal\right)}{\Delta z}
+\end{eqnarray}
+
+Sedimentation is calculated using an upward explicit scheme. At the beginning
+of each model run the possible maximum sinking speed of particles is checked
+against the minimum depth of the boxes and the model time step to avoid
+overshoots during simulation.  However, during simulation the depth of the
+surface ocean layer may decrease due to ice coverage, evaporation etc. To avoid
+overshoots in this layer, the model first performs a check with respect to
+sinking rate vs. layer thickness by time step; in case of possible overshoots, it
+decreases the maximum length for size dependent sinking and aggregation, $L$,
+such that the sinking speed will not exceed layer thickness / time step length.
+
+\paragraph{Aggregation and sedimentation of dust} Free dust (\fdust) enters the oceanic
+surface layer as single particles. It is assumed that single dust
+particles in the water do not aggregate with each other, but that they are
+subject to aggregation with marine snow particles (of biogenic origin). To
+simulate aggregation of free dust particles with marine snow, we follow
+basically the approach by Kriest and Evans (2000; see description of marine
+snow  aggregation), i.e. the mass of those dust particles aggregating with
+marine snow (i.e. those that become aggregated dust) is goverened by the
+stickiness of marine snow, its number concentration, its size distribution,
+and concentration of free dust particles:
+\begin{eqnarray}
+\label{eq_dustagg}
+\xi_d & = & \nos \, \fdust \, Stick^* \, \left( C_{d,sh} + C_{d,se} \right) \qquad \mbox{with}\\
+C_{d,sh} & = & 0.163 \, shear \,  \left(1-\epsilon \right) \, \left[ 
+ \left(l_d^3+3\,l_d^2\,L+3\,l_d\,L^2+L^3 \right)\,\frac{F_L}{1-\epsilon} \right. \\
+& & - \left(    \frac{F_L-1   }{1-\epsilon}\,l_d^3
+            +3\,\frac{F_L\,L-l}{2-\epsilon}\,l_d^2  
+    + \left. 3\,\frac{F_L\,L^2-l^2}{3-\epsilon}\,l_d
++            \frac{ F_L\,L^3-l^3}{4-\epsilon} \right) \right]\quad \nonumber  \\
+C_{d,se} & = &  0.125\,\pi\,w_l\,l_d^2\,
+\left( \frac{1-\epsilon+\eta\,F_L\,F_S}{1+\eta-\epsilon}-\frac{w_\fdust}{w_l}\right) \quad 
+\nonumber \\
+F_L & = &  \left( \frac{L}{l}\right)^{1-\epsilon} \quad \mbox{and} \qquad
+    F_S =  \left( \frac{L}{l}\right)^{\eta}\nonumber 
+\end{eqnarray}
+
+where $l$ and $L$ are the lower and upper boundary of marine snow for size
+dependent aggregation, $w_l$ is the minimum sinking speed of marine snow. The
+aggregation of free dust particles with marine snow leads to a (mass)  loss of
+free dust and to a gain of aggregated dust. Aggregated dust then sinks with the
+sinking speed of marine snow ($\bar{w}_\phy$). Thus, in this approach biogenic
+particles act as a trigger to transport aeolian dust downwards in aggregated
+form, while the single dust particles still sink with their slow, constant
+sinking speed:
+\begin{eqnarray}
+\frac{\Delta  \fdust}{\Delta  t} & = & - \xi_d + w_\fdust \frac{\Delta \fdust}{\Delta z} \\
+\frac{\Delta  \adust}{\Delta  t} & = &  \xi_d +  \frac{\Delta (\bar{w}_\phy \adust)}{\Delta z}   
+\end{eqnarray}
+
+
+\subsection{\label{sediment}The sediment}
+
+The simulation of the oceanic sediment  is done basically in the same way as in
+Heinze and Maier Reimer (1999)\nocite{heinze:1999b}, with slight differences to
+account for the porosity of the sediment, and for the relationships between the
+different tracers (P, N, C, O; see table \ref{tab_sedi_tracers}). Its upper
+boundary condition is given by the export from the bottom ocean layer (input) and by
+the nutrient concentration in the bottom layer (for water - sediment diffusive
+exchange of dissolved constitutents). Simulated processes are decomposition of
+detritus -both under aerobic and anaerobic conditions-  and
+dissolution of opal and calcium carbonate, carbon chemistry, and the vertical diffusion
+of porewater. The model is closed at the lower boundary with
+respect to porewater diffusion.
+
+%table7
+\begin{table}[htb]
+{\caption{\label{tab_sedi_tracers}  Biogeochemical tracers in the sediment
+model, their names in the text and their index {\tt ix} in the model  tracer
+fields {\tt powtra(ie,je,ks,ix)} ({\underline po}re {\underline wa}ter {\underline tra}cer) and  {\tt
+sedlay(ie,je,ks,ix)}. The index is defined in {\tt mo\_param1\_bgc.f90}, and the
+model tracer field is declared in {\tt mo\_carbch.f90}. Subscript $s$ stands for sediment.} }
+\vspace{.2cm}
+\renewcommand{\baselinestretch}{1}
+\footnotesize
+\begin{center}
+\begin{tabular}{lllll} \hline
+symbol & meaning & name & {\tt ix} & units \\ \hline
+\multicolumn{3}{l}{\it state variables of the pore water ({\tt
+powtra(ie,je,ks,ix)})}\\
+$\car_s$  & dissolved inorganic carbon &{\tt ipowaic}  & 1 & \concC \\
+$\alk_s$  & alkalinity        &{\tt ipowaal}  &  2 & \concalk \\
+$\pho_s$  & phosphate         &{\tt ipowaph}  &  3 & \concP \\
+$\oxy_s$  & oxygen            &{\tt ipowaox}  &  4 & \concO \\
+$\ntwo_s$ & N$_2$             &{\tt ipown2}   &  5 & \concN \\
+$\nit_s$  & nitrate           &{\tt ipowno3}  &  6 & \concN \\
+$\sio_s$  & silicate          &{\tt ipowasi}  &  7 & \concSi \\ \hline
+\multicolumn{3}{l}{\it state variables of the solid fraction ({\tt
+sedlay(ie,je,ks,ix})}\\
+$\det_s$  & detritus          &{\tt issso12}  & 1 & \concP \\
+$\opal_s$ & opal              &{\tt issssil}  & 2 & \concSi \\
+$\cal_s$  & calcium carbonate &{\tt isssc12}  & 3 & \concC \\ 
+$\dust_s$  & clay (from free and aggregated dust) &{\tt issster}  & 4 & \concdust \\ \hline
+\end{tabular}
+\end{center}
+\renewcommand{\baselinestretch}{1.5}
+\normalsize
+\end{table}
+
+The sediment is resolved by 12 layers, with increasing thickness
+and  decreasing porosity from top to bottom. It is assumed that the
+porosity of the sediment remains constant over the integration time.
+In the real ocean there is a continuous uplifting of the sediment 
+surface with a typical velocity of 19 x $10^{-5}$ m/a. To maintain
+the porosity profile and the higher resolution at the sediment-water 
+interface in the model, particulate matter is shifted downwards. Upward
+shifting occurs if the sediment porosity would fall below the prescribed value.
+This could occur, e.g., when sea-ice forms at the surface and production of detritus 
+in the water column stops. In this case there is no flux of particulate 
+matter to the sediment while the dissolution or 
+decomposition of particulate components in the sediment continuous.
+
+Below the biologically active 12 layers there is additionally a diagenetically
+consolidated layer ({\tt burial}), containing all the particulate tracers that
+have been shifted downward. This layer acts as a source for upward shifting. In
+case this layer is empty of all biogenic solid components, it is assumed that
+there is an unlimited supply of clay from below. 
+
+%table8
+\begin{table}[htb]
+{\caption{\label{tab_sedi_params}  Parameters of the sediment model, most of 
+them declared in {\tt beleg\_bgc.f90} and {\tt bodensed.f90} and communicated 
+between the modules in {\tt mo\_biomod.f90} and {\tt mo\_sedmnt.f90}.}}
+\vspace{.2cm}
+\renewcommand{\baselinestretch}{1}
+\footnotesize
+\begin{center}
+\begin{tabular}{llp{5cm}l} \hline 
+symbol & name & variable & units \\ \hline
+\multicolumn{4}{l}{\rule{0mm}{4mm}{\bf 2D fields over }{\tt (ie,je)} {\bf for boundary
+exchanges}}\\ \hline
+$ib$ &{\tt kbo}& k-index field of oceanic bottom layer & \\
+$\Delta z_{ib}$ &{\tt bolay}&  local thickness of oceanic bottom layer & m\\
+\multicolumn{4}{l}{\rule{0mm}{4mm}\bf stoichiometry}\\ \hline
+$R_{-O2:P}$ &{\tt ro2ut}& -O$_2$:P  ratio & mol O$_2$ mol P$^{-1}$\\
+$R_{C:P}$&{\tt rcar}& C:P  ratio &mol C mol P$^{-1}$\\
+$R_{N:P}$&{\tt rnit}& N:P  ratio &mol N mol P$^{-1}$\\ \hline
+\multicolumn{4}{l}{\rule{0mm}{4mm}{\bf sediment thickness and porosity}}\\
+ \hline
+$\Delta z_S$&{\tt seddw}& sediment layer thickness & m\\
+$\phi$ & {\tt porsol} & volume fraction of solid sediment &  \\ 
+$1-\phi$  & {\tt porwat} & volume fraction of porewater &  \\ 
+\multicolumn{4}{l}{\rule{0mm}{4mm}{\bf dissolution and diffusion} {\tt powach.f90}}\\
+ \hline
+- & {\tt sedict } & diffusion coefficient for porewater & m$^2$ d$^{-1}$\\
+$\kappa^{sedi}_{\opal,\sio}$& disso &dissolution coefficient for opal&(\concSi)$^{-1}$ d$^{-1}$\\
+$\kappa^{sedi}_{\det,\pho}$& - &remineralisation coefficient for detritus&(\concO)$^{-1}$ d$^{-1}$\\
+$\kappa^{sedi}_{\cal,\car}$& - &dissolution coefficient for calcium carbonate&(\concC)$^{-1}$ d$^{-1}$\\
+$[Ca^{2+}]$&{\tt calcon}& [$Ca^{2+}$] concentration & kmol m$^{-3}$\\
+$\lambda^{sedi}_{\det,\pho}$& denit &decomposition coefficient for denitrification& d$^{-1}$\\
+\multicolumn{4}{l}{\rule{0mm}{4mm}{\bf Sediment shifting} {\tt sedshi.f90}}\\ \hline
+$W_{\det}$ & {\tt orgwei} & weight of one mole detritus-P & kg (kmol P)$^{-1}$ \\ 
+$W_{\opal}$ & {\tt opalwei} & weight of one mole opal & kg (kmol Si)$^{-1}$  \\ 
+$W_{\cal}$ & {\tt calcwei} & weight of one mole CaCO$_3$ & kg (kmol C)$^{-1}$  \\ 
+$\rho_{\det}$ & {\tt orgdens} & density of organic carbon & kg m$^{-3}$ \\
+$\rho_{\opal}$ & {\tt opaldens} & density of opal & kg m$^{-3}$ \\
+$\rho_{\cal}$ & {\tt calcdens} & density of CaCO$_3$  & kg m$^{-3}$ \\
+$\rho_{\clay}$ & {\tt claydens} & density of clay & kg m$^{-3}$ \\ \hline
+\end{tabular}
+\end{center}
+\renewcommand{\baselinestretch}{1.5}
+\normalsize
+\end{table}
+
+
+\subsubsection{\label{sediment_biogeochemistry}Sediment biogeochemistry ({\tt
+powach.f90})}
+
+The model simulates the decomposition of particulate matter (particulate
+organic phosphorous, opal, and calcium carbonate) simultaneously with the diffusion
+of pore water constituents (oxygen, silicate and dissolved inorganic carbon),
+using a backward approach (see Heinze and Maier-Reimer, 1999). It further
+simulates concomitant changes in phosphate, nitrate, alkalinity and their
+diffusion, and also computes denitrification in the sediment. This section
+first describes the general procedure for the simulation of decomposition and
+diffusion. Details for the different tracers and processes are
+described later. The following assumptions and notations are made:
+
+\begin{enumerate}
+\item The fraction of solid sediment is denoted by $\phi$, the fraction of pore
+water is then $1 - \phi$. 
+\item $\phi$ varies with depth, but not with time.
+\item The concentration of the solid components $S$ relates to the volume of the solid
+fraction in the sediment, and the concentration of pore water constituents
+relates to the volume of pore water.
+\item Given a solid component, $S$, (e.g., opal) it is assumed that its 
+decomposition rate $\kappa \, X$ depends on its dissolved counterpart $X$ ($X = $
+silicate undersaturation  for opal dissolution; $X = $ oxygen concentration for
+particulate organic matter decomposition;  $X = $ carbonate ion concentration
+for calcium carbonate dissolution). Thus, $\kappa$ has units of  d$^{-1}$ (mmol X
+m$^{-3}$)$^{-1}$.
+\item The diffusion term is here simply given as $D^*X_{zz}$
+ with $D^*~5 \mathrm{x} 10^{-10}m^2s^{-1}$
+\item Input to the sediment from above is given by term $Q$, and provided by the
+water column model. The term is $\ge 0$ for the top layer, and $ = 0$ for all
+others. In the following, term $Q^*$ is used, which is input distributed over 
+the total solid volume of the uppermost sediment layer: $Q^* = Q / (\phi\, \Delta
+z_1)$.
+\end{enumerate}
+
+During remineralisation/dissolution the particulate phase $S$ 
+enters the dissolved phase, $X$, i.e. the respective tracer shifts from a
+volume given by $\phi$  into the volume given by $1-\phi$.  (The porewater that
+exchanges with the overlying water is distributed over the volume of the
+overlying layer). Thus, the equation for the system consisting of $S$ and $X$
+is: 
+\begin{eqnarray}
+\frac{\Delta S}{\Delta t} & = & -\kappa \, X \, S  + Q^*\label{dgls}\\
+\frac{\Delta X}{\Delta t} & = & D^*X_{zz} - \kappa \, X \, S \, \frac{\phi}{1-\phi}\label{dglx}
+\end{eqnarray}
+
+With $S^* = S / (\phi\, \Delta z_1) $, the implicit discretized scheme for 
+equations \ref{dgls} and \ref{dglx} is then:
+\begin{eqnarray}
+\frac{S^*-S^{t}}{\Delta t} & = & -\kappa \, X^{t} \, 
+S^*  + Q^*\label{diss}\\
+\frac{X^{t+\Delta t}-X^{t}}{\Delta t} & = & D^*_{zz} .
+\end{eqnarray}
+The final equation for $S$ is then:
+\begin{eqnarray}
+S^{t+\Delta t} & = & \frac{S^t+Q^*\, \Delta t}
+{1+\kappa \, \Delta t \, X^{t+\Delta t}} \label{sfinal1}\\ 
+& = & S^t - \kappa \, \Delta t \, X^{t+\Delta t} \, 
+\frac{ S^{t} + Q^* \, \Delta t} {1+ \kappa \,  \Delta t \,
+X^{t + \Delta t}} + Q^* \, \Delta t \label{sfinal2}
+\end{eqnarray}
+
+\paragraph{Silicate and opal} Opal dissolves to silicate; the rate of
+dissolution depends on a constant $\kappa_{\opal}$ and the undersaturation of
+the pore water, $U_\sio = Sat_\sio - \sio_s$. The system for silicate and opal
+is solved on the basis of the undersaturation of silicate:
+\begin{eqnarray}
+\frac{\Delta \opal_s}{\Delta t} & = & -\kappa^{sedi}_{\opal,\sio} \, U_\sio \, \opal_s  + Q^*_\opal\label{dglopal_sed}\\
+\frac{\Delta U_\sio_s}{\Delta t} & = & D^* - \kappa^{sedi}_{\opal,\sio} \, U_\sio\, \opal_s \, \frac{\phi}{1-\phi}\label{dglsio_sed}
+\end{eqnarray}
+
+The system is solved for the new undersaturation $U^{t+\Delta t}_\sio$  as
+explained in the previous section, and the new silicate concentration in the
+pore water and new opal concentration is computed from it.
+\begin{eqnarray}
+\sio^{t+\Delta t}_s & = & Sat_\sio - U^{t+\Delta t}_\sio \\
+\opal^{t+\Delta t}_s & = & \opal^t_s + Q^*_\opal \, \Delta t \\
+&& -\kappa^{sedi}_{\opal,\sio} \, \Delta t \, U^{t+\Delta t}_\sio \, 
+\frac{ \opal^{t} + Q^*_\opal \, \Delta t} {1+ \kappa^{sedi}_{\opal,\sio} \,  \Delta t \,
+U^{t + \Delta t}_\sio} \nonumber 
+\end{eqnarray}
+
+\paragraph{Detritus decomposition/Aerobic conditions} It is assumed that
+detritus ($\det_s$) degrades with a constant rate $\kappa^{sedi}_{\det,\pho}$
+[(\concO)$^{-1}$ d$^{-1}$] to phosphate [\concP]. This degradation depends on 
+the oxygen available (\oxy, \concO). The stoichiometric ratio $R_{-O2:P}$ sets the
+moles of oxygen which are consumed per mole of phosphorous that is decomposed. 
+First, neglecting the diffusion of dissolved tracers other than oxygen, and 
+the effect of remineralisation on them,  the system is:
+\begin{eqnarray}
+\frac{\Delta \det_s}{\Delta t} & = & -\kappa^{sedi}_{\det,\pho} \, \oxy_s \, \det_s  + Q^*_\det\label{dglpop}\\
+\frac{\Delta \oxy_s}{\Delta t} & = & D^* - \kappa^{sedi}_{\det,\pho} \, \oxy_s \, \det_s  \, R_{-O2:P} \, \frac{\phi}{1-\phi}\label{dglox}
+\end{eqnarray}
+
+ (Note, that if option {\tt -DAGG} has been given during compilation, $Q^*_\det$
+includes the input of sinking detritus and phytoplankton to the sediment, as
+both components sink in that model setup.)
+The system is solved for the new oxygen as described above, however, 
+the stoichiometric constant, $R_{-O2:P}$ is included in the computation of new
+oxygen, i.e. the system to be solved for the new oxygen concentration is:
+\begin{eqnarray}
+\frac{\oxy^{t+\Delta t}_s-\oxy^{t}_s}{\Delta t} & = & 
+D^* + \kappa^{sedi}_{\det,\pho} \, \oxy^{t+\Delta t}_s \, 
+\frac{ \det^{t}_s + Q^*_\det \, \Delta t} {1+ \kappa^{sedi}_{\det,\pho} \,  \Delta t \,
+\oxy^t_s } \, R_{-O2:P} \, \frac{\phi}{1-\phi} 
+\end{eqnarray}
+
+After solving for $\oxy^{t+\Delta t}_s$, then  
+\begin{eqnarray}
+\det^{t+\Delta t}_s & = & \det^t_s + Q^*_\det \, \Delta t \\
+&& -\kappa^{sedi}_{\det,\pho} \, \Delta t \, \oxy^{t+\Delta t}_s \, 
+\frac{ \det^{t} + Q^*_\det \, \Delta t} {1+ \kappa^{sedi}_{\det,\pho} \,  \Delta t \,
+\oxy^{t + \Delta t}_s} \nonumber 
+\end{eqnarray}
+
+
+Further, for the calculation of the associated phosphate gain, the phosphorous
+shifts from a volume given by $\phi$  (from detritus in solid fraction)
+to the volume given by $1-\phi$ (the pore water fraction). In addition, the change of nitrate, dissolved inorganic carbon and alkalinity
+has to be accounted for using stoichiometric ratios.
+\begin{eqnarray}
+\frac{\Delta \pho_s}{\Delta t} & = &  \kappa^{sedi}_{\det,\pho} \, \oxy^{t+\Delta t}_s \, 
+\frac{ \det^{t} + Q^*_\det \, \Delta t} {1+ \kappa^{sedi}_{\det,\pho} \,  \Delta t \,
+\oxy^{t + \Delta t}_s}\frac{\phi}{1-\phi}\label{dglpho}\\
+\frac{\Delta \nit_s}{\Delta t} & = & R_{N:P} \frac{\Delta \pho_s} {\Delta t} \label{dglnit}\\
+\frac{\Delta \car_s}{\Delta t} & = & R_{C:P} \frac{\Delta \pho_s} {\Delta t} \label{dglcar}\\
+\frac{\Delta \alk_s}{\Delta t} & = & - R_{N:P} \frac{\Delta \pho_s} {\Delta t} \label{dglalk}
+\end{eqnarray}
+
+The diffusion of these pore water tracers is computed in a seperate step, together
+with other constituents, at the end of all remineralisation-diffusion
+computations.
+
+\paragraph{Anaerobic conditions/denitrification} As for the water column,
+denitrification in the sediment occurs where oxygen falls  below a certain
+level, and where detritus and nitrate are present:
+\begin{eqnarray}
+\frac{\Delta \det_s}{\Delta t} & = & \lambda_{\det,\pho}^{sedi} \,
+\min\left(\det_s ,\frac{0.5\,\nit}{\frac{2}{3} R_{-O2:P} \, \Delta t}  \right)
+\end{eqnarray}
+
+Phosphate from detritus decomposition moves from a volume fraction 
+defined by $\phi$ (solid sediment) to a volume fraction defined
+by $1-\phi$ (pore water). The associated losses and gains for the other tracers are determined from
+the phosphate gain multiplied by the stoichiometric ratio:
+\begin{eqnarray}
+\frac{\Delta \pho_s}{\Delta t} & = & \frac{\Delta \det_s}{\Delta t} \, \frac{\phi}{1-\phi}\\
+\frac{\Delta \nit_s}{\Delta t} & = &  \left(R_{N:P} - \frac{2}{3} \,
+R_{-O2:P}\right)  \frac{\Delta \pho_s}{\Delta t} \\
+\frac{\Delta \ntwo_s}{\Delta t} & = & \frac{1}{3} \,R_{-O2:P} \, \frac{\Delta
+\pho_s}{\Delta t}\\
+\frac{\Delta \car_s}{\Delta t} & = & R_{C:P} \, \frac{\Delta \pho_s}{\Delta t}\\
+\frac{\Delta \alk_s}{\Delta t} & = & - R_{N:P} \, \frac{\Delta \pho_s}{\Delta t}
+\end{eqnarray}
+
+
+\paragraph{Calcium carbonate dissolution and inorganic carbon cycle} The
+dissolution of calcium carbonate is simulated as in the water colum: first,
+from the dissociation constants for carbon dioxide the system  is solved for
+the carbonate ion concentration, [CO$_3^{2-}$]. The apparent solubility product
+of calcite, $S_{Ca}$, and mean total [Ca$^{2+}$] concentration are then used to
+compute the undersaturation of the pore water carbonate,  $U_{CO3}=\max
+\left(0, [Ca^{2+}]\,S_{Ca} - [CO_3^{2-}]\right)$. Using a constant
+dissolution rate $\kappa^{sedi}_{\cal,\car}$, the system for $U_{CO3}$ and
+calcium carbonate 
+\begin{eqnarray}
+\frac{\Delta \cal_s}{\Delta t}& = &  -\kappa^{sedi}_{\det,\pho} \, U_{CO3} \, \cal_s  + Q^*_\cal \label{dglcal}\\
+\frac{\Delta U_{CO3}}{\Delta t} & = & D^* - \kappa^{sedi}_{\det,\pho} \, U_{CO3}\, \cal_s \, \frac{\phi}{1-\phi} \label{dglco3}
+\end{eqnarray}
+
+is solved for the new undersaturation, $U_{CO3}^{t+\Delta t}$ as explained
+above; and \cal$^{t+\Delta t}_s$ is computed in
+\begin{eqnarray}
+\cal^{t+\Delta t}_s &  = &  \cal^t_s + Q^*_\cal \, \Delta t \\
+&& - \kappa^{sedi}_{\det,\pho} \, \Delta t \, \, U_{CO3}^{t+\Delta t}
+\frac{ \cal^{t}_s  + Q^*_\cal\, \Delta t}
+{1+ \kappa^{sedi}_{\det,\pho} \, \Delta t \, U_{CO3}^{t+\Delta t}} \nonumber
+\end{eqnarray}
+
+Then the fluxes from carbonate dissolution are computed for inorganic carbon
+$\car_s$ and alkalinity $\alk_s$:
+\begin{eqnarray}
+\frac{\Delta \car_s}{\Delta t} & = & \kappa^{sedi}_{\det,\pho} \, \, U_{CO3}^{t+\Delta t}
+\frac{ \cal^{t}_s  + Q^*_\cal\, \Delta t}
+{1+ \kappa^{sedi}_{\det,\pho} \, \Delta t \, U_{CO3}^{t+\Delta t}}  \, \frac{\phi}{1-\phi}\\
+\frac{\Delta \alk_s}{\Delta t} & = & 2 \frac{\Delta \car_s}{\Delta t} 
+\end{eqnarray}
+
+\subsubsection{\label{sediment_shifting}Sediment upward and downward advection
+({\tt sedshi.f90})}
+
+Solid matter is deposited onto the sediment surface. It is displaced in the
+vertical (and, in reality, horizontally) by the action of burrowing organisms.
+\ham mimics the way in which animals move the sediment, by shifting sediment
+downwards and upwards, depending on the ``filling'' state of the sediment.
+Basically, two cases might occur (see also Heinze \etal, 1999a,
+\nocite{heinze:1999a} and Heinze and Maier-Reimer, 1999b\nocite{heinze:1999b}, 
+who also discuss two cases with ``humped'' profiles)
+
+\begin{enumerate}
+\item The actual volume of the solid constituents of a layer (i.e. the weight
+of  its solid constituents divided by their density) exceeds the volume
+prescribed (i.e. $\phi \times$ layer volume). This case may occur when
+deposition of solid matter onto the sediment is higher than its dissolution. 
+\item The actual volume of the solid constituents of a layer is too low to fill
+the prescribed volume. This case may occur when a region suddenly is covered by
+ice, sedimentation stops, but dissolution of solid constituents continues.
+\end{enumerate} 
+
+In the first case, the excess matter in the model sediment will be successively shifted downwards such
+that all layers maintain their porosity and volume. 
+The deepest layer empties its excess solid matter into a final
+storage layer, whichs contents are traced for the whole time of an integration.
+In the second case the vertically integrated lack of solid matter is
+calculated, and then solid matter from this deepest storage layer is distributed
+over the sediment successively, such that  all layers maintain their porosity
+and volume.
+
+The loading of the sediment ($v$) and its resulting shifting rate ($w$) is
+determined from the weight concentration ($W_X\, X$) and densities ($\rho_X$)
+of all solid sediment components $X$. 
+\begin{eqnarray}
+v & = & \frac{W_{POC}\,\det_s\,R_{C:P}}{\rho_{POC}}
++\frac{W_{\cal}\,\cal_s}{\rho_{\cal}}+\frac{W_{\opal}\,\opal_s}{\rho_{\opal}}
++\frac{\clay_s}{\rho_{\clay}}\\
+w & = & \max(0.,(v-1.)/(v))
+\end{eqnarray}
+
+
+The up- and downward movement of the different components depends on their
+concentration. If there is the need for upward shifting of sediment, i.e. of
+supply from the permanently buried layer, but there are no biogenic components in this
+layer, it is assumed that there is an infinite supply of clay from below. Thus
+the state equation for changes due to sediment shifting  for layers 1 to ke,
+with $W(0) = 0$  is
+\begin{eqnarray}
+\frac{\Delta \det_s}{\Delta t} & = &  \frac{\Delta (w \, \det)}{\Delta (\phi\,z)}\\
+\frac{\Delta \opal_s}{\Delta t} & = & \frac{\Delta (w \, \opal)}{\Delta (\phi\,z)}\\
+\frac{\Delta \cal_s}{\Delta t} & = & \frac{\Delta (w \, \cal)}{\Delta (\phi\,z)}\\
+\frac{\Delta \clay_S}{\Delta t} & = & \frac{\Delta (w \, \clay)}{\Delta (\phi\,z)}
+\end{eqnarray}
+
+\clearpage
+\newpage
+\section{\label{sources}The biogeochemical modules of \ham}
+
+Some of the following functionality depends on conditional compile parameters.
+Please see section \ref{preprocessor_options} for a list of the available preprocessor options.
+
+\subsection{\label{initialization}Initialization  of biogeochemistry {\tt
+ini\_bgc.f90}}
+
+All of the initialization is carried out within subroutine {\tt ini\_bgc.f90}
+(see figure \ref{inipic}). After the runtime (control) parameters are read and
+time series are initialized, the {\tt mo\_carbch.f90} module allocates memory
+for the biogeochemical tracers fields:
+
+\begin{description} 
+\item[water column:] {\tt ocetra(ie,je,ke,nocetra)}
+\item[atmosphere:] {\tt atm(ie,je,natm)}
+\item[sediment pore water:] {\tt powtra(ie,je,ks,npowtra)}, and
+\item[solid sediment:] {\tt sedlay(ie,je,ks,nsedtra)}
+\end{description}
+
+plus auxiliary arrays for chemical constants. Routine {\tt bodensed.f90} sets
+up sediment layer thickness and porosity, plus sediment parameters.  The
+biogeochemical parameters are set in {\tt beleg\_bgc.f90}. Here  a first (bulk)
+initialization of the tracers is done using global means. 
+%If the preprocessor
+%option {\tt BGCLEVI} is given during compilation, and the compilation is done
+%for a year-0 simulation, the values for nitrate, silicate, phosphate and oxygen
+%will be overwritten by routine {\tt bgc\_lev.f90}, which reads the initial
+%values from annual averages of the World Ocean Atlas, 1994, 
+%\cite{conkright:1994}.  
+The initialization is overwritten by routine {\tt
+aufr\_bgc.f90} for restart experiments using a netCDF restart file of the 
+global fields created by the previous simulation.  
+{\tt beleg\_bgc.f90} also calls routine {\tt get\_dust.f90}, which
+reads monthly mean dust deposition fields.  The chemical constants are initialized in
+routine {\tt chemcon.f90}, and finally checks and budgets for the tracers are
+calculated in the following routines {\tt }.
+
+
+\begin{figure}[htb]
+\caption{\label{inipic} Flow chart for initilization of \ham. }
+\setlength{\unitlength}{1cm}
+\begin{picture}(13,16.1)
+
+\put(0,1.1){\framebox(2.2,13.9){\tt ini\_bgc.f90}}
+
+\put(2.2,14.6){\vector(1,0){1.3}}
+\put(3.5,14.2){\framebox(4.0,0.8){\tt read\_namelist.f90}}
+
+\put(2.2,13.5){\vector(1,0){1.3}}
+\put(3.5,13.1){\framebox(4.0,0.8){\tt ini\_timeser\_bgc.f90}}
+
+\put(2.2,12.4){\vector(1,0){1.3}}
+\put(3.5,12.0){\framebox(4.0,0.8){\tt ALLOC\_MEM\_BGCMEAN}}
+
+\put(2.2,11.3){\vector(1,0){1.3}}
+\put(3.5,10.9){\framebox(4.0,0.8){\tt ALLOC\_MEM\_BIOMOD}}
+
+\put(2.2,10.2){\vector(1,0){1.3}}
+\put(3.5,9.8){\framebox(4.0,0.8){\tt ALLOC\_MEM\_SEDMNT}}
+
+\put(2.2,9.1){\vector(1,0){1.3}}
+\put(3.5,8.7){\framebox(4.0,0.8){\tt ALLOC\_MEM\_CARBCH}}
+
+\put(2.2,8){\vector(1,0){1.3}}
+\put(3.5,7.6){\framebox(4.0,0.8){\tt bodensed.f90}}
+
+\put(2.2,6.9){\vector(1,0){1.3}}
+\put(3.5,6.5){\framebox(4.0,0.8){\tt beleg\_bgc.f90}}
+%\put(7.5,5.9){\line(1,0){0.6}}
+%\put(8.1,5.35){\line(0,1){1.0}}
+%\put(8.1,6.35){\vector(1,0){0.8}}
+%\put(8.1,5.35){\vector(1,0){0.8}}
+
+%\put(8.2,6.6){\parbox{1cm}{(1)}}
+%\put(9.0,6.0){\framebox(3.5,0.8){\tt bgc\_lev.f90}}
+\put(7.5,6.9){\vector(1,0){0.6}}
+\put(8.2,6.5){\framebox(4.0,0.8){\tt get\_dust.f90}}
+
+\put(2.2,5.8){\vector(1,0){1.3}}
+\put(3.5,5.4){\framebox(4.0,0.8){\tt chemcon.f90}}
+
+\put(2.2,4.7){\vector(1,0){1.3}}
+\put(2.3,4.9){\parbox{1cm}{(1)}}
+\put(3.5,4.3){\framebox(4.0,0.8){\tt aufr\_bgc.f90}}
+
+\put(2.2,3.6){\vector(1,0){1.3}}
+\put(3.5,3.2){\framebox(6.5,0.8){\tt open\_bgcmean-2d-3d-bioz-sed.f90}}
+
+\put(2.2,2.5){\vector(1,0){1.3}}
+\put(3.5,2.1){\framebox(4.0,0.8){\tt inventory\_bgc.f90}}
+
+\put(2.2,1.4){\vector(1,0){1.3}}
+\put(3.5,1.0){\framebox(4.0,0.8){\tt chck\_bgc.f90}}
+\put(8,1.1){\parbox{6cm}{(1): {\tt if kpaufr = 1 (re-start)}}}
+%\put(8,1.6){\parbox{4cm}{(1): {\tt \-DBGCLEVI}}}
+
+\end{picture}
+\end{figure}
+
+\subsection{\label{computation_of_bgc}Computation of biogeochemistry {\tt
+bgc.f90}}
+
+Subroutine {\tt bgc.f90} computes all changes of pelagic biogeochemical tracers
+due to local processes (e.g., photosynthesis, heterotrophic processes,
+N-Fixation and denitrification, carbonate chemistry, dust deposition and
+release of dissolved iron), the air-sea gas exchange of carbon dioxide, oxygen,
+dinitrogen and DMS, and the benthic processes. It further computes the vertical
+displacement of particles, either using a constant sinking rate for some of the
+particulate components, or by computation of aggregation and resulting sinking
+rate (if the preprocessor key {\tt -DAGG} is set). Vertical flux
+in the bottom layer forms the boundary condition for the sediment. The different
+processes are calculated by calls from {\tt bgc.f90} to the subroutines. In
+particular, {\tt bgc.f90} does the following:
+
+
+
+\begin{figure}[hb]
+\caption{\label{bgcpic} Flow chart for simulation of biogeochemistry in \ham.
+The numbers at the arrows denote the  conditional execution of a subroutine, in
+case a preprocessor option  was active during compilation.}
+\setlength{\unitlength}{1cm}
+\begin{picture}(13,14.9)
+
+\put(0,0.0){\framebox(2,13.9){\tt bgc.f90}}
+
+\put(2,13.6){\vector(1,0){1.3}}
+\put(3.5,13.1){\framebox(6.5,0.8){\tt avrg\_bgcmean-2d-3d-bioz-sed.f90}}
+
+\put(2,12.5){\vector(1,0){1.3}}
+\put(3.5,12.1){\framebox(6.5,0.8){\tt save\_bgcmean-2d-3d-bioz-sed.f90}}
+
+\put(2,11.4){\vector(1,0){1.3}}
+\put(2.3,11.6){\parbox{1cm}{(1)}}
+\put(3.5,11.0){\framebox(3.5,0.8){\tt inventory\_bgc.f90}}
+
+\put(2,10.3){\vector(1,0){1.3}}
+\put(3.5,9.9){\framebox(3.5,0.8){\tt chemcon.f90}}
+
+\put(2,9.2){\vector(1,0){1.3}}
+\put(3.5,8.8){\framebox(3.5,0.8){\tt ocprod.f90}}
+
+\put(2,8.1){\vector(1,0){1.3}}
+\put(3.5,7.7){\framebox(3.5,0.8){\tt cyano.f90}}
+
+\put(2,7.0){\vector(1,0){1.3}}
+\put(3.5,6.6){\framebox(3.5,0.8){\tt carchm.f90}}
+
+\put(2,5.9){\vector(1,0){1.3}}
+\put(2.3,6.1){\parbox{1cm}{(2)}}
+\put(3.5,5.5){\framebox(3.5,0.8){\tt carchm\_ant.f90}}
+
+\put(2,4.8){\vector(1,0){1.3}}
+\put(2.3,5.0){\parbox{1cm}{(3)}}
+\put(3.5,4.4){\framebox(3.5,0.8){\tt atmotr.f90}}
+
+\put(2,3.7){\vector(1,0){1.3}}
+\put(3.5,3.3){\framebox(3.5,0.8){\tt powach.f90}}
+
+\put(7,3.7){\line(1,0){0.3}}
+\put(7.3,3.15){\line(0,1){1.1}}
+
+\put(7.3,4.25){\vector(1,0){0.7}}
+\put(8.2,3.85){\framebox(3.5,0.8){\tt powadi.f90}}
+\put(7.3,3.15){\vector(1,0){0.7}}
+\put(8.2,2.75){\framebox(3.5,0.8){\tt dipowa.f90}}
+
+\put(2,2.6){\vector(1,0){1.3}}
+\put(3.5,2.2){\framebox(3.5,0.8){\tt sedshi.f90}}
+
+\put(2,1.5){\vector(1,0){1.3}}
+\put(3.5,1.1){\framebox(4.5,0.8){\tt avrg\_timeser\_bgc.f90}}
+
+\put(2,0.4){\vector(1,0){1.3}}
+\put(2.3,0.6){\parbox{1cm}{(1)}}
+\put(3.5,0.0){\framebox(3.5,0.8){\tt inventory\_bgc.f90}}
+
+\put(9,1.0){\parbox{8cm}{(1): {\tt -DPBGC\_CK\_TIMESTEP}}}
+\put(9,0.5){\parbox{8cm}{(2): {\tt -DPANTHROPOCO2}}}
+\put(9,0.0){\parbox{8cm}{(3): {\tt -DDIFFAT}}}
+
+\end{picture}
+\end{figure}
+
+\begin{enumerate}
+\item Increase biogeochemical time step counters of run (year)  and total
+integration length.
+\item Compute net solar radiation and its reduction by ice cover.
+\item {\em (option }{\tt -DPBGC\_CK\_TIMESTEP}{\em)}: Call to {\tt
+inventory\_bgc.f90}: compute total inventory of tracers (for debugging
+purposes). 
+\item Increase the counter for calls to biogeochemical routine by one (for
+later averaging of monthly mean fields).
+\item If time step is the first of a month: compute chemical constants by call
+to subroutine {\tt chemcon.f90}.
+\item Call to biogeochemical subroutine {\tt ocprod.f90}:  Most of the
+biogeochemical interactions take place here, in particular:
+        \begin{itemize}
+        \item {\em Layers 1 to $k_{eu}$:} Photosynthesis, phytoplankton exudation and
+        mortality, zooplankton grazing, excretion, egestion and mortality,
+        remineralization of dissolved organic matter (DOM), opal and calcium
+        carbonate production, opal dissolution, DMS production, dust deposition
+        and iron release. 
+        \item {\em Layers $(k_{eu}+1)$ to $kb$:} Mortality of phyto- and zooplankton, aerobic
+        remoneralisation of detritus and DOM, dissolution of opal.
+        \item {\em Layers $(k_{eu}+1)$ to $kb$:} Anaerobic remineralization of detritus
+        (denitrification).
+        \item {\em Layers 1 to $kb$:} Sinking of detritus, opal, calcium carbonate
+        and dust, each with its own, constant sinking speed (default), or
+        computation of particle size change due to aggregation of phytoplankton
+        and detritus, computation of sinking speed and finally sinking of
+        phytoplankton, detritus, opal, calcium carbonate, free and aggregated
+        dust (option {\tt -DAGG}). In the latter case it is assumed that opal,
+        calcium carbonate and aggregated dust have the same (time and space
+        varying) sinking speed as phytoplankton and detritus, while free dust
+        sinks with its own, constant sinking speed.
+        \end{itemize}
+All of these processes are calculated on the basis of P. The associated
+changes in N and C are calculated using constant stoichiometric
+ratios.
+\item Call to {\tt cyano.f90}: Uptake of atmospheric nitrogen and immediate
+relase as nitrate by diazotrophs in the surface layer, calculated from a
+deviation of the N:P ratio of nutrients.
+\item Call to {\tt carchm.f90}: Sea-air gas exchange for oxygen, DMS, N$_2$
+and CO$_2$. Dissolution of calcium carbonate. Computes associated changes in
+DIC and alkalinity.
+\item {\em (option }{\tt -DPANTHROPOCO2}{\em)}: Call to {\tt carchm\_ant.f90}: Sea-air
+gas exchange, for anthropogenic tracers. Dissolution of calcium carbonate with
+respect to anthropogenic tracers. Computes associated changes in anthropogenic
+DIC and alkalinity.
+\item {\em (option }{\tt -DDIFFAT}{\em)}: Call to {\tt atmotr.f90}: Diffusive mixing of
+gaseous tracers in the atmosphere.
+\item Call to {\tt powach.f90}: Compute diffusion of all pore water tracers, 
+dissolution of opal and calcium carbonate in the sediment, and remineralisation
+(aerobic and anaerobic) of detritus in the sediment. Upper boundary conditions
+for the sediment are sedimentation out of the water column, and concentration
+of nutrients in the overlaying water (for pore water exchange with water). 
+\item Call to {\tt sedshi.f90}: Shift solid components of sediment downwards
+and upwards, to account for sediment volumetric gain or loss and maintain the
+porosity profile. This also accounts  for a layer of permanent burial, which
+collects the particulate matter (P, Si, C) lost over the full time of
+integration.
+\end{enumerate}
+
+\subsection{\label{parameters_and_variables}Parameters and variables}
+
+Global parameters and variables are communicated between the subroutines by
+the modules {\tt mo\_biomod.f90}, {\tt mo\_carbch.f90}, {\tt
+mo\_control\_bgc.f90}, {\tt mo\_sedmnt.f90} and \\
+{\tt mo\_timeser\_bgc.f90}. 
+
+The state variables of \ham and some of the (important)
+fields are explained in tables \ref{tab_water_tracers}, \ref{tab_carb_params},
+and \ref{tab_sedi_tracers}. All state variables for the water column and
+sediment are declared in module {\tt mo\_carbch.f90}, and their
+index in the biogeochemical tracer field is set in {\tt mo\_param1\_bgc.f90}.
+
+Most of the parameters are defined in routine {\tt beleg\_bgc.f90}. The
+parameters for water column biogeochemistry are used in routine {\tt
+ocprod.f90} and {\tt cyano.f90}, and handed over in module {\tt
+mo\_biomod.f90} (see table \ref{tab_bgc_params}). These also include the thickness
+and depth of the bottom layer in the water column, and the field for incident
+solar radiation. The parameters for sediment biogeochmistry are used in
+routines {\tt powach.f90}, {\tt powadi.f90} and {\tt dipowa.f90}, and handed
+over with the module {\tt mo\_sedmnt.f90} - however these routines also need
+the other modules, e.g. for stoichiometric ratios, variables, etc. Parameters
+for carbonate chemistry are mostly defined in routine {\tt chemcon.f90}, which
+computes the chemical constants once at the beginning of a simulation from
+temperature and salinity, and interpolates between monthly mean values. The
+surface constants may be overwritten by the ones stored in the restart file
+from the simulation of a previous year, and used later for interpolation
+between monthly vaues. They are handed over by module {\tt mo\_carbch.f90}. 
+
+
+\subsection{\label{modules}Modules and subroutines} 
+
+\subsubsection{atmotr.f90} 
+%Calculates atmospheric diffusion for surface
+%CO$_2$, O$_2$  and N$_2$.
+Distributes anthropogenic CO$_2$-emissions over source regions
+and calculates the atmospheric diffusion for atmospheric CO$_2$,
+O$_2$, and N$_2$.
+Called by {\tt bgc.f90}.
+
+\subsubsection{aufr\_bgc.f90} Reads restart fields of biogeochemical tracers to
+continue an integration. Uses either a netCDF file {\tt restart\_bgc.nc} ({\tt
+-DPNETCDF}) or a binary file {\tt restart\_bgc} (default). Masks tracers with
+land-sea mask, and restricts them to positive values, if necessary. Reads
+chemical constants. Reads, masks and restricts to positive values H$^+$ and CO$^{3-}$
+concentration, and permanently buried tracers in the sediment.  Called by {\tt
+ini\_bgc.f90} .
+
+\subsubsection{aufw\_bgc.f90} Writes restart data of biocheochmical tracers at
+the end of an integration. Writes either to netCDF file {\tt restartw\_bgc.nc} ({\tt
+-DPNETCDF}) or to binary file {\tt restart\_bgc} (default). Masks tracers 
+with land-sea mask before writing. Writes, masks and restricts H$^+$ and
+CO$^{3-}$ concentration. In case of netCDF output also writes the grid
+definition (latitude, longitude, water depth, box depth) and chemical
+constants. Called by {\tt mpiom.f90} ({\em MPI-OM}).
+
+\subsubsection{avrg\_bgcmean\_2d-\_3d.f90} Average monthly mean fields of
+biogeochemical tracers and fluxes. Called by {\tt bgc.f90} and {\tt end\_bgc.f90}.
+
+\subsubsection{avrg\_timeser\_bgc.f90} Averages time series output every   {\tt
+ldtrunbgc} time step. Increases sample counter of time series. Called by {\tt
+bgc.f90}. 
+
+\subsubsection{beleg\_bgc.f90} Initializes biogeochemical variables (with
+globally homogeneous values for all variables) and water column parameters,
+time step counters, variables for check-sums and budgets, fields for monthly
+mean output. Called by {\tt ini\_bgc.f90}.
+
+\subsubsection{bgc.f90} Main biogeochemical subroutine, called at each time
+step by {\tt mpiom.f90} {\em (MPI-OM)}. See above for description.
+
+%\subsubsection{bgc\_lev.f90} Initializes biogeochemical water column variables
+%with World Ocean Atlas \cite{conkright:1994} phosphate, nitrate, silicate and
+%oxygen. Uses files {\tt INIPHO}, {\tt ININIT}, {\tt INISIL} and {\tt INIOX}.
+%Called by  {\tt beleg\_bgc.f90} after globally homogeneous initilization, if
+%preprocessor option {\tt -DBGCLEVI} is given.
+
+\subsubsection{bodensed.f90} Initializes sediment (layers, thickness, pore
+water fraction). Defines thickness ({\tt bolay(ie,je)}) and index ({\tt
+kbo(ie,je)}) field for sediment-water interaction. Sets sediment parameters.
+Called by {\tt ini\_bgc.f90}.
+
+\subsubsection{carchm.f90} Computes carbonate chemistry in the water column,
+and sea-air gas exchange, for oxygen, DMS, O$_2$, N$_2$ and CO$_2$. Computes
+dissolution of calcium carbonate. Called by {\tt bgc.f90}.
+
+\subsubsection{carchm\_ant.f90}  Sea-air
+gas exchange, for anthropogenic tracers. Dissolution of calcium carbonate with
+respect to anthropogenic tracers. Computes associated changes in anthropogenic
+DIC and alkalinity. Called by {\tt bgc.f90}.
+
+\subsubsection{close\_bgcmean\_2d-\_3d-\_bioz-\_sed.f90} Close mean fields of
+biogeochemical tracers and fluxes. Called by {\tt end\_bgc.f90}.
+
+\subsubsection{chck\_bgc.f90} Checks biogeochemical fields for invalid
+(negative) values in wet and dry fields (using ocean subroutine {\tt
+extr.f90}). Checks for cyclicity of tracers. 
+
+\subsubsection{chemcon.f90} Computes chemical constants in the surface layer ({\tt
+chemcm(ie,je,1-8,12}) and the water column ({\tt ak13(ie,je,ke)}, {\tt
+ak23(ie,je,ke)}, {\tt akb3(ie,je,ke)} and {\tt aksp(ie,je,ke)}) from
+temperature and salinity. This routine is called once in the beginning, and
+during the model run at the first time step of each month. Called by {\tt ini\_bgc.f90}
+and {\tt bgc.f90}. 
+Chemical constants for the surface layer will be computed only if the
+first argument in the call to {\tt CHEMCON} is ($\le 0$). The default for the first
+argument for a call from {\tt bgc.f90} is (-26). If the 
+first argument is set to (-13, default for call from initialization {\tt
+ini\_bgc.f90}), surface values for all months will be set to the current
+(usually month 1) values. Values for the surface will be overwritten by the ones
+from the restart file {\tt restartr\_bgc.nc}. The constants for the water column
+will be computed in any case. 
+
+\subsubsection{cyano.f90} Computes uptake of atmospheric nitrogen and its
+immediate release as nitrate by diazotrophs in the surface layer, calculated
+from a deviation of the N:P ratio of nutrients. Called by {\tt bgc.f90}.
+
+\subsubsection{dipowa.f90} Computes vertical diffusion of pore water tracers
+including diffusive flux through the sediment/water interface.
+Called by {\tt powach.f90}.
+
+\subsubsection{end\_bgc.f90} Finalizes marine biogeochemistry.
+Calculates global inventories for water column and sediment tracers and writes
+time series. Called at the end of the simulation by {\tt mpiom.f90} ({\em
+MPI-OM}). 
+
+\subsubsection{get\_dust.f90} Gets monthly mean fields of dust deposition. Uses
+file {\tt dust\_grob}. Called by {\tt beleg\_bgc.f90}
+
+\subsubsection{ini\_bgc.f90} Initializes the biogeochemical module. See
+detailed description above. Called by {\tt mpiom.f90} ({\em MPI-OM}).
+
+\subsubsection{ini\_timeser\_bgc.f90} Assigns grid cell indices for prescribed (by
+runtime namelist) latitude and longitude of time series. Additionally assigns 
+grid cell indices for three prescribed depths of sedimentation at time series. 
+Initializes field {\tt ts1(nvarts1,nelets1,lents1)}, where {\tt nvarts1} is the
+number of tracers (e.g., phytoplankton, phosphate, ...), {\tt nelets1} is the
+number of stations (note that the first one - i.e., index 1 - is currently used
+for global inventories and fluxes), and {\tt lents1} is the number of time
+steps. Dimension {\tt nvarts1} is defined in {\tt mo\_timeser\_bgc.f90}.
+Dimension {\tt nelets1} is defined from {\tt nts}  as in {\tt
+mo\_timeser\_bgc.f90} in this routine. Dimension {\tt lents1} is defined during
+runtime from the sampling frequency given in the namelist ({\tt nfreqts1}) and
+the total number of model time steps. Called by {\tt ini\_bgc.f90}.
+
+\subsubsection{inventory\_bgc.f90} Calculates global inventories of tracers in
+the water column and the sediment, and of additional tracers (H$^+$,
+CO$^{2-}_3$).  Calculates global inventories of mass. Calculates global fluxes of
+air-sea gas exchange (CO$_2$, O$_2$, N$_2$ and N$_2$O), and fluxes to to
+sediment (P, CaCO$_3$-C, Si). Calculates global fluxes of antropogenic tracers
+for option {\tt -DPANTHROPOCO2}. Calculates global total C, N, P, and Si. Called
+by {\tt ini\_bgc.f90} and {\tt  bgc.f90}.
+
+\subsubsection{ocprod.f90} Most of the biogeochemical interactions take place
+here, see subsection \ref{computation_of_bgc} for details. Called by {\tt
+bgc.f90}.
+
+\subsubsection{mo\_param1\_bgc.f90} Header file that defines and declares the
+indices for the arrays of water column tracers ({\tt nocetra}, for array {\tt
+ocetra(ie,je,ke,nocetra)}), pore water tracer ({\tt npowtra}, for array {\tt
+powtra(ie,je,ks,npowtra)}), solid sediment ({\tt nsedtra}, for array {\tt
+sedlay(ie,je,ks,nsedtra)}) and atmospheric tracers ({\tt natm}, for array {\tt
+atm(ie,je,natm)}). Also sets the dimension of the monthly mean fields {\tt
+bgcm2d} and {\tt bgcm3d}). 
+
+\subsubsection{open\_bgcmean\_2d-\_3d-\_bioz-\_sed.f90} Open the monthly mean fields of
+biogeochemical tracers and fluxes. Called by {\tt ini\_bgc.f90}.
+
+\subsubsection{powach.f90} Computes diffusion of porewater tracers, dissolution
+of opal and calcium carbonate and remineralisation (aerobic and anaerobic) of
+detritus in the sediment. Called by {\tt bgc.f90}.
+
+
+\subsubsection{powadi.f90} Solves tridiagonal matrix for computation of
+simultaneous dissolution and diffusion in the sediment. Called by {\tt
+powach.f90}.
+
+\subsubsection{read\_namelist.f90} Reads the parameters handed at run time to
+the model from file {\tt NAMELIST\_BGC}. See section \ref{io} for  names and
+meaning of parameters to be read. Called by  {\tt ini\_bgc.f90}.
+
+\subsubsection{save\_timeser\_bgc.f90} Writes time series output to ASCII
+file {\tt timeser\_bgc}. Writes inventories and fluxes, as well as globally
+integrated sedimentation to file {\tt bgcout} for budgets. Called by {\tt
+end\_bgc.f90}.
+
+\subsubsection{sedshi.f90} Shifts solid components of sediment downwards and
+upwards, to account for volumetric sediment gain or loss. This includes a layer
+for permanent burial, which collects the particulate matter (P, Si, C, clay)
+over the full time of integration. Called by {\tt bgc.f90}. 
+
+%\subsubsection{TREDSY.h} Defines auxiliary field {\tt tredsy(ie,0:ke,3)} needed
+%by {\tt powadi.f90} and {\tt dipowa.f90}.
+
+\subsubsection{write\_bgcmean\_2d-\_3d-\_bioz-\_sed.f90} Write mean fields of
+biogeochemical tracers and fluxes. Called by {\tt bgc.f90} and {\tt end\_bgc.f90}.
+
+\subsubsection{mo\_biomod.f90} Declares biogeochemical parameters and auxiliary
+fields {\tt bolay(ie,je)}, {\tt kbo(ie,je)} and {\tt strahl}.
+
+\subsubsection{mo\_bgcmean.f90} Declares fields for monthly means of
+biogeochemical tracers and flows.
+
+\subsubsection{mo\_carbch.f90} Declares biogeochemical variables for tracers
+in the water column ({\tt ocetra(ie,je,ke,nocetra)}) and atmosphere ({\tt
+atm(ie,je,natm)}), fields for chemical constants, gas exchange coefficients,
+dust deposition.
+
+\subsubsection{mo\_control\_bgc.f90} Sets logical numbers of IO units, time
+step constants and counters and mask values.
+
+\subsubsection{mo\_sedmnt.f90} Declares biogeochemical variables for sediment
+{\tt powtra(ie,je,ks,npowtra)} and \\
+{\tt sedlay(ie,je,ks,nsedtra)}, fields for
+chemical constants, and flux fields {\tt silpro(ie,je)}, {\tt prorca(ie,je)},
+{\tt prcaca(ie,je)} and {\tt produs(ie,je)}. Declares sediment parameters.
+
+\subsubsection{mo\_timeser\_bgc.f90} Declares logical IO unit for time series
+fluxes, and time series auxiliary arrays.
+
+\section{\label{coupling}Coupling \ham and {\em MPI-OM}}
+\subsection{\label{model_setup} model setup}
+
+
+\ham is compiled as a part of the ocean model {\em MPI-OM}. A wide variety of platforms are supported, including
+NEC SX-6 (DKRZ hurrikan), LINUX, SUN and Windows (not documented). The models also support the parallelization options
+OpenMP and MPI.
+For a detailed documentation of the ocean model options, parallelization options and
+the various runtime environments, please refer to the {\em MPI-OM} documentation which is currently under revision.  
+The source code is available from CD or, if you are a registered user, from the ZMAW CVS server.
+
+To retrieve the sources for release 1.1 from CVS you have to do the following:
+\begin{footnotesize}
+\begin{verbatim}
+setenv CVSROOT :pserver:<user-name>@cvs.zmaw.de:/server/cvs/mpiom1
+cvs login
+cvs checkout -r release_1_1 mpi-om 
+\end{verbatim}
+\end{footnotesize}
+
+In any way you will end up with a directory named mpi-om and five subdirectories:
+
+\begin{enumerate}
+
+\item \textbf{src}  \newline 
+All sources required to compile the MPI-OM ocean standalone model. 
+ 
+\item \textbf{src\_hamocc} \newline 
+All sources required to compile the HAMOCC marine biogeochemistry together with the MPI-OM ocean model. 
+
+\item \textbf{make} \newline 
+Makefiles required to compile the MPI-OM ocean and the MPI-OM/HAMOCC model. 
+
+\item \textbf{bin} \newline 
+This is where the binaries are stored after compilation. 
+
+\item \textbf{run} \newline 
+Shell scripts to set up a runtime environment. 
+
+\end{enumerate}
+
+If you are working within the Max Planck Institute for Meteorology (MPI-MET) or the DKRZ,
+just go to the make directory and type "make -f Makefile\_mpiom\_hamocc\_omip". the Makefile will 
+automatically detect your machine-type and select an available compiler.
+If you need to use a different compiler or if you are not working within the MPI-MET or the DKRZ,
+you will have to provide and select the compiler and, if required, the MPI and the NetCDF libaries yourself.
+The example below shows parts of the standard Makefile. 
+
+\begin{footnotesize}
+\begin{verbatim}
+#-----------------------------------------------------------------------------
+DEF =   -DZZNOMPI -DVERSIONGR30 -DZZLEVELS40 -DZZTIMECHECK \
+        -DZZYEAR360 -DSOR -DZZRIVER_GIRIV \
+        -DMEAN -DZZDEBUG_ONEDAY \
+        -DQLOBERL -DBULK_KARA \
+        -DEISREST -DREDWMICE -DALBOMIP \
+        -DISOPYK -DGMBOLUS \
+        -DADPO -DSLOPECON_ADPO  \
+        -DNURDIF \
+        -DDIAG -DZZGRIDINFO -DZZDIFFDIAG -DZZKONVDIAG \
+        -DZZCONVDIAG -DZZAMLDDIAG -DTESTOUT_HFL -DZZRYEAR \ # end of the MPI-OM flags
+        -DPBGC -DPNETCDF -DDIFFAT -DFB_BGC_OCE              # HAMOCC5 flags
+#-----------------------------------------------------------------------------
+
+PROG =	mpiom_hamocc.x
+
+VPATH = ../src_hamocc  : ../src
+
+SRCS =	absturz.f90 adisit.f90 adisit1.f90 adisitj.f90 amocpr.f90 aufr.f90 \
+        ....
+
+OBJS =	absturz.o adisit.o adisit1.o adisitj.o amocpr.o aufr.o \
+        ....
+
+# Set up system type
+UNAMES := $(shell uname -s)
+HOST   := $(shell hostname)
+
+ifeq ($(UNAMES),SunOS)
+NETCDFROOT = /pf/m/m214089/yin/local/SunOS64
+NETCDF_LIB = -L${NETCDFROOT}/lib -lnetcdf
+NETCDF_INCLUDE = -I${NETCDFROOT}/include
+
+MPIROOT = /opt/SUNWhpc
+MPI_LIB = -L${MPIROOT}/lib/sparcv9 -R${MPIROOT}/lib/sparcv9 -lmpi
+MPI_INCLUDE = -I${MPIROOT}/include
+endif
+
+INCLUDES = $(NETCDF_INCLUDE) $(MPI_INCLUDE)
+LIBS = $(NETCDF_LIB) $(MPI_LIB)
+
+ifeq ($(UNAMES), SunOS)
+#-----------------------------------------------------------------------------
+#FOR SUN (SunStudio10 compiler)
+F90 = f95
+F90FLAGS = $(INCLUDES) -xtypemap=real:64,double:64,integer:32 -fast \
+                       -g -xarch=v9b -xchip=ultra3cu  -fpp 
+# OpenMP: -xopenmp
+endif
+
+LDFLAGS = $(F90FLAGS)
+
+all: $(PROG)
+
+$(PROG): $(OBJS)
+	$(F90) $(LDFLAGS) -o $@ $(OBJS) $(LIBS)
+	cp $(PROG) ../bin/.
+
+clean:
+	rm -f $(PROG) $(OBJS) *.mod i.*.L
+
+.SUFFIXES: $(SUFFIXES) .f90
+
+%.o: %.f90
+	$(F90) $(F90FLAGS) -c $(DEF) $<	
+
+#
+#-----------------------------------------------------------------------------
+# Dependencies
+#
+absturz.o: mo_commo1.o mo_commo2.o mo_param1.o mo_units.o mo_parallel.o
+...
+\end{verbatim}
+\end{footnotesize}
+
+In the run directory you will also find a shell-script called "prepare\_run\_mpiom\_hamocc\_omip" which helps to set up
+a runtime environment on hurrikan. It will create a directory in the appropriate place and 
+set links to the necessary input and forcing files. It will also create run-script 
+which can serve as a simple example for your actual script. 
+For more details please refer to the {\em MPI-OM} documentation.
+
+\subsection{\label{preprocessor_options}\ham preprocessor options}
+
+There are eight different preprocessor options, which can be used to include
+different configurations of \ham (see Appendix B for a listing of subroutines
+that are affected by these preprocessor options):
+
+\paragraph{\tt -DAGG} Include aggregation of marine snow and variable sinking
+speed. 
+
+%ich glaube patrick hatte das rausgeworfen, 14.03.05
+%\paragraph{\tt -DBGCLEVI} Start from annual fields of World Ocean Atlas 1994
+%\cite{conkright:1994} phosphate, nitrate, silicate and oxygen. 
+% Ich hab das nicht rausgeworfen, ich habs nur nie implementiert (keine Zeit).
+% Finde die Idee aber gut. Patrick, 01.09.05
+
+\paragraph{\tt -DDIFFAT} Use ``diffusive atmosphere'' for air-sea gas exchange.
+
+\paragraph{\tt -DFB\_BGC\_OCE} Use Chl {\it a} attenuation to modify water leaving
+radiance and heat budget for the ocean.
+
+\paragraph{\tt -DPNETCDF} Output to netCDF instead of binary files. 
+
+\paragraph{\tt -DPANTHROPOCO2} Include anthropogenic carbon tracers. 
+
+\paragraph{\tt -DPANTHROPOCO2\_START} Use values for natural carbon tracers in
+restart file to initialize anthropogenic carbon tracers. 
+
+\paragraph{\tt -DPBGC\_CK\_TIMESTEP} Check inventory of tracers (by call to
+{\tt inventory\_bgc.f90} at every time step before and after biogeochemical
+routines). 
+
+\paragraph{\tt -PDYNAMIC\_BGC} Special diagnosis, not further documented! 
+Compute changes of tracers in the upper 4 layers
+due to mixing, advection and biology. Output follows the bgcmean standards and is saved in {\tt dynamic\_bgc.nc}.
+
+
+\section{\label{implementation}Implementation of \ham into {\em MPI-OM}}
+
+The biogeochemical model is activated as a subroutine of the ocean circulation model 
+if the preprocessor key {\tt \-DPBGC} is set. The main oceanic routine ({\tt
+mpiom.f90}) first calls the routine {\tt ini\_bgc.f90} for initialization of 
+the biogechemical tracer fields (see figure \ref{mainpic}). 
+During the model integration computation of biogeochemistry 
+is done as part of the ocean model's time loop by calling {\tt bgc.f90} at each time step. 
+
+After the biogeochmistry time step, subroutine {\tt dilute\_bgc.f90} computes the change 
+of tracer concentrations due to 
+changes in the thickness of the surface layer (e.g.,  as a result of ice melting). 
+Advection and diffusion of the biogeochemical tracer fields are then performed
+calling {\tt OCADPO} of the {\em MPI-OM} code for each tracer. 
+
+Afterwards fields are time averaged over specified
+periods (see section \ref{sec:bgcmean}) by calling {\tt avrg\_bgcmean.f90}. 
+At the end of each integration (normally a year, depending on model resolution), final tracer concentrations 
+are written to a restart file called {\tt restartw\_bgc.nc} in the routine {\tt aufw\_bgc.f90}. 
+The time averaged
+fields of tracer concentrations are written to files {\tt bgcmean\_2d[\_3d][\_bioz].nc} in the
+routines {\tt write\_bgcmean\_2d[\_3d][\_bioz].f90}. Inventories and time series are written
+in routine {\tt end\_bgc.f90} to files {\tt bgcout} and {\tt time series\_bgc}. 
+
+Biogeochemical tracer fields, their dimensions, auxiliary
+arrays and other parameters are communicated between the different subroutines
+and between the biogeochemical part and the circulation model in modules
+{\tt mo\_biomod.f90}, {\tt mo\_carbch.f90} and {\tt mo\_control\_bgc.f90},
+and further through the header file {\tt mo\_param1\_bgc.f90}.
+
+
+\begin{figure}[htb]
+\caption{\label{mainpic} Calling sequence of the biogeochemical subroutines from
+the physical ocean model. $^*$: see detailed flow chart for these routines 
+(Fig. \ref{inipic}, \ref{bgcpic}). $^1$:
+Subroutines are part of {\em MPI-OM}. Subroutines that are commented out in the
+current model version  and debugging routines are not included.}
+\setlength{\unitlength}{1cm}
+\begin{picture}(13,15.6)
+\put(0,1.5){\framebox(2,12.5){\tt mpiom.f90}}
+
+\put(2,13.6){\vector(1,0){1.3}}
+\put(3.5,13.2){\framebox(3.5,0.8){\tt ini\_bgc.f90$^*$}}
+
+\put(2,12.9){\line(1,0){10.2}}
+\put(10,13.0){\parbox{2cm}{\it time loop}}
+
+\put(12.2,7.0){\line(0,1){5.9}}
+
+\put(2,11.9){\vector(1,0){1.3}}
+\put(3.5,11.5){\framebox(3.5,0.8){\tt bgc.f90$^*$}}
+
+\put(2,10.9){\vector(1,0){1.3}}
+\put(3.5,10.5){\framebox(3.5,0.8){\tt dilute\_bgc.f90$^*$}}
+
+
+%\put(2,10.8){\vector(1,0){1.3}}
+%\put(3.5,10.4){\framebox(3.5,0.8){\tt ADVECTION\_BGC.h}}
+%\put(7,10.8){\line(1,0){0.3}}
+%\put(7.3,10.25){\line(0,1){1.1}}
+%\put(7.3,10.25){\vector(1,0){0.7}}
+%\put(8.2,9.85){\framebox(3.5,0.8){\tt ocadpo.f90$^1$}}
+%\put(7.3,11.35){\vector(1,0){0.7}}
+%\put(8.2,10.95){\framebox(3.5,0.8){\tt dilute\_bgc.f90}}
+
+\put(2,9.7){\vector(1,0){1.3}}
+\put(3.5,9.3){\framebox(3.5,0.8){\tt ocadpo.f90$^1$}}
+
+\put(2,8.7){\vector(1,0){1.3}}
+\put(3.5,8.3){\framebox(3.5,0.8){\tt ocjitr.f90.f90}}
+
+%\put(7,8.6){\vector(1,0){1}}
+%\put(8.2,8.2){\framebox(3.5,0.8){\tt octdiff\_bgc.f90}}
+
+\put(2,7.7){\vector(1,0){1.3}}
+\put(3.5,7.3){\framebox(3.5,0.8){\tt octdiff\_trf.f90}}
+
+
+%\put(2,7.5){\vector(1,0){1.3}}
+%\put(3.5,7.1){\framebox(3.5,0.8){}}
+
+%\put(2,6.4){\vector(1,0){1.3}}
+%\put(3.5,6){\framebox(6.5,0.8){\tt avrg\_bgcmean-2d-3d-bioz-sed.f90}}
+
+\put(2,7.0){\line(1,0){10.2}}
+
+\put(2,6.2){\vector(1,0){1.3}}
+\put(3.5,5.8){\framebox(3.5,0.8){\tt aufw\_bgc.f90}}
+
+
+\put(2,4.15){\vector(1,0){1.3}}
+\put(3.5,3.75){\framebox(3.5,0.8){\tt end\_bgc.f90}}
+
+\put(7,4.15){\line(1,0){0.3}}
+\put(7.3,1.95){\line(0,1){4.4}}
+\put(7.3,6.35){\vector(1,0){0.7}}
+\put(8.2,5.85){\framebox(6.5,0.8){\tt avrg\_bgcmean-2d-3d-bioz-sed.f90}}
+\put(7.3,5.25){\vector(1,0){0.7}}
+\put(8.2,4.85){\framebox(6.5,0.8){\tt write\_bgcmean-2d-3d-bioz-sed.f90}}
+\put(7.3,4.15){\vector(1,0){0.7}}
+\put(8.2,3.75){\framebox(6.5,0.8){\tt close\_bgcmean-2d-3d-bioz-sed.f90}}
+\put(7.3,3.05){\vector(1,0){0.7}}
+\put(8.2,2.65){\framebox(4.5,0.8){\tt inventory\_bgc.f90}}
+\put(7.3,1.95){\vector(1,0){0.7}}
+\put(8.2,1.55){\framebox(4.5,0.8){\tt save\_timeser\_bgc.f90}}
+
+\end{picture}
+\end{figure}
+
+\subsection{\label{temporal_resolution}Temporal resolution}
+
+The temporal resolution of the biogeochemical model is determined by the ocean
+model: {\tt mpiom.f90} reads the length of the time step ({\tt dt}, in seconds) from
+the namelist and passes it to {\tt ini\_bgc.f90} as argument in the call. 
+{\tt ini\_bgc.f90} then sets {\tt dtbgc} (time step length in seconds) and {\tt
+dtb} (time step length in days) from it. Most of the rate parameters used in
+the biogeochemical model are already multiplied with the time step length during
+initialization of the model. The time step parameters are communicated between
+the routines in module {\tt mo\_control\_bgc.f90}. 
+
+\subsection{\label{spatial_resolution}Spatial resolution}
+
+The ocean model's grid dimensions are given by {\tt ie}, {\tt je}, and
+{\tt ke}, for the number of grid cells in $x$, $y$, and $z$ direction, respectively. 
+The dimensions are passed to the biogeochemical modules by function call arguments.
+
+\subsection{\label{transport}Transport and mixing of biogeochemical
+tracers}
+
+The physical processes that change biogeochemical tracers are 
+advection, diffusion, dilution resulting from changes in the surface layer thickness,
+and mixing by subgrid scale eddies. The ocean model computes advection and diffusion of the biogeochemical
+tracers as it does for salinity or temperature, except for the omission of isopycnal
+mixing for biogeochemical tracers.
+
+The main ocean model routine first defines a field {\tt bgcddpo(ie,je,ke)}  that contains
+the actual thickness of the surface layer (i.e., corrected for changes due to ice
+melting, evaporation, freshwater fluxes, etc.), and the standard depths for all
+layers. A subset of this field, {\tt layer1\_bgc(ie,je)} contains only
+the thickness of the surface layer at the beginning of each time step. 
+
+After the computation of changes in surface layer thickness,
+the updated depths are stored in field {\tt layer1\_new(ie,je)}. 
+Subroutine {\tt dilute\_bgc.f90} then computes the dilution of all 
+biogeochemical tracers from the ratio of these depths. 
+Afterwards the advection of biogeochemical tracer fields 
+is computed in the same fashion as for salinity and temperature
+by a call to ocean subroutine {\tt ocadpo.f90}. In case of 
+numerical undershoots (any of the biogeochemical tracer concentrations becomming smaller 
+than zero) the tracer concentration at that point is reset to zero. 
+
+Subgrid eddy effects are computed for the biogeochemical tracers in the same
+way as for salinity and temperature (this is done in subroutine {\tt
+ocjitr.f90}, part of the ocean model).  Finally, mixing of the tracers is computed 
+by calling {\tt octdiff\_trf.f90}. It computes mixing identical to that for salinity and
+temperature. Isopycnal mixing is expensive in terms of computing time.  
+If performance is a concern, the subroutine {\tt octdiff\_bgc.f90}, which does not 
+include isopycnal mixing, can de used instead of {\tt octdiff\_trf.f90}. \\
+%Note that in contrast to mixing of salinity and temperature, for
+%the biogeochemical tracers isopycnal mixing (which may be expensive in terms
+%of computing time) is not included. \\
+\\
+
+
+%js 280605 no longer valid, commented out
+%\subsection{Modules, header files and subroutines} 
+
+%\subsubsection{ ADVECTION\_BGC.h}   Sets tracer values at dry cells to bottom
+%cell value as done for temperature and salinity in ocean subroutine {\tt
+%octher.f90}. Calls {\tt dilute\_bgc.f90} for dilution and {\tt ocadpo.f90} for
+%advection of tracers. Resets tracers, if necessary. Inserted into {\tt
+%mpiom.f90} during preprocessing.
+
+%\subsubsection{ dilute\_bgc.f90}  
+%Computes dilution (or concentration) of biogeochemical tracers due to changes in
+%upper layer thickness caused by ice melting/freezing, evaporation, etc..
+%Called by {\tt ADVECTION\_BGC.h}.
+
+%\subsubsection{ MIXING\_BGC.h}
+%Calls {\tt octdiff\_bgc.f90} for diffusion of tracers. Inserted into
+% {\tt mpiom.f90}  during preprocessing.
+
+%\subsubsection{ octdiff\_bgc.f90}
+%Computes diffusion of biogeochemical tracers. Resets tracers if necessary.
+
+
+\clearpage
+\newpage
+\section{\label{io}Input and output files}
+
+Model input fields (see table \ref{table_io_files}) for initialization are read
+by subroutine
+%subroutines {\tt bgc\_lev.f90} (for  initialization from climatological
+%fields of nutrients and oxygen from files {\tt INIPHO}, {\tt ININIT}, {\tt
+%INISIL} and {\tt INIOX}), or 
+{\tt aufr\_bgc.f90} (for initialization from
+previous run from file {\tt restartr\_bgc}). 
+%Both subroutines are called at the beginning of
+The subroutine is called at the beginning of
+each simulation by routine {\tt ini\_bgc.f90}.  Monthly mean dust deposition is
+read from file {\tt dust\_grob} by routine {\tt get\_dust.f90}. The run script
+provides the linking of files to the given names, and further creates a list of
+runtime control parameters, {\tt NAMELIST\_BGC}, which is then read by {\tt
+read\_namelist.f90}.
+
+%table9
+\begin{table}[hbt]
+\caption{\label{table_io_files} Input and output files for \ham, the name of
+the module that accesses the file, format and contents. File {\tt NAMELIST\_BGC}
+is created by the job script, other files are supplied by the user. See section
+\ref{sec:bgcmean} for specification of the time averaging of the bgcmean files.} 
+\vspace{.2cm}
+\begin{center}
+\begin{tabular}{lllp{4.5cm}l} \hline
+file name & accessed by   & format       & contains    \\ \hline
+\multicolumn{4}{l}{\rule{0mm}{4mm}{\it input files}}\\ 
+{\tt NAMELIST\_BGC} & {\tt read\_namelist.f90} & ASCII & runtime parameters\\ 
+ {\tt INPDUST.nc} & {\tt get\_dust.f90} & NetCDF & dust input \\
+% {\tt INIPHO}  & {\tt bgc\_lev.f90} & binary & initial phosphate\\
+% {\tt ININIT}  & {\tt bgc\_lev.f90} & binary & initial nitrate\\
+% {\tt INISIL}  & {\tt bgc\_lev.f90} & binary & initial silicate\\
+% {\tt INIOX}   & {\tt bgc\_lev.f90} & binary & initial oxygen\\
+ {\tt restartr\_bgc}& {\tt aufr\_bgc.f90} & binary & initial tracers (default)\\
+\\ 
+ {\tt restartr\_bgc.nc}& {\tt aufr\_bgc.f90} & netCDF & initial tracers ({\tt
+ -DPNETCDF})\\
+\\ \hline
+\multicolumn{4}{l}{\rule{0mm}{4mm}{\it output files}}\\
+{\tt restartw\_bgc}& {\tt aufw\_bgc.f90} & binary & final tracers (default)\\
+{\tt restartw\_bgc.nc}& {\tt aufw\_bgc.f90} & netCDF & final tracers ({\tt -DPNETCDF})\\
+
+{\tt bgcmean\_2d.nc }& {\tt open\_bgcmean\_2d.f90}  & netCDF & global time averaged    \\
+                     & {\tt write\_bgcmean\_2d.f90} &        & 2-D tracer fields and   \\
+                     & {\tt close\_bgcmean\_2d.f90} &        & fluxes ({\tt -DPNETCDF})\\
+
+
+{\tt bgcmean\_3d.nc }& {\tt open\_bgcmean\_3d.f90}  & netCDF & global time averaged    \\
+                     & {\tt write\_bgcmean\_3d.f90} &        & 3-D tracer fields       \\
+                     & {\tt close\_bgcmean\_3d.f90} &        & ({\tt -DPNETCDF})       \\
+
+{\tt bgcmean\_bioz.nc }& {\tt open\_bgcmean\_bioz.f90}    & netCDF & global time averaged \\
+                       & {\tt write\_bgcmean\_bioz.f90}   &        & 3-D tracer fields in the\\
+                       & {\tt close\_bgcmean\_bioz.f90}   &        & euphotic zone ({\tt -DPNETCDF})  \\
+
+{\tt bgcmean\_sed.nc }& {\tt open\_bgcmean\_sed.f90}    & netCDF & global time averaged \\
+                      & {\tt write\_bgcmean\_sed.f90}   &        & 3-D tracer fields in the\\
+                      & {\tt close\_bgcmean\_sed.f90}   &        & sediment ({\tt -DPNETCDF})  \\
+
+{\tt timeser\_bgc}& {\tt save\_timeser\_bgc.f90} & ASCII & time series of tracers and fluxes at defined stations\\
+{\tt timeser\_bgc.nc}& {\tt save\_timeser\_bgc.f90} & netCDF & time series of tracers and fluxes at defined stations ({\tt -DPNETCDF})\\
+{\tt bgcout}& various & ASCII & diagnostic output during simulation; budgets\\
+\hline
+\end{tabular}
+\end{center}
+\end{table}
+
+Model output is written by subroutines {\tt save\_timeseries\_bgc.f90} 
+(time series with high temporal resolution for global averages or at specific
+stations), {\tt aufr\_bgc.f90} (to be used for initialization of next run), and
+{\tt write\_bgcmean.f90} (for global monthly means of specific biogeochemical
+tracers). The former two are called at the end of each simulation by routine
+{\tt end\_bgc.f90}, the latter one is called directly by the ocean main
+routine. Further, some diagnostic output (mainly for debugging purpose) is
+written to file {\tt bgcout} during simulation by various subroutines. 
+
+
+
+\subsection{\label{input_files}Input files} 
+
+\paragraph{\tt restartr\_bgc.nc} Created with compile option {\tt -DPNETCDF}.
+File to restart the model from previous run. Contains fields of all
+biogeochemical tracers for water column and sediment, plus latitude, longitude,
+water depth, layer depth and the chemical constant fields {\tt chemc(ie,je,7)},
+and {\tt aksp(je,ke)}. Further contains storage fields for permanently buried
+sediment, {\tt burial(ie,je,4)}. NetCDF format. Read by {\tt aufr\_bgc.f90}, if
+model simulation is based on previous one. Written by {\tt aufw\_bgc.f90}.
+
+\paragraph{\tt restartr\_bgc} As {\tt restartr\_bgc.nc}, but binary format.
+
+%\paragraph{\tt INIPHO} Contains initial field of phosphate with dimensions {\tt ie}, {\tt
+%je} and {\tt ke}, from World Ocean Atlas (WOA) data set \cite{conkright:1994}.
+%Binary format. Read by routine {\tt bgc\_lev.f90}.  File supplied with code is
+%{\tt inipo4\_grob.L20}, linked to {\tt INIPHO} via run script. 
+
+%\paragraph{\tt ININIT} Contains initial field of nitrate with dimensions {\tt ie}, {\tt
+%je} and {\tt ke}, from World Ocean Atlas (WOA) data set \cite{conkright:1994}.
+%Binary format. Read by routine {\tt bgc\_lev.f90}.   File supplied with code is
+%{\tt inino3\_grob.L20}, linked to {\tt ININIT} via run script. 
+
+%\paragraph{\tt INISIL} Contains initial field of silicate with dimensions {\tt ie}, {\tt
+%je} and {\tt ke}, from World Ocean Atlas (WOA) data set \cite{conkright:1994}.
+%Binary format. Read by routine {\tt bgc\_lev.f90}.   File supplied with code is
+%{\tt inisil\_grob.L20}, linked to {\tt INISIL} via run script. 
+
+%\paragraph{\tt INIOX} Contains initial field of oxygen with dimensions {\tt ie}, {\tt je}
+%and {\tt ke}, from World Ocean Atlas (WOA) data set \cite{conkright:1994}.
+%Binary format. Read by routine {\tt bgc\_lev.f90}.   File supplied with code is
+%{\tt inio2\_grob.L20}, linked to {\tt INIOX} via run script. 
+
+\paragraph{\tt INPDUST.nc} Contains monthly mean dust input interpolated onto the model grid. 
+Available are dust fields from Timmreck and Schulz (2004)\nocite{timmreck:2004}
+and from ECHAM5/HAM simulations. NetCDF format. Read by routine {\tt get\_dust.f90}.
+Files are interpolated from a 12 month climatology of dust fields from an atmospheric simulation 
+("dustdep\_monthl.nc") to the model grid with the following shell-script:
+\begin{footnotesize}
+\begin{verbatim}
+#! /bin/sh
+cdo remapcon,/pf/m/m212047/grid/GR15s.nc -setgrid,t63grid dustdep_monthl.nc dustdep_GR15.nc
+#
+###########################################################################
+#
+cat > make_dust_GR15.jnl  << EOF
+use dustdep_GR15.nc
+
+define axis/modulo/x=1:254:1 xlon
+define axis/y=1:220:1 ylat
+define axis/T=1:12:1 mytime
+define grid/x=xlon/y=ylat/t=mytime mygrid
+
+let/title="dust"/units="kg/m^2/yr" dust = DEP_DUST[g=mygrid@asn]*365*24*60*60
+
+save/clobber/file=GR15_INPDUST.nc dust[i=254:509]
+EOF
+
+set -e
+ferret << STOP
+go make_dust_GR15.jnl
+exit
+STOP
+set +e
+\end{verbatim}
+\end{footnotesize}
+
+
+%File supplied with code is {\tt dust\_grob}, linked to
+%{\tt INPDUST.nc} via run script. 
+
+\paragraph{\tt NAMELIST\_BGC} List of runtime parameters, to be read during model
+simulation. This list sets values for checking/debugging options, model setup
+and output options. Its name is {\tt NAMELIST\_BGC}, with constants defined in
+{\tt NAMELIST\_BGC.h}, and it is read by {\tt read\_namelist.f90}. 
+\begin{itemize}
+\item{\tt io\_stdo\_bgc}  Logical number for bgc output unit (set to 8).
+\item{\tt isac} Sediment acceleration factor. If set to 1 there is no
+sediment acceleration. 
+\item{\tt kchck}  Switch to check max/min of bgc arrays on wet/dry
+cells. The check is carried out when {\tt kchck} is set to 1. This creates
+a very large {\tt bgcout} file and is fairly cpu-time intensive, 
+so it is not recommended for longer test runs or production runs.
+\item{\tt  nfreqts1} Sampling frequency for time series. Setting {\tt  nfreqts1} to 10 means
+time series are sampled every tenth time step.
+\item{\tt  nts1}  Number of stations at which time series are sampled.
+\item{\tt  rlonts1} Longitude array of biogeochemical time series  stations.  
+\item{\tt  rlatts1} Latitude array of biogeochemical time series  stations.  
+\item{\tt  rdep1ts1} First sampling depth for export at biogeochemical
+time series  stations.  
+\item{\tt  rdep2ts1} Second sampling depth for export at biogeochemical
+time series  stations.  
+\item{\tt  rdep3ts1} Third sampling depth for export at biogeochemical time series 
+stations.  
+\item{\tt  emission} Only for option {\tt -DPANTHROPOCO2}. Global annual emission
+of carbon dioxide, in Pg C.  
+\end{itemize}
+
+
+\subsection{\label{output_files}Output files}
+
+\subsubsection{Standard output: {\tt bgcout}} Contains model diagnostics
+written by various subroutines during the course of a simulation. After initial
+checks, the model reports the progress of the simulation (day/time step) to this
+file. Global fluxes and inventories are written to this file at the end of each
+year. ASCII format.
+
+\subsubsection{Time averaged output: {\tt bgcmean}} 
+\label{sec:bgcmean}
+Only for compile option {\tt -DPNETCDF}. 
+Time mean output of biogeochemical tracer fields. The output is written to 
+three files: {\tt bgcmean\_2d} contains time,lon,lat fields of surface parameters,
+{\tt bgcmean\_3d}  time,lon,lat,depth fields, and {\tt bgcmean\_bioz} time,lon,lat,depth
+fields for the euphotic layer. The time dimension depends on the setting of
+{\tt mean\_2D\_day} (1=daily, 2=monthly) and {\tt mean\_3D\_month} (1=monthly, 2=length of run).
+{\tt mean\_2D\_day} is used for {\tt \_2d} and {\tt \_bioz}, {\tt mean\_3D\_month} for {\tt bgcmean\_3d}.
+A list of the output variables can be obtained by typing {\tt ncdump -h bgcmean\_2d.nc} etc.
+
+Values for monthly means are summed-up in the
+biogeochemical subroutines (currently {\tt atmotr.f90}, {\tt carchm.f90}, {\tt
+dipowa.f90} and {\tt ocprod.f90}). They are averaged at the end of each month for the
+monthly mean fields {\tt avrg\_bgcmean\_2d.f90} (\_2d, \_bioz) and 
+{\tt avrg\_bgcmean\_3d.f90} (\_3d, \_sed). The output is written to file in 
+{\tt write\_bgcmean\_2d.f90}, {\tt write\_bgcmean\_bioz.f90}, {\tt write\_bgcmean\_3d.f90} and {\tt write\_bgcmean\_sed.f90}. 
+
+Field indices for the biogeochemical tracers to be stored
+are set in {\tt mo\_bgcmean.f90}. There are four types of mean tracer fields:
+
+%-old-
+%\begin{itemize}
+%\item{\tt bgct2d(ie,je,nbgct2d)} Three dimensional field over 
+%%longitude and latitude,
+%$x$ and $y$, 
+%containing annual integrals of various {\tt nbgct2d} variables. This field
+%contains, e.g., annual means of fluxes to the sediment or air-sea gas-exchange.
+%\item{\tt bgcm2d(ie,je,12,nbgcm2d)} Four dimensional field over 
+%longitude and latitude,
+%$x$ and $y$, 
+%containing 12 monthly means of various {\tt nbgcm2d} variables. This field
+%contains, e.g., the monthly air-to-sea fluxes of CO$_2$, nitrogen fixation at the
+%sea surface, or sedimentation of organic matter at certain depths.
+%\item{\tt bgcm3d(ie,je,kwrbioz,12,nbgcm3d)} Five dimensional field over 
+%%longitude and latitude,
+%$x$ and $y$, 
+%and the upper {\tt kwrbioz} depths, containing 12 monthly means of
+%various {\tt nbgcm3d} variables. This field contains, e.g., the phytoplankton or
+%photosynthesis in the upper four depths. 
+%\item{\tt bgcmtot(ie,je,kwrbioz,12,nbgcmtot)} Five dimensional field over 
+%%longitude and latitude,
+%$x$ and $y$, 
+%and the all depths, containing 12 monthly means of various {\tt
+%nbgcmtot} variables. 
+%\end{itemize}
+
+The dimensions of the monthly or annual fields are set in module {\tt mo\_bgcmean.f90}.
+The fields are initialized in {\tt beleg\_bgc.f90}. The final output files {\tt
+bgcmean\_2d[\_3d, \_bioz].nc} are in netCDF format and contain not only the fields themselves,
+but also information about longitude, latitude, layer depths and grid cell
+dimensions. Integral fluxes stored in {\tt bgct2d} are used in {\tt
+inventory\_bgc.f90} for calculation of annually integrated fluxes.
+
+\subsubsection{Time series: {\tt timeser\_bgc}} Values of the biogeochemical
+tracers at selected locations are written at every {\tt nfreqts1} time step. The field for the
+time series is {\tt ts1(nvarts1,nelets1,lents1}), where {\tt nvarts1} 
+is the number of variables (e.g., phytoplankton,  photosynthesis,
+export ...), {\tt lents1} is the number of times the time series are sampled
+(e.g. 360, if the model is run for one year, using a time step of 0.1 day
+and a sampling frequency {\tt nfreqts1} of 10) and {\tt nelets1} is the number
+of positions where the time series are sampled.  {\tt lents1} is determined
+during runtime in file {\tt ini\_timeser\_bgc.f90} from time step, sampling
+interval and length of the integration. The variables and the total number of variables ({\tt nvarts1})
+are defined in {\tt mo\_timeser\_bgc.f90}.  Content is provided  
+in the subroutines where it are computed (e.g., {\tt ocprod.f90}).
+Sampling positions are determined in the following way:  
+\begin{enumerate} 
+\item An initial value for the number of locations {\tt nts} is set in {\tt mo\_timeser\_bgc.f90}.
+\item {\tt read\_namelist.f90} reads the locations (latitude, longitude, depth) from {\tt NAMELIST\_BGC}.
+The corresponding grid cell indices are determined in subroutine {\tt ini\_timeser\_bgc.f90}.
+\item The total number of positions {\tt nelets1} is {\tt nts} + 1, including 
+the additional globally averaged time series, which has the index 1.
+\end{enumerate}
+
+Output format is ASCII or netCDF ({\tt -DPNETCDF}).
+NetCDF output defines one field for each variable (e.g., phytoplankton, ...) 
+with dimensions {\tt lents1, nelets1}. The timestamp corresponds to the simulated time-span in seconds.
+Files can be concatenated with {\tt nccat}.
+For ASCII output the file is structured as follows: first, there are
+a few lines (currently 18) of time series information. After
+that follows the output for the
+time series station. Here in {\tt nvarts1} columns are the
+different variables for output (e.g., phytoplankton, phosphate, etc.). Each
+time series has {\tt lents1} lines of output (e.g, one line for each day).  The
+{\tt nelets1} different time series stations are written one after the other.
+The output starts with global inventories (or averages), followed by the
+discrete stations. I.e., after the first header files, {\tt timeser\_bgc}
+contains {\tt nelets1}$\times${\tt lents1} lines of output with {\tt nvarts1}
+columns.
+
+\begin{footnotesize}
+\begin{verbatim}
+<360 = lents1 lines of time series station no.1:>
+ts1(1,1,1)            ts1(2,1,1)...             ..ts1(nvarts1,1,1)
+ts1(1,1,2)            ts1(2,1,2)...             ..ts1(nvarts1,1,2)
+ts1(1,1,3)            ts1(2,1,3)...             ..ts1(nvarts1,1,3)
+.......               .......                     .......
+ts1(1,1,lents1)       ts1(2,1,lents1)...        ..ts1(nvarts1,1,lents)
+<360 = lents1 lines of time series station no.2:>
+ts1(1,2,1)            ts1(2,2,1)...             ..ts1(nvarts1,2,1)
+ts1(1,2,2)            ts1(2,2,2)...             ..ts1(nvarts1,2,2)
+ts1(1,2,3)            ts1(2,2,3)...             ..ts1(nvarts1,2,3)
+.......               .......                     .......
+ts1(1,2,lents1)       ts1(2,2,lents1)...        ..ts1(nvarts1,2,lents)
+<360 = lents1 lines of time series station no.3:>
+......                .......                     .......
+<360 = lents1 lines of time series station no.4:>
+......                .......                     .......
+......                .......                     .......
+......                .......                     .......
+<360 = lents1 lines of time series station no.nelets1:>
+ts1(1,nelets1,1)      ts1(2,nelets1,1)...       ..ts1(nvarts1,nelets1,1) 
+ts1(1,nelets1,2)      ts1(2,nelets1,2)...       ..ts1(nvarts1,nelets1,2) 
+ts1(1,nelets1,3)      ts1(2,nelets1,3)...       ..ts1(nvarts1,nelets1,3) 
+.......               .......                     .......
+ts1(1,nelets1,lents1) ts1(2,nelets1,lents1)...  ..ts1(nvarts1,nelets1,lents) 
+\end{verbatim}
+\end{footnotesize}
+
+\subsubsection{Restart file: {\tt restartw\_bgc.nc}} Created with compile
+option {\tt -DPNETCDF}. Identical to input file {\tt restartr\_bgc.nc}
+(section \ref{input_files}). The run
+script copies {\tt restartw\_bgc.nc} to  {\tt restartr\_bgc.nc} before the
+start of the next integration.
+
+\subsubsection{Restart file: {\tt restartw\_bgc}} As {\tt restartw\_bgc.nc},
+but binary format.
+
+\clearpage
+\newpage
+\begin{appendix}
+
+\section{\label{commulication_between_modules}Communication between the
+modules}
+
+The following table lists the subroutines of \ham and the subroutines from
+which they are called. \\
+
+\footnotesize
+\begin{tabular}{l|l} 
+Subroutine name          &called by \\ \hline
+{\tt atmotr.f90      }&  {\tt bgc.f90}    \\
+{\tt aufr\_bgc.f90         }&  {\tt ini\_bgc.f90}    \\
+{\tt aufw\_bgc.f90         }&  {\tt mpiom.f90} {\em (MPI-OM)}   \\
+{\tt  avrg\_bgcmean\_2d.f90 }&   {\tt bgc.f90, end\_bgc.f90}   \\ 
+{\tt  avrg\_bgcmean\_3d.f90 }&   {\tt bgc.f90, end\_bgc.f90}   \\ 
+{\tt  avrg\_bgcmean\_bioz.f90 }&   {\tt bgc.f90, end\_bgc.f90}   \\ 
+{\tt  avrg\_bgcmean\_sed.f90 }&   {\tt bgc.f90, end\_bgc.f90}   \\ 
+{\tt avrg\_timeser\_bgc.f90   }&  {\tt bgc.f90}  \\ 
+{\tt beleg\_bgc.f90        }&  {\tt ini\_bgc.f90}   \\
+{\tt bgc.f90              }&  {\tt mpiom.f90} {\em (MPI-OM)}   \\
+%{\tt bgc\_lev.f90          }&  {\tt beleg\_bgc.f90}   \\
+{\tt  bodensed.f90        }&  {\tt ini\_bgc.f90}    \\ 
+{\tt  carchm.f90          }&  {\tt bgc.f90}   \\
+{\tt  chck\_bgc.f90        }&  {\tt aufw\_bgc.f90, carchm.f90, ini\_bgc.f90, ocprod.f90 } \\
+{\tt  chemcon.f90          }&  {\tt ini\_bgc.f90}, {\tt bgc.f90}    \\
+{\tt  cyano.f90           }&  {\tt bgc.f90}   \\ 
+{\tt  dilute\_bgc.f90      }&  {\tt mpiom.f90} {\em (MPI-OM)}     \\
+{\tt  dipowa.f90          }&  {\tt powach.f90}    \\ 
+{\tt  end\_bgc.f90         }&  {\tt mpiom.f90} {\em (MPI-OM)}   \\ 
+{\tt  get\_dust.f90      }&  {\tt beleg\_bgc.f90}    \\ 
+{\tt  ini\_bgc.f90         }&  {\tt mpiom.f90} {\em (MPI-OM)}   \\
+{\tt  ini\_timeser\_bgc.f90 }&  {\tt ini\_bgc.f90}    \\ 
+{\tt  inventory\_bgc.f90 }&  {\tt bgc.f90, end\_bgc.f90}    \\ 
+{\tt  ocdiff\_bgc.f90     }&   {\tt mpiom.f90} {\em (MPI-OM)}   \\ 
+{\tt  ocprod.f90          }&  {\tt bgc.f90}    \\
+{\tt  open\_bgcmean\_2d.f90 }&   {\tt ini\_bgc.f90}   \\ 
+{\tt  open\_bgcmean\_3d.f90 }&   {\tt ini\_bgc.f90}   \\ 
+{\tt  open\_bgcmean\_bioz.f90 }& {\tt ini\_bgc.f90}   \\ 
+{\tt  open\_bgcmean\_sed.f90 }&  {\tt ini\_bgc.f90}   \\ 
+{\tt  powach.f90          }&  {\tt bgc.f90}    \\
+{\tt  powadi.f90          }&  {\tt powach.f90}    \\
+{\tt  read\_namelist.f90   }&  {\tt ini\_bgc.f90}   \\ 
+{\tt  save\_timeser\_bgc.f90}&  {\tt end\_bgc.f90}   \\
+{\tt  sedshi.f90         }&   {\tt bgc.f90}    \\ 
+{\tt  write\_bgcmean\_2d.f90 }&   {\tt bgc.f90, end\_bgc.f90}   \\ 
+{\tt  write\_bgcmean\_3d.f90 }&   {\tt bgc.f90, end\_bgc.f90}   \\ 
+{\tt  write\_bgcmean\_bioz.f90 }&   {\tt bgc.f90, end\_bgc.f90}   \\ 
+{\tt  write\_bgcmean\_sed.f90 }&   {\tt bgc.f90, end\_bgc.f90}   \\ 
+{\tt mo\_biomod.f90      }&  almost all   \\
+{\tt mo\_bgcmean.f90      }&  almost all   \\
+{\tt mo\_carbch.f90      }&  almost all   \\
+{\tt mo\_control\_bgc.f90 }&  almost all   \\
+{\tt mo\_sedmnt.f90      }&  almost all   \\
+{\tt mo\_timeser\_bgc.f90 }&  {\tt ini\_timeser\_bgc.f90, ocprod.f90, }  \\
+&{\tt read\_namelist.f90, save\_timeser\_bgc.f90 }  \\ 
+{\tt  NAMELIST\_BGC.h    }&  {\tt read\_namelist.f90}   \\
+{\tt  mo\_param1\_bgc.f90      }&  almost all   \\ 
+\end{tabular}
+\normalsize
+
+\newpage
+
+\section{\label{effect_of_preprocessor_options}Impact of pre-processor keys on the various subroutines of \ham}
+
+The following tables lists the subroutines of \ham. Subroutines are modified (x) or activated (i) by setting the
+respective preprocessor keys.\\
+
+\footnotesize
+\begin{tabular}{|l|c|c|c|c|c|}\hline
+Subroutine name                 &{\tt -DAGG}&{\tt -DDIFFAT}&{\tt -DFB\_BGC\_OCE}&{\tt -DPNETCDF}&{\tt -DPANTHROPOCO2}\\ \hline
+{\tt atmotr.f90      }          &           &    i         &                    &               &        i          \\     
+{\tt aufr\_bgc.f90         }    &     x     &    x         &                    &       x       &        x          \\       
+{\tt aufw\_bgc.f90         }    &     x     &    x         &                    &       x       &        x          \\       
+{\tt avrg\_bgcmean\_2d.f90 }    &           &              &                    &               &                   \\        
+{\tt avrg\_bgcmean\_3d.f90 }    &           &              &                    &               &                   \\      
+{\tt avrg\_timeser\_bgc.f90}    &           &              &                    &               &                   \\  \hline
+{\tt beleg\_bgc.f90        }    &     x     &              &         x          &               &        x          \\
+{\tt bgc.f90              }     &           &    x         &                    &               &        x          \\
+%{\tt bgc\_lev.f90          }    &           &              &                    &               &                   \\
+{\tt  bodensed.f90        }     &           &              &                    &               &                   \\ \hline
+{\tt  carchm.f90          }     &           &    x         &                    &               &                   \\
+{\tt  chck\_bgc.f90        }    &           &              &                    &               &                   \\
+{\tt  chemcon.f90          }    &           &              &                    &               &                   \\
+{\tt  cyano.f90           }     &           &              &                    &               &                   \\ \hline
+{\tt  dilute\_bgc.f90      }    &           &              &                    &               &                   \\
+{\tt  dipowa.f90          }     &           &              &                    &               &        x          \\ \hline
+{\tt  end\_bgc.f90         }    &           &              &                    &               &                   \\ \hline
+{\tt  get\_dust.f90      }      &           &              &                    &               &                   \\ \hline
+{\tt  ini\_bgc.f90         }    &           &    x         &                    &               &                   \\
+{\tt  ini\_timeser\_bgc.f90 }   &           &              &                    &               &                   \\
+{\tt  inventory\_bgc.f90 }      &           &    x         &                    &               &        x          \\ \hline
+{\tt  ocprod.f90          }     &     x     &              &         x          &               &        x          \\ \hline
+{\tt  powach.f90          }     &           &              &                    &               &                   \\
+{\tt  powadi.f90          }     &           &              &                    &               &                   \\ \hline
+{\tt  read\_namelist.f90   }    &           &              &                    &               &        x          \\ \hline
+{\tt  save\_timeser\_bgc.f90}   &           &              &                    &       x       &                   \\
+{\tt  sedshi.f90          }     &           &              &                    &               &                   \\ \hline
+{\tt  open\_bgcmean\_2d.f90 }   &     x     &    x         &                    &       x       &        x          \\ 
+{\tt  open\_bgcmean\_3d.f90 }   &           &              &                    &       x       &        x          \\
+{\tt  open\_bgcmean\_bioz.f90 } &           &              &                    &       x       &        x          \\
+{\tt  open\_bgcmean\_sed.f90 }  &           &              &                    &       x       &                   \\
+{\tt  close\_bgcmean\_2d.f90 }  &           &              &                    &       x       &                   \\ 
+{\tt  close\_bgcmean\_3d.f90 }  &           &              &                    &       x       &                   \\
+{\tt  close\_bgcmean\_bioz.f90 }&           &              &                    &       x       &                   \\
+{\tt  close\_bgcmean\_sed.f90 } &           &              &                    &       x       &                   \\
+{\tt  write\_bgcmean\_2d.f90 }  &     x     &    x         &                    &       x       &        x          \\ 
+{\tt  write\_bgcmean\_3d.f90 }  &           &              &                    &       x       &        x          \\
+{\tt  write\_bgcmean\_bioz.f90 }&           &              &                    &       x       &        x          \\
+{\tt  write\_bgcmean\_sed.f90 } &           &              &                    &       x       &                   \\\hline
+{\tt mo\_biomod.f90      }      &     x     &              &         x          &               &                   \\
+{\tt mo\_bgcmean.f90      }     &     x     &              &                    &               &        x          \\
+{\tt mo\_carbch.f90      }      &           &              &                    &               &        x          \\
+{\tt mo\_control\_bgc.f90 }     &           &              &                    &               &                   \\
+{\tt mo\_sedmnt.f90      }      &           &              &                    &               &                   \\
+{\tt mo\_timeser\_bgc.f90 }     &           &              &                    &               &                   \\
+{\tt mo\_param1\_bgc.f90    }   &     x     &              &                    &               &                   \\ \hline
+{\tt mpiom.f90    }             &           &              &         x          &               &                   \\ \hline
+\end{tabular}
+\normalsize
+
+
+\vspace{.2cm}
+Further, there are three options that affect only one or two files and are only
+related to initilization (at the start of a simulation) or to debugging:
+
+\footnotesize
+{\tt -DPANTHROPOCO2\_START}: Affects {\tt aufr\_bgc.f90}.\\
+{\tt -DPBGC\_CK\_TIMESTEP}: Affects {\tt bgc.f90}.\\
+%{\tt -DBGCLEVI} Affects {\tt beleg\_bgc.f90}. Inserts {\tt bgc\_lev.f90}.\\
+\normalsize
+
+
+
+\end{appendix}
+
+\clearpage
+
+\newpage 
+\begin{thebibliography}{}
+
+
+
+
+%\bibitem[\protect\citename{Conkright {\em et~al.}, }1994]{conkright:1994}
+%Conkright, M.E., Levitus, S. and Boyer, T. (1994).
+%\newblock World Ocean Atlas 1994, Vol. 1: Nutrients.
+%\newblock {\em Page  150 pp. of:} {\em NOAA Atlas NESDIS 1}.
+%\newblock U.S. Gov. Printing Office, Wash., D.C.
+
+\bibitem[\protect\citename{Dickson, }1994]{Dickson:1994}
+Dickson, A.G. and C. Goyet (1994).
+\newblock {DOE Handbook of methods for the analysis of the various parameters
+of the carbon dioxide system in sea water; Version 2. A.G. Dickson \& C. Goyet, eds. 
+ORNL/CDIAC-74}
+
+\bibitem[\protect\citename{Evans and Gar\c{c}on, }1997]{jgofs:1997}
+Evans, G.T. and Gar\c{c}on, V. (1997).
+\newblock {\em One--dimensional models of water column biogeochemistry}.
+\newblock JGOFS Report~23. Scientific Committee on Oceanic Research, Bergen,
+  Norway, 85 pp.
+
+\bibitem[\protect\citename{Heinze and Maier-Reimer, }1999]{heinze:1999b}
+Heinze, C. and Maier-Reimer, E. (1999).
+\newblock {\em The Hamburg Oceanic Carbon Cycle Circulation Model version
+  ``HAMOCC2s'' for long time integrations}.
+\newblock Technical Report~20. Deutsches Klimarechenzentrum,
+  Modellberatungsgruppe, Hamburg.
+
+\bibitem[\protect\citename{Heinze {\em et~al.}, }1999]{heinze:1999a}
+Heinze, C., Maier-Reimer, E., Winguth, A.M.E. and Archer, D. (1999).
+\newblock A global oceanic sediment model for long-term climate studies.
+\newblock {\em {G}lobal {B}iogeochem. {C}ycles}, {\bf 13}(1), 221--250.
+
+\bibitem[\protect\citename{Johnson {\em et~al.}, }1997]{johnson:1997}
+Johnson, K.S., Gordon, R.M. and Coale, K.H. (1997).
+\newblock What controls dissolved iron concentrations in the world ocean?
+\newblock {\em Marine Chemistry}, {\bf 57}, 137--161.
+
+\bibitem[\protect\citename{Keeling {\em et~al.}, }1998]{keeling:1998}
+Keeling, R.F., Stephens, B.B., Najjar, R.G., Doney, S.C., Archer, D. and
+  Heimann, M. (1998).
+\newblock Seasonal variations in the atmospheric O$_2$/N$_2$ ratio in relation
+  to the air-sea exchange of O$_2$.
+\newblock {\em {G}lobal {B}iogeochem. {C}ycles}, {\bf 12}, 141--164.
+
+\bibitem[\protect\citename{Kriest, }2002]{kriest:2002}
+Kriest, I. (2002).
+\newblock Different parameterizations of marine snow in a 1D-model and their
+  influence on representation of marine snow, nitrogen budget and
+  sedimentation.
+\newblock {\em {D}eep-{S}ea {R}es. {I}}, {\bf 49}, 2133--2162.
+
+\bibitem[\protect\citename{Kriest and Evans, }2000]{kriest:2000}
+Kriest, I. and Evans, G.T. (2000).
+\newblock A vertically resolved model for phytoplankton aggregation.
+\newblock {\em {P}roc. {I}ndian {A}cad. {S}ci. ({E}arth {P}lanet. {S}ci.)},
+  {\bf 109}(4), 453--469.
+
+\bibitem[\protect\citename{Maier-Reimer and Hasselmann,
+  }1987]{maier-reimer:1987}
+Maier-Reimer, E. and Hasselmann, K. (1987).
+\newblock Transport and storage of $CO_2$ in the ocean - an inorganic
+  ocean-circulation carbon cycle model.
+\newblock {\em Climate Dynamics}, {\bf 2}, 63--90.
+
+\bibitem[\protect\citename{Marsland {\em et~al.}, }2003]{marsland:2003}
+Marsland, S.J., Haak, H., Jungclaus, J.H., Latif, M. and R\"oske, F. (2003).
+\newblock The {Max-Planck-Institute} global ocean/sea ice model with orthogonal
+  curvilinear coordinates.
+\newblock {\em Ocean Modelling}, {\bf 5}(2), 91--127.
+
+\bibitem[\protect\citename{Saltzman {\em et~al.}, }1993]{saltzman:1993}
+Saltzman, E.S., King, D.B., Holmen, K. and Leck, C. (1993).
+\newblock Experimental determination of the diffusion coefficient of
+  dimethylsulfide in water.
+\newblock {\em {J}. {G}eophys. {R}es.}, {\bf 98}(C9), 16481--16486.
+
+\bibitem[\protect\citename{Six and Maier-Reimer, }1996]{six:1996}
+Six, K.~D. and Maier-Reimer, E. (1996).
+\newblock Effects of plankton dynamics on seasonal carbon fluxes in an ocean
+  general circulation model.
+\newblock {\em {G}lobal {B}iogeochem. {C}ycles}, {\bf 10}(4), 559--583.
+
+\bibitem[\protect\citename{Timmreck and Schulz, }2004]{timmreck:2004}
+Timmreck, C. and Schulz, M. (2004).
+\newblock Significant dust simulation differences in nudged and climatological
+  operation mode of the {AGCM ECHAM}.
+\newblock {\em {J}. {G}eophys. {R}es.}, {\bf 109}(D13), 10.1029/2003JD004381.
+
+\bibitem[\protect\citename{Wanninkhof, }1992]{wanninkhof:1992}
+Wanninkhof, R. (1992).
+\newblock Relationship between wind speed and gas exchange over the ocean.
+\newblock {\em {J}. {G}eophys. {R}es.}, {\bf 97}, 7373--7382.
+
+\bibitem[\protect\citename{Weiss, }1970]{weiss:1970}
+Weiss, R.F. (1970).
+\newblock The solubility of nitrogen, oxygen and argon in water and sea water.
+\newblock {\em {D}eep-{S}ea {R}es.}, {\bf 17}, 721--735.
+
+\bibitem[\protect\citename{Weiss, }1974]{weiss:1974}
+Weiss, R.F. (1974).
+\newblock Carbon dioxide in water and sea water: The solubility of a non-ideal
+  gas.
+\newblock {\em {M}arine {C}hem.}, {\bf 2}, 203--215.
+
+\bibitem[\protect\citename{Zeebe, }2001]{Zeebe:2001}
+Zeebe, R.E. and D. Wolf-Gladrow (2001).
+\newblock CO$_2$ in seawater: Equilibrium, 
+kinetics, isotopes.
+\newblock {Elsevier Oceanography series}
+
+\end{thebibliography}
+\end{document}
+

@@ -1,0 +1,56 @@
+! -*- f90 -*-
+
+&CTRL
+READ_LUT_SETS(1) = 1, "$INPUTDIR_MESSY/aeropt/aeropt_sw_1.70_2.00_2.20.nc", "$INPUTDIR_MESSY/aeropt/aeropt_lw_1.70_2.00_2.20.nc"
+/
+
+&CPL
+!
+! ##############################################################################
+! Syntax:
+! ------------------------------------------------------------------------------
+! READ_AERO_SETS(N) = asetname, l_tracer, tsetname, exclspec, excltrac, l_calcss,
+!                     l_extmix, amodname, wradname, dradname, anumname, lutnum,
+!                     lcalc_jval, dwavelen
+! ------------------------------------------------------------------------------
+! with:
+! ------------------------------------------------------------------------------
+! asetname (string):   name of aerosol set (arbitrary, but has to be unique)
+! l_tracer (logical):  T -> aerosol set contains tracers
+!                      F -> aerosol set does not contain tracers
+! tsetname (string):   name of tracer set (seems to have no meaning at present)
+! exclspec (string):   species to exclude from the optical properties
+!                      calculations (in all modes); separate multiple species
+!                      by `;'
+! excltrac (string):   tracers to exclude from the optical properties
+!                      calculations (i.e. species in individualt modes); separate
+!                      multiple species by `;'
+! l_calcss (logical):  T -> calculate SS from Na and Cl tracers
+!                      F -> use SS tracer supplied by aerosol submodel
+! l_extmix (logical):  T -> treat aerosol species as externally mixed in certain
+!                           modes
+!                           WARNING: This does currently not work with MADE3!
+!                      F -> treat aerosol species as internally mixed in all
+!                           modes
+! amodname (string):   name of aerosol submodel channel
+! wradname (string):   name of aerosol submodel channel object for wet radius
+! dradname (string):   name of aerosol submodel channel object for dry radius
+! anumname (string):   name of aerosol submodel channel object for aerosol number
+!                      concentration (set if no number tracers available)
+! lutnum (integer):    number (i.e. first entry) of corresponding entry in
+!                      `READ_LUT_SETS' (see CTRL namelist)
+! lcalc_jval(logical): T -> calculate optical properties for JVAL
+!                      F -> do not calculate optical properties for JVAL
+! dwavelen (double):   array of wavelengths (in 10-6 m) at which to output
+!                      optical properties (max. number: 16)
+! ##############################################################################
+!  
+READ_AERO_SETS(1) = "MADE3", T, "", "", "", T, F, "made3_gp", "wetradius", "dryradius", "", 1, F, 0.55,,,,,,,,,,,,,,,,
+READ_AERO_SETS(2) = "TANRE", F, "", "", "", T, T,         "",          "",          "", "", 0, F,     ,,,,,,,,,,,,,,,,
+/
+
+&CPL_IMP
+/
+
+&CPL_MERGE
+/

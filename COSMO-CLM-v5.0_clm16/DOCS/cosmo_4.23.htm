@@ -1,0 +1,1461 @@
+<!DOCTYPE html 
+     PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+     "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xml:lang="en" lang="en">
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="GENERATOR" content="Mozilla/4.7C-SGI [en] (X11; I; IRIX64 6.5 IP27) [Netscape]">
+   <title>Changes in the COSMO-Model 4.23</title>
+<style type="text/css">
+  body { font-family:       Arial;
+         font-size:         12pt;
+         background-repeat: no-repeat; 
+         margin:            1em; }
+
+  tt   { font-size:         12pt;}
+
+  li   { margin-top:         5pt;
+         margin-bottom:      5pt }
+
+  th   { border:           1px solid black;
+         padding:          3pt;
+         vertical-align:   top;
+         background-color: lightblue;}
+
+  td   { border:           1px solid black;
+         padding:          3pt;
+         vertical-align:   top;}
+
+  td.middl   { border:           1px solid black;
+               padding:          3pt;
+               vertical-align:   middle;}
+
+  td.hilit       { border:           1px solid black;
+                   padding:          1pt;
+                   vertical-align:   top;
+                   background-color: lightblue;}
+
+  td.clean       { padding:          0pt;
+                   border-style:     none;
+                   vertical-align:   top;}
+
+  td.notes       { padding:          3pt;
+                   border-style:     none;
+                   vertical-align:   top;}
+
+  td.nomid       { padding:          3pt;
+                   border-style:     none;
+                   vertical-align:   middle;}
+
+  table.note     { border-width:     0pt;
+                   border-style:     none;
+                   margin-left:      5pt;
+                   margin-top:       1pt;
+                   margin-bottom:    1pt;
+                   cell-padding:     5pt;
+                   vertical-align:   top;
+                   text-align:       left;}
+  
+  table.atte     { border-width:     0pt;
+                   border-style:     none;
+                   margin-left:      5pt;
+                   margin-top:       1pt;
+                   margin-bottom:    1pt;
+                   cell-padding:     5pt;
+                   vertical-align:   top;
+                   text-align:       left;
+                   background-color: red;}
+  
+  table.namelist { border-width:  2pt;
+                   border-style:  groove;
+                   border-color:  black;
+                   width:         90%;
+                   text-align:    left;
+                   margin-top:    1pt;
+                   margin-bottom: 1pt;
+                   padding:       3pt;
+                   align:         center;}
+  
+  tr.headings    { text-align:       left;
+                   vertical-align:   top;
+                   border-width:     1pt;
+                   border-style:     groove;
+                   border-color:     grey;
+                   padding:          2pt;
+                   font-weight:      bold;}
+
+  .rot           { background-color: red;}
+</style>
+
+</head>
+  <body text="#000000" bgcolor="#FFFFFF" link="#0000EE" vlink="#551A8B" alink="#FF0000">
+
+<center>
+<h1>
+<a NAME="begin">Documentation of the Changes in the COSMO-Model <br /> Version 4.23</a>
+</h1>
+<h3>
+07.05.2012
+</h3>
+</center>
+
+<p>
+This version is the next step towards the new version COSMO-Model 5.0, which will be a
+unified release for NWP and climate mode. Many changes have been done to prepare the
+implementation of the new tracer module and the 2-moment microphysics. Also, some changes
+are to clean up the code and make it more modular. There are only very few changes that 
+influence the results.
+</p>
+
+<h4><a NAME="content">Contents:</a></h4>
+
+<ol>
+<li><a href="#metrorg">Changes in the parameterization of the cloud cover for ice clouds</a></li>
+<li><a href="#metrorg">Restructuring of metric organization</a></li>
+<li><a href="#padvorg">Reorganization of positive definite advection schemes</a></li>
+<li><a href="#bottadv">Introduced new variants of Bott advection</a></li>
+<li><a href="#moisdiv">Computation of moisture divergence</a></li>
+<li><a href="#physten">Compute physical tendencies in <tt>organize_physics.f90</tt></a></li>
+<li><a href="#deadcod">Removal of dead code</a></li>
+<li><a href="#technic">Other technical modifications</a></li>
+<li><a href="#clmexte">CLM extensions for next unified release</a></li>
+  <ol>
+  <li><a href="#clmext1">Spectral Nudging</a></li>
+  <li><a href="#clmext2">Introduction of prescribed surface albedo</a></li>
+  <li><a href="#clmext3">Introduction of new GHG concentration scenarios</a></li>
+  <li><a href="#clmext4">Implementation of time dependent aerosol optical depths</a></li>
+  <li><a href="#clmext5">Support for climatological year with 365 days</a></li>
+  <li><a href="#clmext6">New diagnostic variables</a></li>
+  <li><a href="#clmext7">Changes for Restart and NetCDF I/O</a></li>
+  <li><a href="#clmext8">Variables for multi-layer snow model</a></li>
+  <li><a href="#clmext9">Miscellaneous</a></li>
+  </ol>
+<li><a href="#mintech">Minor technical modifications</a></li>
+<li><a href="#bugfixe">Bug Fixes</a></li>
+<li><a href="#namelis">Changes to the Namelists</a></li>
+<li><a href="#results">Changes of Results</a></li>
+<li><a href="#miscell">Other technical impacts</a></li>
+</ol>
+<p>
+<hr>
+
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="metrorg">1. Changes in the parameterization of the cloud cover for ice clouds</a></h3>
+  <h4>(by Axel Seifert)</h4>
+
+<p>
+<tt>src_radiation.f90</tt><br />
+The code to reduce the cloud cover of ice clouds in the upper troposphere has been modified:
+<ul>
+ <li>The branch for <tt>k &leq; klv500</tt> has been eliminated. It is also not used in
+     the GME and can lead to spurious artifacts. It does not make sense here.</li>
+ <li>The empirical relation has been re-tuned using data from the Lindenberg
+     cloud radar. Now the model can really achieve 100% cloud cover for
+     cirrus clouds. Before the maximal cloud cover has been at about 80%,
+     which is not realistic.</li>
+</ul>
+</p>
+
+<p>
+This change does influence the radiation and therefore also the simulation results.
+Experiments have been conducted at DWD already in late 2011 for COSMO-DE and COSMO-EU.
+For both applications periods in winter and in early summer have been 
+considered. The verification was neutral.
+</p>
+
+<p>
+At least the first modification can be considered to be a bug fix.
+</p>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+<p align="right"><a href="#content">Back to Contents</a>
+<hr>
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="metrorg">2. Restructuring of metric organization</a></h3>
+  <h4>(by Michael Baldauf)</h4>
+
+<p>
+All routines related to metric calculations have been gathered to the new
+module <tt>grid_metrics_utilities.f90</tt>. This module now contains the subroutines:
+</p>
+  
+<ul>
+ <li><tt>calc_sqrtg_r</tt>: has been in <tt>numeric_utilities</tt> before</li>
+ <li><tt>metric_coeffs</tt>: has been in <tt>numeric_utilities</tt> before</li>
+ <li><tt>weighting_factors_full2half</tt>: has been in <tt>fast_waves_rk</tt> before</li>
+ <li><tt>weighting_factors_one_sided</tt>: new routine</li>
+  
+ <li><tt>init_grid_metrics</tt>: new routine<br />
+     It is now called in organize_dynamics (init-part) and / or in src_artifdata and
+     can also be called by other programs having to deal with metric calculations.
+     Boundary exchange calls in init_grid_metrics are embraced with "ifndef NOMPI",
+     so sequential programs have to define NOMPI then.</li>
+</ul>
+
+<p>
+The module <tt>grid_metrics_utilities.f90</tt> also contains some fields necessary for 
+running, which have been defined in <tt>data_fields.f90</tt> before.
+</p>
+
+<p>
+These changes do not influence the results.
+</p>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+<p align="right"><a href="#content">Back to Contents</a>
+<hr>
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="padvorg">3. Reorganization of positive definite advection schemes</a></h3>
+  <h4>(by Michael Baldauf, Oliver Fuhrer)</h4>
+
+<p>
+To avoid multiple copies of the same code in the module <tt>src_advection_rk.f90</tt>,
+the positive definite advection of the different fields in a certain space direction have 
+been gathered in new subroutines <tt>advection_ef_x</tt>, <tt>advection_ef_y</tt>, 
+<tt>advection_ef_z</tt>.  Depending on the chosen advection scheme, these routines 
+are called in a special order.
+</p>
+
+<p>
+At the same time, a bug has been fixed by Oliver Fuhrer in the interfaces of the 
+advection operators. Related problems have also been reported from the Lahey 
+Compiler by Astrid Kerkweg:
+</p>
+
+<p>
+Certain subroutines have been called by the COSMO-Model using the same argument twice. 
+For example, the advection operators are written in a form
+</p>
+
+<p>
+<tt>
+  subroutine advx(s,su)<br />
+   real, intent(in)  :: s<br />
+   real, intent(out) :: su<br />
+   tmp = f(s)<br />
+   su = g(tmp)<br />
+  end subroutine advx<br />
+</tt>
+</p>
+
+<p>
+and are then called via
+</p>
+
+<p>
+<tt>CALL advx( qv(nnew), qv(nnew) )</tt>
+</p>
+
+<p>
+to avoid an additional copy. According to the Fortran standard this type of argument
+aliasing is explicitly forbidden (see for example note 12.34 of the Fortran 2008 standard)
+and may lead to erroneous results. This actually seems to be the case for the NAG
+and Lahey Fujitsu compiler. This type of calling is used for advection and cloud
+diagnostics and different approaches for fixing it have been adopted.
+</p>
+
+<p>
+For the advection, the memory copy has been made explicit in the advection driver
+routine (as has already been done for the SL-advection). This also leads to a
+reduction in code complexity. The advection routines retain only one argument
+which is declared as INOUT and do the update in-place.
+</p>
+
+<p>
+The changes have been tested for the COSMO-7 and COSMO-2 operational setup at MeteoSwiss
+and have led to bit-identical results. The performance on the Cray XT4 machines does
+not seem to be influenced significantly by the modifications and is within the uncertainty
+of the measurement of a single run on a machine being shared with other users.
+</p>
+
+<p>
+Tests at DWD for COSMO_EU and COSMO_DE have also shown that the changes do 
+not influence the results.
+</p>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+<p align="right"><a href="#content">Back to Contents</a>
+<hr>
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="bottadv">4. Introduced new variants of Bott Advection</a></h3>
+  <h4>(by Michael Baldauf)</h4>
+
+<p>
+New variants of the Bott Advection scheme have been implemented as 
+new options for the Namelist parameter <tt>y_scalar_advect</tt> in <tt>/DYNCTL/</tt>:
+
+<ul>
+ <li><tt>BOTT2_STRANG_B, BOTT4_STRANG_B</tt>:<br />
+   <p>
+   Strang splitting only at the bottom, in the lowest <tt>koffset</tt> levels of the atmosphere.
+   The more accurate but also more expensive Strang splitting needs only to be applied 
+   near the surface. Using the less expensive advection variants in the higher atmosphere
+   will save computational time.
+   </p>
+
+   <p>
+   A new subroutine <tt>advection_ef_xyzyx_new</tt> has been implemented:
+   <ul>
+    <li>levels <tt>k=1,...,ke-koffset</tt>:
+           usual Bott-Advection (either -x or -y, depending on time step)</li>
+    <li>levels <tt>k=ke-koffset+1,...,ke</tt>: 
+           Bott Advection with Strang splitting (first _x, then _y)</li>
+    <li>levels <tt>k=1,...,ke</tt>:
+           Bott Advection in _z direction</li>
+    <li>Boundary exchange</li>
+    <li>levels <tt>k=1,...,ke-koffset</tt>:  
+           usual Bott-Advection (either -y or -x, depending on time step)</li>
+    <li>levels <tt>k=ke-koffset+1,...,ke</tt>: 
+           Bott Advection with Strang splitting (first _y, then _x)</li>
+   </ul>
+   </p>
+
+   <p>
+   So it is for the upper levels k = 1,...,ke-koffset
+   <ul>
+     <li>even time steps:       <tt>xzy</tt></li>
+     <li>odd  time steps:       <tt>yzx</tt></li>
+   </ul>
+   </p>
+
+   <p>
+   And in the lowest levels <tt>k = ke-koffset+1, ..., ke</tt>
+     Strang Splitting:    <tt>xyzyx</tt>
+   </p>
+ </li>
+
+ <li><tt>BOTT2_XYZYX, BOTT4_XYZYX</tt>:<br />
+   Modified sequence of Strang splitting, compared to the ones implemented (ZYXYZ)
+  </li>
+</ul>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+<p align="right"><a href="#content">Back to Contents</a>
+<hr>
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="moisdiv">5. Computation of Moisture Divergence and Removal of <tt>qvt_diff</tt></a></h3>
+  <h4>(by Oliver Fuhrer)</h4>
+
+<p>
+The diagnosis of <tt>dqvdt</tt> was intermixed with the computation of vertical diffusion of
+<tt>qv</tt> and <tt>qc</tt> in the subroutine <tt>complete_tendencies_qvqcqi_tke</tt> 
+(and the subroutine <tt>slow_tendencies</tt> for the LF-core). 
+This has been separated into two different subroutines (RK) or different code blocks
+(Leapfrog) in order to make the code more modular and extensible in the future. 
+This required changes to the source files <tt>slow_tendencies.f90</tt>, 
+<tt>src_runge_kutta.f90</tt>, and <tt>src_slow_tendencies_rk.f90</tt>. 
+The changes are of purely technical nature and do not influence the model results.
+</p>
+
+<p>
+The modified code has been checked for the MeteoSwiss operational setup (COSMO-2 and COSMO-7)
+and proven to give bit-reproducible results for the Runge-Kutta applications.
+It also has been checked for COSMO_EU and COSMO_DE at DWD, where it also gave
+bit-reproducible results
+</p>
+
+<p>
+A remark on the Leapfrog core:<br />
+An additional optimization has been made in the LF core (removal of a code sequence
+"<tt>+qvtens-qvtens</tt>"). Therefore, rounding errors can lead to differences in 
+the range of the numerical precision.
+These changes only influence the computation of <tt>dqvdt</tt> and thus are only
+visible if the convection scheme is active (COSMO-7) or in the DQVDT diagnostic output.
+The impact on model performance is negligible and cannot be discerned from the jitter
+on the machine.
+</p>
+
+<p>
+At the same time, the field <tt>qvt_diff</tt> has been eliminated from the COSMO-Model at all. 
+In <tt>qvt_diff</tt>, additional diffusive tendencies have been stored, which do not
+contribute to the simulations, if the three-dimensional turbulence is not switched on.
+</p>
+
+<p>
+To unify the treatment of all microphysical species (necessary for the new tracer module),
+this field has been completely removed from the model.
+</p>
+
+<p>
+A warning is issued that explicit diffusion tendencies are not accounted for in <tt>dqvdt</tt>.
+</p>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+<p align="right"><a href="#content">Back to Contents</a>
+<hr>
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="physten">6. Compute physical tendencies in <tt>organize_physics.f90</tt>:</a></h3>
+  <h4>(by Oliver Fuhrer)</h4>
+
+<p>
+The computation of the total physical tendencies has been moved out of the 
+dynamical cores and to the subroutine <tt>organize_physics</tt> into the 
+<tt>'compute'</tt> section. This avoids duplicated code and simplifies
+the program structure.
+</p>
+
+<p>
+For the Runge-Kutta core these changes are neutral and do give bit-identical 
+results.
+</p>
+
+<p>
+For the Leapfrog core, there are rounding differences, because here the order is
+changed, in which the physical tendencies are added.
+
+<ul>
+ <li>Before: <tt>tendencies = tendencies + (advective tendencies) + (physical  tendencies)</tt></li>
+ <li>Now:    <tt>tendencies = tendencies + (phyiscal  tendencies) + (advective tendencies)</tt></li>
+</ul>
+</p>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+<p align="right"><a href="#content">Back to Contents</a>
+<hr>
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="deadcod">7. Removal of Dead Code</a></h3>
+  <h4>(by Ulrich Sch&auml;ttler, Michael Baldauf)</h4>
+
+<p>
+The following options and related source code have been removed:
+</p>
+
+<ul>
+ <li><tt>irunge_kutta == 0</tt>:<br />
+   Module  (<tt>src_2timelevel.f90</tt> and everything related has been eliminated.</li>
+
+ <li><tt>lprogprec, ltrans_prec</tt>:<br />
+   Now the only option is prognostic precipitation.<br />
+   The transport of <tt>qr</tt>, <tt>qs</tt> can be switched off again, 
+   once the new tracer module is implemented.<br />
+   Also: In the Digital Filter Initialization, the advection of <tt>qr,qs,qg</tt>
+         (which up to now could be switched off with lprogprec=.FALSE.) can
+         be switched off again in the future with the new tracer module.</li>
+
+ <li><tt>itype_conv == 1</tt>:<br />
+   Module <tt>src_conv_kainfri.f90</tt> and everything related has been eliminated.</li>
+
+ <li><tt>fast_waves_rk.f90</tt><br />
+   Removed unnecessary (internal) options and dead code in that subroutine.</li>
+</ul>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+<p align="right"><a href="#content">Back to Contents</a>
+<hr>
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="technic">8. Other Technical Modifications</a></h3>
+
+<ul>
+ <li>Modifications to long meteograph output:<br />
+     (in organize_diagnosis.f90, src_gridpoints.f90)
+  <p>
+  Additional variables have been added in the long meteograph output:
+     <tt>SWDIR_S, SWDIFD_S, SWDIFU_S, SNOW_MELT</tt>
+  </p>
+
+  <p>
+  This changes the format of the <tt>M_*</tt>-files; everybody working with these files has
+  to adapt the according post-processing programs
+  </p>
+
+  <p>
+  In addition, a format for printing the time step has been changed from I5 to I10,
+  to avoid stars in the output in case of climate runs.
+  </p>
+
+  <p>
+  For long and for short grid point output, the corresponding grid point variables 
+  are allocated only for one step. Only in case of "lgpspec" output, the variables
+  are allocated with #(grid point output steps) as a dimension.
+  In this way, some memory is saved.
+  </p>
+  </li>
+ <li>Modifications of the utility modules: <br />
+     The utility modules have been unified again with the latest INT2LM version. 
+     In addition, there have been some amendments.
+   <ul>
+     <li><tt>environment.f90:</tt><br />
+         Editorial changes; adaptations were necessary in INT2LM</li>
+
+     <li><tt>io_utilities.f90:</tt> Unification with INT2LM
+       <ul>
+        <li> usage of grib_api; new SR read_grib_api</li>
+        <li> new (generic) SR check_input_grid, replacing check_[lm,ec,um]_grid</li>
+        <li> changes to check_gme_grid because of grib_api usage</li>
+        <li> modified interface to read_restart (has to be adapted in COSMO-Model calls)</li>
+       </ul>
+       The module <tt>src_input.f90</tt> has been adapted to the modified interfaces of
+       the subroutines <tt>check_input_grid</tt> and <tt>read_netcdf</tt>.</li>
+
+     <li><tt>utilities.f90:</tt>
+       <ul>
+        <li>inserted english comments and print-outs in SR tautsp, tautsp2D</li>
+        <li>added several PARAMETER attributes in routines (uv2uvrot, etc.)</li>
+        <li><p>The interface for the routine diff_minutes (which replaces the DWDLIB
+            routine DIFMIN) has been extended with an argument icalendar, to specify
+            the calendar in use. The COSMO-Model variable itype_calendar has to be
+            passed, which specifies:
+            <ul>
+             <li>0: gregorian calendar (default)</li>
+             <li>1: every year has 360 days</li>
+             <li>2: every year has 365 days</li>
+            </ul>
+            In this way we can also avoid the different routines <tt>difmin_360</tt>,
+            <tt>difmin_365</tt>, etc.
+            </p>
+
+            <p>
+            Some additional notes:
+            <ul>
+             <li>All interfaces in the COSMO-Model and the INT2LM have been adapted.</li>
+             <li>All routines DIFMINxxx have been replaced by diff_minutes.</li>
+             <li>Because diff_minutes is also used in the module io_utilities, there now is
+                 a dependency to utilities.f90</li>
+            </ul>
+       </ul></li>
+
+     <li><tt>parallel_utilities.f90:</tt><br />
+       The interface for the routine <tt>distribute_fields</tt> has been extended with an
+       argument to specify the PE that sends the message (was PE 0 before). This
+       more flexible routine is needed in the spectral nudging now.<br />
+       All calls to distribute_fields have been adapted.</li>
+   </ul></li>
+
+ <li>Deletion of obsolete Fortran features: <br />
+    There are still obsolete Fortran features used in the COSMO-Model.
+    Some of them have been eliminated.
+     <ul> 
+      <li>Definition of Character variables with <tt>*x</tt> has been replaced with 
+          <tt>(LEN=x)</tt> in: <tt>data_1d_global.f90, src_sfcana.f90, src_soil_multlay.f90</tt></li>
+      <li>Computed <tt>GOTO</tt> has still been used in: <tt>semi_implicit.f90</tt></li>
+      <li>Some <tt>WRITE</tt> formats have been adapted in <tt>src_artifdata.f90</tt></li>
+     </ul>
+    </li>
+
+ <li>Selective smoothing of output fields: <br />
+     Up to now, the following means were available to smooth special fields:
+     <ul>
+      <li><tt>l_p_filter= .TRUE.</tt>:  smooth all fields that are written on p-levels</li>
+      <li><tt>l_z_filter= .TRUE.</tt>:  smooth all fields that are written on z-levels;
+                             also smooth PMSL, PMSL_ANAI</li>
+      <li><tt>l_fi_ps_smooth = .TRUE.</tt>:  
+              special smoothing of PMSL and FI in mountaineous terrain</li>
+     </ul>
+
+    <p>
+    First modification:<br />
+    The switch <tt>l_fi_ps_smooth</tt> has been renamed to <tt>l_fi_pmsl_smooth</tt>, 
+    because not <tt>ps</tt> but <tt>pmsl</tt> is smoothed in that case.
+    </p>
+
+    <p>
+    The actions done are now:
+     <ul> 
+      <li> Two new switches have been introduced in Namelist group /GRIBOUT/, 
+           to independently smooth <tt>FI</tt> and <tt>PMSL</tt>:
+           <ul>
+           <li><tt>l_pmsl_filter</tt>:  if <tt>.TRUE.</tt>, <tt>PMSL</tt> is smoothed, 
+               independently from the setting of <tt>l_z_filter</tt><br />
+               Default: <tt>.TRUE.</tt></li>
+           <li><tt>l_fi_filter</tt>:  if <tt>.TRUE.</tt>, <tt>FI</tt> is smoothed, 
+               independently from the setting of <tt>l_[p,z]_filter</tt><br />
+               Default: <tt>.FALSE.</tt></li>
+           </ul>
+      <li>The actions of l_z_filter / l_p_filter are the same as before</li>
+     </ul>
+    </p>
+    </li>
+
+ <li>Update of SST over sea during a NWP forecast: <br />
+     A new Namelist switch <tt>lbdsst</tt> has been introduced in group <tt>/IOCTL/</tt>,
+     to update the Sea Surface Temperature over sea during a NWP simulation. 
+     (Default is <tt>.FALSE.</tt>).
+
+     <p>
+     NOTE:<br />
+     In climate runs, if <tt>lbdclim=.TRUE.</tt>, SST is updated anyhow with 
+     boundaries, but in usual weather forecasts, it is kept constant during 
+     the model run. With <tt>lbdsst=.TRUE.,</tt> boundary values are taken 
+     to update SST over sea only.
+     </p>
+    </li>
+
+ <li>Additional ASCII Output for COSMO Testsuite: <br />
+     To compare COSMO-Model output from different test runs, additional output is
+     written to a file <tt>YUPRTEST</tt>. This output has been implemented within
+     <tt>organize_diagnosis.f90</tt>. Some new routines have been implemented in
+     <tt>src_meanvalues</tt> to do this output.
+
+     <p>
+     New Namelist switch in <tt>/DIACTL/</tt> to activate the testsuite: 
+     <tt>ltestsuite</tt> (Default: <tt>.FALSE.</tt>)
+     </p>
+
+     <p>
+     When to do output: at the moment this is hard coded for steps 0,1,2,3 and then
+     every 10th step. For the Leapfrog core, the last time step is not written any 
+     more, because at the time of output it has not been Asselin-filtered and will 
+     therefore not be reproducible as compared to a longer run.
+     </p>
+
+     <p>
+     New routine in <tt>src_meanvalues</tt>:    <tt>mean_testsuite</tt><br />
+     This new routine calls another routine <tt>print_testsuite</tt>, which gets a COSMO-field
+     (2D or 3D) as argument. The routine <tt>print_testsuite</tt> has a generic implementation,
+     taking care of fields with different dimensions.
+     The output is written to an ASCII file <tt>YUPRTEST</tt>.
+     </p>
+    </li>
+</ul>
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+<p align="right"><a href="#content">Back to Contents</a>
+<hr>
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="clmexte">9. CLM extensions for next unified release</a></h3>
+
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="clmext1">9.1. Spectral Nudging</a></h3>
+
+<ul>
+  <li>New Namelist parameter <tt>nincsn</tt> introduced in <tt>/DYNCTL/</tt>, to define a time
+      increment for calling spectral nudging. Default is <tt>nincsn = 1</tt>.
+  <li><tt>src_spectral_nudging.f90</tt>:
+   <ul>
+    <li>Only allow 4D prognostic variables.</li>
+    <li>Several changes for better parallelization<br />
+        A new subroutine <tt>distribute_fields2</tt> has been proposed, where a special
+        PE can be specified as sender. The old subroutine <tt>distribute_field</tt>
+        could only use PE=0 as sender.  Instead we extended the interface of 
+        <tt>distribute_field</tt> with a new argument for the sender and adapted all 
+        CALLs to distribute_field.</li>
+   </ul></li>
+</ul>
+
+<p align="right"><a href="#content">Back to Contents</a>
+
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="clmext2">9.2. Introduction of prescribed surface albedo</a></h3>
+
+<p>
+Prescribed surface albedo values, based on MODIS, are read from the initial 
+file. They have to be provided by INT2LM. New fields have been introduced 
+for that purpose. Different methods have been implemented by the CLM Community
+and by DWD. They method can be chosen by the new Namelist switch <tt>itype_albedo</tt>
+in the group <tt>/PHYCTL/</tt>:
+</p>
+
+  <ol>
+    <li>(default) soil albedo is a function of soiltype (old treatment)</li>
+    <li>soil albedo is prescribed by external fields for saturated and for dry soil</li>
+    <li>background diffuse solar albedo is prescribed by external fields</li>
+    <li>vegetation albedo is modified by forest fraction</li>
+  </ol>
+
+<p>
+There are three  new fields with the following GRIB1 numbers:
+ <ul>
+   <li><tt>alb_dry</tt>:  albedo of dry soil         iee = 127, itabtyp=202
+   <li><tt>alb_sat</tt>:  albedo of saturated soil   iee = 128, itabtyp=202
+   <li><tt>alb_dif</tt>:  diffuse solar albedo       iee = 129, itabtyp=202
+ </ul>
+</p>
+
+<p>
+For <tt>itpye_albedo=2</tt>, <tt>ALB_DRY</tt> and <tt>ALB_SAT</tt> are defined as mandatory fields for
+input. For <tt>itype_albedo=3</tt>, <tt>ALB_DIF</tt> is mandatory. These fields are also 
+written to restart files.
+</p>
+
+<p>
+In <tt>src_radiation.f90</tt>, new code has been added to deal with the new methods
+to determine the soil albedo from the dry and saturated values and relative
+saturation of the top soil layer or from the diffuse solar albedo.
+</p>
+
+<p>
+More detailed description of albedo processing:
+</p>
+
+<ul>
+  <li><tt>itype_albedo = 2</tt> (by Daniel Luethi, ETH Z&uuml;rich)<br />
+    <p>
+    The CommunityLandModel provides a file with global soil color data on
+    a regular latitude/longitude grid with a resolution of 0.5 deg. The
+    soil color is then converted in albedo values by 4 lookup tables for
+    two spectral bands (visible and near infrared) and for dry and
+    saturated soils. Since the radiation scheme in CLM doesn't distinguish
+    between different spectral bands for the albedo a weighted mean of the
+    albedo values for the two bands is calculated with a weighting factor
+    of 0.53 for the near infrared band (according to the relative
+    contribution of solar energy from this band). This leaves us with
+    an albedo value for both dry and saturated soil at each land grid
+    point of the original dataset.
+    </p>
+
+    <p>
+    An offline program is used to do all these calculations and to
+    interpolate the data to a given CLM grid taking the land-sea-masks
+    of the new grid and the original grid into account.
+    </p>
+
+    <p>
+    The treatment of wet soils is also changed with respect to the
+    original scheme that uses a coefficient which depends only on the
+    soil type and which is multiplied with the soil water content in the
+    top soil layer. The product is then added to the albedo value for
+    the dry soil. With the prescribed albedo fields a linear interpolation
+    between dry and saturated values based on the relative saturation is
+    applied, where the pore volume and air dryness point are used to
+    determine the relative saturation.
+    </p></li>
+
+  <li><tt>itype_albedo = 3</tt> (by Frank Brenner, J&uuml;rgen Helmert, DWD)<br />
+    <p>
+    In cooperation with the ECMWF a monthly mean albedo has been taken out
+    of a 5-year climatology made by compositing, and gap-filling the MODIS
+    BRDF data. Background albedo values are calculated at local solar noon,
+    but can be determined at any desired solar zenith angle. Currently one
+    data set of diffuse albedo is implemented in COSMO external parameters.
+    This can be extended, since MODIS provides direct and diffuse albedo in
+    dependency on different wavelengths.</li>
+    </p>
+
+  <li><tt>itype_albedo = 4</tt> (by J&uuml;rgen Helmert, DWD)<br />
+    <p>
+    According to the results of Moody et al. (2008) using five years (2000-04)
+    of spatially complete snow-free land surface albedo data, a dependency of
+    the vegetation albedo on the forest fraction was implemented. Currently
+    the fraction of deciduous and evergreen forest is considered and serves
+    as a proxy of remote sensing derived background albedo data.</li>
+    </p>
+</ul>
+
+<p align="right"><a href="#content">Back to Contents</a>
+
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="clmext3">9.3. Introduction of new GHG concentration scenarios</a></h3>
+
+<ul>
+  <li> RCP2.5=RCP3PD, RCP4.5, RCP6 and RCP8.5 <br />
+     (by Hans-Juergen Panitz (KIT), Klaus Keuler (BTU), Matthias Buechner (PIK))
+
+     <p>
+     The basis for the new RCPs is the agglomerative radiative forcing (RF)
+     (W/m**2) due to all greenhouse gases (GHG) as they are available from the
+     RCP Web-page:
+     <a href=http://www.pik-potsdam.de/~mmalte/rcps>http://www.pik-potsdam.de/~mmalte/rcps/</a>
+     </p>
+
+     <p>
+     The RF has been converted to an equivalent CO2 concentration (ppm) using
+     the formula
+     </p>
+     <p><center>RF = 5.35*ln(C/278)</center></p>
+
+     <p>
+     with
+      <ul>
+         <li>C = CO2 equivalent concentration (ppm)</li>
+         <li>278 = pre-industrial CO2 concentration (ppm)</li>
+         <li>RF = radiative forcing (W/m**2)</li>
+      </ul>
+     </p>
+
+     <p>
+     This has been done for all four RCPs:  RCP2.6, RCP4.5, RCP6, and RCP8.5<br />
+     Applying fourth order polynome fits (5. order for RCP2.6) for the years 1950
+     until 2150 the concentrations have been adapted to CCLM.
+     </p>
+
+     <p>
+     To take into account the new RCPs the value range of Namelist parameter
+     <tt>ico2_rad</tt> (group <tt>/PHYCTL/</tt>) has been extended from 7 to 10:
+     <ul>
+       <li><tt>ico2_rad = 7</tt>: scenario RCP2.6 is chosen</li>
+       <li><tt>ico2_rad = 8</tt>: scenario RCP4.5 is chosen</li>
+       <li><tt>ico2_rad = 9</tt>: scenario RCP6 is chosen</li>
+       <li><tt>ico2_rad =10</tt>: scenario RCP8.5 is chosen</li>
+     </ul>
+     </p>
+   </li>
+
+<li> Limiter for GHG forcing<br />
+     <p>
+     Because the fitted functions of the new RCPs tend to elope prior and beyond
+     certain years when going outside of the period they were fitted to, they
+     need to be restricted to their original fitting interval.  This was not
+     implemented for the SRES scenarios either. Now there is a lower boundary of
+     year 1950, where, when simulate in earlier periods, the forcing is fixed to
+     1950 values.  The upper boundary depends on whether you choose a SRES or a
+     RCP scenario.  The upper boundary for SRES is 2100 (as commented in the
+     source code) and 2150 for RCPs.  ico2_rad=0 (constant) will not be affected
+     by this change. A message to stdout will be written, when the limiter is active.
+     </p>
+   </li>
+
+<li> CO2 stabilisation<br />
+     <p>
+     This feature is to perform simulations with stabilized GHG forcings,
+     e.g from 2100 on.
+
+     Two new parameters were added in name list group <tt>/PHYCTL/</tt>:
+     <ul>
+       <li><tt>lco2_stab</tt>:    if <tt>.TRUE.</tt>, activates the feature of GHG stabilization;
+                     the default value is <tt>.FALSE.</tt></li>
+       <li><tt>iy_co2_stab</tt>:  <tt>INTEGER</tt> variable defining the year when GHG stabilization
+                     begins; default value: 2001
+                     It is without effect, if the feature is disabled.</li>
+     </ul>
+   </li>
+</ul>
+
+<p align="right"><a href="#content">Back to Contents</a>
+
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="clmext4">9.4. Implementation of time dependent aerosol optical depths</a></h3>
+  <h4>(by Daniel Luethi)</h4>
+
+<p>
+In case of itype_aerosol=2, new boundary fields have been introduced for:
+<ul>
+  <li><tt>aer_du_bd</tt>: dust aerosols            </li>
+  <li><tt>aer_su_bd</tt>: sulfate aerosols         </li>
+  <li><tt>aer_ss_bd</tt>: sea salt aerosols        </li>
+  <li><tt>aer_bc_bd</tt>: black carbon aerosols    </li>
+  <li><tt>aer_or_bd</tt>: organic matter aerosols  </li>
+</ul>
+to update these fields during climate simulations.
+</p>
+
+<p align="right"><a href="#content">Back to Contents</a>
+
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="clmext5">9.5. Support for climatological year with 365 days</a></h3>
+  <h4>(by Burkhardt Rockel)</h4>
+
+<p>
+The usage of a 365 days calendar is defined by setting the Namelist parameter
+<tt>itype_calendar = 2</tt>.
+
+<p>NOTE: </br >
+The new routines <tt>difmin_365</tt>, <tt>datjul_365</tt>, etc. that have been 
+proposed by the CLM community for the treatment of this new calendar, have not
+been taken. 
+</p>
+
+<p>
+Instead we did the following:<br />
+The routines difmin and datjul from the external GRIB (or MISC) library have
+been replaced a new COSMO routine "diff_minutes" (located in utilities.f90)
+This routine has been extended with the argument itype_calendar, and the
+different calendars are now treated within this routine.
+No other routines are necessary now.
+</p>
+
+<p align="right"><a href="#content">Back to Contents</a>
+
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="clmext6">9.6. New diagnostic variables</a></h3>
+
+Introduction of a new diagnostic variable for maximum wind speed in 10m height
+<ul>
+  <li>Variable name:        <tt>vabsmx_10m</tt></li>
+  <li>Output variable name: <tt>VABSMX_10M</tt></li>
+  <li>GRIB number defined by DWD:    <tt>iee = 216, itabtyp = 201</tt></li>
+</ul>
+
+<p>
+Be aware that VABSMX_10M is really the maximum wind speed in 10 m height
+and not the maximum gust, which is denoted as VMAX_10M!!
+</p>
+
+<p>
+Diagnostic Snow melt for output purposes only added.
+  (Originally done by Uwe Boehm.)<br />
+  The output variable is called as SNOW_MELT. It is accumulated over the storage
+  interval.  snow_melt includes contributions of melting of snow penetrating the
+  soil (up to field capacity), and/or contributing to surface run-off.
+  Therefore it appears already in the water balance equation in both terms.
+</p>
+
+<p align="right"><a href="#content">Back to Contents</a>
+
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="clmext7">9.7. Changes for Restart and NetCDF I/O</a></h3>
+
+<p>
+Several adaptions have been done:
+
+<ul>
+<li> new flag <tt>'i'</tt> to distinguish between ocean and inland water (lakes)
+     quantities (for netCDF output only)</li>
+
+<li> all SSO related variables got the flag <tt>'l'</tt></li>
+
+<li> several corrections for netCDF definitions</li>
+
+<li> write global attributes in netCDF only if they are defined</li>
+
+<li> new default for <tt>ncglob_realization_d=-999</tt> (means "not set")</li>
+
+<li> Additional SSO related fields necessary for correct restart:
+     include <tt>ut_sso, vt_sso, tt_sso, ustr_sso, vstr_sso, vdis_sso</tt> into
+     <tt>src_setup_vartab.f90</tt>
+     <p>
+     NOTE: official GRIB Numbers have been given by DWD (see below)
+           The names <tt>UT_SSO, VT_SSO, TT_SSO</tt> have been changed to
+                     <tt>DU_SSO, DV_SSO, DT_SSO</tt>
+           to be consistent with other DWD applications and with the
+           similar quantities from convection <tt>DU_CONV</tt>, etc.
+     </p></li>
+
+<li> <tt>LHFL_S</tt> and <tt>SHFL_S</tt> added to list of restart parameters in any case.
+     This is especially necessary to run the IFS convection scheme
+     correctly in case of restart.</li>
+
+<li> <tt>src_input.f90</tt>:
+     In case of restart: change input directory of restart file from
+                         <tt>ydirini</tt> to <tt>ydir_restart</tt>
+
+<li> <tt>io_utilities.f90</tt>:
+     Overcome restrictions for large netCDF files (&gt; 2Gb).
+     This is compatible with netCDF versions 3.6 and higher<br />
+     Another proposal: use <tt>IOR(nf90_clobber, nf90_64bit_offset)</tt></li>
+</ul>
+
+<p align="right"><a href="#content">Back to Contents</a>
+
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="clmext8">9.8. Variables for multi-layer snow model</a></h3>
+
+<ul>
+<li> A new I/O variable <tt>RHO_SNOW_M</tt> (<tt>rho_snow_mult</tt>) has been added
+     Changes to allow this and also the other multi-layer snow variables
+     in NetCDF and Restart files.</li>
+
+<li> correction in subroutine <tt>fill_realarray</tt> for level determination of 
+     multi-layer snow model
+     (most probably this is also wrong in <tt>fill_gribarray</tt>, so it has been
+      modified there also).</li>
+
+<li> <tt>src_soil_multilay.f90</tt>:
+     correction for multi layer snow model in case of restart.</li>
+
+<li> <tt>data_io.f90</tt>: <tt>idims_id_out</tt> for <tt>ke_snow</tt> added.<br />
+  For the snow density rho_snow_mult of the multi layer snow model a GRIB
+  number of 184 is assumed.  This should be changed to an official number.</li>
+</ul>
+
+<p>
+NOTE: <br />
+The GRIB coding of ALL multi-layer snow variables is not yet standard,
+because a non-official level type has been chosen. For the moment we left
+everything as it is, but there is a good chance that this has to be
+changed in the near future.
+</p>
+
+<p align="right"><a href="#content">Back to Contents</a>
+
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="clmext9">9.9. Miscellaneous</a></h3>
+
+<ul>
+<li> src_output.f90:
+     Delete the <tt>#ifdef GRIBDWD</tt> and corresponding <tt>#endif</tt> in 
+     Subroutine <tt>makegds</tt>. This subroutine has to be performed also in 
+     case of restarts!</li>
+
+<li> <tt>utilities.f90</tt>:
+     translation of error messages into English in <tt>tautsp</tt> and <tt>tautsp2d</tt></li>
+
+<li> <tt>src_flake.f90</tt>:
+  <ul>
+  <li> restrict writing information to debug output</li>
+  <li> set  <tt>t_snow_mult = t_snow</tt> only for grid points with <tt>depth_lk &gt; 0.0</tt>,
+       otherwise program may crash later on in <tt>organize_dynamics</tt>.</li>
+  </ul></li>
+
+<li> <tt>src_output.f90</tt>:
+  <ul>
+  <li> Correction of calculating <tt>rlon</tt> and <tt>rlat</tt> for netCDF output
+       related to definition of subregions (Namelist parameter <tt>ydomain = 's'</tt>).</li>
+  <li> only for climate mode:<br />
+       reset all necessary precipitation "components" like <tt>RAIN_GSP</tt> etc.
+       to zero in case that only <tt>TOT_PREC</tt> is an output variable
+       Without this change <tt>TOT_PREC</tt> would continuously increase.</li>
+  </ul></li>
+
+<li> <tt>src_input.f90</tt>:<br />
+     for <tt>'binary'</tt> input allow <tt>T_SO(ksoil=0)</tt> to be read instead of <tt>T_S</tt>.</li>
+
+<li> <tt>src_setup_vartab.f90</tt>:<br />
+     Add unit W m-2 to <tt>SOD_T</tt> and <tt>ASOD_T</tt>
+     Change of flag for <tt>FR_LAKE</tt>; has to be empty ' ' instead of 'l'.</li>
+</ul>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+<p align="right"><a href="#content">Back to Contents</a>
+<hr>
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="mintech">10. Minor technical modifications</a></h3>
+
+<ul>
+ <li><tt>organize_data.f90</tt>: Settings of <tt>yvarini / yvarbd</tt><br />
+    In Version 4.12, these variables have been eliminated as Namelist variables. But we
+    still left the structure that default-variables have to be set and after reading all
+    Namelist input, the variables have been modified according to the Namelist settings.
+    
+    Now these variables are set only after all Namelist Input is done (in the action
+    <tt>"start"</tt> of <tt>organize_data</tt>).</li>
+    
+ <li><tt>time_utilities.f90</tt>:<br />
+    The subroutine <tt>collect_timings</tt> has been modified to save memory. In long climate runs,
+    when using many processors, it could happen that the available memory is too small to
+    allocate the local structure in which the times from all processors are gathered.
+    <p>
+    
+    <p>
+    To avoid that, now every processors computes the necessary sums over all times.
+    If an hourly output is chosen (<tt>itype_timing=1/3</tt>), then a loop over all hours is done,
+    and the values are only gathered per hour. 
+    This results in a much smaller memory footprint, but perhaps a larger compute time,
+    and should not be chosen for production runs.
+    The options <tt>itype_timing=2/4</tt> are not affected by that.
+    </p>
+    </li>
+ <li><tt>mpe_io.f90</tt>:<br />
+    Cray computers have trouble with the communication in subroutine <tt>mpe_db_init</tt>, 
+    where a processor sends data to itself. This is avoided now.
+    For the sending in this subroutine, a buffered send (<tt>MPI_BSEND</tt>) has been 
+    implemented optionally, if the module is compiled with <tt>-D__MPICH2</tt>.</li>
+</ul>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+<p align="right"><a href="#content">Back to Contents</a>
+<hr>
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+
+<h3><a NAME="bugfixe">11. Bug Fixes</a></h3>
+
+<ul>
+ <li><tt>src_advection_rk.f90</tt>:<br />
+    Bug fix for call to subroutine <tt>global_values</tt> in subroutine 
+    <tt>limit_contravar_vert_veloc</tt> (line 1454): needs <tt>imp_integers</tt> 
+    not <tt>imp_reals</tt>.</li>
+
+ <li><tt>src_allocation.f90</tt>:  Allocation of special fields:<br />
+   Some fields are allocated only in special cases, but are listed in subroutine
+   interfaces. This can lead to compiler errors, so allocate these fields anyhow:
+     <tt>depth_lk, rcld, edr, ut_sso, vt_sso</tt>.</li>
+
+ <li><tt>src_artifdata.f90</tt>: Corrected some print outs</li>
+
+ <li><tt>src_leapfrog.f90</tt>:<br />
+    Bug Fix for computing <tt>MAX(w)</tt>: this should only be done in the interior of the
+    domain to give reproducible results.<br />
+    This will change results of Leapfrog applications.</li>
+
+ <li><tt>src_output.f90</tt>:<br />
+   <ul>
+     <li>The subroutine <tt>makegds</tt> is used by restarts and must not be embraced by
+         <tt>#ifdef GRIBDWD</tt> (by H.-J. Panitz).</li>
+     <li>The total precipitation rate <tt>TOT_PR</tt> is defined in <tt>setup_vartab</tt>, 
+         but is not computed. This has been added. (by Oli Fuhrer).</li>
+   </ul></li>
+
+ <li><tt>src_runge_kutta.f90</tt>:<br />
+    Additional boundary updates are needed for the option  <tt>y_vert_adv_dyn == "impl3"</tt>
+    since the computation of the  courant number for vertical u,v-advection requires
+    <tt>wcon</tt> at neighboring grid points.</li>
+
+ <li><tt>src_slow_tendencies_rk.f90</tt>:<br />
+    Turbulent diffusion of cloud ice <tt>qi</tt> was done, even if
+    <tt>ltur=.FALSE.</tt>; The IF-statement in line 1585 has been corrected.</li>
+
+ <li><tt>turbulence_tran.f90</tt>:<br />
+   Subroutine <tt>cloud_diag</tt> has been called with the same field in different
+   arguments. For the <tt>INTENT(IN)</tt>-argument, a local copy has been done now.</li>
+
+ <li><tt>turbulence_diff.f90</tt>: <br />
+    Within <tt>ifdef __COSMO__</tt> a boundary exchange is called, but the
+    necessary variables and the subroutine <tt>exchg_boundaries</tt> are not used.
+    These are now USEed, also within <tt>#ifdef __COSMO__</tt>.<br />
+    This boundary exchange is only necessary, if <tt>imode_turb == 3</tt> is chosen, what
+      is not done in usual recommended settings.</li>
+</ul>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+<p align="right"><a href="#content">Back to Contents</a>
+<hr>
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="namelis">12. Changes to the Namelists</a></h3>
+
+<p>There were the following changes for the Namelist variables:</p>
+
+<p>
+<center>
+<table border="1" cellspacing="3" class="namelist">
+ <tbody>
+   <tr>
+     <th>Group</th>
+     <th>Name</th>
+     <th>Meaning</th>
+     <th align="center", width="5%">Default</th>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td class="hilit" rowspan="1"><tt>/RUNCTL/</tt></td>
+     <td><tt>itype_calendar</tt></td>
+     <td class="middl" rowspan="1">a new option has been added
+        <p>= 2: support for a climatological year with 365 days.</p></td>
+     <td class="middl" align="center" rowspan="1"><tt>0</tt></td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td class="hilit" rowspan="3"><tt>/DYNCTL/</tt></td>
+     <td><tt>y_scalar_advect</tt></td>
+     <td class="middl" rowspan="1">new options have been added:
+        <ul>
+          <li><tt>BOTT2_STRANG_B, BOTT4_STRANG_B</tt><br />
+            the same as the already existing <tt>BOTT2_STRANG, BOTT4_STRANG</tt>,
+            but only in the lowest <tt>k_offset</tt> levels of the atmosphere.<br />
+            <tt>k_offset</tt> is hardcoded with 5.</li>
+          <li><tt>BOTT2_XYZYX, BOTT4_XYZYX</tt><br />
+            Advection with modified sequence of Strang splitting compared to the 
+            ones already implemented (ZYXYZ).</li>
+        </ul>
+      </td>
+     <td class="middl" align="center" rowspan="1"><tt>.FALSE.</tt></td>
+   </tr>
+   <tr>
+     <td><tt>nincsn</tt></td>
+     <td class="middl" rowspan="1">New switch Nudging to define a time increment 
+                                   for calling the Spectral Nudging.</td>
+     <td class="middl" align="center" rowspan="1"><tt>1</tt></td>
+   </tr>
+   <tr>
+     <td><tt>irunge_kutta</tt></td>
+     <td class="middl" rowspan="1">
+           <span class="rot">The option <tt>irunge_kutta = 0</tt> has been eliminated!</span><br />
+           Associated with this option was the <tt>src_2timelevel</tt> dynamical 
+           core, which has been removed from the code.</td>
+     <td class="middl" align="center" rowspan="1"><tt>1</tt></td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td class="hilit" rowspan="7"><tt>/PHYCTL/</tt></td>
+     <td><tt>itype_albedo</tt></td>
+     <td class="middl" rowspan="1">Type of surface albedo treatment. Options are:
+       <ol>
+        <li>(default) surface albedo is a function of soiltype</li>
+        <li>surface albedo is prescribed by external fields</li>
+        <li>background albedo is prescribed by external fields</li>
+        <li>vegetation albedo is modified by forest fraction</li>
+       </ol></td>
+     <td class="middl" align="center" rowspan="1"><tt>1</tt></td>
+   </tr>
+   <tr>
+     <td><tt>ico2_rad</tt></td>
+     <td class="middl" rowspan="1">New options have been added for new 
+                                   CO<sub>2</sub> scenarios:
+          <ol start="7">
+           <li>Scenario RCP2.6</li>
+           <li>Scenario RCP4.5</li>
+           <li>Scenario RCP6  </li>
+           <li>Scenario RCP8.5</li>
+          </ol>
+       </td>
+     <td class="middl" align="center" rowspan="1"><tt>0</tt></td>
+   </tr>
+   <tr>
+     <td><tt>lco2_stab</tt></td>
+     <td class="middl" rowspan="1">New Namelist switch to perform simulations
+                 with stabilized GHG forcings</td>
+     <td class="middl" align="center" rowspan="1"><tt>.FALSE.</tt></td>
+   </tr>
+   <tr>
+     <td><tt>iy_co2_stab</tt></td>
+     <td class="middl" rowspan="1">to define the year when GHG stabilization begins 
+              (is only in effect, if <tt>lco2_stab = .TRUE.</tt>) </td>
+     <td class="middl" align="center" rowspan="1"><tt>2001</tt></td>
+   </tr>
+   <tr>
+     <td><tt>lprogprec</tt></td>
+     <td class="middl" rowspan="1"> 
+        <span class="rot">This switch has been eliminated.</span>
+        All simulations are now done with prognostic precipitation.</td>
+     <td class="middl" align="center" rowspan="1"><tt> - </tt></td>
+   </tr>
+   <tr>
+     <td><tt>ltrans_prec</tt></td>
+     <td class="middl" rowspan="1"> 
+        <span class="rot">This switch has been eliminated.</span>
+        All simulations are now done with transport of prognostic precipitation.</td>
+     <td class="middl" align="center" rowspan="1"><tt> - </tt></td>
+   </tr>
+   <tr>
+     <td><tt>itype_conv</tt></td>
+     <td class="middl" rowspan="1">
+           <span class="rot">The options <tt>itype_conv = 1 / 2</tt> have been eliminated!</span><br />
+           Associated with these options were the Kain-Fritsch convection 
+           (<tt>src_conv_kainfri.f90</tt>) and the Bechtold convection (which was never
+           implemented. The only choosable options now are = 0 (Tiedtke convection)
+           and = 3 (shallow convection).</td>
+     <td class="middl" align="center" rowspan="1"><tt>0</tt></td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td class="hilit" rowspan="1"><tt>/IOCTL/</tt></td>
+     <td><tt>lbdsst</tt></td>
+     <td class="middl" rowspan="1">new switch to provide boundary values for
+           the Sea Surface Temperature during a weather (not climate) forecast.
+        </td>
+     <td class="middl" align="center" rowspan="1"><tt>.FALSE.</tt></td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td class="hilit" rowspan="4"><tt>/GRIBOUT/</tt></td>
+     <td><tt>l_fi_ps_smooth</tt></td>
+     <td class="middl" rowspan="1">
+       <span class="rot">This switch has been renamed! See below</span></td>
+     <td class="middl" align="center" rowspan="1"><tt>-</tt></td>
+   </tr>
+   <tr>
+     <td><tt>l_fi_pmsl_smooth</tt></td>
+     <td class="middl" rowspan="1">This is the new name of the switch 
+         <tt>l_fi_ps_smooth</tt>; because what really is smoothed here
+         is the mean sea-level pressure!</td>
+     <td class="middl" align="center" rowspan="1"><tt>.FALSE.</tt></td>
+   </tr>
+   <tr>
+     <td><tt>l_fi_filter</tt></td>
+     <td class="middl" rowspan="1">
+           new switch to filter the geopotential <tt>FI</tt> indenpendent of
+           <tt>l_p_filter</tt> settings.</td>
+     <td class="middl" align="center" rowspan="1"><tt>.FALSE.</tt></td>
+   </tr>
+   <tr>
+     <td><tt>l_pmsl_filter</tt></td>
+     <td class="middl" rowspan="1">
+           new switch to filter the mean sea-level pressure <tt>PMSL</tt> indenpendent of
+           <tt>l_p_filter / l_z_filter</tt> settings.</td>
+     <td class="middl" align="center" rowspan="1"><tt>.TRUE.</tt></td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td class="hilit" rowspan="1"><tt>/DIACTL/</tt></td>
+     <td><tt>ltestsuite</tt></td>
+     <td class="middl" rowspan="1">new switch to activate additional ASCII
+           output, which is used for the technical test suite.
+        </td>
+     <td class="middl" align="center" rowspan="1"><tt>.FALSE.</tt></td>
+   </tr>
+<!---------------------------------------------------------------------------->
+<!--
+   <tr>
+     <td><tt>mu_rain</tt><br /><br />
+         <span class="rot">Changed default value!</span></td>
+     <td class="middl" rowspan="1">shape parameter of the rain drop size distribution<br />
+              (<tt>0.0 &le; mu_rain &le; 5.0</tt>)<br />
+              <span class="rot">New default value is 0.0</span></td>
+     <td class="middl" align="center" rowspan="1"><tt>0.0</tt></td>
+   </tr>
+-->
+<!---------------------------------------------------------------------------->
+
+ </tbody>
+</table>
+</center>
+</p>
+
+<p align="right"><a href="#content">Back to Contents</a>
+<hr>
+
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="results">13. Changes of Results</a></h3>
+
+<p>
+The following changes influence the results:
+</p>
+
+<ul>
+ <li>Parameterization of the cloud cover for ice clouds in <tt>src_radiation.f90</tt>:
+   All applications are influenced by this modifications.</li>
+
+ <li>Leapfrog: The applications which use the Leapfrog dynamical core are influenced
+   by the following modifications:
+   <ul>
+     <li>Optimization in <tt>src_leapfrog.f90</tt> (removed a construct "+ field - field") does
+         numerically change the results.</li>
+     <li>Moving the computation of the total physical tendencies to <tt>organize_physics</tt>
+         does numerically change the results because of the different summation order.</li>
+     <li>The bug fix for computing <tt>MAX(w)</tt> changes the results.</li>
+   </ul>
+  </li>
+</ul>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+<p align="right"><a href="#content">Back to Contents</a>
+<hr>
+
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="miscell">14. Other technical impacts</a></h3>
+
+<p>
+The following has to be considered when running the model and / or post-processing
+the model output:
+</p>
+
+<ul>
+ <li>New GRIB 1 Numbers:<br />
+     <table class="namelist">
+      <tr><th width="10%">Name       </th>
+          <th width="50%">Description</th>
+          <th width="8%">Element    </th>
+          <th width="8%">Table      </th></tr>
+      <tr><td><tt>VABSMX_10M</tt></td>
+          <td></td>
+          <td><tt>216</tt></td>
+          <td><tt>201</tt></td></tr>
+      <tr><td><tt>ALB_DRY</tt></td>
+          <td>surface albedo field for dry soil</td>
+          <td><tt>127</tt></td>
+          <td><tt>202</tt></td></tr>
+      <tr><td><tt>ALB_SAT</tt></td>
+          <td>surface albedo field for saturated soil</td>
+          <td><tt>128</tt></td>
+          <td><tt>202</tt></td></tr>
+      <tr><td><tt>ALB_SAT</tt></td>
+          <td>diffuse albedo field</td>
+          <td><tt>129</tt></td>
+          <td><tt>202</tt></td></tr>
+      <tr><td><tt>DU_SSO</tt></td>
+          <td>tendency of u due to SSO</td>
+          <td><tt> 43</tt></td>
+          <td><tt>202</tt></td></tr>
+      <tr><td><tt>DV_SSO</tt></td>
+          <td>tendency of v due to SSO</td>
+          <td><tt> 44</tt></td>
+          <td><tt>202</tt></td></tr>
+      <tr><td><tt>DT_SSO</tt></td>
+          <td>tendency of t due to SSO</td>
+          <td><tt> 45</tt></td>
+          <td><tt>202</tt></td></tr>
+      <tr><td><tt>USTR_SSO</tt></td>
+          <td>u-stress due to SSO</td>
+          <td><tt>231</tt></td>
+          <td><tt>202</tt></td></tr>
+      <tr><td><tt>VSTR_SSO</tt></td>
+          <td>v-stress due to SSO</td>
+          <td><tt>232</tt></td>
+          <td><tt>202</tt></td></tr>
+      <tr><td><tt>VDIS_SSO</tt></td>
+          <td>vertical integrated dissipation of kinetic energy due to SSO</td>
+          <td><tt>233</tt></td>
+          <td><tt>202</tt></td></tr>
+     </table>
+
+<p>
+NOTE: <br />
+The variables of the multi-layer snow model still have un-official Grib numbers,
+because the Grib treatment of such variables is not yet standardized!
+</p>
+   </li>
+
+ <li>Long Meteograph output:<br />
+     New fields have been added to the long meteograph output.
+     Therefore the format of the files <tt>M_*</tt> has been changed.
+   </li>
+
+ <li>Selective smoothing of output fields:<br />
+     Up to now we only had the possibility to filter all variables listed in p- or z-level output
+     or none fo them (with the variables <tt>l_p_filter, l_z_filter</tt>). 
+     Now some special fields can be filtered independent from the setting 
+     of <tt>l_p_filter</tt> or <tt>l_z_filter</tt>.
+
+    <p>
+    The following settings are now recommended:
+     <ul>
+      <li><tt>l_p_filter    = .FALSE.</tt>:   Default
+      <li><tt>l_z_filter    = .FALSE.</tt>:   Default
+      <li><tt>l_fi_filter   = .TRUE.</tt>:    filter the geopotential on p-levels
+      <li><tt>l_pmsl_filter = .TRUE.</tt>:    (Default) filter the mean sea level pressure
+     </ul>
+    </p>
+   </li>
+
+ <li>Performing Restarts:<br />
+   The input directory for restart files has been changed from <tt>ydirini</tt> to 
+    <tt>ydir_restart</tt>
+   </li>
+</ul>
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+<p align="right"><a href="#content">Back to Contents</a>
+
+</body>
+</html>

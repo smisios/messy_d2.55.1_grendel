@@ -1,0 +1,40 @@
+#!/bin/sh
+set -e
+. "@abs_builddir@/../setup-common.inc"
+
+assert_vars_are_set DEST GRID ie je tp CDO
+
+@MKDIR_P@ anta2nc
+cd anta2nc
+
+# conversion to 4 byte real no longer necessary: we compile with
+# double precision by default
+#cdo -f ext -p 4b copy  ../mk_anta/$GRID/${GRID}_anta ${GRID}_anta.ext4
+
+cat >anta2nc.params <<EOF
+&gridparams
+ie=${ie}
+je=${je}
+verbose=${DEBUG+1}${DEBUG-0} /
+${DEST}/${GRID}_anta
+${DEST}/${GRID}
+EOF
+
+$CMD_PREFIX "@abs_builddir@/anta2nc" <anta2nc.params
+
+if [ "$tp" = true ]; then
+  jstart=3
+else
+  jstart=1
+fi
+
+if [ "${DEBUG+set}" = set ]; then
+  echo "${CDO}" -f nc gridarea -selindexbox,1,`expr $ie - 2`,$jstart,$je \
+    -random,"${DEST}/${GRID}s.nc" "${DEST}/${GRID}_area.nc" >&2
+fi
+
+# this might fail in some versions of cdo
+set +e
+$CMD_PREFIX "${CDO}" -f nc gridarea -selindexbox,1,`expr $ie - 2`,$jstart,$je \
+    -random,"${DEST}/${GRID}s.nc" "${DEST}/${GRID}_area.nc"
+set -e

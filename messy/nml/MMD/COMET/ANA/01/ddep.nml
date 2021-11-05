@@ -1,0 +1,55 @@
+! -*- f90 -*-
+
+&CTRL
+l_whitecap     = T,  ! switch for considering role of whitecaps
+l_rh           = T,  ! switch for considering relative hum. effect
+/
+
+&CPL
+L_GP        = T, ! DEPOSITION CALCULATION  FOR GRIDPOINT TRACERS
+!L_LG        = T, ! DEPOSITION CALCULATION  FOR LAGRANGIAN TRACERS
+!i_lg_method = 3, ! dry deposition method for Lagrangian:
+                 ! Flux = [mol/mol] * [Kg/ m2 s] --> tendency = [mol/mol s]
+                 ! 1] same decrease in mixing ratio as GP model
+                 ! 2] use area of grid point and mass of air parcel
+                 ! 3] complete self sustained Lagrangian method !
+                 ! 4] tendency calcualted in GP; transformed to LG
+l_tendency  = T, ! T: tendency in lowest layer, F: flux boundary cond.
+l_diagflux  = T, ! calculate deposition flux
+!
+!outflux='',     ! name tracer (case sensitive!) for which the 
+!                ! drydepflux in molec/m^2/s shall be posted:  
+!
+!!#
+!outflux     = 'SS_cs;SS_as;N_cs;N_as;Clm_cs;Clm_as;Brm_as;Brm_cs;Im_as;Im_cs;IO3m_cs;IO3m_as;HCO3m_as;HCO3m_cs;Clm_a01;Clm_a02;Brm_a01;Brm_02;Im_a01;Im_a02;IO3m_a01;IO3m_a02;HCO3m_a01;HCO3m_a02;'
+!
+!!#
+!outflux     = 'SEASALT_b01;SEASALT_b02;SEASALT_b03;SEASALT_b04;SEASALT_b05;SEASALT_b06;SEASALT_b07;SEASALT_b08;SEASALT_b09;SEASALT_b10;SEASALT_b11;SEASALT_b12;'
+!
+!!# Olson bioaerosols
+!outflux     = 'BAC_SEAS;BAC_TUNDRA;BAC_LANDICE;BAC_DESERTS;BAC_FORESTS;BAC_GRASSLANDS;BAC_CROPS;BAC_WETLANDS;BAC_SHRUBS;BAC_COASTAL;BAC_URBAN'
+!
+!!# MODIS bioaerosols
+! outflux    = 'BIOAERM_WATER;BIOAERM_EVER_NEED;BIOAERM_EVER_BROAD;BIOAERM_DECI_NEED;BIOAERM_DECI_BROAD;BIOAERM_MIXED_FOREST;BIOAERM_CLOSED_SHRUBS;BIOAERM_OPEN_SHRUBS;BIOAERM_WOODY_SAVANNAS;BIOAERM_SAVANNAS;BIOAERM_GRASSLANDS;BIOAERM_WETLANDS;BIOAERM_CROPS;BIOAERM_URBAN;BIOAERM_CROP_NATURE;BIOAERM_SNOW_ICE;BIOAERM_BARREN;BIOAERM_UNCLASS'
+!
+imp_lai       = 'import_grid','surf_para_lai'
+imp_hc        = 'import_grid','surf_para_hc'
+imp_drag      = 'import_grid','surf_para_drag' !'surf_para_drag_ols'
+imp_soilpH    = 'import_grid','soilpH_soilpH' 
+!
+rainrate_ls   = 'ECHAM5', 'rsfl_2d'
+rainrate_cv   = 'ECHAM5', 'rsfc_2d'
+!
+!
+!op_rd_20130114+
+!## SYNTAX:
+!## import_predepvel(.) = 'channel', 'object', 'tracer-name', diag. flux calc.?
+!## Note: channel object is deposition flux aand must be in [molec/m^2/s]
+!
+import_predepvel(1) = 'import_grid', 'DVMETH_oxid', 'CH4_fx', T,
+import_predepvel(2) = 'import_grid', 'DVMETH_oxid', 'PCH4', T,
+import_predepvel(3) = 'import_grid', 'DVMETH_oxid', 'LPCH4', T,
+!
+!op_rd_20130114-
+!
+/

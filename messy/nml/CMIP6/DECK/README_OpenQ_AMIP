@@ -1,0 +1,439 @@
+AMIP 
+====
+
+
+- vaxtra.nml:  on-line interpolation on pressure levels etc.; CMOR names?
+- channel.nml: output (redirection + CMOR names)
+
+- rad.nml (deactivate 2nd call after test!)
+- scalc.nml: define RCFC11
+
++ ?switch.nml: O3ORIG (o3orig.nml) NO
+
++ xmessy_mmd.CMIP6 ... : + update to recent version of xmessy_mmd
+                         + correct SST input directory
+
+
+
+
+- remove all diagnostic tracers, except for AGE OF AIR and SF6
+  - offemis.nml
+  - tnudge.nml
+  - 
+
+
+
+- check nml-setup vs. RC1-base-08  (and GLYX: aerosol coupling to cloud and rad)
+
+                    -- which cloud-scheme for MADE and GMXE
+- ONEMIS: DUST emission scheme? Tegen or Astitha?      --> Astitha nehmen 
+  - currently in onemis.nml: EMIS_TYPE(15) = 'DU_tegen'
+  
+  - switched to Astitha DU2, changes in onemis.nml and import.nml
+  
+- MADE setup?
+  - currently MADE is switched off in switch.nml
+  
+  - A MADE setup should be created to make a alternative AMIP run with 
+    MADE instead of GMXE.
+
+--------------------------------------------------------------------------
+- import*nml: POC from SEAWIFS ???
+  - currently:
+  !! Ocean Particulate Organic Carbon (POC)
+  !RG_TRIG(296) = 3,'months','first',0,'AQUA',1,1,4,1,'NML=./import/aqua_POC_T106_season.nml'
+  !########################
+  !!!DUDU activated in GLYX
+  RG_TRIG(297) = 3,'months','first',0,'SEAWIFS',1,1,4,1,'NML=./import/onemis/seawifs_1.0_seasonal_X_POC_01-04.nml'
+  
+  Contact Holger Tost for POC setup.
+  
+  POC from SEAWIFS  - should stay like this
+----------------------------------------------------------------------------
+6) AMIP Set-up muss nochmal gründlich gecheckt werden.
+   Insbesondere 
+   - Wolkenschema und -einstellungen 
+     cloud.nml:
+     CTRL:
+     -----
+     ! switch for cloud scheme
+     cloud_param = 4,  ! 4 = ECHAM5 - CDNC/ICNC scheme (Lohmann et al., 2010)
+     ! activation for CDNC scheme
+     ncdnc       = 2,  ! 2 = Abdul-Razzak & Ghan
+     ! ICNC scheme:
+     nicnc       = 2,  ! 2 = Prognostic ICNC + Cirrus (Kaercher and Lohmann, 2002)
+     ! logical switch for extra cloud cover calculation 
+     lcover      = F,  ! default: T (Tompkins); F (Sundqvist)
+     CPL:
+     ----
+     l_tf        = F,        ! switch for correct time filter application 
+     l_cdnc_calc = F,        ! True for additional CDNC parameterisation calculations
+     i_cdnc_calc = 5,        ! switch for number of CDNC parameterisation calculation
+                             ! 5 = Abdul-Razzak & Ghan parameterisation (activation)
+     aer_stream = 'gmxe_gp', ! channel name of aerosol model for cdnc coupling
+     ! way how to calculate critical supersaturation
+     sup_sat_scheme = 1      ! 1 = traditional ARG
+     
+   - lnox.
+     lnox_T42L47MA.nml:
+     CTRL:
+     -----
+     l_mode_scal = .FALSE.  ! - usually for simulations with "chemistry"
+     i_ffcalc     = 9,      ! diagnostically all (5) parameterisations
+     i_iccg       = 2,      ! 1: CG only, 2: CG + IC
+     !# select vertical shape of NOx emission profile
+     i_shape      = 2,      !# 2: C-shape according to Pickeri (preferable!)
+     !# Scaling factor for flash-frequency:
+     r_scal_ff(1) =  7.510085641154681     ! Price & Rind
+     !# Average NOx production per CG flash [kgN/flash]
+     r_noxpf(1)   = 15.6,   !
+     ! NOx production efficiency ratio (IC/CG)
+     r_eff(1)     = 0.1,
+     CPL:
+     ----
+     i_ff_cpl    = 1       ! 1: Price & Rind
+     c_top       = 'convect','cu_top',       ! cloud top level
+     c_bot       = 'convect','cu_bot',       ! cloud bottom level
+     c_massfu    = 'convect','massfu',
+     c_precflx   = 'convect','cv_precflx',
+     !# skip Lagrangian calculation? (default: F)
+     !l_skip_lg = T,             ! skip Lagrangian calculation?
+
+---------------------------------------------------------------------------
+- cloud.nml:  (different to piControl-d)???
+  cloud_param = 4, ! 4 = ECHAM5 - CDNC/ICNC scheme (Lohmann et al., 2010)
+  
+  ncdnc       = 2,     ! activation for CDNC scheme 
+                       ! 2 = Abdul-Razzak & Ghan
+  nicnc       = 2,     ! ICNC scheme: 
+                       ! 2 = Prognostic ICNC + Cirrus (Kaercher and Lohmann, 2002)
+                       
+  l_cdnc_calc = F,     ! True for additional CDNC parameterisation calculations
+  i_cdnc_calc = 5,     ! switch for number of CDNC parameterisation calculation
+                       ! 5 = Abdul-Razzak & Ghan parameterisation (activation)
+
+  Discussed with Patrick 03 Nov:
+  ------------------------------
+  The cloud setting has to be like this for all simulations with chemistry, 
+  as the usage of GMXE requires the Lohmann CDNC/ICNC scheme.
+  To use this also for the simulations without chemistry, climatological aerosols
+  have to be prescribed.
+   -> this possibility has to be discussed between Patrick and Mathia Reggi.
+   
+  In relation to the MADE development, cloud_param = 5 (Kuebbeler et al., 2014)
+  is developped.
+  
+  Ideally the cloud cover should not change, when switching between cloud_param = 1,4,5.
+  This needs to be tested.
+  
+  Discussed 10 Nov:
+  -----------------
+  The MADE3 aerosol scheme will also be used in parallel, as it is of interest for
+  DLR. For CMIP6 GMXE is forseen.
+  
+  For GMXE in cloud.nml:
+    cloud_param = 4    ! = ECHAM5 - CDNC/ICNC scheme (Lohmann et al., 2010)
+    
+  For MADE3 in cloud.nml:
+    cloud_param = 5    ! (Kuebbeler et al., 2014)
+  
+  
+  Setup für eine CMIP6 simulation mit MADE3 von Matthia 
+  
+  Testsimulation für piControl mit Chemie mit beiden Aerosolschemata für
+  zunächst jeweils 5 Jahre.
+  
+  Prüfen: --enable yaxt beim Compilieren??
+
+  Für Chemie, mehr als 10 Knoten testen.
+  
+  gmxe.nml
+  --------
+  GMXE calculates the aerosol distribution, which can be used by SCAV and HETCHEM.
+  SCAV:
+     - To ensure that SCAV is correctly coupled to GMXe, 
+        set aermod, sigma and aerrad to ‘gmXe’ in the name list scav.nml.
+  HETCHEM:
+     - To couple GMXe to HETCHEM set L_H2SO4_prescribed = .F. 
+       (so the climatological aerosol distribution is not used) and set: 
+       sigma_nml, rdrya_nml, rweta_nml, dweta_nml, anumb_nml all = 'gmXe'.
+       Alternatively, an aerosol climatology can be used to calculate
+       heterogeneous chemistry, set L_H2SO4_prescribed = .T., 
+       (recommended, as used in standard run)
+       
+  HETCHEM is replaced by MSBM.
+  
+
+  In comparison with the CCMI setup there are differences:
+  
+  CMIP6                   CCMI
+  -----                   ----
+  ! Thermodynamic module: -1, 0 = None (bulk hygroscopic growth only)
+  !                           1 = EQSAM4CLIM
+  !                           2 = ISOROPIA2
+  NEQM = 1                NEQM = 2
+  
+  NEQM = 2 will be used fo CMIP6 (suggestion by Holger Tost).
+  
+-------------------------------------------------------------------------------  
+- cloudopt.nml: (all tuning parameter are switched off)
+
+- convect_T42L47MA.nml: (are the tuning parameter still valid??)
+  !! only for simulations without ocean coupling:
+  rset_cmfctop = T, 0.35,    ! reset this parameter
+  rset_entrpen = T, 0.00005, ! reset this parameter
+
+   - Und was ist mit SO2t?
+     - wird nicht verwendet
+   
+-------------------------------------------------------------------------
+SO2t is not necessary for CMIP6 simulations. Was specific for CCMI.
+Can be switched off in offemis.nml, import.nml and ptrac.nml.
+
+- offemis.nml:
+  - synthetic tracers, now commented out (pg), should it stay like this?
+  !EMIS_IN(215) = 'SO2t',     'import_grid', 'ANTHNT_SO2',  'GP=1',
+
+
+- ptrac.nml:
+  - synthetic tracers, now commented out (pg), should it stay like this?
+  !TPROP(30) = 'gp;', 'SO2t', 'drydep ', '1',
+
+-------------------------------------------------------------------------
+
+- rad.nml:
+  r_inp(1,1)  = 'ECHAM5',    'qm1',               ! H2O [mol/mol] or [kg/kg]
+  
+  Why not 'tracer_gp',    'H2O',  ???
+  
+  There is no H2O tracer in the chemistry anymore. qm1 is used instead. For
+  RAD the units always have to be [kg/kg]. For chemistry qm1 unit has to be 
+  switched to [mol/mol].
+  
+  r_inp(6,1)  = 'scalc',     'RCFC11',            ! CFC11 [mol/mol]
+  r_inp(7,1)  = 'tracer_gp', 'CF2Cl2',            ! CFC12 [mol/mol]
+  
+  Need to be checked !!
+
+
+  
+- UBCNOX, currently not included, should it be used??
+
+  - Yes, can be used, to be consistent to all simulations with chemistry.
+  
+-------------------------------------------------------------------------------
+- spe.nml
+  Can the submodel SPE be used for the CMIP6 simulations?
+  According to Stefan Versick this submodel requires a lot of computer time.
+  3-dimensional input has to be read in, to get the right informations for
+  the auroral oval.
+  
+
+#############################################################################
+Comparing AMIP and AMIP-made3
+#############################
+
+
+cloudopt.nml:
+-------------
+AMIP:
+
+!!$cld_inp(5,1)='#std',  'radlp',   ! effective radii for liquid droplets
+!!$cld_inp(6,1)='#std',  'radip',   ! effective radii for ice particles
+cld_inp(5,1)='cloud', 'REFFL',   ! effective radii for liquid droplets
+cld_inp(6,1)='cloud', 'REFFI',   ! effective radii for ice particles
+
+AMIP-made3:
+
+cld_inp(5,1)='#std',  'radlp',   ! effective radii for liquid droplets
+cld_inp(6,1)='#std',  'radip',   ! effective radii for ice particles
+
+! op_pj_20160603+
+! Note: loice=T (default): ice cloud emissivity after Ebert and Curry (1992)
+!       loice=F          : ice cloud emissivity after Rockel et al. (1991)
+!loice = T
+! op_pj_20160603-
+
+AMIP:        cloud.nml    ncdnc = 2, cloud_param = 4
+piControl-d: cloud.nml    ncdnc = 1, cloud_param = 1
+
+'cloud', 'REFFL'    --> only if ncdnc > 0
+'cloud', 'REFFI'    --> only if (cloud_param >= 3).AND.(cloud_param <= 6)
+
+Adapted for the usage of made3:
+
+AMIP-made3                                             AMIP           
+aeropt_made3.nml        aeropt_gmxe.nml (identical)    aeropt.nml  (to use)
+cloud_made3.nml         cloud_gmxe.nml  (old)          cloud.nml   (to use)
+ddep_made3.nml                                         ddep.nml
+import_s1850_made3.nml                                 import_s1974.nml   
+mecca_made3.nml                                        mecca.nml
+offemis_made3.nml                                      offemis.nml
+scav_made3.nml          scav_gmxe.nml   (old)          scav.nml    (to use)
+switch_made3.nml        switch_gmxe.nml                switch.nml
+USE_MADE3=.TRUE.        !USE_MADE3=.TRUE.
+!USE_GMXE=.TRUE.        USE_GMXE=.TRUE.                USE_GMXE=.TRUE.
+USE_DRADON=.TRUE.       USE_DRADON=.TRUE.              !USE_DRADON=.TRUE.
+!USE_MEGAN=.TRUE.       !USE_MEGAN=.TRUE.              USE_MEGAN=.TRUE.
+                                                       USE_UBCNOX=.TRUE.
+tendency_made3.nml                                     not available
+
+
+cloud.nml
+---------
+  AMIP:              piControl-d
+  -----              -----------
+  &CTRL            
+  cloud_param = 4    cloud_param = 1
+  ncdnc       = 2    ncdnc       = 1   ! activation for CDNC scheme
+  nicnc       = 2    nicnc       = 0   ! ICNC scheme:
+  lcover      = F    lcover      = F
+  
+  &CPL
+  l_tf        = F    l_tf        = F 
+  l_cdnc_calc = F    l_cdnc_calc = F   ! True for additional CDNC 
+                                       ! parameterisation calculations
+
+  i_cdnc_calc = 5    i_cdnc_calc = 0   ! switch for number of CDNC 
+                                       ! parameterisation feedback
+                                       ! (must be equal to i_cdnc_calc or 
+                                       !  i_cdnc_calc = 9)
+  i_cdnc_cpl  = 0    i_cdnc_cpl  = 0
+
+cloudopt.nml:
+-------------
+  cld_inp(5,1)='cloud', 'REFFL'    --> only if ncdnc > 0
+  cld_inp(6,1)='cloud', 'REFFI'    --> only if (cloud_param >= 3).AND.(cloud_param <= 6)
+  
+  For AMIP this kind of coupling is possible. 
+  For piControl-d NOT, as cloud_param = 1.
+  
+  
+import_s1974.nml  Open questions
+--------------------------------
+ - made3 setup has BIOGEN emissions, AMIP Not
+   RG_TRIG(104) = 1,'months','first',0, 'biogen', 1,1,12,1, 'NML=./import/offemis/GEIA/GEIA_MPIC1.0_X_bio_MISC_200001_200012.nml;',
+ -----------------------------------------------------------
+ - open: which aerocom data set to use??
+   RG_TRIG(100) = 1,'months','first',0, 'VOLC_SO2', 1,1,12,1, 'NML=./import/offemis/AEROCOM/AEROCOM_DLR1.0_X_volc_SO2_200001-200012.nml; VAR=SO2;',
+
+   !DUDU welches aerocom
+   !RG_TRIG(100) = 1,'months', 'first',0, 'VOLC_SO2',721,1,732,721, 'NML=./import/offemis/AEROCOM/AEROCOM-DIEHL_UMZ1.0_X_X_volc_SO2_195001_201012.nml; VAR=SO2;',
+
+   - made3 has:
+     ! SO2 and SO4
+     RG_TRIG(80) = 1,'months','first',0, 'VOLC', 1,1,12,1, 'NML=./import/offemis/AEROCOM/AEROCOM_DLR1.0-MADE3_X_volc_aerosol_200001-200012.nml',
+ ------------------------------------------------------------
+ - we plan to use the Astitha dust scheme for AMIP, AMIP-made3 uses Tegen.
+ 
+ ------------------------------------------------------------
+ - AMIP setup uses MEGAN  
+    data import_grid for megan included
+
+All emissions of the AMIP-made3 setup are still only available in the outdated version
+  - new version CMIP6v6.1
+--------------------------------------------------------------------------------------
+CMIP6_DLR1.0-MADE3_DECK_awb_aerosol_175001-201512.nml
+CMIP6_DLR1.0-MADE3_DECK_awb_MISC_175001-201512.nml
+CMIP6_DLR1.0-MADE3_DECK_bb_aerosol_175001-201512.nml
+CMIP6_DLR1.0-MADE3_DECK_bb_MISC_175001-201512.nml
+CMIP6_DLR1.0-MADE3_DECK_land-road-awb_aerosol_175001-201412.nml
+CMIP6_DLR1.0-MADE3_DECK_land-road-awb_MISC_175001-201412.nml
+CMIP6_DLR1.0-MADE3_DECK_road_aerosol_175001-201412.nml
+CMIP6_DLR1.0-MADE3_DECK_road_MISC_175001-201412.nml
+CMIP6_DLR1.0-MADE3_DECK_ship_aerosol_175001-201412.nml
+CMIP6_DLR1.0-MADE3_DECK_ship_MISC_175001-201412.nml
+CMIP6v6.2.1_DLR1.0-MADE3_DECK_air_MISC_175001-201412.nml
+CMIP6v6.2_DLR1.0-MADE3_DECK_air_aerosol_175001-201412.nml
+  
+
+Dust emissions not in MESSy2 /pool/data:
+
+$INPUTDIR_MESSY/onemis/ClayAmount1deg_2000.nc
+$INPUTDIR_MESSY/onemis/RootDepth1deg_2002.nc
+$INPUTDIR_MESSY/onemis/dst_1x1_GSC.nc
+$INPUTDIR_MESSY/onemis/Olsonbiome_1x1_2000.nc
+$INPUTDIR_MESSY/onemis/Zobler_Texture_1x1deg.nc
+
+
+Age of air tracers
+==================
+
+CCMI 
+----
+SF6      Newtonian relaxation (TNUDGE)c towards time series based on 
+         observations
+AOA      Age of air tracer; Newtonian relaxation (TNUDGE)c at lowest 
+         model layer towards linearly in time increasing mixing ratio
+SF6_AOA  Age of air tracer; Newtonian relaxation (TNUDGE)c at lowest 
+         model layer towards a latitude dependent, linearly in time 
+         increasing mixing ratio
+SF6_AOAc Age of air tracer; Newtonian relaxation (TNUDGE)c at lowest 
+         model layer towards a linearly in time increasing mixing ratio
+SF6_CCMI Emissions (OFFEMIS) according to EDGAR v4.2 database
+SO2t     anthropogenic emissions (OFFEMIS) as SO2, wet removal (SCAV) 
+         as SO2
+NH_05    Newtonian relaxation (TNUDGE)j towards surface layer mixing 
+         ratio (100 nmolmol−1) over 30–50 N, 5-day exponential decay 
+         (e-folding time τ =4.32×10−5 s)
+NH_50    As NH_05, but 50-day exponential decay
+NH50W    As NH_50, but additional wet removal (SCAV) as HNO3
+AOA_NH   Newtonian relaxation (TNUDGE)j towards zero mixing ratio at 
+         surface level between 30 and 50◦ N; uniform fixed source (OFFEMIS)
+         of 3.171×10−08 (=years s−1) molecules m−3 s−1
+ST80_25  Newtonian relaxation (TNUDGE)j towards 200 nmol mol−1 above ca. 
+         80 hPa (level 61 in L90MA, level 20 in L47MA); 25-day exponential 
+         decay
+CO_25    Emitted (OFFEMIS) as anthropogenic CO; 25-day exponential decay
+CO_50    Emitted (OFFEMIS) as anthropogenic CO; 50-day exponential decay
+AOA_CCMI Newtonian relaxation (TNUDGE)j towards zero mixing ratio at 
+         surface layer; uniform fixed source (OFFEMIS) as AOA_NH
+O3(s)    Stratospheric ozone tracer; Newtonian relaxation (TNUDGE)j 
+         towards O3 in the stratosphere; destroyed in the troposphere as O3; 
+         the corresponding loss rate tracer LO3(s) is a qualitative measure 
+         for the troposphere to stratosphere exchange of ozone
+
+Tracer    | Defining  | Data file
+          | submodel  |
+
+SF6       | PTRAC     | CCMI DLR1.0 RCP6.0 sfmr SF6 195001-210012.nc
+AOA       | PTRAC     | DLR 1.0 X sfmr AOA 195001-210012.nc
+SF6_AOA   | PTRAC     | FUB 1.1 X sfmr AOA 195001-210012.nc
+SF6_AOAc  | PTRAC     | FUB 1.1 X sfmr AOAc 195001-210012.nc
+SF6_CCMI  | PTRAC     | EDGAR v42DLR1.0 IPCC anth SF6 1950-2008.nc
+SO2t      | PTRAC     |
+NH_05     | TREXP     | CCMI DLR1.0 X X synth const.nc (NH)
+NH_50     | TREXP     | CCMI DLR1.0 X X synth const.nc (NH)
+NH50W     | TREXP     | CCMI DLR1.0 X X synth const.nc (NH)
+AOA_NH    | TREXP     | CCMI DLR1.0 X X synth const.nc (ZERO)
+ST80_25   | TREXP     | CCMI DLR1.0 X X synth const.nc (ST80)
+CO_25     | TREXP     |
+CO_50     | TREXP     |
+AOA_CCMI  | TREXP     | DLR1.0 X X synth const.nc (ZERO)
+O3(s)     | MECCA     |
+
+AOA Tracers requested for CMIP6
+===============================
+AOA_NH   Newtonian relaxation (TNUDGE)j towards zero mixing ratio at 
+         surface level between 30 and 50 N; uniform fixed source (OFFEMIS)
+         of 3.171×10−08 (=years s−1) molecules m−3 s−1
+
+         Fixed surface layer mixing ratio over 30-50N (0 ppbv), 
+         uniform fixed source (at all levels) everywhere else 
+         (source is unspecified but must be constant in space and time and 
+         documented). 
+         Note that the source could be 1yr/yr, so the tracer concentration 
+         provides mean age in years. 
+         For method using linearly increasing tracer include a method attribute: 
+         "linearly increasing tracer".
+         For method using uniform source (1yr/yr) include a method attribute: 
+         "uniform source"
+         
+NH_50    Newtonian relaxation (TNUDGE)j towards surface layer mixing 
+         ratio (100 nmol mol−1) over 30–50 N, 50-day exponential decay 
+         with a decay constant of 2.3148148148x10-7 s-1.
+         (e-folding time τ =4.32×10^6 s = 50 days)
+
+         Fixed surface layer mixing ratio over 30-50N (100ppbv), 
+         uniform fixed 50-day exponential decay. 
+

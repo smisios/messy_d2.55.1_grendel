@@ -1,0 +1,88 @@
+! -*- f90 -*-
+
+&CTRL
+L_FAMILY     = T, !# USE TRACER FAMILIES (SEE CTRL_FAMILY BELOW)
+L_PDEF       = T, !# SWITCH TRACER SUB-SUBMODEL PDEF (SEE CPL/CTRL_PDEF BELOW)
+/
+
+&CPL
+!#
+L_TRACER_INIT = T, !# SWITCH ON(T)/OFF(F) TRACER INITIALISATION
+!#
+! #M2
+!!$!# SYNTAX: setname, fullname, lpost, lav, lsd, lrerun, (grib-table,code,bits)
+!!$!# DEFAULTS:                    T     F    F     T      131          0   16 
+!!$TIO(1) = 'gp', 'CO_14C_01',     T,    T,   F,    T,     131, 0, 16,
+!!$TIO(2) = 'gp', 'CO_14Cs_01',    T,    T,   F,    T,     131, 0, 16,
+!!$TIO(3) = 'gp', 'CO_14Ct_01',    T,    T,   F,    T,     131, 0, 16,
+!!$TIO(4) = 'gp', 'CO_14C_02',     T,    T,   F,    T,     131, 0, 16,
+!!$TIO(5) = 'gp', 'CO_14Cs_02',    T,    T,   F,    T,     131, 0, 16,
+!!$TIO(6) = 'gp', 'CO_14Ct_02',    T,    T,   F,    T,     131, 0, 16,
+!!$!
+!!$!TIO(7) = 'gp', 'BIOAERO',  T, T, T, T, 131, 0, 16, ! Olson bioaerosols
+!!$!TIO(8) = 'gp', 'BIOAERM',  T, T, T, T, 131, 0, 16, ! MODIS bioaerosols
+/
+
+&CTRL_FAMILY
+l_verbose = F,   !# diagnostic output
+i_diag_pe = 0,   !# ... for this p_pe
+i_diag_jrow = 1, !# ... and this jrow
+!#
+!# NOTES:
+!#    - MAX. NUMBER OF FAMILIES: 50
+!#    - FAMILY-TYPE = 1: FAMILY = SUM OF TRACERS, TRACER = FRACTION OF FAMILY
+!#                                - TRACER FRACTIONS NOT TRANSPORTED
+!#                                - PROCESS SPECIFIC CONVERSION
+!#                                - switch is meaningless for type 1
+!#    -             = 2: FAMILY = SUM OF TRACERS, TRACER REMAINS
+!#                                - TRACER TRANSPORTED
+!#                                - RESCALED TO SUM AFTER TRANSPORT
+!#                                - switch = .FALSE.: no re-scaling,
+!#                                                    only summation
+!#                                -        = .TRUE. (default): re-scaling ON
+!#    - FAMILY TRACER MUST NOT EXIST
+!#    - FIRST VALID TRACER IN FAMILY SPECIFIES ATTRIBUTES OF TRACER FAMILY
+!#    - nadvect=nconvect=nvdiff = ON FOR FAMILIES WITH FAMILY-TYPE = 1
+!#    - EACH TRACER CAN BE MEMBER OF ZERO OR ONE TRACER FAMILY
+!#    - THE DEFAULT WEIGHT FOR EACH TRACER IS 1.0
+!# SYNTAX:
+!#    tracer-set, family-type, switch, family-name, family-subname,
+!#    LIST OF TRACERS ...
+!#    ... ('name' OR 'name_subname' OR 'name:weight' OR 'name_subname:weight')
+! for 10 hPa version
+TF(1) = 'gp',1,T,'NOY','','N','NO','NO2','NO3','N2O5:2.0','HNO3','HNO4',!93*''
+/
+
+
+&CTRL_PDEF
+!# diagnostic output ?
+L_DIAGOUT = F,
+!# SYNTAX: set-name, tracer-name, subname,
+!#         reset to zero?, stop on exceed?, relative tolerance
+TPD_DEFAULT(1) = 'gp',   '',     '',    T, F, 0.01,
+TPD_DEFAULT(2) = 'lg',   '',     '',    T, F, 0.01,
+TPD_DEFAULT(3) = 'lggp', '',     '',    F, F, 0.01,
+!TPD(1)      = 'gp', 'HNO3', 'nat', T, F,     ,
+!TPD(2)      = 'gp', 'N',     '',   T, F,     ,
+/
+
+!!! #####################################################################
+!!! ### TRACER INITIALISATION
+!!! #####################################################################
+
+!!! ---------------
+!!!   MECCA
+!!! ---------------
+
+&regrid
+!outfile = "ncrg_${HRES}_RC1SD-base-01_0168_restart_0001_tracer_gp.nc",
+infile  = "$INPUTDIR_MESSY/tracer/RC1SD-base-07_0138_restart_0001_tracer_gp.nc",
+i_latm  = "lat",         ! name of latitude dimension in input file
+i_latr  = -90.0,90.0,    ! outer latitude interface values in input file
+i_lonm  = "lon",         ! name of longitude dimension in input file
+i_hyam  = "hyam",        ! name of hybrid A coefficients in input file
+i_hybm  = "hybm",        ! name of hybrid B coefficients in input file
+i_ps    = "101325.0 Pa", ! value of surface pressure in input file
+i_p0    = "1. Pa",       ! value of reference pressure in input file
+var     = "CO;HNO3;NO;NO2;O3;N2O5;H2O2;HCHO;CH3OH;CH3OOH;HCOOH;HNO4;NO3;H2;CH4;H2O",
+/

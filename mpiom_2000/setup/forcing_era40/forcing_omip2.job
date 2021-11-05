@@ -1,0 +1,70 @@
+#! /bin/sh
+set -x
+set -e
+
+GRID="${GRID-GR60}"
+
+case "$GRID" in
+  GR30)
+    ie=122f
+    je=101
+    ;;
+  GR15)
+    ie=256
+    je=220
+    ;;
+  GR60)
+    ie=60
+    je=50
+    ;;
+  *)
+    echo "Grid configuration by this name (${GRID}) not supported!" >&2
+    exit 1
+    ;;
+esac
+
+YEAR=1960
+DAY=366
+
+mkdir -p "$GRID"
+cd "$GRID"
+
+#jblob -dataset ERA40_SFC00_6H_2D -username helmuth.haak -password -tmin ${YEAR}-01-01T00:00 -tmax ${YEAR}-12-31T24:00
+
+cdo -f ext -p 4b -R copy /scratch/local2/m221/m221019/ERAdat/2D${YEAR}.grb 2m_dewpoint_temperature.ext
+cdo -f ext -p 4b -R copy /scratch/local2/m221/m221019/ERAdat/EWSS${YEAR}.grb east_west_stress.ext
+cdo -f ext -p 4b -R copy /scratch/local2/m221/m221019/ERAdat/NSSS${YEAR}.grb north_south_stress.ext
+cdo -f ext -p 4b -R copy /scratch/local2/m221/m221019/ERAdat/10UV${YEAR}.grb scalar_wind.ext
+cdo -f ext -p 4b -R copy /scratch/local2/m221/m221019/ERAdat/TP${YEAR}.grb total_precipitation.ext
+cdo -f ext -p 4b -R copy /scratch/local2/m221/m221019/ERAdat/2T${YEAR}.grb 2m_temperature.ext
+cdo -f ext -p 4b -R copy /scratch/local2/m221/m221019/ERAdat/SSR${YEAR}.grb mean_sea_level_pressure.ext
+cdo -f ext -p 4b -R copy /scratch/local2/m221/m221019/ERAdat/TCC${YEAR}.grb total_cloud_cover.ext
+cdo -f ext -p 4b -R copy /scratch/local2/m221/m221019/ERAdat/SSRD${YEAR}.grb total_solar_radiation.ext
+cdo -f ext -p 4b -R copy /scratch/local2/m221/m221019/ERAdat/LSM${YEAR}.grb land_sea_mask.ECMWF.ext4
+
+
+cdo  -f ext -p 4b copy "../../mk_anta/$GRID/${GRID}_anta" anta.ext4
+
+\rm -f *.linux.ext
+
+./forcing_era40 <<EOF
+&forcingparams
+me=${ie}
+ne=${je}
+lday=${DAY} /
+EOF
+
+cdo -f ext -p 8b copy GICLOUD.ext4 "${GRID}_GICLOUD_ERA40_${YEAR}"
+cdo -f ext -p 8b copy GIPREC.ext4 "${GRID}_GIPREC_ERA40_${YEAR}"
+cdo -f ext -p 8b copy GISWRAD.ext4 "${GRID}_GISWRAD_ERA40_${YEAR}"
+cdo -f ext -p 8b copy GITDEW.ext4 "${GRID}_GITDEW_ERA40_${YEAR}"
+cdo -f ext -p 8b copy GITEM.ext4 "${GRID}_GITEM_ERA40_${YEAR}"
+cdo -f ext -p 8b copy GIU10.ext4 "${GRID}_GIU10_ERA40_${YEAR}"
+cdo -f ext -p 8b copy GIWIX.ext4 "${GRID}_GIWIX_ERA40_${YEAR}"
+cdo -f ext -p 8b copy GIWIY.ext4 "${GRID}_GIWIY_ERA40_${YEAR}"
+cdo -f ext -p 8b copy GIPRESS.ext4 "${GRID}_GIPRESS_ERA40_${YEAR}"
+
+\rm -f *.linux.* *.ext4 *.ext
+cd ..
+
+

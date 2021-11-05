@@ -1,0 +1,44 @@
+!> \page namelist Namelist (diumod.nml)
+!!
+!! DIUMOD namelist contains only the \c CTRL section which contains user-specified entries,
+!!  viz. modulation jobs, that are to be executed at the submodel interface layer (SMIL).
+!!
+!! \section ctrl The CTRL namelist
+!!
+!! Each record is given in the form
+!!
+!! \verbatim
+!!  DIUMOD(XX) = 'in_channel','in_object', 'out_tracer', [sca_factor]
+!! \endverbatim
+!!
+!!  where
+!!  - \c XX is a unique record no. (limited to \link messy_diumod_si::nmaxdiumod \endlink)
+!!  - \c 'in_channel'/'in_object' strings specify the channel/object names for the input field to be modulated
+!!    (correspond to \link messy_diumod_si::t_diumod_io::cha_in \endlink and 
+!!                   \link messy_diumod_si::t_diumod_io::obj_in \endlink, respectively)
+!!  - \c 'out_tracer' is the name of the output tracer (must be present, corr. to 
+!!    \link messy_diumod_si::t_diumod_io::tra_out \endlink)
+!!  - \c sca_factor (real, optional) defines the constant scaling factor to be applied to the modulated product
+!!    (default is 1.0, see \link messy_diumod_si::t_diumod_io::sca_fac \endlink)
+!!
+!!  Note, make sure that you:
+!!  - do not have records with identical XX value
+!!  - have source channel/object and output tracers set-up (i.e. imported or created)
+
+&CPL
+! ### SYNTAX:
+!                                                                  v-- so far is prop. factor, set it to anything
+! # DIUMOD(.) = 'channel','object', 'channel','object', 'tracer', width_factor
+!                (input average)     (modulator)        (output tracer)
+
+! test
+! DIUMOD(1) = 'tracer_gp','OH', 'OHdiu', 1.0
+! DIUMOD(2) = 'tracer_gp','NO', 'NOdiu', 2.0
+
+! OHs with diurnal cycle
+! climatological ( OHs Spivakovsky, "non-holy" )
+! DIUMOD(3) = 'tracer_gp', 'OHc', 'OHcm', 1.0
+! "interactive"
+  DIUMOD(5) = 'tracer_gp', 'OH',  'OHm',  1.0
+!
+/

@@ -1,0 +1,67 @@
+! -*- f90 -*-
+
+&CPL
+!
+l_full_diag = F  ! set TRUE to define individual channel objects for
+                 ! each process and each prognostic variable or tracer
+!
+l_closure = F    ! set TRUE to define internal channel objects
+                 ! for closure analysis
+                 ! (I_HANDLE_SUM and I_HANDLE_DIFF)
+!
+l_clos_diag = F  ! set TRUE to get additional diagnostic log-file
+                 ! output (about the closure); 
+                 ! this option is useful to integrate new processes
+                 ! into the tendency-submodel
+!
+! USER DEFINED TENDENCY ANALYSES:
+! SYNTAX:
+! TDIAG(.) = 'variable name or tracer name', 
+!            'semicolon separated list of (sums of) processes'
+! EXAMPLE: TDIAG(1) = 'X', 'p1;p2+p3;...;pn',
+! 
+! Variables are: t, q, xl, xi, u, v, all GP-tracers
+! Processes are: 
+!  - ECHAM5:          vdiff, surf, advect, ssodrag, dyn, (gwspect)
+!  - MESSy-submodels: cloud, , convect, rad4all, fubrad, gwave,
+!                     cvtrans, dradon, ...
+!
+! WARNING: By default the time filter switch (l_tf) in cloud.nml is set to 
+!         .FALSE.. This inhibits the closure in TENDENCY. To achieve a
+!         closure, you need to set l_tf=T in cloud.nml.!
+!
+! ----------------------------------------------------------
+!!!PROGNOSTIC VARIABLES:-------------------------
+! TDIAG(1)  = 't'  ,'e5vdiff;rad;cloud;convect;surface;dyn;gwspect;ssodrag',!
+TDIAG(2)  = 'q'  ,'advect;e5vdiff;cloud;convect', !;h2o
+!TDIAG(2)  = 'q'  ,'ch4',
+!TDIAG(3)  = 'xl' ,'advect;e5vdiff;cloud',
+!TDIAG(4)  = 'xi' ,'advect;e5vdiff;cloud', 
+!!
+!!!TRACERS from PTRAC:--------------------------------------
+!TDIAG(14) = 'CH4_fx' ,'ch4;',
+!TDIAG(14) = 'CH4_fx' ,'e5vdiff; advect; cvtrans; ch4;',
+!TDIAG(15)  = 'H2OISOHHOvap', 'h2oiso_numer;h2oiso_chem',
+!TDIAG(15)  = 'H2OISOHHOvap', 'h2oiso_numer;h2oiso_chem;advect;h2oiso_radheat;h2oiso_cloud;h2oiso_convect;',
+!TDIAG(16)  = 'H2OISOHHOliq', 'advect;e5vdiff;h2oiso_cloud;h2oiso_numer',!
+!TDIAG(17)  = 'H2OISOHHOice', 'advect;e5vdiff;h2oiso_cloud;h2oiso_numer',!
+!H2OISO-tracers: HDO
+!TDIAG(18)  = 'H2OISOHDOvap', 'h2oiso_numer;trsync',
+!TDIAG(18)  = 'H2OISOHDOvap', 'advect;h2oiso_radheat;h2oiso_cloud;h2oiso_convect;h2oiso_numer;trsync',
+!TDIAG(18)  = 'H2OISOHDOvap', 'advect;h2oiso_radheat;h2oiso_cloud;h2oiso_convect;h2oiso_numer',
+!TDIAG(19)  = 'H2OISOHDOliq', 'advect;e5vdiff;h2oiso_cloud;h2oiso_numer',!
+!TDIAG(20)  = 'H2OISOHDOice', 'advect;e5vdiff;h2oiso_cloud;h2oiso_numer',!
+!H2OISO-tracers: HH18O
+!TDIAG(21)  = 'H2OISOHH18Ovap', 'advect;h2oiso_radheat;h2oiso_cloud;h2oiso_convect;h2oiso_numer',!
+!TDIAG(22)  = 'H2OISOHH18Oliq', 'advect;e5vdiff;h2oiso_cloud;h2oiso_numer',!
+!TDIAG(23)  = 'H2OISOHH18Oice', 'advect;e5vdiff;h2oiso_cloud;h2oiso_numer',!
+!
+!TDIAG(26)  = 'HDO'    , 'ch4;trsync',
+!TDIAG(26)  = 'HDO'    , 'ch4',
+!
+! TDIAG(30)  = 'CH4_D0', 'ch4', 
+! TDIAG(31)  = 'CH4_D1', 'ch4', 
+! TDIAG(32)  = 'CH4_12C', 'ch4', 
+! TDIAG(34)  = 'CH4_13C', 'ch4', 
+! ----------------------------------------------------------
+/

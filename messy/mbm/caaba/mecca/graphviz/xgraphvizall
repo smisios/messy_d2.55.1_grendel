@@ -1,0 +1,38 @@
+#! /bin/tcsh -f
+
+# xgraphvizall should be called via xmecca
+
+set submodel = "$1"
+if ( "$2" == "" ) then
+  set deltmp = "y"
+else
+  set deltmp = $2
+endif
+# for strange reasons, gawk only works properly if LC_ALL = C
+setenv LC_ALL C
+gawk -f spc_extract.awk ../$submodel.spc
+
+./xgraphviz     C1.spc   C.spc both $submodel
+./xgraphviz     C2.spc   C.spc both $submodel
+./xgraphviz     C3.spc   C.spc both $submodel
+./xgraphviz     C4.spc   C.spc both $submodel
+./xgraphviz     C5.spc   C.spc both $submodel
+./xgraphviz     C6.spc   C.spc both $submodel
+./xgraphviz     C7.spc   C.spc both $submodel
+./xgraphviz     C8.spc   C.spc both $submodel
+./xgraphviz     C9.spc   C.spc both $submodel
+./xgraphviz    C10.spc   C.spc both $submodel
+./xgraphviz      N.spc   N.spc both $submodel
+./xgraphviz     Cl.spc  Cl.spc both $submodel
+./xgraphviz     Br.spc  Br.spc both $submodel
+./xgraphviz      I.spc   I.spc both $submodel
+./xgraphviz      S.spc   S.spc both $submodel
+./xgraphviz     Fe.spc  Fe.spc both $submodel
+./xgraphviz OH_HO2.spc all.spc both $submodel
+
+# cleanup:
+if ( "$deltmp" != "n" ) then
+  rm *.dot *.spc
+endif
+
+exit

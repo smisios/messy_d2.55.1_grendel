@@ -1,0 +1,93 @@
+! -*- f90 -*-
+&CTRL
+L_FAMILY     = F, !# USE TRACER FAMILIES (SEE CTRL_FAMILY BELOW)
+L_PDEF       = T, !# SWITCH TRACER SUB-SUBMODEL PDEF (SEE CPL/CTRL_PDEF BELOW)
+/
+
+&CPL
+L_TRACER_INIT = T, !# SWITCH ON(T)/OFF(F) TRACER INITIALISATION
+L_CONV_LG2GP =  F, !# ONLY IF LAGRANGIAN TRACERS PRESENT 
+!
+ini_pvar(1) = 'ECHAM5','q','H2O',1,  ! initialize q with H2O; mol/mol -> kg/kg
+!
+/
+
+&CTRL_FAMILY
+l_verbose = F,   !# diagnostic output
+i_diag_pe = 0,   !# ... for this p_pe
+i_diag_jrow = 1, !# ... and this jrow
+!#
+!# NOTES:
+!#    - MAX. NUMBER OF FAMILIES: 50
+!#    - FAMILY-TYPE = 1: FAMILY = SUM OF TRACERS, TRACER = FRACTION OF FAMILY
+!#                                - TRACER FRACTIONS NOT TRANSPORTED
+!#                                - PROCESS SPECIFIC CONVERSION
+!#                                - switch is meaningless for type 1
+!#    -             = 2: FAMILY = SUM OF TRACERS, TRACER REMAINS
+!#                                - TRACER TRANSPORTED
+!#                                - RESCALED TO SUM AFTER TRANSPORT
+!#                                - switch = .FALSE.: no re-scaling,
+!#                                                    only summation
+!#                                -        = .TRUE. (default): re-scaling ON
+!#    - FAMILY TRACER MUST NOT EXIST
+!#    - FIRST VALID TRACER IN FAMILY SPECIFIES ATTRIBUTES OF TRACER FAMILY
+!#    - nadvect=nconvect=nvdiff = ON FOR FAMILIES WITH FAMILY-TYPE = 1
+!#    - EACH TRACER CAN BE MEMBER OF ZERO OR ONE TRACER FAMILY
+!#    - THE DEFAULT WEIGHT FOR EACH TRACER IS 1.0
+!# SYNTAX:
+!#    tracer-set, family-type, switch, family-name, family-subname,
+!#    LIST OF TRACERS ...
+!#    ... ('name' OR 'name_subname' OR 'name:weight' OR 'name_subname:weight')
+!# EXAMPLES:
+!
+!TF(1) = 'gp',1, ,'ClOX','','Cl','ClO','HOCl','OClO','Cl2O2:2.0','Cl2:2.0',!94*''
+!TF(2) = 'gp',1, ,'BrOX','','Br','BrO','HOBr','BrCl','Br2:2.0',!95*''
+!TF(3) = 'gp',1, ,'NOX','','N','NO','NO2','NO3','N2O5:2.0',!95*''
+!TF(4) = 'gp',1, ,'HOx','','H','OH','HO2',!97*''
+!TF(5) = 'gp',1, ,'Ox','','O1D','O3P','O3',!97*''
+!
+/
+
+
+&CTRL_PDEF
+!# diagnostic output ?
+L_DIAGOUT = T,
+!# SYNTAX: set-name, tracer-name, subname,
+!#         reset to zero?, stop on exceed?, relative tolerance
+TPD_DEFAULT(1) = 'gp',   '',     '',    T, F, 0.01,
+TPD_DEFAULT(2) = 'lg',   '',     '',    T, F, 0.01,
+TPD_DEFAULT(3) = 'lggp', '',     '',    F, F, 0.01,
+!
+!TPD(1)         = 'gp',   'HNO3', 'nat', T, F,     ,
+!TPD(2)         = 'gp',   'N',    '',    T, F,     ,
+!
+/
+
+&regrid
+infile    = "$INPUTDIR_MESSY/MISC/QCTM/iso_RC1SD-base-10_197901-201312_4QCTM.nc",
+i_latm    = "lat",          ! name of latitude axis in input file
+i_latr    = -90.0,90.0,     ! range of latitude axis in input file
+i_lonm    = "lon",          ! name of longitude axis in input file
+i_lonr    = 0.0,360.0,      ! range of longitude axis in input file
+i_timem   = "time",         ! name of time axis in input file
+!i_hyai    = "hyai",     ! name of hybrid A coefficients in input file
+i_hyam    = "hyam",     ! name of hybrid A coefficients in input file
+!i_hybi    = "hybi",     ! name of hybrid B coefficients in input file
+i_hybm    = "hybm",     ! name of hybrid B coefficients in input file
+! i_ps      = "aps",
+i_ps      = "101325.0 Pa",
+i_p0      = "1. Pa",        ! value of reference pressure in input file
+pressure  = F,
+! var       = "H2O;CH4_fx=CH4;",
+! var       = "H2O;CH4_fx=CH4;CH4_13C;CH4_12C"
+! var       = "H2O;CH4_fx=CH4;CH4_13C;CH4_D1;CH4_12C;CH4_D0",
+! w1...w6: weights according to total annual emissions, sum(w)=1
+! var       = "H2O;CH4_fx=CH4;CH4_fx_e01_a01=CH4,0.1;CH4_fx_e02_a01=CH4,0.1;CH4_fx_e03_a01=CH4,0.1;CH4_fx_e04_a01=CH4,0.1;CH4_fx_e05_a01=CH4,0.2;CH4_fx_e06_a01=CH4,0.4;CH4_13C=CH4_13C;CH4_D1=CH4_D1; CH4;CH4_12C=CH4_12C;CH4_D0=CH4_D0",
+! var       = "H2O;CH4_fx=CH4;CH4_fx_e01_a01=CH4,0.546;CH4_fx_e02_a01=CH4,0.023;CH4_fx_e03_a01=CH4,0.016;CH4_fx_e04_a01=CH4,0.033;CH4_fx_e05_a01=CH4,0.045;CH4_fx_e06_a01=CH4,0.016;CH4_fx_e07_a01=CH4,0.310;CH4_fx_e08_a01=CH4,0.011", 
+ var       = "H2O_ave;CH4_fx=CH4_ave;CH4_fx_e01_a01=CH4_ave,0.0009;CH4_fx_e02_a01=CH4_ave,0.0003;CH4_fx_e03_a01=CH4_ave,0.0015;CH4_fx_e04_a01=CH4_ave,0.0048;CH4_fx_e05_a01=CH4_ave,0.0018;CH4_fx_e06_a01=CH4_ave,0.0006;CH4_fx_e07_a01=CH4_ave,0.0020;CH4_fx_e08_a01=CH4_ave,0.0004;CH4_fx_e09_a01=CH4_ave,0.0010;CH4_fx_e10_a01=CH4_ave,0.0013;CH4_fx_e11_a01=CH4_ave,0.0007;CH4_fx_e12_a01=CH4_ave,0.0189;CH4_fx_e13_a01=CH4_ave,0.0024;CH4_fx_e14_a01=CH4_ave,0.0;CH4_fx_e15_a01=CH4_ave,0.103;CH4_fx_e16_a01=CH4_ave,0.0;CH4_fx_e17_a01=CH4_ave,0.3089;CH4_fx_e18_a01=CH4_ave,0.0258;CH4_fx_e19_a01=CH4_ave,0.0;CH4_fx_e20_a01=CH4_ave,0.0;CH4_fx_e21_a01=CH4_ave,0.0070;CH4_fx_e22_a01=CH4_ave,0.0047;CH4_fx_e23_a01=CH4_ave,0.0109;CH4_fx_e24_a01=CH4_ave,0.0078;CH4_fx_e25_a01=CH4_ave,0.0006;CH4_fx_e26_a01=CH4_ave,0.0030;CH4_fx_e27_a01=CH4_ave,0.0410;CH4_fx_e28_a01=CH4_ave,0.0009;CH4_fx_e29_a01=CH4_ave,0.0002;CH4_fx_e30_a01=CH4_ave,0.0034;CH4_fx_e31_a01=CH4_ave,0.0007;CH4_fx_e32_a01=CH4_ave,0.0156;CH4_fx_e33_a01=CH4_ave,0.0011;CH4_fx_e34_a01=CH4_ave,0.0005;CH4_fx_e35_a01=CH4_ave,0.0069;CH4_fx_e36_a01=CH4_ave,0.0041;CH4_fx_e37_a01=CH4_ave,0.0221;CH4_fx_e38_a01=CH4_ave,0.0107;CH4_fx_e39_a01=CH4_ave,0.0012;CH4_fx_e40_a01=CH4_ave,0.0;CH4_fx_e41_a01=CH4_ave,0.0128;CH4_fx_e42_a01=CH4_ave,0.0245;CH4_fx_e43_a01=CH4_ave,0.0;CH4_fx_e44_a01=CH4_ave,0.0512;CH4_fx_e45_a01=CH4_ave,0.1344;CH4_fx_e46_a01=CH4_ave,0.0913;CH4_fx_e47_a01=CH4_ave,0.01613;CH4_fx_e48_a01=CH4_ave,0.0003;CH4_13C;CH4_D1;CH4_12C;CH4_D0", 
+! The weights were calculated using the script:
+! /export/pa_data02/users/fran_fr/CH4/EMPA_1983/calc_weights.ncl
+!var       =  "H2O;CH4_fx=CH4;CH4_fx_e01_a04=CH4",
+!var       = "H2O;",
+i_t       = 25,
+/

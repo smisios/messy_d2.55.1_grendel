@@ -1,0 +1,1407 @@
+% work areas are denoted by #####
+%
+%
+%new intro chapter starting 31/05/01
+
+%$Source: /server/cvs/mpiom1/mpi-om/doc/tecdoc_mpiom/Attic/c2.tex,v $\\
+%$Revision: 1.1.2.1.4.2.2.2.2.3.2.1 $\\
+%$Date: 2006/03/07 14:50:43 $\\
+%$Name: mpiom_1_2_0 $\\
+
+
+%\pagenumbering{arabic}
+\thispagestyle{empty}
+ 
+\chapter[Using MPI-OM]
+{\Large{\bf Using MPI-OM}}
+
+
+This chapter shows how to set up and run the model with a given configuration
+and resolution. It will also deal with compiling and running the model on 
+different computational platforms.
+
+
+\section[Input Files]
+{\Large{\bf Input Files }}
+\label{sec:using:input}
+
+\subsection{Grid Files}
+
+Grid definition files store information about the model grid 
+and bathymetry. To generate a well working setup needs considerable 
+expertise and requires extensive evaluation.
+Most users work with exiting, thoroughly tested, model setups.  
+The tools to generated a specific setup are described in chapter \ref{ch:setup:grid}. 
+File formates are described in \ref{ch:appendix:formats}
+The following grid definition files are needed for MPI-OM:
+
+
+\begin{enumerate}
+
+
+\item \textbf{anta} \newline 
+Geographical positions (longitudes and latitudes) of the center and of the edges
+of the grid cells. Format is EXTRA.
+ 
+\item \textbf{topo} \newline 
+Model topography. Format is ASCII.
+
+%A binary  topography file used for a complete new-start of the model.
+%During this new-start (Namelist Parameter ISTART == 0) The 
+%topography is read from anta and written to topo.
+
+
+\item \textbf{arcgri} \newline
+Grid point separation. Format is EXTRA.
+
+\item \textbf{BEK} \newline
+ASCII file which is used for online diagnostics. It stores
+the masks for the major ocean basins using a number-code from 0 to 9.
+
+\item \textbf{SURSAL and SURTEM} \newline 
+
+Climatological values of surface salinity and temperature from \citet{Steele:2001}, interpolated onto the model grid. 
+Surface salinity and temperature can be restored with a constant relaxation time 
+which is set in the namelist (Table \ref{tb:using:namelist}). Format is EXTRA.
+Alternatively, a global hydrography from \citet{Gouretski:2004} is available.
+
+\item \textbf{INITEM and INISAL} 
+Three dimensional data of potential temperature and salinity \citep{Steele:2001}, interpolated onto the model grid
+Starting value for the initialization of MPI-OM. Format is EXTRA.
+Alternatively, a global hydrography from \citet{Gouretski:2004} is available.
+
+
+\item \textbf{runoff\_obs} \newline
+ Monthly mean river discharge data (currently for 53 positions) in EXTRA format.
+
+\item \textbf{runoff\_pos} \newline
+ Longitudes and latitudes of the river discharge positions in EXTRA format.
+
+\end{enumerate}
+
+Alternatively to runoff\_obs and runoff\_pos, river discharge information can
+be in supplied as a forcing field.
+Please see section \ref{sec:using:forcing} and table \ref{tb:using:cpp-flags-diag}.
+
+
+\subsection{Restart File}
+
+The current status of the model at the end of a run is stored in the ocean restart file 
+Z37000 (IEEE 8byte EXTRA Format). Parameter ISTART in the namelist \ref{tb:using:namelist} defines if a run is 
+started from a climatological distribution of temperature and salinity (INISAL and INITEM, see section 
+\ref{sec:using:input} and \ref{ch:setup:input})
+of from an existing restart file. 
+The file contains all scalar and vector variables for the ocean and the sea-ice model.
+%Z38000          --> IEEE 8byte EXTRA Format ocean restart file
+
+
+\subsection{Forcing Fields}
+\label{sec:using:forcing}
+
+Forcing data sets are provided as daily mean fields.
+The model is forced with heat, freshwater and momentum fluxes, 
+interpolated onto the model grid. Popular is, for example, 
+the climatological 360 day forcing compiled by the OMIP project. 
+or the forcing generated from the NCEP/NCAR reanalysis \citep{kalnay96}, which starts in 1948.
+The daily 2 m air and dew point temperatures,
+precipitation, cloud cover, 10 m wind
+speed and surface wind stress are taken without modification.
+Dew point temperature $T_{Dew}$ is derived from specific humidity $q$ and air
+pressure $p$ according to \citet{oberhuber88}. Format of the forcing fields is EXTRA.
+If you are interested in compiling your own forcing, please see section \ref{ch:setup:forcing}
+
+
+
+\begin{enumerate}
+
+
+\item \textbf{GICLOUD} \newline 
+Total cloud cover 
+\item \textbf{GIPREC} \newline 
+Precipitation 
+\item \textbf{GISWRAD} \newline 
+Solar radiation 	
+\item \textbf{GITDEW} \newline 
+Dew point temperature 	 
+\item \textbf{GITEM} \newline 
+Surface temperature 	 
+\item \textbf{GIU10} \newline 
+10 m wind speed 	 
+\item \textbf{GIWIX} \newline 
+zonal (along index i) wind stress 	 
+\item \textbf{GIWIY} 
+meridional (along index j) wind stress 	 	 
+\item \textbf{GIRIV} 
+river discharge data (optional)
+ 
+ 
+\end{enumerate}
+
+
+\subsection{Namelist}
+
+Some important tuning parameters can be set in the namelist OCECTL (ASCII file, table \ref{tb:using:namelist}).
+The depth levels are defined in DZW; NPROCS defines the number of processors 
+assigned for the MPI parallelization (example in section \ref{ch:using:quickstart}).
+
+
+\begin{table}
+\begin{footnotesize}
+\begin{tabular}{l|c|p{8cm}|p{2cm}}
+Parameter & GR03 & Comment  & Reference\\ \hline\hline
+DT	  &  8640.   &   model time step in seconds			                &  \ref{ch:timestepping:model} \\
+CAULAPTS  &  0.      &   horizontal biharmonic diffusion coefficient for tracers (T,S)  &  \ref{ch:timestepping:octdiff-trf} \\
+CAULAPUV  &  0.005   &   horizontal biharmonic diffusion coefficient for momentum (u,v) &  \ref{ch:timestepping:ocvisc} \\
+CAH00	  &  1000.   &   horizontal harmonic diffusion coefficient (isopycnic and GM)   &  \ref{ch:timestepping:octdiff-base}, \ref{ch:timestepping:octdiff-trf}, \ref{ch:timestepping:ocschep}\\ \hline
+DV0	  &  1.E-2   &	 vertical diffusion coefficient for tracers (T,S)	        &  \ref{ch:timestepping:octdiff-trf} \\
+AV0	  &  1.E-2   &	 vertical diffusion coefficient for momentum (u,v)	        &  \ref{ch:timestepping:ocvisc} \\
+DBACK	  &  1.E-5   &	 minimum setting for vertical tracers (T,S) diffusion	        &  \ref{ch:timestepping:octdiff-trf} \\
+ABACK	  &  1.E-4   &	 minimum setting for vertical momentum (u,v) diffusion          &  \ref{ch:timestepping:ocvisc} \\ \hline
+CWT	  &  5.E-4   &	 wind mixing coefficient 					&  \ref{eqn:awmix}, \ref{ch:timestepping:octher} \\
+CSTABEPS  &  0.030   &   minimum wind mixing  					        &  \ref{ch:timestepping:octher} \\ \hline
+CRELSAL   &  2.0E-7  &   surface salinity relaxation                                    &  \ref{eqn:numeric:relaxation}, \ref{eqn:numeric:sfwf2} \\
+CRELTEM   &  0.      &   surface temperature relaxation      		                &  \ref{eqn:numeric:relaxation}  \\ \hline
+CDVOCON   &  0.05    &	 convection coefficient for tracers (T,S)	                &  \ref{ch:timestepping:octher} \\
+CAVOCON   &  0.0     &	 convection coefficient for momentum (u,v)	                &  \ref{ch:timestepping:octher} \\ \hline
+%LY\_START &  1	     &	 set model year counter to January 1st of LY\_START              &   \\
+%LY\_END   &  2	     &	 stop if year counter is larger than LY\_END                    &   \\
+NYEARS    &  0	     &   Number of simulated years in a run 		                &   \\
+NMONTS    &  1	     &   Number of simulated months in a run 		                &   \\ \hline
+IMEAN	  &  2	     &   Time averaging of output data                                  &  chapter \ref{ch:diagnostic} \\
+          &          &  (3: yearly means, 2: monthly means, 1: daily means)        	                &   \\
+ISTART    &  2	     &  Start from initial conditions [0/1], standard [2]               &   \\
+I3DREST   &  1	     &  3-D restoring of temperature and salinity to initial conditions &  \ref{ch:timestepping:relax-ts}\\
+%ALBMELT   &  1	     &  albedo for melted ice		       &   \\ 
+%ALBMSNO   &  1	     &  albedo for snow		       &   \\ 
+%ALBOW     &  1	     &  albedo for open water		       &   \\ 
+
+\end{tabular}
+\end{footnotesize}
+\caption{Parameters of the MPI-OM namelist OCECTL, numbers are examples for a GR03 setup.}
+\label{tb:using:namelist}
+\end{table}
+
+
+
+\section{Output Fields}
+\label{sec:using:output}
+
+
+MPI-OM generates a large number of output files. Most of them are mean values of ocean properties (temperate, salinity ...). 
+In addition, there is output for mean diagnostic and flux variables, as well as grid, forcing or coupling (ECAHM) information.
+Time averaging can be daily, monthy or yearly and is controlled by the namelist (see \ref{tb:using:namelist}) 
+variable \texttt{IMEAN} (table \ref{tb:using:namelist}).
+Output data is selected with CPP switches (see \ref{ch:using:compiling:conditional}).
+Each code is written into a separate file named \texttt{fort.}\textit{\texttt{unit}} according to the unit the file is written to. 
+The file format is \texttt{EXTRA}. At the end of each run a tar file is created from the averaged data files.
+Mean and diagnostic output is discussed in detail in chapter \ref{ch:diagnostic} "Diagnostic and Mean Output".
+Tables \ref{tb:diagnostic:output:mean} to \ref{tb:diagnostic:output:meanoasis} given an overview on all available output codes.
+
+\section{Timeseries}
+
+A ASCII file named TIMESER containing time series data for some diagnostic variables is generated in
+each model time step. The content is described in detail in routine \texttt{DIAGNOSIS.F90} of the source code. 
+Usually, the TIMESER files from each year are "cat" together to a file named ZEITSER.
+A Fortran77 program named "plsteig.f" is available which generates a series of plots from one ore many 
+ZEITSER files for evaluation and comparison.
+
+
+\section{Quickstart Examples}
+\label{ch:using:quickstart}
+
+On a PC or Sun workstation, the most simple way to run the model is to put a precompiled MPI-OM executable and all
+necessary input and forcing files into one directory and start the model executable manually. In this
+case the model runs only on one processor and there the executable should have be compiled without parallelization options.
+If you need to compile your own executable, please refer to section \ref{ch:using:compiling},
+for more details on parallelization (running on more than one processor), please see section \ref{ch:using:parallel}.
+
+\subsection{Run Script}
+
+In most cases one wants to run several consecutive years, either by repeating a climatological forcing,
+or by using different forcing fields for each year. In this case a run script takes care of 
+the right forcing, the right parameters in the namelist and the proper labeling of the output.
+
+If you have received the model from CD or the ZMAW CVS server (see \ref{ch:using:compiling}) 
+you will find a shell-script called "prepare\_run\_mpiom\_omip" which helps to set up
+a runtime environment. It will create directories in the appropriate places and 
+set links to the necessary input and forcing files. It will also create run-script 
+which can serve as an example for your actual script. The script is written for the 
+MPI/DKRZ environment (Hurrikan) and has to be modified to work on other platforms.
+
+\subsubsection{Linux and SUN}
+
+An example for a LINUX run-script for one processor, GR30 resolution and climatological OMIP forcing 
+is given below. All necessary files are in one folder and the same climatological forcing is used for all years.
+It is important to note, that binary input and forcing files are double precision with big endian. 
+The same script can be used on a SUN workstation. Sun uses big endian for binary files by default, 
+so no extra settings are necessary.
+
+\begin{footnotesize}
+\begin{verbatim}
+#!/bin/sh
+set verbose
+set echo
+#
+# This script is for a simple runtime setup.
+# with one processor on a Linux PC.
+# All files are stored in one directory named GR30_$ID 
+# Script is designed for a 20 layer GR30 grid.
+#
+#--------------------------------------------------------
+#
+
+HOME=/home/patrick ; export HOME
+ID=OMIP ; export ID
+# for intel ifc compiler
+F_UFMTENDIAN=big ; export F_UFMTENDIAN
+
+#
+# at the beginning
+#
+echo 1 > year.asc
+
+#
+# Execute 3 times
+#
+for number in 1 2 3
+do
+
+cat > OCECTL  << EOF
+ &NPROCS
+ nprocx=1
+ nprocy=1
+  /
+ &OCECTL
+ DT      = 8640.
+ CAULAPTS= 0.
+ CAULAPUV= 0.005
+ AUS     = 0.
+ CAH00   = 1000.
+ DV0     = 1.E-2
+ AV0     = 1.E-2
+ CWT     = 5.E-4
+ CSTABEPS= 0.030
+ DBACK   = 1.E-5
+ ABACK   = 1.E-4
+ CRELSAL = 2.0E-7
+ CRELTEM = 0.
+ CDVOCON = 0.05
+ CAVOCON = 0.0
+ NYEARS  = 1
+ NMONTS  = 0
+ IMEAN   = 2
+ &END
+ &OCEDZW
+  DZW = 20.,20., 20., 30.,40.,50.,70.
+        ,90.,120.,150.,180.,210.,250.,300.
+        ,400.,500.,600.,700.,900.,1400.
+ &END
+EOF
+
+set -e
+#for fujitsu lf95 compiler (set read/write to big endian)
+#ocmod.x -Wl,-T
+
+#for intel ifc compiler
+./ocmod.x
+set +e
+
+#
+# Append the timeseries to ZEITSER
+#
+
+cat TIMESER >> ZEITSER
+\rm TIMESER
+
+#
+# Append the timeseries to ZEITSER
+#
+
+\cp Z37000 Z37000_$YEAR
+\cp Z37000 Z38000
+ 
+#
+# Rename the output files you want to keep ....
+#
+
+ls -al 
+mv fort.71 $ID\_tho.ext4
+mv fort.72 $ID\_sao.ext4
+mv fort.73 $ID\_uko.ext4
+mv fort.74 $ID\_vke.ext4
+mv fort.79 $ID\_eminpo.ext4
+mv fort.82 $ID\_zo.ext4
+mv fort.84 $ID\_flum.ext4
+mv fort.85 $ID\_pem.ext4
+mv fort.86 $ID\_sictho.ext4
+mv fort.87 $ID\_sicomo.ext4
+mv fort.88 $ID\_sicuo.ext4
+mv fort.89 $ID\_sicve.ext4
+mv fort.90 $ID\_kcondep.ext4
+mv fort.130 $ID\_wu10.ext4
+mv fort.131 $ID\_tafo.ext4
+mv fort.132 $ID\_fclo.ext4
+mv fort.133 $ID\_fpre.ext4
+mv fort.134 $ID\_fswr.ext4
+mv fort.135 $ID\_ftde.ext4
+mv fort.136 $ID\_sicsno.ext4
+mv fort.137 $ID\_qswo.ext4
+mv fort.138 $ID\_qlwo.ext4
+mv fort.139 $ID\_qlao.ext4
+mv fort.140 $ID\_qseo.ext4
+mv fort.141 $ID\_preco.ext4
+mv fort.142 $ID\_amld.ext4
+mv fort.143 $ID\_psiuwe.ext4
+mv fort.144 $ID\_avo.ext4
+mv fort.145 $ID\_dvo.ext4
+mv fort.146 $ID\_wo.ext4
+mv fort.147 $ID\_sictru.ext4
+mv fort.148 $ID\_sictrv.ext4
+mv fort.149 $ID\_txo.ext4
+mv fort.150 $ID\_tye.ext4
+mv fort.156 $ID\_zmld.ext4
+mv fort.93 $ID\_weto.ext4
+mv fort.94 $ID\_gila.ext4
+mv fort.97 $ID\_giph.ext4
+mv fort.96 $ID\_depto.ext4
+mv fort.151 $ID\_dlxp.ext4
+mv fort.152 $ID\_dlyp.ext4
+mv fort.153 $ID\_deuto.ext4
+mv fort.154 $ID\_dlxu.ext4
+mv fort.155 $ID\_dlyu.ext4
+mv fort.245 $ID\_wtmix.ext4
+mv fort.246 $ID\_wgo.ext4
+mv fort.159 $ID\_bolx.ext4
+mv fort.160 $ID\_boly.ext4
+mv fort.247 $ID\_dqswo.ext4
+mv fort.248 $ID\_dqlwo.ext4
+mv fort.249 $ID\_dqseo.ext4
+mv fort.250 $ID\_dqlao.ext4
+mv fort.251 $ID\_dqtho.ext4
+mv fort.252 $ID\_dqswi.ext4
+mv fort.253 $ID\_dqlwi.ext4
+mv fort.254 $ID\_dqsei.ext4
+mv fort.255 $ID\_dqlai.ext4
+mv fort.256 $ID\_dqthi.ext4
+mv fort.257 $ID\_dticeo.ext4
+mv fort.157 $ID\_tmceo.ext4
+mv fort.158 $ID\_tmcdo.ext4
+mv fort.303 $ID\_ukomfl.ext4
+mv fort.304 $ID\_vkemfl.ext4
+mv fort.305 $ID\_rivrun.ext4
+
+#
+# tar and move the output and the restart files
+#
+
+tar cvf $YEAR.tar Z37000_$YEAR ZEITSER *.ext4
+\mv $YEAR.tar $HOME/OUTPUT/GR30_$ID
+
+#
+# .... and delete the others.
+#
+
+rm *.ext4 Z37000_$YEAR
+
+#
+# add one to the year-counter 
+#
+
+YEAR=`expr ${YEAR} + 1`
+echo $YEAR > year.asc
+
+done
+\end{verbatim}
+\end{footnotesize}
+
+
+\subsubsection{NEC SX-6 (DKRZ-Hurrikan)}
+
+If run on a supercomputer such as the SX-6 of DKRZ (Hurrikan), a special script with the right queuing parameters 
+and environment variables is required.
+The shell-script "prepare\_run\_mpiom\_omip" helps to set up
+a runtime environment on Hurrikan. It will create directories in the appropriate places and 
+set links to the necessary input and forcing files in the Hurrikan "/pool" directory . 
+It will also create run-script 
+which can serve as a simple example for your actual script.
+In this example it is assumed that the MPI-OM executable has been compiled only with OpenMP parallelization
+or without any parallelization. The MPI version is commented out.
+Please keep in mind that, besides for testing, using only one processor (serial queue) 
+does not make much sense on a supercomputer. 
+Identical to the LINUX/SUN example all necessary  files are stored
+in one directory which in this case is on the SHR directory tree on DKRZ Hurrikan. 
+Output files are tared and moved to the UT directory tree. 
+The DKRZ web-side (www.dkrz.de) also has up-to-date examples on the queues and procedures for all kinds of applications.
+For more details on parallelization and compiling, please see section \ref{ch:using:parallel} and \ref{ch:using:compiling}.
+
+
+\begin{footnotesize}
+\begin{verbatim}
+
+#! /bin/ksh
+#-----------------------------------------------------------------------------
+# # 1 CPU (maximum number of CPUs 8)
+ # 2 h cputime
+ # 1 Gbyte memory
+ # job runs on 1 node
+ # join err and out to out
+ # write output to file "GR30_OMIP.rep"
+ # job name
+ # you should always specify your email 
+ # address for error messages etc
+
+#PBS -S /bin/ksh
+#
+#PBS -N mpiom_omip   # job name
+#
+#PBS -l cpunum_prc=1          # 1 CPU (maximum number of CPUs 8)
+#PBS -l cputim_job=02:00:00   # 2 h realtime per node
+#PBS -l memsz_job=1.0gb       # 1 Gbyte memory (48 GB Memory per node)
+#PBS -j o                     # join err and out to out
+#
+#export MPIPROGINF=ALL_DETAIL
+export F_PROGINF=DETAIL
+export F_SETBUF=4096
+
+#MPIEXPORT="OMP_NUM_THREADS F_FILEINF" ; export MPIEXPORT
+#MPIMULTITASKMIX=ON ; export MPIMULTITASKMIX
+OMP_NUM_THREADS=1 ; export OMP_NUM_THREADS
+
+#
+#-----------------------------------------------------------------------------
+#
+#                  Job file to run MPI-OM with OMIP forcing
+#
+#-----------------------------------------------------------------------------
+#
+# If a command has a non-zero exit status, execute ERR trap, if set, and exit
+#
+#set -ex
+#
+#=============================================================================
+
+expno=test
+echo "Experiment: ${expno}"
+ncpus=1
+nprocx=1
+nprocy=1
+#
+echo "   CPUs: ${ncpus} (nprocx: ${nprocx}, nprocy: ${nprocy})" 
+#
+#-----------------------------------------------------------------------------
+#
+EXPDIR=/shr/2/m212047/${expno}
+
+# absolute path to directory with plenty of space:
+ARCHIVE=/ut/m/m212047/EXPERIMENTS/${expno}
+
+# absolute path to directory with initial data:
+INITIAL_DATA=/pool/SX-6/MPI-OM
+
+# horizontal and vertical resolution
+GRID=GR30
+LEV=L40
+#
+
+#-----------------------------------------------------------------------------
+#
+cd ${EXPDIR}           #  output and rerun files are written into $ARCHIVE
+pwd
+#-----------------------------------------------------------------------------
+
+ln -s ${INITIAL_DATA}/${GRID}/${GRID}_arcgri             arcgri
+ln -s ${INITIAL_DATA}/${GRID}/${GRID}_topo               topo
+ln -s ${INITIAL_DATA}/${GRID}/${GRID}_anta               anta
+cp ${INITIAL_DATA}/${GRID}/${GRID}_BEK                   BEK
+chmod 755 BEK
+
+ln -s ${INITIAL_DATA}/${GRID}/${GRID}_GIWIX_OMIP365      GIWIX   
+ln -s ${INITIAL_DATA}/${GRID}/${GRID}_GIWIY_OMIP365      GIWIY   
+ln -s ${INITIAL_DATA}/${GRID}/${GRID}_GITEM_OMIP365      GITEM   
+ln -s ${INITIAL_DATA}/${GRID}/${GRID}_GIPREC_OMIP365     GIPREC  
+ln -s ${INITIAL_DATA}/${GRID}/${GRID}_GISWRAD_OMIP365    GISWRAD 
+ln -s ${INITIAL_DATA}/${GRID}/${GRID}_GITDEW_OMIP365     GITDEW  
+ln -s ${INITIAL_DATA}/${GRID}/${GRID}_GIU10_OMIP365      GIU10   
+ln -s ${INITIAL_DATA}/${GRID}/${GRID}_GICLOUD_OMIP365    GICLOUD
+
+ln -s ${INITIAL_DATA}/${GRID}/${GRID}${LEV}_INITEM_PHC  INITEM
+ln -s ${INITIAL_DATA}/${GRID}/${GRID}${LEV}_INISAL_PHC  INISAL
+ln -s ${INITIAL_DATA}/${GRID}/${GRID}${LEV}_SURSAL_PHC  SURSAL
+
+ln -s ${INITIAL_DATA}/runoff_obs                         runoff_obs
+ln -s ${INITIAL_DATA}/runoff_pos                         runoff_pos
+#
+#-----------------------------------------------------------------------------
+
+for lll in 1 2 3 4 5 ; do
+
+YEAR=`cat year.asc` ; export YEAR
+echo $YEAR
+STA=3 ; export STA
+RES=0 ; export RES
+
+if [ ${YEAR} -eq 0 ] ; then
+STA=2 ; export STA
+RES=1 ; export RES
+fi
+
+cat > OCECTL  << EOF
+&nprocs
+ nprocx=${nprocx}
+ nprocy=${nprocy}
+/
+ &ocectl
+ dt      = 8640.
+ caulapts= 0.
+ caulapuv= 0.005
+ aus     = 0.
+ cah00   = 1000.
+ dv0     = 1.e-2
+ av0     = 1.e-2
+ cwt     = 5.e-4
+ cstabeps= 0.03
+ dback   = 1.e-5
+ aback   = 1.e-4
+ crelsal = 5.e-8
+ creltem = 0.
+ cdvocon = 0.05
+ cavocon = 0.0
+ nyears  = 1
+ nmonts  = 0
+ imean   = 2
+ istart  = ${STA}
+ i3drest = ${RES}
+ /
+ &ocedzw
+ dzw     = 12.,10.,10.,10.,10.,10.,13.,15.,20.,25.,
+           30.,35.,40.,45.,50.,55.,60.,70.,80.,90.,
+           100.,110.,120.,130.,140.,150.,170.,180.,190.,200.,
+           220.,250.,270.,300.,350.,400.,450.,500.,500.,600./
+ /
+EOF
+
+#-----------------------------------------------------------------------------
+#mprun -np ${ncpus} mpiom.x
+#
+mpiom.x
+#
+#=============================================================================
+
+cat TIMESER >>ZEITSER ; \rm TIMESER
+cp Z37000 Z38000
+
+if [ `expr $YEAR % 10`==10 ]; then
+cp Z37000 ${ARCHIVE}/restart/Z37000_${YEAR}
+endif
+
+
+mv fort.71 ${expno}_tho.ext4
+mv fort.72 ${expno}_sao.ext4
+... otherwise identical to LINUX example ...
+
+tar cvf ${YEAR}.tar ${expno}*.ext4 
+mv ${YEAR}.tar ${ARCHIVE}/${YEAR}.tar
+
+\rm fort.* ${expno}_*.ext4 
+
+YEAR=`expr ${YEAR} + 1`
+\rm year.asc
+echo $YEAR > year.asc
+
+done
+echo "submitting next job"
+if [ ${YEAR} -le 100 ] ; then
+qsub ${EXPDIR}/run_mpiom_hamocc_omip
+fi
+
+exit
+
+\end{verbatim}
+\end{footnotesize}
+
+
+\section{Parallel Computing with MPI and OpenMP}
+\label{ch:using:parallel}
+
+MPI-OM is designed to run in parallel on different processors. Two ways of parallelization are possible.
+First, OpenMP (www.openmp.org) which supports shared-memory parallel programming 
+(Several processors on one machine with access to the same shared memory).
+Second, MPI (Message Passing Interface, www.mpi-forum.org) which 
+additionally supports parallelization across different machines (LINUX cluster) or different nodes (NEC SX-6).
+MPI and OpenMP libraries are available for almost all architectures including LINUX, SUN and NEC SX-6.
+
+\subsection{Running the OpenMP version}
+
+A model compiled with OpemMP can be started just like the non-parallel examples in section \ref{ch:using:quickstart},
+only the environment variable
+\begin{footnotesize}
+\begin{verbatim}
+OMP_NUM_THREADS=<numprocs>
+\end{verbatim}
+\end{footnotesize}
+has to be set to the number of available processors.
+
+\subsection{Running the MPI version}
+
+For MPI, the calculated region has to be distributed up among the processors.
+The distribution along the x and y coordinates has to be defined in the 
+beginning of the namelist OCECTL:
+
+\begin{footnotesize}
+\begin{verbatim}
+  &NPROCS
+  nprocx=...
+  nprocy=...
+  &end
+\end{verbatim}
+\end{footnotesize}
+
+Computation is started by first calling the 
+MPI daemon and then starting the MPI execution:
+
+\begin{footnotesize}
+\begin{verbatim}
+/sw/linux/mpi/bin/mpd --daemon &
+/sw/linux/mpi/bin/mpiexec -np <numprocs> $HOME/model/model.x
+\end{verbatim}
+\end{footnotesize}
+
+The number of processors has to be equal to nprocx*nprocy.
+Model output is written in:   
+\begin{footnotesize}
+\begin{verbatim}
+  oceout          for processor 0
+  oceout_001      for processor 1
+  oceout_002      for processor 2
+\end{verbatim}
+\end{footnotesize}
+
+If the number of processors is set to nprocx*nprocy+1 
+the model is computed in "debug" mode. The additional processor
+computes the total area and, on each boundary exchange, there is a 
+check if numbers are identical with the total area computation.
+For debugging, all numerical optimizations have to be 
+switched off while compiling the model because, depending on the loop-length, 
+optimizations can cause small numerical differences.
+
+On Hurrikan (SX-6), because of better performance it is recommended to use OpemMP
+if not more than 8 processors (one node) are require.
+
+\subsection{MPI Examples}
+
+\subsubsection{Sun and Linux}
+
+Please note that you need to have a MPI daemon on your machine which
+is compatible with the compiler that was used to compile the model.
+If your institute does not provide an MPI environment, you will probably
+have to compile the MPI library yourself.
+Alternatively to using "mprun" as in this example the daemon
+and the executable can be started separately,as described above.
+
+\begin{footnotesize}
+\begin{verbatim}
+#! /bin/sh
+set echo
+set verbose
+
+HOME=/home/patrick ; export HOME
+ID=OMIP ; export ID
+
+set echo
+set verbose
+
+
+
+cat > OCECTL  << EOF
+ &NPROCS
+ nprocx=4
+ nprocy=3
+  /
+ &OCECTL
+ DT      = 8640.
+ CAULAPTS= 0.
+ CAULAPUV= 0.005
+ AUS     = 0.
+ CAH00   = 1000.
+ DV0     = 1.E-2
+ AV0     = 1.E-2
+ CWT     = 5.E-4
+ CSTABEPS= 0.030
+ DBACK   = 1.E-5
+ ABACK   = 1.E-4
+ CRELSAL = 2.0E-7
+ CRELTEM = 0.
+ CDVOCON = 0.05
+ CAVOCON = 0.0
+ NYEARS  = 1
+ NMONTS  = 0
+ IMEAN   = 2
+ /
+ &OCEDZW
+  DZW = 20.,20., 20., 30.,40.,50.,70.
+        ,90.,120.,150.,180.,210.,250.,300.
+        ,400.,500.,600.,700.,900.,1400.
+ /
+EOF
+
+cat >mpi.sh<< END
+#! /bin/sh
+cd $HOME/OMIP   
+set -e
+./mpiom.x
+set +e
+END
+chmod 755 mpi.sh
+
+mprun -np 12 mpi.sh
+
+\end{verbatim}
+\end{footnotesize}
+
+\subsubsection{NEC SX-6 (DKRZ-Hurrikan)}
+
+On Hurrikan (SX-6), because of better performance it is recommended to use OpemMP
+if the model should run on only one node.
+The following is an example taken from www.dkrz.de for an MPI Job which 
+requests 2 compute nodes with 8 CPUs on each node (i.e. 16 CPUs in total !). 
+The scheduler chooses the nodes dynamically, depending on the load. 
+In the script the nodes are named 0 and 1. A four node run would have the numbers 2 and 3 for the additional nodes.
+\begin{footnotesize}
+\begin{verbatim}
+#!/bin/ksh
+### PBS -S /bin/ksh          # NQSII Syntax  to set the shell
+#PBS -l cpunum_prc=8         #  8 cpus per node
+#PBS -l cputim_job=10:00:00  # 10 h cputime per node
+#PBS -l memsz_job=6gb        #  6 GB Memory per node
+#PBS -T mpisx
+#PBS -b 2                    # job runs on 2 nodes
+#PBS -j o                    # join err and out to out
+#PBS -M myname@mymail.de     # you should always specify your email
+                             # address for error messages etc
+#PBS -N job_multi16          # job name
+
+/bin/echo " job started at: " \\c
+date
+/bin/echo " ExecutionHost : " \\c
+hostname                     # print name of current host 
+
+EXE=/ipf/x/xnnnnnn/model_mpi.x
+
+mpiexec -host 0 -n 8 -host 1 -n 8 $EXE
+
+/bin/echo " job completed at: " \\c
+date
+#
+# ... data handling similar to the quickstart LINUX example ...
+#
+\end{verbatim}
+\end{footnotesize}
+
+
+
+\section{Compliling the Model}
+\label{ch:using:compiling}
+
+Most users at some point will have to compile the model them self. 
+The source code is available from CD or, if you are a registered user, from the ZMAW CVS server.
+
+To retrieve the sources from CVS you have to do the following:
+\begin{footnotesize}
+\begin{verbatim}
+setenv CVSROOT :pserver:<user-name>@cvs.zmaw.de:/server/cvs/mpiom1
+cvs login
+cvs checkout mpi-om 
+\end{verbatim}
+\end{footnotesize}
+
+In any way you will end up with a directory named mpi-om and five subdirectories:
+
+\begin{enumerate}
+
+\item \textbf{src}  \newline 
+All sources required to compile the MPI-OM ocean standalone model. 
+ 
+\item \textbf{src\_hamocc} \newline 
+All sources required to compile the HAMOCC marine biogeochemistry together with the MPI-OM ocean model. 
+
+\item \textbf{make} \newline 
+Makefiles required to compile the MPI-OM ocean and the MPI-OM/HAMOCC model. 
+
+\item \textbf{bin} \newline 
+This is where the binaries are stored after compilation. 
+
+\item \textbf{run} \newline 
+Shell scripts to set up a runtime environment. 
+
+\end{enumerate}
+
+If you are working within the Max Planck Institute for Meteorology (MPI-MET) or the DKRZ,
+just go to the make directory and type "make -f Makefile\_mpiom\_omip". The Makefile will 
+automatically detect your machine-type and select an available compiler.
+If you need to use a different compiler or if you are not working within the MPI-MET or the DKRZ,
+you will have to provide and select the compiler and, if required, the MPI and the NetCDF libraries yourself.
+The example below shows parts of the standard Makefile. 
+
+\begin{footnotesize}
+\begin{verbatim}
+#-----------------------------------------------------------------------------
+DEF =   -DZZNOMPI -DVERSIONGR30 -DZZLEVELS40 -DZZTIMECHECK \
+        -DZZYEAR360 -DSOR -DZZRIVER_GIRIV \
+        -DMEAN -DZZDEBUG_ONEDAY \
+        -DQLOBERL -DBULK_KARA \
+        -DEISREST -DREDWMICE -DALBOMIP \
+        -DISOPYK -DGMBOLUS \
+        -DADPO -DSLOPECON_ADPO  \
+        -DNURDIF \
+        -DDIAG -DZZGRIDINFO -DZZDIFFDIAG -DZZKONVDIAG \
+        -DZZCONVDIAG -DZZAMLDDIAG -DTESTOUT_HFL \
+        -DZZRYEAR
+#-----------------------------------------------------------------------------
+
+PROG =	mpiom.x
+
+VPATH = ../src
+
+SRCS =	absturz.f90 adisit.f90 adisit1.f90 adisitj.f90 amocpr.f90 aufr.f90 \
+        ....
+
+OBJS =	absturz.o adisit.o adisit1.o adisitj.o amocpr.o aufr.o \
+        ....
+
+# Set up system type
+UNAMES := $(shell uname -s)
+HOST   := $(shell hostname)
+
+ifeq ($(UNAMES),SunOS)
+NETCDFROOT = /pf/m/m214089/yin/local/SunOS64
+NETCDF_LIB = -L${NETCDFROOT}/lib -lnetcdf
+NETCDF_INCLUDE = -I${NETCDFROOT}/include
+
+MPIROOT = /opt/SUNWhpc
+MPI_LIB = -L${MPIROOT}/lib/sparcv9 -R${MPIROOT}/lib/sparcv9 -lmpi
+MPI_INCLUDE = -I${MPIROOT}/include
+endif
+
+INCLUDES = $(NETCDF_INCLUDE) $(MPI_INCLUDE)
+LIBS = $(NETCDF_LIB) $(MPI_LIB)
+
+ifeq ($(UNAMES), SunOS)
+#-----------------------------------------------------------------------------
+#FOR SUN (SunStudio10 compiler)
+F90 = f95
+F90FLAGS = $(INCLUDES) -xtypemap=real:64,double:64,integer:32 -fast \
+                       -g -xarch=v9b -xchip=ultra3cu  -fpp 
+# OpenMP: -xopenmp
+endif
+
+LDFLAGS = $(F90FLAGS)
+
+all: $(PROG)
+
+$(PROG): $(OBJS)
+	$(F90) $(LDFLAGS) -o $@ $(OBJS) $(LIBS)
+	cp $(PROG) ../bin/.
+
+clean:
+	rm -f $(PROG) $(OBJS) *.mod i.*.L
+
+.SUFFIXES: $(SUFFIXES) .f90
+
+%.o: %.f90
+	$(F90) $(F90FLAGS) -c $(DEF) $<	
+
+#
+#-----------------------------------------------------------------------------
+# Dependencies
+#
+absturz.o: mo_commo1.o mo_commo2.o mo_param1.o mo_units.o mo_parallel.o
+...
+\end{verbatim}
+\end{footnotesize}
+
+
+\subsection{Conditional Compilation}
+\label{ch:using:compiling:conditional}
+
+The MPI-OM source code contains a number of cpp flags for conditional compilation.
+There are different groups of compile options. First, the group which controls 
+the resolution, the configuration for different
+platforms and different forcing or coupling options. Second, the group which controls 
+different parameterizations of the model physics. Third, the group which controls 
+the model output. All options are described in the following tables.
+
+
+
+\begin{table}[ht]
+\begin{footnotesize}
+\centerline{\hbox{\begin{tabular}[t]{l|p{8cm}|l}
+          Key name &
+          Action &
+	  Reference \\
+        \hline
+         \texttt{VERSIONGIN} &
+           grid with high resolution in the Greenland, Iceland and Norwegian Seas  &
+        \\	
+         \texttt{VERSIONGR03} &
+           GR grid (poles over Greenland and Antarctica) with nominal resolution of 0.3~\degs  &
+        \\	
+         \texttt{VERSIONGR09} &
+           GR grid with nominal resolution of 0.9~\degs  &       
+        \\	
+         \texttt{VERSIONGR15} &
+           GR grid with nominal resolution of 1.5~\degs  &  	
+        \\	
+         \texttt{VERSIONGR30} &
+           GR grid with nominal resolution of 3.0~\degs  &  	
+        \\	
+         \texttt{VERSIONGR60} &
+           GR grid with nominal resolution of 6.0~\degs  &  		
+        \\	
+         \texttt{VERSIONT43} &
+           grid with about T42 resolution and increased resolution at the Equator &   		
+        \\	
+         \texttt{LEVELS23} &
+           run with 23 layers (default is 20) &  	
+        \\
+         \texttt{LEVELS30} &
+           run with 30 layers (default is 20) &  	
+        \\
+         \texttt{LEVELS40} &
+           run with 40 layers (default is 20) &  	
+        \end{tabular}}}
+\end{footnotesize}
+\caption[List of cpp flags for grid options]{List of cpp flags for grid options.}
+\label{tb:using:cpp-flags-grid}
+\end{table}
+\vspace*{1ex}
+
+
+\begin{table}[ht]
+\begin{footnotesize}
+\centerline{\hbox{\begin{tabular}[t]{l|p{8cm}|l}
+          Key name &
+          Action &
+	  Reference \\
+        \hline
+         \texttt{\_\_coupled} &
+           coupled to ECHAM5 with PRISM coupler &	
+         \ref{ch:appendix:mo-parallel} \\		
+         \texttt{\_\_synout} &
+           enable coupler ASCII output to file oceout  &	
+        \ref{ch:appendix:mo-parallel} \\		
+         \texttt{bounds\_exch\_isend} &
+            MPI parallelization boundary exchange &	
+        \ref{ch:appendix:mo-parallel} \\		
+         \texttt{bounds\_exch\_put} &
+            MPI parallelization boundary exchange  & 	
+        \ref{ch:appendix:mo-parallel} \\		
+         \texttt{use\_comm\_MPI1} &
+           MPI1 parallelization library 	&
+        \ref{ch:appendix:mo-parallel} \\		
+         \texttt{use\_comm\_MPI2} &
+            MPI2 parallelization library  &		
+        \ref{ch:appendix:mo-parallel} \\ \hline	
+         \texttt{SALTCORRECT} &
+            correct salinity when coupled to ECHAM5 &	
+        \ref{ch:appendix:mo-couple} \\			
+         \texttt{TEMPCORRECT} &
+            correct temperature when coupled to ECHAM5  &
+        \ref{ch:appendix:mo-couple} \\			
+         \texttt{FLUXCORRECT} &
+            correct surface fluxes when coupled to ECHAM5 &   	
+        \ref{ch:appendix:mo-couple} \\	\hline	
+         \texttt{PBGC} &
+           compiling with HAMOCC marine biogeochemistry  &
+	\\
+         \texttt{FB\_BGC\_OCE} &
+           downward solar penetration modulated by HAMOCC marine biology; without \texttt{PBGC}: penetration climatology from file &
+         \ref{ch:timestepping:ocice} \\ 
+         \texttt{PDYNAMIC\_BGC} &
+            diagnistic output for HAMOCC   &
+	\\
+        \end{tabular}}}
+\end{footnotesize}
+\caption[List of cpp flags for forcing or coupling options]{List of cpp flags for forcing or coupling options.}
+\label{tb:using:cpp-flags-forcing}
+\end{table}
+\vspace*{1ex}
+
+
+
+
+
+\begin{table}[ht]
+\begin{footnotesize}
+        \begin{tabular}[t]{l|p{9cm}|p{1cm}}
+          Key name &
+          Action &
+	  Reference \\
+        \hline
+         \texttt{SOR} &
+           use successive over-relaxation time stepping (barotropic solver)  &	      
+           \ref{ch:timestepping:troneu}\\
+         \texttt{ISOPYK} &
+           Isopycnal diffusion  &
+        \\\hline
+         \texttt{GMBOLUS} &
+          Gent and McWilliams style eddy-induced mixing \citep{Gent:1995}   &
+        \ref{ch:timestepping:ocjitr}\\
+         \texttt{BOLK05} &
+           multiply default Gent and McWilliams Bolus coefficient by 0.5 &
+        \ref{ch:timestepping:ocjitr}\\
+         \texttt{BOLK025} &
+           multiply default Gent and McWilliams Bolus coefficient by 0.25  &	      
+        \ref{ch:timestepping:ocjitr}\\
+         \texttt{REDWMICE} &
+           reduced eddy mixing energy transfer in presence of sea ice  &	      
+        \ref{ch:timestepping:octher}\\
+         \texttt{GMVISETAL} &
+           calculate Richardson number coefficients after \cite{Visbeck:1997}  &
+        \ref{ch:timestepping:ocjitr}\\\hline
+         \texttt{ADFS} &
+           predictor-corrector advection scheme &
+        \ref{ch:timestepping:ocadfs}\\
+         \texttt{QUICK} &
+           quick-scheme as proposed by \cite{Farrow:1995} &
+        \\
+         \texttt{QUICK2} &
+            quick-scheme with modified boundary treatment &
+        \\	   	
+         \texttt{ADPO} &
+           total variation diminishing (TVD) advection scheme \citep{Sweby:1984}. &
+        \ref{ch:timestepping:ocadpo}\\
+         \texttt{SLOPECON\_ADPO} &
+           bottom boundary layer transport scheme for the ADPO advection scheme  &
+        \ref{ch:timestepping:slopetrans} and \ref{sec:bbl}\\
+         \texttt{FREESLIP} &
+           no friction on boundaries  &   
+        \\\hline
+         \texttt{NURDIF} &
+           vertical diffusion and no mixing (coefficient is set in namelist) &
+        \ref{ch:timestepping:octher}\\
+         \texttt{NURMISCH} &
+           only vertical mixing and no diffusion & 
+        \ref{ch:timestepping:octher}\\
+         \texttt{UMKLAP} &
+           convective adjustment instead of vertical mixing and diffusion & 
+        \ref{ch:timestepping:octher}\\
+         \texttt{PLUME} &
+           PLUME convection after St\"ossel instead of convective adjustment & 
+        \ref{ch:timestepping:octher}\\
+         \texttt{DBACKGFDL} &
+           background vert. diffusion to profile after GFDL &
+        \\
+         \texttt{DBACKGFDL2} &
+           background vert. diffusion as mean of DBACK and GFDL &
+        \\
+         \texttt{DBACKPROFIL} &
+           set minimum vertical diffusion to profile &
+        \\
+         \texttt{SCHEP} &
+           modify horizontal diffusion of momentum &   
+        \\\hline
+         \texttt{AULREDSC} &
+           reduce grid dependence of horizontal biharmonic diffusion (power of 4 to power of 3) for tracers (T,S)& 
+        \\
+         \texttt{AULREDUV} &
+           reduce grid dependence of horizontal biharmonic diffusion (power of 4 to power of 3) for momentum (u,v)& 
+        \\\hline
+         \texttt{BULK\_KARA} &
+           use bulk formula from from Kara for surface heat balance  &
+        \\
+         \texttt{DASILVA} &
+           use bulk formula from from DaSilva for surface heat balance  &
+        \\
+         \texttt{DRAGGILL} &
+           use bulk formula values from gill (atmosphere ocean dynamics) for surface heat balance  &
+        \\
+         \texttt{QLOBERL} &
+            compute downward long-wave radiation according to \citet{berliand52}. &
+        \\
+         \texttt{OPEND55} &
+            increase exp. scale for downward solar penetration by 2 relative to default &
+        \end{tabular}
+\end{footnotesize}
+\caption[List of cpp flags for physical parameterizations]{List of cpp flags for the physical parameterisation.}
+\label{tb:using:cpp-flags-physical}
+\end{table}
+
+
+\begin{table}[ht]
+\begin{footnotesize}
+        \begin{tabular}[t]{l|p{8cm}|l}
+          Key name &
+          Action &
+	  Reference \\
+        \hline
+         \texttt{MEAN} &
+           enable monthly/daily mean output &
+         section \ref{ch:diagnostic} \\	
+         \texttt{DIAG} &
+           enable diagnostic output &
+         \\			
+         \texttt{DIFFDIAG} &
+           enable diagnostic output for diffusion &
+         table \ref{tb:diagnostic:output:mean diag}\\	
+         \texttt{CONVDIAG} &
+           enable diagnostic output for convection   &
+         table \ref{tb:diagnostic:sbr}\\	
+         \texttt{AMLDDIAG} &
+            enable diagnostic output for max. monthly mixed layer depth  &
+         table \ref{tb:diagnostic:sbr}\\	
+         \texttt{FORCEDIAG} &
+            enable diagnostic output for surface forcing  &
+         table \ref{tb:diagnostic:output:meanforc}\\	
+         \texttt{KONVDIAG} &
+            enable diagnostic output for convection  &
+         table \ref{tb:diagnostic:sbr}\\	
+         \texttt{MFLDIAG} &
+            enable diagnostic output for  divergence free velocity  &
+         table \ref{tb:diagnostic:sbr}\\	
+         \texttt{GRIDINFO} &
+            enable grid information output   &
+         table \ref{tb:diagnostic:output:mean diag}\\	
+         \texttt{PNETCDFO} &
+            enable output in NetCDF format   &
+         \\	
+         \texttt{TESTOUT\_HFL} &
+            enable diagnostic output for heat-fluxes  &
+         table \ref{tb:diagnostic:output:meanheat}\\	
+         \texttt{OASIS\_FLUX\_DAILY} &
+            enable daily output for OASIS/PRISM coupler fluxes  &
+         table \ref{tb:diagnostic:output:meanoasis}\\	
+        \end{tabular}
+\end{footnotesize}
+\caption[List of cpp flags for diagnosis]{List of cpp flags for diagnosis.}
+\label{tb:using:cpp-flags-diag}
+\end{table}
+\vspace*{1ex}
+
+
+\begin{table}[ht]
+\begin{footnotesize}
+        \begin{tabular}[t]{l|p{8cm}|l}
+          Key name &
+          Action &
+	  Reference \\
+        \hline	
+         \texttt{RESTORE\_MON} &
+           enable surface salinity restoring to monthly climatology &
+           equation~\ref{eqn:numeric:sfwf2}\\	
+         \texttt{YEAR360} &
+           run with climatological forcing (360 days per year) &   	  		
+           section~\ref{sec:numeric:omip}\\	
+         \texttt{RYEAR} &
+           run with real year forcing (e.g. NCEP) &   	 	  		
+           section~\ref{sec:numeric:ncep}\\		
+        \\
+         \texttt{SW089} &
+            multiply incoming short wave radiation by 0.89 (NCEP only) &
+            section~\ref{sec:numeric:ncep} \\
+         \texttt{ALBMELTHI} &
+            tune albedo for sea-ice and snow &
+        \\
+         \texttt{ALBMSN07} &
+            tune albedo for snow  &
+        \\
+         \texttt{ALBNCEP} &
+            tune albedo for NCEP forcing  &
+        \\
+         \texttt{ALBOMIP} &
+            tune albedo for OMIP forcing  &
+        \\
+         \texttt{RIVER\_GIRIV} &
+            read river runoff data from GIRIV and not from runoff\_obs and runoff\_pos files  &
+        \\
+         \texttt{GLACCALV} &
+            read glacier calving for file gletscher\_5653  &
+        \\
+         \texttt{FORCE\_SLP} &
+            read sea level pressure forcing (GIPRESS) for flux calculations   &
+        \\
+         \texttt{FORCE\_DWLW} &
+            read downward long-wave radiation forcing (GIDWLW) for flux calculations   &
+        \\
+         \texttt{EISTEST} &
+            enable sea-ice module test  &
+        \\
+         \texttt{DRAGTEST} &
+            enable drag coefficient test   &
+        \\
+         \texttt{DEBUG} &
+            enable debugging   &
+        \\
+         \texttt{DEBUG\_ONEDAY} &
+            set the length of a month to one day for debugging  &
+        \\
+         \texttt{TIMECHECK} &
+            check the time-step in the parallel version wit MPI   &
+        \\
+        \end{tabular}
+\end{footnotesize}
+\caption[List of cpp flags for runtime control and testing]{List of cpp flags for runtime control and testing.}
+\label{tb:using:cpp-flags-run}
+\end{table}
+
+
+
+\begin{table}[ht]
+\begin{footnotesize}
+\centerline{\hbox{\begin{tabular}[t]{l|p{8cm}|l}
+          Key name &
+          Action &
+	  Reference \\
+        \hline
+         \texttt{NAG} &
+         compiling with NAG compiler (Sun OS)  &
+	\ref{ch:appendix:mo-mpi} \\
+         \texttt{\_\_IFC} &
+         compiling with Intel Fortran compiler (Windows and Linux) &
+        \\
+         \texttt{NEC} &
+          Run on NEC SX-6 (DKRZ Hurrikan)  &
+	\\
+        \end{tabular}}}
+\end{footnotesize}
+\caption[List of cpp flags for compiler and system options]{List of cpp flags for compiler and system options.}
+\label{tb:using:cpp-flags-system}
+\end{table}
+\vspace*{1ex}
+
+
+
+%Fliegt raus : 
+%SMOADH
+%SMOADV
+%AMOCEMR
+%CMIP\_READ\_FLUX
+%ANOMALY\_FORCING
+%OMIP\_RIV
+%HARM
+
+%wird nicht mehr verwendet
+%DBACK0
+%DBACK3E5
+
+%NAMELIST
+%ALBMELTHI
+%ALBMSN07
+%ALBNCEP
+%ALBOMIP
+
+%ADFS
+%ADPO
+%ALBMELTHI
+%ALBMSN07
+%ALBNCEP
+%ALBOMIP
+%AMLDDIAG
+%AMOCEMR
+%ANOMALY\_FORCING
+%AULREDSC
+%AULREDUV
+%BOLK025
+%BOLK05
+%BULK\_KARA
+%CMIP\_READ\_FLUX
+%CONVDIAG
+%DASILVA
+%DBACK0
+%DBACK3E5
+%DBACKGFDL
+%DBACKGFDL2
+%DBACKPROFIL
+%DEBUG
+%DEBUG\_ONEDAY
+%DIAG
+%DIFFDIAG
+%DRAGGILL
+%DRAGTEST
+%DREIDREST
+%EISTEST
+%FB_BGC_OCE
+%FORCEDIAG
+%FORCE\_DWLW
+%FORCE\_SLP
+%FREESLIP
+%GLACCALV
+%GMBOLUS
+%GMVISETAL
+%GRIDINFO
+%HARM
+%ISOPYK
+%KONVDIAG
+%LEVELS23
+%LEVELS30
+%LEVELS40
+%MEAN
+%MFLDIAG
+%NAG
+%NEC
+%NURDIF
+%NURMISCH
+%OASIS\_FLUX\_DAILY
+%OMIP\_RIV
+%OPEND55
+%PBGC
+%PDYNAMIC_BGC
+%PLUME
+%PNETCDFO,/*,Intel,Fortran,Compiler,*/
+%QLOBERL
+%QUICK
+%QUICK2
+%REDWMICE
+%RESTORE\_MON
+%RIVER\_GIRIV
+%RYEAR
+%SCHEP
+%SLOPECON_ADPO
+%SMOADH
+%SMOADV
+%SOR
+%SW089
+%T1O2
+%TESTOUT\_HFL
+%TIMECHECK
+%VERSIONGIN
+%VERSIONGR03
+%VERSIONGR09,/*,Intel,Fortran,Compiler,*/
+%VERSIONGR15
+%VERSIONGR30
+%VERSIONT43
+%YEAR360
+%\_\_IFC
+%\_\_coupled
+%\_\_synout
+%bounds\_exch\_isend
+%bounds\_exch\_put
+%use\_comm\_MPI1
+%use\_comm\_MPI2
+
+
+
+
+
+
+%\subsubsection{Linux}
+%\subsubsection{Sun}
+%\subsubsection{NEC SX-6 (DKRZ-Hurrikan)}
+
+
+
+
+
+
+
+
+
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\clearpage
+
+
+
+  

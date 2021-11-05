@@ -1,0 +1,336 @@
+<!DOCTYPE html 
+     PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+     "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xml:lang="en" lang="en">
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="GENERATOR" content="Mozilla/4.7C-SGI [en] (X11; I; IRIX64 6.5 IP27) [Netscape]">
+   <title>New COSMO-Model Version 4.2</title>
+<style type="text/css">
+  body { font-family:       Arial;
+         font-size:         12pt;
+         background-repeat: no-repeat; 
+         margin:            1em; }
+
+  tt   { font-size:         12pt;}
+
+  li   { margin-top:         5pt;
+         margin-bottom:      5pt }
+
+  th   { border:           1px solid black;
+         padding:          3pt;
+         vertical-align:   top;
+         background-color: lightblue;}
+
+  td   { border:           1px solid black;
+         padding:          3pt;
+         vertical-align:   top;}
+
+  td.hilit       { border:           1px solid black;
+                   padding:          1pt;
+                   vertical-align:   top;
+                   background-color: lightblue;}
+
+  td.clean       { padding:          0pt;
+                   border-style:     none;
+                   vertical-align:   top;}
+
+  td.notes       { padding:          3pt;
+                   border-style:     none;
+                   vertical-align:   top;}
+
+  table.note     { border-width:     0pt;
+                   border-style:     none;
+                   margin-left:      5pt;
+                   margin-top:       1pt;
+                   margin-bottom:    1pt;
+                   cell-padding:     5pt;
+                   vertical-align:   top;
+                   text-align:       left;}
+  
+  table.atte     { border-width:     0pt;
+                   border-style:     none;
+                   margin-left:      5pt;
+                   margin-top:       1pt;
+                   margin-bottom:    1pt;
+                   cell-padding:     5pt;
+                   vertical-align:   top;
+                   text-align:       left;
+                   background-color: red;}
+  
+  table.namelist { border-width:  2pt;
+                   border-style:  groove;
+                   border-color:  black;
+                   width:         90%;
+                   text-align:    left;
+                   margin-top:    1pt;
+                   margin-bottom: 1pt;
+                   padding:       3pt;
+                   align:         center;}
+  
+  tr.headings    { text-align:       left;
+                   vertical-align:   top;
+                   border-width:     1pt;
+                   border-style:     groove;
+                   border-color:     grey;
+                   padding:          2pt;
+                   font-weight:      bold;}
+
+</style>
+
+</head>
+  <body text="#000000" bgcolor="#FFFFFF" link="#0000EE" vlink="#551A8B" alink="#FF0000">
+
+<center>
+<h1>
+<a NAME="begin">Documentation of the Changes in COSMO-Model 4.2</a></h1></center>
+
+<p>
+Since Version 4.0, some new options have been added to the COSMO-Model and
+some more bugs could be fixed.
+</p>
+
+<h4><a NAME="content">Contents:</a></h4>
+
+<ol>
+<li><a href="#changes">Documentation of the Changes</a></li>
+  <ul>
+    <li><a href="#REP">Bug Fixes and Extensions for Reproducibility</a></li>
+    <li><a href="#BUG">Technical Bug Fixes</a></li>
+    <li><a href="#SDI">Calculation of Supercell Detection Indices</a></li>
+    <li><a href="#GUS">Changes in the Gust Parameterization</a></li>
+    <li><a href="#RAD">Brightband detection in Radar Data</a></li>
+    <li><a href="#TEC">Additional Technical Changes</a></li>
+  </ul>
+<li><a href="#namelis">Summary of new and obsolete Namelist Variables</a></li>
+<li><a href="#results">Changes of the Results</a></li>
+</ol>
+<p>
+<hr>
+
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="changes">1. Documentation of the Changes</a></h3>
+
+<!---------------------------------------------------------------------------->
+
+<h4><a NAME="REP">Bug Fixes and Extensions for Reproducibility</a></h4>
+
+<p>
+Lately we detected some problems with the reproducibility in the COSMO-DE.
+There were several reasons:
+</p>
+
+<p><i>Problems in the Runge-Kutta dynamical core:</i></p>
+
+<p>
+These problems were related to cases with high vertical velocity and
+also due to the lateral boundary relaxation. Fixes have been implemented in
+the modules:
+</p>
+
+<ul>
+  <li><tt>src_setup.f90</tt>:<br />
+       Fixed computation of <tt>lnorth</tt>, <tt>lsouth</tt>, <tt>least</tt>, 
+       <tt>lwest</tt> in subroutine <tt>constant_fields</tt>.</li>
+  <li><tt>src_runge_kutta.f90</tt>:<br />
+       Compute <tt>MAXVAL</tt> for <tt>zwmax</tt> only in the range 
+       <tt>istartpar:iendpar</tt> and <tt>jstartpar:jendpar</tt>.</li>
+  <li><tt>numeric_utilities_rk.f90</tt>:<br />
+       Need a global exchange of variable <tt>icr</tt> in subroutine 
+       <tt>wcfrac_crint_rk</tt>.</li>
+  <li><tt>src_advection_rk.f90</tt>:<br />
+       changed interface to SR <tt>wcfrac_crint_rk</tt>.</li>
+</ul>
+
+<spacer type=vertical size=30>
+
+<!---------------------------------------------------------------------------->
+
+<p><i>Problems in the Data Assimilation:</i></p>
+
+<p>
+There were differences in the mapping of an observation to a special 
+grid point. It turned out, that the computation of the rotated latitude
+for a grid point can differ, when using different decompositions.
+This was due to the fact, that the "start latitude" of the subdomain  
+was used for the computation and different rounding then lead to 
+different results.
+</p>
+
+<p>
+Now, the value for <tt>startlat_tot</tt> is  used 
+to compute the rotated coordinates of a special grid point.
+</p>
+
+<spacer type=vertical size=30>
+
+<p><i>Extensions for Reproducibility of Semi-Lagrange Advection:</i></p>
+
+<p>
+To ensure that the summation of <tt>REAL</tt> variables is done in a reproducible
+manner requires that the whole field is summed up in one processor.
+If this is not done, summing up a field on distributed computers can
+deliver different results, depending on  the decomposition.
+</p>
+
+<p>
+Another method has been implemented now in the COSMO-Model, which is used
+in the Semi-Lagrange Advection, which transforms the <tt>REAL</tt> numbers to
+long <tt>INTEGERS</tt> first and then does the summation.
+</p>
+
+<p align="right"><a href="#content">Back to Contents</a>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+
+<h4><a NAME="BUG">Technical Bug Fixes</a></h4>
+
+<ul>
+ <li><tt>organize_data.f90</tt>:<br />
+     <ul>
+       <li>Correction in setting up restart files with the FLake-Model</li>
+       <li>If <tt>ytunitbd='d'</tt>, only full hours are allowed for 
+           <tt>hincbound</tt></li>
+     </ul>
+   </li>
+ <li><tt>src_input.f90</tt>:<br />
+     <ul>
+       <li>Changed argument for 3rd dimension in call to check_record</li>
+       <li>Call to sleve_split_oro: introduced my_cart_id as argument</li>
+     </ul>
+   </li>
+ <li><tt>src_output.f90</tt>:<br />
+     <ul>
+       <li>Corrected settings of <tt>igds_out</tt> for <tt>ivctype=3</tt></li>
+       <li>Corrected re-initialization of rain rates after restart file</li>
+       <li>All output variables are checked, whether their <tt>ABS</tt> 
+           value is nearly 0; if so, the value is set to 0.</li>
+     </ul>
+   </li>
+ <li><tt>src_radiation.f90</tt>:<br />
+     Changed downward and upward component in call to subroutine <tt>fesft</tt>.</li>
+ <li><tt>dfi_initialization.f90</tt>:<br />
+     Initialize <tt>t_so</tt>, <tt>w_so</tt> in case of multi-layer soil model.</li>
+</ul>
+
+<p align="right"><a href="#content">Back to Contents</a>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+
+<h4><a NAME="SDI">Calculation of Supercell Detection Indices</a></h4>
+
+Two Supercell Detection Indices can be calculated in the postprocessing.
+There are two new output fields <tt>SDI1</tt> and <tt>SDI2</tt>, which can 
+be specified for output.
+
+<p align="right"><a href="#content">Back to Contents</a>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+
+<h4><a NAME="GUS">Changes in the Gust Parameterization</a></h4>
+
+A re-tuning of gusts has been implemented by using wind speeds at 10 meters
+above ground, instead of 30 meters.
+
+<p align="right"><a href="#content">Back to Contents</a>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+
+<h4><a NAME="RAD">Brightband detection in Radar Data</a></h4>
+
+The possibility to use radar beam height as an additional information has
+been implemented. Therefore, an additional GRIB ("height_file") file is
+required. This is controlled by the Namelist variable lhn_height
+
+Also, a brightband detection algorithm has been implemented, which can be
+chosen optionally. This is controlled by the Namelist variable lhn_bright.
+
+<p align="right"><a href="#content">Back to Contents</a>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+
+<h4><a NAME="RAD">Additional Technical Changes</a></h4>
+
+<p>
+There have been some more editorial changes and adaptations to the INT2LM:
+</p>
+
+<ul>
+ <li><tt>data_io.f90</tt></li>
+ <li><tt>meteo_utilities.f90</tt></li>
+ <li><tt>io_utilities.f90</tt></li>
+ <li><tt>utilities.f90</tt></li>
+ <li><tt>parallel_utilities.f90</tt></li>
+</ul>
+
+<p align="right"><a href="#content">Back to Contents</a>
+
+<hr>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="namelis">2. Summary of new Namelist Variables</a></h3>
+
+<p>There are the following new Namelist variables:</p>
+
+<h4>Namelist Group <tt>/RUNCTL/</tt></h4>
+
+  <table class="namelist">
+    <tr class="headings"> 
+       <th>Group</th> <th>Name</th> <th>Description</th> <th>Default</th>
+    </tr>
+    <tr>
+     <td class="hilit"><tt>/NUDGING/</tt></td>
+     <td><tt>lhn_height</tt></td>
+     <td>use height infos for radar data</td>
+     <td align="center"><tt>.TRUE.</tt></td>
+    </tr>
+    <tr><td class="clean"></td>
+     <td><tt>lhn_bright</tt></td>
+     <td>apply bright band detection</td>
+     <td align="center"><tt>.TRUE.</tt></td>
+    </tr>
+    <tr><td class="clean"></td>
+     <td><tt>height_file</tt></td>
+     <td>name of dxheight file</td>
+     <td align="center"><tt>height_dx.grib1</tt></td>
+    </tr>
+  </table>
+
+<p align="right"><a href="#content">Back to Contents</a>
+<spacer type=vertical size=10>
+<hr>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="results">3. Changes of Results</a></h3>
+
+<p>
+The clipping of variables to 0 affect some variables, e.g. the rain rates
+and some moisture variables. But note, that only the values in the output
+are affected. The COSMO-Model itself still works with the original values.
+</p>
+
+<p>
+The changes in the gust parameterization do change the values for the maximal
+wind gust <tt>VMAX_10M</tt>.
+</p>
+
+<p align="right"><a href="#content">Back to Contents</a>
+
+<!---------------------------------------------------------------------------->
+
+</body>
+</html>

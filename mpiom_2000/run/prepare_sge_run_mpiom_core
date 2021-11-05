@@ -1,0 +1,354 @@
+#! /bin/ksh
+
+#set echo
+#set verbose
+
+######################################
+#       PREPARE DIRECTORIES
+#       AND RUN SCRIPT
+######################################       
+# name of the experiment:
+EXPNO=gr60-bgc
+
+# absolute path to work directory:
+EXPDIR=/scratch/wrkshr/m211054
+
+# absolute path to directory with plenty of space:
+ARCDIR=/scratch/wrkshr/m211054
+
+# absolute path to model binary, including the executable
+MODDIR=/pf/m/m211054/mpiom-latest/bin
+
+# absolute path to directory with initial data:
+INITIAL_DATA=/pool/data/MPIOM
+
+# the directories for the experiment will be created, if not already there
+WRKDIR=${EXPDIR}/${EXPNO}
+ARCHIVE=${ARCDIR}/${EXPNO}
+
+
+hamocc=no
+
+if [ ! -d $WRKDIR ]; then
+    mkdir -p ${WRKDIR}
+    cd ${WRKDIR}
+#    cp ${MODEL}/mpiom.x ./mpiom.x
+    echo 0 > year.asc
+fi
+if [ ! -d $ARCHIVE ]; then
+    mkdir -p $ARCHIVE/restart
+fi
+
+cat > ${WRKDIR}/run_mpiom_core<<EOF1
+#! /bin/ksh
+#-----------------------------------------------------------------------------
+# Version for Sun GridEngine
+#
+#$ -S /bin/ksh
+#$ -N mpiom
+#$ -o \$JOB_NAME.o\$JOB_ID 
+#$ -j y
+#$ -cwd
+#$ -q cluster
+#$ -pe orte 64
+#-----------------------------------------------------------------------------
+#
+set -ex
+#
+export MPIROOT=/sw/sles9-x64/ofed/openmpi-1.2.2-sun
+export MPI_BIN=/scratch/work/system/sw/sles9-x64/ofed/openmpi-1.2.2-sun/bin
+
+
+#
+#-----------------------------------------------------------------------------
+#
+# Version for shell script running on workstation
+#
+#-----------------------------------------------------------------------------
+#
+#                  Job file to run MPIOM with CORE forcing
+#
+#-----------------------------------------------------------------------------
+#
+# If a command has a non-zero exit status, execute ERR trap, if set, and exit
+#
+#set -ex
+#
+#=============================================================================
+
+export MPIPROGINF=ALL_DETAIL
+#export F_PROGINF=DETAIL
+export F_SETBUF=4096
+
+OMP_NUM_THREADS=1 ; export OMP_NUM_THREADS
+MPIOM_THREADS=1 ; export MPIOM_THREADS
+MPIEXPORT="MPIOM_THREADS OMP_NUM_TREADS" ; export MPIEXPORT
+
+EXPNO=${EXPNO}
+echo "Experiment: \${EXPNO}"
+ncpus=1
+nprocx=1
+nprocy=1
+#
+echo "   CPUs: \${ncpus} (nprocx: \${nprocx}, nprocy: \${nprocy})" 
+#
+#-----------------------------------------------------------------------------
+#
+WRKDIR=${EXPDIR}/\${EXPNO}
+
+MODEL=${MODDIR}
+
+# absolute path to directory with plenty of space:
+ARCHIVE=${ARCDIR}/\${EXPNO}
+
+# absolute path to directory with initial data:
+INITIAL_DATA=${INITIAL_DATA}
+
+# horizontal and vertical resolution
+GRID=GR60
+LEV=L20
+HAMOCC=${hamocc}
+#-----------------------------------------------------------------------------
+if [ "\${GRID}" = "GR60" ] ; then 
+II=60
+JJ=50
+DT=10800
+fi
+if [ "\${GRID}" = "GR30" ] ; then 
+II=122
+JJ=101
+DT=8640
+fi
+
+if [ "\${GRID}" = "GR15" ] ; then 
+II=256
+JJ=220
+DT=4800
+fi
+
+if [ "\${GRID}" = "TP04" ] ; then 
+II=802
+JJ=401
+DT=3600
+fi
+
+if [ "\${GRID}" = "TP40" ] ; then 
+II=82
+JJ=41
+DT=3600
+fi
+
+
+
+if [ "\${LEV}" = "L20" ] ; then 
+KK=20
+fi
+
+if [ "\${LEV}" = "L40" ] ; then 
+KK=40
+fi
+
+if [ "\${LEV}" = "L3" ] ; then 
+KK=3
+fi
+
+
+
+#-----------------------------------------------------------------------------
+#
+cd \${WRKDIR}           #  output and rerun files are written into \$ARCHIVE
+#
+pwd
+#-----------------------------------------------------------------------------
+#
+# specification of files
+#
+#-----------------------------------------------------------------------------
+#
+cp \${INITIAL_DATA}/\${GRID}/\${GRID}_arcgri             arcgri
+cp \${INITIAL_DATA}/\${GRID}/\${GRID}_topo               topo
+cp \${INITIAL_DATA}/\${GRID}/\${GRID}_anta               anta
+cp  \${INITIAL_DATA}/\${GRID}/\${GRID}_BEK                   BEK
+chmod 755 BEK
+
+cp\${INITIAL_DATA}/\${GRID}/\${GRID}_CORU10_CORE365     CORU10   
+cp \${INITIAL_DATA}/\${GRID}/\${GRID}_CORV10_CORE365     CORV10   
+cp\ ${INITIAL_DATA}/\${GRID}/\${GRID}_CORT10_CORE365     CORT10   
+cp \${INITIAL_DATA}/\${GRID}/\${GRID}_CORQ10_CORE365     CORQ10   
+cp \${INITIAL_DATA}/\${GRID}/\${GRID}_CORQDLW_CORE365    CORQDLW   
+cp \${INITIAL_DATA}/\${GRID}/\${GRID}_CORQDSW_CORE365    CORQDSW   
+cp \${INITIAL_DATA}/\${GRID}/\${GRID}_CORPREC_CORE365    CORPREC   
+cp \${INITIAL_DATA}/\${GRID}/\${GRID}_CORRIV_CORE365    CORRIV   
+
+cp \${INITIAL_DATA}/\${GRID}/\${GRID}\${LEV}_INITEM_PHC  INITEM
+cp \${INITIAL_DATA}/\${GRID}/\${GRID}\${LEV}_INISAL_PHC  INISAL
+cp \${INITIAL_DATA}/\${GRID}/\${GRID}\${LEV}_SURSAL_PHC  SURSAL
+
+cp \${INITIAL_DATA}/runoff_obs                         runoff_obs
+cp \${INITIAL_DATA}/runoff_pos                         runoff_pos
+
+
+chmod 755 *
+#-----------------------------------------------------------------------------
+
+for lll in 1 ; do
+
+YEAR=\`cat year.asc\` ; export YEAR
+echo \$YEAR
+STA=3 ; export STA
+RES=0 ; export RES
+
+if [ \${YEAR} -eq 0 ] ; then
+STA=2 ; export STA
+RES=1 ; export RES
+fi
+
+#
+# istart=0 >NEWSTART USE ONLY FOR COMPLETELY NEW SETUP (new topography etc!!!)
+# istart=1 start from horizonally uniform t,s profiles
+# istart=2 start from levitus
+# istart=3 start from existing restart files Z37000, Z38000 (default)
+#
+# i3drest=0 NO 3d-restoring (default)
+# i3drest=1 restoring to annual mean t,s
+# i3drest=2 restoring to monthluy mean t,s
+#
+# Advection schemes
+# iocad=3 ADPO (default)
+# iocad=4 obsolete, use iocad=3 and ibbl_transport=1
+# iocad=5 ADFS
+#
+# BBL transport (slope convection)
+# ibbl_transport=1 (default)
+#
+# imean=1 daily average of output fields
+# imean=2 monthly average of output fields (default)
+# imean=3 yearly average of output fields
+#
+# nyears: number of years to be simulated (default=0)
+# nmonths: number of months to be simulated (default=1)
+#
+
+
+
+
+cat > OCECTL  << EOF
+&ocedim
+ ie_g = \${II}
+ je_g = \${JJ}
+ ke = \${KK}
+/
+&nprocs
+ nprocx=\${nprocx}
+ nprocy=\${nprocy}
+/
+&OCECTL
+ dt      = \${DT}
+ CAULAPTS= 0.0000
+ CAULAPUV= 0.0060
+ AUS     = 0.
+ CAH00   = 1000.
+ CBOLK   = 500.
+ DV0     = 0.2E-2
+ AV0     = 0.2E-2
+ CWT     = 0.5E-3
+ CWA     = 0.75E-3
+ CSTABEPS= 0.03
+ DBACK   = 1.05E-5
+ ABACK   = 5.E-5
+ CRELSAL = 3.303e-8
+ CDVOCON = 0.1
+ NMONTS  = 12
+ istart  = \${STA}
+ i3drest = \${RES}
+ IMOCDIAG = 2
+ IMEAN   = 2
+/
+EOF
+
+
+if [ "\${KK}" = "20" ] ; then
+cat >> OCECTL  << EOF2
+ &ocedzw
+  cdzw = 20.,20., 20., 30.,40.,50.,70.
+        ,90.,120.,150.,180.,210.,250.,300.
+        ,400.,500.,600.,700.,900.,1400.
+ /
+EOF2
+fi
+
+if [ "\${KK}" = "40" ] ; then
+cat >> OCECTL  << EOF2
+ &ocedzw
+ cdzw     = 12.,10.,10.,10.,10.,10.,13.,15.,20.,25.,
+           30.,35.,40.,45.,50.,55.,60.,70.,80.,90.,
+           100.,110.,120.,130.,140.,150.,170.,180.,190.,200.,
+           220.,250.,270.,300.,350.,400.,450.,500.,500.,600./
+ /
+EOF2
+fi
+
+if [ "\${KK}" = "3" ] ; then
+cat >> OCECTL  << EOF2
+ &ocedzw
+ cdzw     = 12.,10.,5000./
+ /
+EOF2
+fi
+
+
+#
+#-----------------------------------------------------------------------------
+
+#solaris
+#/opt/SUNWhpc/bin/mprun -np \${ncpus} mpiom.x
+
+#nec
+mpirun -np \${ncpus} \${MODEL}/mpiom.x
+
+#cluster
+
+${MPI_BIN}/mpiexec --prefix \${MPIROOT} -display-map -x MPIOM_THREADS -npernode 1 -np ${ncpus} -bynode mpiom.x
+
+#=============================================================================
+
+cat TIMESER >>ZEITSER ; \rm TIMESER
+cp Z37000 Z38000
+
+if [ \`expr \$YEAR % 10\` -eq 0 ]; then
+cp Z37000 \${ARCHIVE}/restart/Z37000_\${YEAR}
+fi
+
+mv fort.71 \${EXPNO}_\${YEAR}.ext4
+
+#mv fort.93 \${EXPNO}_weto.ext4
+#mv fort.94 \${EXPNO}_gila.ext4
+#mv fort.97 \${EXPNO}_giph.ext4
+#mv fort.96 \${EXPNO}_depto.ext4
+#mv fort.151 \${EXPNO}_dlxp.ext4
+#mv fort.152 \${EXPNO}_dlyp.ext4
+#mv fort.153 \${EXPNO}_deuto.ext4
+#mv fort.154 \${EXPNO}_dlxu.ext4
+#mv fort.155 \${EXPNO}_dlyu.ext4
+
+mv  \${EXPNO}_\${YEAR}.ext4 \${ARCHIVE}/\${EXPNO}_\${YEAR}.ext4
+
+YEAR=\`expr \${YEAR} + 1\`
+\rm year.asc
+echo \$YEAR > year.asc
+
+done
+
+echo "submitting next job"
+if [ \${YEAR} -le 100 ] ; then
+#qsub \${WRKDIR}/run_mpiom_core
+fi
+
+exit
+EOF1
+
+chmod 755 ${WRKDIR}/run_mpiom_core
+echo "cd ${WRKDIR} and qsub run_mpiom_core" 
+#-----------------------------------------------------------------------------
+exit
+

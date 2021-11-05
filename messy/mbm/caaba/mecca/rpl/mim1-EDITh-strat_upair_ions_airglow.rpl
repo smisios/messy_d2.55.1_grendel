@@ -1,0 +1,384 @@
+// -*- kpp -*- kpp mode for emacs
+
+// Author: Patrick Joeckel (for RC1-base-02)
+
+// Syntax of this replacement file is similar to kpp syntax, but...
+// - Only the commands "#REPLACE" and "#ENDREPLACE" are allowed.
+// - Comments must start with "//", curly braces ("{}") cannot be used here.
+
+// known limitation:
+// - The reaction number (e.g. "<G9876>") in the input equation file
+//   (gas.eqn) must be the first (non-whitespace) item in the line. If it is
+//   preceded by a comment in curly braces, replace.awk will not be able to
+//   find it.
+
+// Apply by running xmecca or using:
+//gawk -f replace.awk -v infile=gas.eqn.org -v outfile=gas.eqn gas.rpl
+
+// add new reactions, specify an empty reaction number
+
+// replace the comprehensive organic chemistry by mim1:
+//#include mim1
+
+// TEMPERATURE: use temp for temp_ion and temp_ec:
+#include EDIth-temp
+
+//-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+//---"St" muss vorhanden sein, damit Reaktion beachtet wird (siehe .bat, set wanted = "St")
+//---production of excited molecular oxygen
+
+// Regular replacements
+
+//#REPLACE <>
+//<G1002bup> O1D   + O3        = O3P + O3P + O2         :{%StG} 1.2E-10{§1.2}                       ;{&} 
+//<G1050>    O1D   + O3P       = O3P + O3P              :{%StG} 8.0e-12                             ;{&}
+//<G1051>    O1D   + N2        = O3P + N2               :{%StG} 2.53e-11*exp(69/temp)              ;{&}
+//<G1052>    O1D   + CO2       = O3P + CO2              :{%StG} 7.5e-11*exp(115/temp)               ;{&}
+//<G1053>    O1D   + H2O       = O3P + H2O              :{%StG} 2.0e-10               ;{&}
+//<G1059>    O1D               = O3P                    :{%StG} 1.35 -(1.26+2.42e-4+7.54e-2) ;{&}
+//#ENDREPLACE
+//-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+#REPLACE <>
+<G2115up>  H   + H {+M}       = H2        {+ 436. kJmol}  :{%StG} 5.7E-32*(300./temp)**(1.6)*cair    ;{&2615}
+<G3226up>  H   + NO2          = NO + OH                   :{%StG} 4.00E-10*EXP(-340./temp)         ;{&1555}
+<G2113up>  H2  + O3P          = H  + OH   {+ 7.72 kJmol}  :{%StG} 1.60E-11*EXP(-4570./temp)        ;{&2615}
+#ENDREPLACE
+
+
+//Odd hydrogen reactions
+#REPLACE <G2103>
+<G2103tf>  OH   + O3P        = H + O2    {+ 69.5 kJmol}  : {%UpStG}   0.85*1.8E-11{§1.15}*EXP(180./temp); {&2626}
+#ENDREPLACE
+
+#REPLACE <>
+<G2114aup> OH   + OH         = H2O   + O3P                :{%StG} 1.8e-12                                            ;{&}
+<G2114bup> OH   + OH {+M}    = H2O2                       :{%StG} k_3rd(temp,cair,6.9E-31,1.0,2.6E-11,0.0,0.6){§1.5} ;{&2626}
+<G3225up>  OH   + N          = NO    + H  {+ 203. kJmol}  :{%StG} 5.00E-11   ;{&2615}
+#ENDREPLACE
+
+#REPLACE <G2110>
+<a>  HO2   + HO2          = O2    + H2O2             :{%StG} 3.0e-13*(460/temp) ;{&}
+#ENDREPLACE
+
+
+#REPLACE <>
+<G2116up>  H2O2 + O3P      = OH   + HO2              {+ 332. kJmol} :{%StG}    1.40E-12*EXP(-2000./temp)                          ;{&1555}   
+#ENDREPLACE
+
+#REPLACE <G42080>
+#ENDREPLACE
+
+#REPLACE <G42081>
+#ENDREPLACE
+
+// replacements of reactions by andreas baumgaertner
+//
+
+// new ion reactions
+//
+
+#REPLACE <>
+<G0000i> N2p   + O2        = O2p + N2         :{%StG} 5.0E-11*(300/temp)**(0.8)                       ;{&}
+<G0001i> N2p   + O3P       = NOp + N2D         :{%StG} 1.4E-10*(300/temp)**(0.44)                       ;{&}
+<G0002i> N2p   + O3P       = NOp + N         :{%StG} 1.4E-10*(300/temp)**(0.44)*0.0                       ;{&}
+<G0003i> N2p   + em        = N2D + N2D         :{%StG} 1.8E-07*(300/temp)**(0.39)*0.56                       ;{&}
+<G0004i> N2p   + em        = N + N         :{%StG} 1.8E-07*(300/temp)**(0.39)*0.44                       ;{&}
+<G0005i> N2p   + O3P       = O4Sp + N2         :{%StG} 1.4E-10*(300/temp)**(0.44)                       ;{&}
+<G0006i> O4Sp   + O2       = O2p + O3P         :{%StG} 2.0E-11*(300/temp)**(0.4)                       ;{&}
+<G0007i> O2p   + em        = O1D + O3P         :{%StG} 1.9E-07*(300/temp)**(0.5)                       ;{&}
+<G0008i> O2Dp   + em       = O4Sp + em         :{%StG} 7.8E-08*(300/temp)**(0.5)                       ;{&}
+<G0009i> O2Pp   + em       = O4Sp + em         :{%StG} 4.0E-08*(300/temp)**(0.5)                       ;{&}
+//<G0010i> Hp   + O3P        = O4Sp + H          :{%StG} 5.34E-10                       ;{&}
+<G0011i> O4Sp   + N2       = NOp + N         :{%StG} 1.2E-12*(300/temp)**0.74                       ;{&}
+<G0012i> O2Pp   + em       = O2Dp + em         :{%StG} 1.5E-07*(300/temp)**(0.5)                       ;{&}
+//<G0013i> NOp   + em        = O3P + N         :{%StG} 1.2E-07                       ;{&}
+//<G0014i> NOp   + em        = O3P + N2D         :{%StG} 1.2E-07                       ;{&}
+<G0013i> NOp   + em        = O3P + N         :{%StG} 4.2E-07*(300/temp)**(0.85)*0.22                       ;{&}
+<G0014i> NOp   + em        = O3P + N2D         :{%StG} 4.2E-07*(300/temp)**(0.85)*0.78                       ;{&}
+//<G0013i> NOp           = N2         :{%StG} 4.2E-03*(300/temp)**(0.85)                       ;{&}
+//<G0013ia> em           = N2         :{%StG} 4.2E-03*(300/temp)**(0.85)                       ;{&}
+<G0015i> N2D   + em        = N + em          :{%StG} 5.5E-10*(300/temp)**(0.5)                       ;{&}
+<G0016i> N2D   + O3P       = N + O3P         :{%StG} 2.0E-12                     ;{&}
+<G0017i> N2D               = N               :{%StG} 1.06E-05                       ;{&}
+<G0018i> O2Dp  + O3P       = O4Sp + O3P        :{%StG} 1.0E-11                       ;{&}
+<G0019i> O2Dp  + N2        = O4Sp + N2         :{%StG} 8.0E-10                       ;{&}
+<G0020i> O2Pp  + O3P       = O4Sp + O3P        :{%StG} 5.2E-11                       ;{&}
+<G0021i> O2Pp              = O4Sp              :{%StG} 4.7E-02                       ;{&}
+<G0022i> Np  + O2          = O4Sp + NO         :{%StG} 3.0E-11                       ;{&}
+<G0023i> O4Sp  + NO        = NOp + O3P         :{%StG} 8.0E-13                       ;{&}
+//<G0024i> O4Sp  + H         = Hp + O3P          :{%StG} 6.0E-10                       ;{&}
+<G0025i> O4Sp  + N2D       = Np + O3P          :{%StG} 1.3E-10                       ;{&}
+<G0026i> O2Pp              = O2Dp              :{%StG} 0.171                         ;{&}
+<G0027i> O2Dp              = O4Sp              :{%StG} 7.7E-05                       ;{&}
+<G0028i> O2Pp  + N2        = Np + NO           :{%StG} 1.0E-10                       ;{&}
+<G0029i> O2Pp  + N       = Np + O3P          :{%StG} 1.0E-10                       ;{&}
+<G0030i> O2Dp  + N       = Np + O3P          :{%StG} 7.5E-11                       ;{&}
+<G0031i> Np  + O2          = NOp + O3P         :{%StG} 2.6E-10                       ;{&}
+<G0032i> Np  + O3P         = O4Sp + N        :{%StG} 5.0E-13                       ;{&}
+//<G0033i> Np  + H           = Hp + N          :{%StG} 3.6E-12                       ;{&}
+<G0034i> N2D  + O2         = NO + O3P          :{%StG} 5.3E-12*0.98                       ;{&}
+<G0035i> N2D  + O2         = NO + O1D          :{%StG} 5.3E-12*0.02                       ;{&}
+<G0036i> N2D  + NO         = N2 + O3P          :{%StG} 7.0E-11                       ;{&}
+<G0081i> O4Sp  + CO2       = O2p + CO          :{%StG} 1.06E-09                       ;{&}
+<G0082i> O2Dp  + CO2       = O2p + CO          :{%StG} 1.06E-09*0.05                       ;{&}
+<G0083i> O2Pp  + CO2       = O2p + CO          :{%StG} 1.06E-09*0.05                       ;{&}
+<G0100i> Np  + em          = N               :{%StG} 1.0E-12                       ;{&}
+<G0101i> O4Sp  + em        = O3P               :{%StG} 4.0E-06                       ;{&}
+<G0102i> O2Pp  + em        = O3P               :{%StG} 4.0E-06                       ;{&}
+//<G0103i> Hp  + em          = H                 :{%StG} 1.0E-12                       ;{&}
+#ENDREPLACE
+
+// Airglow reactions from Tilo 20180709
+//higher excited states are important during night only
+#REPLACE <>
+<G1005a0> O3P   + O3P    {+M}  = 0.12 O2 + 0.07 O21d + 0.03 O2b1s + 0.78 O25P  :{%StG} 3.0e-33*(300./temp)**(3.25)*cair     ;{&} 
+#ENDREPLACE   
+
+//O25P
+#REPLACE <>
+<G1010b1> O25P   + N2           = O2         + N2            :{%StG}  1.7e-11   ;{&} 
+<G1010c1> O25P   + O2           = 0.05 O21d  + 1.95 O2       :{%StG}  3.7e-11   ;{&} 
+<G1010d1> O25P   + O3P          = O2 + 0.99 O3P + 0.01 O1S   :{%StG} 10.0*3.7e-11   ;{&} 
+
+//O2b1s reactions
+<G1021a> O2b1s + O3P          = O21d       + O3P         :{%StG} 8.0e-14                   ;{&}  
+<G1021b> O2b1s + N2           = O21d       + N2          :{%StG} 1.8e-15*exp(45/temp)      ;{&}  
+<G1021c> O2b1s + O2           = O21d       + O2          :{%StG} 3.9e-17                       ;{&}  
+<G1025a> O2b1s                = O21d                     :{%StG} 0.0014                        ;{&}  
+<G1025b> O2b1s                = O2                       :{%StG} 0.0887                        ;{&} 
+
+//O2a1d = O21d
+<G1030a>  O21d  + O3P         = O2    + O3P             :{%StG} 1.3e-16                        ;{&} 
+<G1031>   O21d  + O2          = O2    + O2              :{%StG} 3.6E-18*EXP(-220./temp)    ;{&} 
+<G1035>   O21d  + N2          = O2    + N2              :{%StG} 1.0E-20                        ;{&} 
+<G1039>   O21d                = O2                      :{%StG} 2.22e-4                        ;{&} 
+#ENDREPLACE
+
+//O1S reactions
+#REPLACE <>
+<G1040b> O1S    + O3P         = O1D      + O1D              :{%StG} 5.0e-11*exp(-307./temp)        ;{&}  
+<G1041>  O1S    + N2          = O3P      + N2               :{%StG} 3.0e-15                        ;{&}       
+<G1042>  O1S    + O21d        = O3P      + O21d             :{%StG} 1.7e-10                        ;{&}
+<G1043>  O1S    + O3          = O3P      + O3               :{%StG} 5.8e-10                        ;{&}  
+<G1045>  O1S    + O2          = 0.69 O3P + 0.31 O1D + O2    :{%StG} 2.32e-12*exp(-812./temp)        ;{&}
+<G1044a> O1S                  = O1D                         :{%StG} 1.26                           ;{&}
+<G1044b> O1S                  = O3P                         :{%StG} 7.5642e-2                      ;{&}
+#ENDREPLACE
+
+//O1D reactions
+#REPLACE <>
+<G1002bup> O1D   + O3         = O2   + 2 O3P               :{%StG} 1.2E-10{§1.2}                       ;            
+<G1050>    O1D   + O3P        = O3P + O3P                  :{%StG} 8.0e-12                             ;{&}       
+<G1051>    O1D   + N2         = O3P + N2                   :{%StG} 2.15e-11*exp(110/temp)              ;{&}       
+<G1052>    O1D   + CO2        = O3P + CO2                  :{%StG} 7.5e-11*exp(115/temp)               ;{&}       
+<G1059>    O1D                = O3P                        :{%StG} 7.45e-03               ;{&}       
+#ENDREPLACE
+//-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+//odd hydrogen Airglow
+#REPLACE <G2101>
+<a>        H   + O3           = O2 + 0.01 OHv5 + 0.03 OHv6 + 0.15 OHv7 + 0.34 OHv8 + 0.47 OHv9     :{%StG} 1.4E-10{§1.1}*EXP(-470./temp);{&}
+#ENDREPLACE
+
+#REPLACE <>
+<G2205a4> OHv9  + O2           = OHv4  + O2                       :{%StG}      0.712*308.9e-13*1.10   ;{&} 
+<G2205b4> OHv8  + O2           = OHv4  + O2                       :{%StG} 0.30*0.673*118.8e-13*1.10   ;{&} 
+<G2205b3> OHv8  + O2           = OHv3  + O2                       :{%StG} 0.70*0.673*118.8e-13*1.10   ;{&} 
+<G2205c3> OHv7  + O2           = OHv3  + O2                       :{%StG} 0.10*0.688*101.7e-13*1.10   ;{&} 
+<G2205c0> OHv7  + O2           = OHv2  + O2                       :{%StG} 0.90*0.688*101.7e-13*1.10   ;{&} 
+<G2205d0> OHv6  + O2           = OHv1  + 0.053 O2b1s + 0.947 O2   :{%StG}      0.691* 43.4e-13*1.10   ;{&} 
+<G2205e0> OHv5  + O2           = OH    + O2                       :{%StG}      0.691* 24.6e-13*1.05   ;{&} 
+<G2205f0> OHv4  + O2           = OH    + O2                       :{%StG}      0.677* 13.0e-13        ;{&} 
+<G2205g2> OHv3  + O2           = OH    + 0.476 O21d  + 0.524 O2   :{%StG}      0.675*  7.7e-13        ;{&} 
+<G2205h1> OHv2  + O2           = OH    + O2                       :{%StG}      0.675*  4.0e-13        ;{&} 
+<G2205i0> OHv1  + O2           = OH    + O2                       :{%StG}      0.650*  1.9e-13        ;{&} 
+#ENDREPLACE
+
+#REPLACE <>
+<G2202b> OHv1  + O3P          = H     + 1.000 O2                  :{%StG} 3.421E-11    ;{&} 
+<G2202c> OHv2  + O3P          = H     + 1.000 O2                  :{%StG} 3.188E-11    ;{&} 
+<G2202d> OHv3  + O3P          = H     + 0.178 O2 + 0.822 O21d     :{%StG} 3.054E-11    ;{&} 
+<G2202e> OHv4  + O3P          = H     + 0.178 O2 + 0.822 O21d     :{%StG} 3.681E-11    ;{&} 
+<G2202f> OHv5  + O3P          = H     + 1.000 O2                  :{%StG} 3.217E-11    ;{&} 
+<G2202g> OHv6  + O3P          = H     + 0.829 O2 + 0.171 O2b1s    :{%StG} 3.931E-11    ;{&} 
+<G2202h> OHv7  + O3P          = H     + 1.000 O2                  :{%StG} 3.871E-11    ;{&} 
+<G2202i> OHv8  + O3P          = H     + 1.000 O2                  :{%StG} 4.520E-11    ;{&} 
+<G2202j> OHv9  + O3P          = H     + 1.000 O2                  :{%StG} 5.066E-11    ;{&} 
+#ENDREPLACE
+
+//Sharma et al., 2015; adapted
+#REPLACE <>
+<G2203x94> OHv9  + O3P         = OHv4  + O1D   :{%StG} 0.80*2.30E-10    ;{&} 
+<G2203x93> OHv9  + O3P         = OHv3  + O1D   :{%StG} 0.20*2.30E-10    ;{&} 
+<G2203x92> OHv9  + O3P         = OHv2  + O1D   :{%StG} 0.00*2.30E-10    ;{&} 
+<G2203x83> OHv8  + O3P         = OHv3  + O1D   :{%StG} 0.80*2.30E-10    ;{&} 
+<G2203x82> OHv8  + O3P         = OHv2  + O1D   :{%StG} 0.20*2.30E-10    ;{&} 
+<G2203x72> OHv7  + O3P         = OHv2  + O1D   :{%StG}      1.25E-10    ;{&} 
+<G2203x62> OHv6  + O3P         = OHv2  + O1D   :{%StG}      0.80E-10    ;{&} 
+<G2203x52> OHv5  + O3P         = OHv2  + O1D   :{%StG}      0.40E-10    ;{&} 
+
+
+<G2203a8> OHv9  + O3P         = OHv8  + O3P   :{%StG}  2.6e-12   ;{&} 
+<G2203a7> OHv9  + O3P         = OHv7  + O3P   :{%StG}  2.3e-12   ;{&} 
+<G2203a6> OHv9  + O3P         = OHv6  + O3P   :{%StG}  1.9e-12   ;{&} 
+<G2203a5> OHv9  + O3P         = OHv5  + O3P   :{%StG}  1.3e-12   ;{&} 
+<G2203a4> OHv9  + O3P         = OHv4  + O3P   :{%StG}  2.1e-12   ;{&} 
+<G2203a3> OHv9  + O3P         = OHv3  + O3P   :{%StG}  2.2e-12   ;{&} 
+<G2203a2> OHv9  + O3P         = OHv2  + O3P   :{%StG}  1.4e-12   ;{&} 
+<G2203a1> OHv9  + O3P         = OHv1  + O3P   :{%StG}  1.8e-12   ;{&} 
+<G2203a0> OHv9  + O3P         = OH    + O3P   :{%StG}  1.8e-12   ;{&} 
+<G2203b7> OHv8  + O3P         = OHv7  + O3P   :{%StG}  2.7e-12   ;{&} 
+<G2203b6> OHv8  + O3P         = OHv6  + O3P   :{%StG}  2.9e-12   ;{&} 
+<G2203b5> OHv8  + O3P         = OHv5  + O3P   :{%StG}  2.7e-12   ;{&} 
+<G2203b4> OHv8  + O3P         = OHv4  + O3P   :{%StG}  2.1e-12   ;{&} 
+<G2203b3> OHv8  + O3P         = OHv3  + O3P   :{%StG}  1.9e-12   ;{&} 
+<G2203b2> OHv8  + O3P         = OHv2  + O3P   :{%StG}  2.1e-12   ;{&} 
+<G2203b1> OHv8  + O3P         = OHv1  + O3P   :{%StG}  2.9e-12   ;{&} 
+<G2203b0> OHv8  + O3P         = OH    + O3P   :{%StG}  4.1e-12   ;{&} 
+<G2203c6> OHv7  + O3P         = OHv6  + O3P   :{%StG}  3.9e-12   ;{&} 
+<G2203c5> OHv7  + O3P         = OHv5  + O3P   :{%StG}  3.2e-12   ;{&} 
+<G2203c4> OHv7  + O3P         = OHv4  + O3P   :{%StG}  4.2e-12   ;{&} 
+<G2203c3> OHv7  + O3P         = OHv3  + O3P   :{%StG}  4.1e-12   ;{&} 
+<G2203c2> OHv7  + O3P         = OHv2  + O3P   :{%StG}  2.9e-12   ;{&} 
+<G2203c1> OHv7  + O3P         = OHv1  + O3P   :{%StG}  3.2e-12   ;{&} 
+<G2203c0> OHv7  + O3P         = OH    + O3P   :{%StG}  3.2e-12   ;{&} 
+<G2203d5> OHv6  + O3P         = OHv5  + O3P   :{%StG}  2.6e-12   ;{&} 
+<G2203d4> OHv6  + O3P         = OHv4  + O3P   :{%StG}  4.5e-12   ;{&} 
+<G2203d3> OHv6  + O3P         = OHv3  + O3P   :{%StG}  3.9e-12   ;{&} 
+<G2203d2> OHv6  + O3P         = OHv2  + O3P   :{%StG}  5.7e-12   ;{&} 
+<G2203d1> OHv6  + O3P         = OHv1  + O3P   :{%StG}  4.9e-12   ;{&} 
+<G2203d0> OHv6  + O3P         = OH    + O3P   :{%StG}  2.6e-12   ;{&} 
+<G2203e4> OHv5  + O3P         = OHv4  + O3P   :{%StG}  4.3e-12   ;{&} 
+<G2203e3> OHv5  + O3P         = OHv3  + O3P   :{%StG}  4.9e-12   ;{&} 
+<G2203e2> OHv5  + O3P         = OHv2  + O3P   :{%StG}  8.4e-12   ;{&} 
+<G2203e1> OHv5  + O3P         = OHv1  + O3P   :{%StG}  5.3e-12   ;{&} 
+<G2203e0> OHv5  + O3P         = OH    + O3P   :{%StG}  2.1e-12   ;{&} 
+<G2203f3> OHv4  + O3P         = OHv3  + O3P   :{%StG}  5.5e-12   ;{&} 
+<G2203f2> OHv4  + O3P         = OHv2  + O3P   :{%StG}  7.1e-12   ;{&} 
+<G2203f1> OHv4  + O3P         = OHv1  + O3P   :{%StG}  7.9e-12   ;{&}
+<G2203f0> OHv4  + O3P         = OH    + O3P   :{%StG}  9.8e-12   ;{&}  
+<G2203g2> OHv3  + O3P         = OHv2  + O3P   :{%StG} 11.3e-12   ;{&} 
+<G2203g1> OHv3  + O3P         = OHv1  + O3P   :{%StG}  7.3e-12   ;{&} 
+<G2203g0> OHv3  + O3P         = OH    + O3P   :{%StG} 10.2e-12   ;{&} 
+<G2203h1> OHv2  + O3P         = OHv1  + O3P   :{%StG} 13.3e-12   ;{&} 
+<G2203h1> OHv2  + O3P         = OH    + O3P   :{%StG} 12.0e-12   ;{&} 
+<G2203i0> OHv1  + O3P         = OH    + O3P   :{%StG} 20.2e-12   ;{&} 
+#ENDREPLACE
+
+#REPLACE <>
+<G2206a> OHv9  + N2           = OHv8  + N2   :{%StG}  7.000e-13  ;{&} 
+<G2206b> OHv8  + N2           = OHv7  + N2   :{%StG}  7.000e-13  ;{&} 
+<G2206c> OHv7  + N2           = OHv6  + N2   :{%StG}  1.600e-13  ;{&} 
+<G2206d> OHv6  + N2           = OHv5  + N2   :{%StG}  0.910e-13  ;{&} 
+<G2206e> OHv5  + N2           = OHv4  + N2   :{%StG}  0.520e-13  ;{&}  
+<G2206f> OHv4  + N2           = OHv3  + N2   :{%StG}  0.300e-13  ;{&}  
+<G2206g> OHv3  + N2           = OHv2  + N2   :{%StG}  0.170e-13  ;{&}  
+<G2206h> OHv2  + N2           = OHv1  + N2   :{%StG}  0.100e-13  ;{&} 
+<G2206i> OHv1  + N2           = OH    + N2   :{%StG}  0.060e-13  ;{&} 
+#ENDREPLACE
+
+// Einstein Coefficients (Xu et al., 2012, Table A1)
+#REPLACE <>
+<G0898> OHv9  =   OHv8  : {%StG}  18.3507 ;{&}
+<G0897> OHv9  =   OHv7  : {%StG} 112.4054 ;{&}
+<G0896> OHv9  =   OHv6  : {%StG}  54.7226 ;{&}
+<G0895> OHv9  =   OHv5  : {%StG}  11.4909 ;{&} 
+<G0894> OHv9  =   OHv4  : {%StG}   2.0248 ;{&}
+<G0893> OHv9  =   OHv3  : {%StG}   0.2551 ;{&}
+<G0887> OHv8  =   OHv7  : {%StG}   6.9831 ;{&}
+<G0886> OHv8  =   OHv6  : {%StG} 116.6081 ;{&}
+<G0885> OHv8  =   OHv5  : {%StG}  39.8385 ;{&}
+<G0884> OHv8  =   OHv4  : {%StG}   7.0718 ;{&}
+<G0883> OHv8  =   OHv3  : {%StG}   0.9336 ;{&}
+<G0882> OHv8  =   OHv2  : {%StG}   0.0887 ;{&}
+<G0876> OHv7  =   OHv6  : {%StG}   2.3080 ;{&}
+<G0875> OHv7  =   OHv5  : {%StG} 108.2748 ;{&}
+<G0874> OHv7  =   OHv4  : {%StG}  27.5363 ;{&}
+<G0873> OHv7  =   OHv3  : {%StG}   3.8297 ;{&}
+<G0872> OHv7  =   OHv2  : {%StG}   0.3687 ;{&}
+<G0871> OHv7  =   OHv1  : {%StG}   0.0231 ;{&}
+<G0865> OHv6  =   OHv5  : {%StG}   3.8102 ;{&}
+<G0864> OHv6  =   OHv4  : {%StG}  92.1496 ;{&}
+<G0863> OHv6  =   OHv3  : {%StG}  17.3699 ;{&}
+<G0862> OHv6  =   OHv2  : {%StG}   1.7670 ;{&}
+<G0861> OHv6  =   OHv1  : {%StG}   0.1115 ;{&}
+<G0860> OHv6  =   OH    : {%StG}   0.0034 ;{&}
+<G0854> OHv5  =   OHv4  : {%StG}   9.4585 ;{&}
+<G0853> OHv5  =   OHv3  : {%StG}  71.5895 ;{&}
+<G0852> OHv5  =   OHv2  : {%StG}   9.5405 ;{&}
+<G0851> OHv5  =   OHv1  : {%StG}   0.6339 ;{&}
+<G0850> OHv5  =   OH    : {%StG}   0.0198 ;{&}
+<G0843> OHv4  =   OHv3  : {%StG}  16.6444 ;{&}
+<G0842> OHv4  =   OHv2  : {%StG}  49.2969 ;{&}
+<G0841> OHv4  =   OHv1  : {%StG}   4.1771 ;{&}
+<G0840> OHv4  =   OH    : {%StG}   0.1365 ;{&}
+<G0832> OHv3  =   OHv2  : {%StG}  22.4993 ;{&}
+<G0831> OHv3  =   OHv1  : {%StG}  27.9637 ;{&}
+<G0830> OHv3  =   OH    : {%StG}   1.1397 ;{&}
+<G0821> OHv2  =   OHv1  : {%StG}  23.9335 ;{&}
+<G0820> OHv2  =   OH    : {%StG}  10.4814 ;{&}
+<G0810> OHv1  =   OH    : {%StG}  17.6222 ;{&}
+#ENDREPLACE
+
+//Photolysezeug (messy_jval_jvpp.inc, messy_cmn_photol_mem.f90)
+//O3
+#REPLACE <>
+//<J1200c> O3      + hv = O1D + O21d          : {%StTrGJ} jx(ip_O1DO21d){§}; {&}  
+//<J1001d> O3      + hv = O3P + O21d          : {%StTrGJ} jx(ip_O3PO21d){§}; {&} 
+//<J1001g> O3      + hv = O3P + O3P + O3P     : {%StTrGJ} jx(ip_3O3P){§}; {&}
+
+
+//<J1001f> O3      + hv = O1D + O2b1s         : {%StTrGJ} jx(ip_O1DO2b1s){§}; {&}
+//<J1001h> O3      + hv = O1S + O21d          : {%StTrGJ} jx(ip_O1SO21d){§}; {&}
+//<J1001d> O3 + hv = O2b1s + O3P, 463nm
+//<J1001e> O3 + hv = O21d  + O1D, 310nm
+
+#ENDREPLACE
+
+//#REPLACE <J1001a>
+//<J1001atf> O3      + hv = O1D + O2           : {%UpStTrGJ} jx(ip_O1DO2){§}; {&}
+//#ENDREPLACE
+
+//#REPLACE <J1001b>
+//<J1001btf> O3      + hv = O3P + O2           : {%UpStTrGJ} jx(ip_O3PO2){§}; {&}
+//#ENDREPLACE
+
+
+
+//O2
+//#REPLACE <J1000a>
+//<J1000atf> O2      + hv = O3P + O3P           : {%StTrGJ} jx(ip_O3PO3P){§}; {&}
+//#ENDREPLACE
+
+#REPLACE <J1000b>
+<J1000btf> O2      + hv = O3P + O1D           : {%StTrGJ} jx(ip_O3PO1D){§}; {&}
+#ENDREPLACE
+#REPLACE <>
+//bisher keine cross sections da
+//<J1000e> O2      + hv = O3P + O1D         :{%StGJ}     3.03-9 + 3.7e-7    ;{&}  
+//<J1000f> O2      + hv = O3P + O1S         :{%StGJ}     jx(ip_O3PO1S)    ;{&} 
+//<J1000g> O2      + hv = O1D + O1D, 137nm 
+//<J1000h> O2      + hv = O3P + O1S, 132nm
+//<J1000i> O2      + hv = O1D + O1S, 110nm 
+
+//<J1000z> O2      + hv = O2b1s             :{%StGJ}     5.35e-9           ;{&}   
+#ENDREPLACE
+
+//H2O
+//#REPLACE<J2100a>
+//<J2100atf> H2O      + hv = H + OH             : {%UpStGJ}   jx(ip_HOH){§};
+//#ENDREPLACE
+#REPLACE <J2100b>
+<J2100btf> H2O      + hv = H2 + O1D           : {%UpStTrGJ} jx(ip_H2O1D){§}; {&}
+#ENDREPLACE
+//#REPLACE <>
+//<J2100ctf> H2O      + hv = H + H + O3P           : {%UpStTrGJ} jx(ip_HHO3P){§}; {&}
+//#ENDREPLACE
+
+//CO2
+//#REPLACE <J4102>
+//<J4102atf>  CO2     + hv = CO + O3P           : {%StGJ}   jx(ip_COO3P){§}; 
+//#ENDREPLACE
+//#REPLACE <>
+//<J4102btf> CO2      + hv = CO + O1D           : {%UpStTrGJ} jx(ip_COO1D){§}; {&}
+//#ENDREPLACE

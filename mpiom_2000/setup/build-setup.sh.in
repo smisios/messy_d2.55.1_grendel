@@ -1,0 +1,101 @@
+#! /bin/sh
+set -e
+
+##########################################################################
+#
+# no user-maintainable parts below this line
+#
+##########################################################################
+
+. "@abs_builddir@/setup-common.inc"
+
+assert_vars_are_set tp ie je
+if [ $tp = true ]; then
+  assert_vars_are_set reflon reflat np
+elif [ $tp = false ]; then
+  assert_vars_are_set rlat1 rlon1 rlat2 rlon2 phi
+fi
+
+
+# 1. phase
+if [ $tp = true ]; then
+  "@abs_builddir@/mk_anta/tp_gridgen.job"
+else
+  "@abs_builddir@/mk_anta/mk_anta-etopo2.job"
+fi
+
+"@abs_builddir@/anta2nc/anta2nc.job"
+
+# query user wether generated grid is up to desired specs
+# (antarctica reached etc.)
+
+if [ ! -f "${DEST}/${GRID}_topo" ]; then
+  (cd "$SETUP_WORK_DIR" ; POOL="$DEST" "@abs_top_builddir@/plots/2dplot/plot2d" \
+    --code 84 --grid "$GRID" --lev 1 --min 0 --max 6000 --inc 500 \
+    --proj nps --title "$GRID depto" "$DEST/${GRID}_anta")
+  echo "Please check generated files in $SETUP_WORK_DIR and $DEST"
+  echo "At this stage, only the grid needs to be correct, the topography"
+  echo "can be adjusted later on."
+  echo "A plot of the depto field has been written to"
+  echo
+  echo "  $SETUP_WORK_DIR/${GRID}_anta.pdf"
+  echo
+  echo 'Press return if generated setup is satisfactory.'
+  read temp
+fi
+
+"@abs_builddir@/mk_arcgri/mk_arcgri.job"
+
+"@abs_builddir@/mk_phc/mk_phc.job"
+
+case $forcing in
+  era40)
+    : forcing_era40
+    ;;
+  ncep)
+    : forcing_ncep
+    ;;
+  omip|*)
+    "@abs_builddir@/forcing_omip/forcing_omip.job"
+    ;;
+esac
+
+if [ x"${hamocc+set}" = xset ]; then
+  # FIXME input data not available
+  : mk_dust
+fi
+
+# 2. phase
+# if there is a topography file in the destination directory, we
+# assume it's polished and will be used directly,
+if [ -f "${DEST}/${GRID}_topo" ]; then
+  topo_ok=true
+else
+  # otherwise, do an iterative editing session, starting with
+  # the raw file produced by mk_anta
+  topo_ok=false
+  cp "${DEST}/${GRID}_topo.raw" "${DEST}/${GRID}_topo"
+fi
+while [ $topo_ok = false ] ; do
+  # manual edit, control with mk_topo
+  "@abs_builddir@/mk_topo/mk_topo.job"
+  echo 'Press return if the topography is satisfactory.'
+  echo "or a new, known good topo file has been saved as:"
+  echo
+  echo "  ${DEST}/${GRID}_topo"
+  echo
+  echo 'Enter n if not.'
+  read temp
+  if [ x"$temp" = x ]; then
+    topo_ok=true
+    break;
+  fi
+done
+
+# 3. phase
+# these setup programs depend on a valid topography
+"@abs_builddir@/mk_BEK/mk_BEK.job"
+
+"@abs_builddir@/runoff_omip/runoff_omip.job"
+
+

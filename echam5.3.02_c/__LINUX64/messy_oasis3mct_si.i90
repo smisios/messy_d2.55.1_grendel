@@ -1,0 +1,804 @@
+# 1 "../../messy/smil/messy_oasis3mct_si.f90"
+! **********************************************************************
+!
+! SUBMODEL INTERFACE LAYER (SMIL) ROUTINES FOR MESSy SUBMODEL OASIS3-MCT
+!
+! Author : Astrid Kerkweg, Uni Bonn, 2018
+!
+!
+! 0) configure with COSMO
+!./configure --enable-COSMO --enable-1 --enable-OASIS3MCT --disable-1
+! 1) configure with COSMO and CLM
+!./configure --enable-COSMO --enable-1 --enable-OASIS3MCT --disable-1 --enable-CLM
+! 2) configure MECO(n) system with COSMO and CLM using COSMO master
+!./configure --enable-COSMO --enable-I2CINC --enable-1 --enable-OASIS3MCT --disable-1 --enable-CLM
+! 3) configure MECO(n) system including CLM
+!./configure --enable-COSMO --enable-I2CINC --enable-1 --enable-OASIS3MCT --enable-CLM
+!
+! **********************************************************************
+! TODO:
+! --- RESTART TEST
+
+! FESOM:
+!   - masks  (calculate,  make channel objects?)
+!       cpl_oce_mask
+!       cpl_ice_mask, cpl_wat_mask
+!   - 2 grids!
+!   - input : a2o field ?
+!   - out hardcoded block  ( calc cpl_ice_mask, cpl_wat_mask)
+!  WARNING: the extra communication exchanging net fluxes is omitted (but required for conservative
+!           remapping. This needs to be made obsolete
+! **********************************************************************
+
+# 1 "../../messy/bmil/messy_main_ppd_bi.inc" 1 
+! -*- f90 -*-
+# 11
+
+
+! ----------------------------------------------------------------------
+! SETTINGS FOR VARIOUS BASEMODELS
+! ----------------------------------------------------------------------
+! SO FAR FOR ALL MESSy BASEMODES
+
+
+
+
+! ORDER: h,v,[n],h (TRRANK=3)  OR h,v,h,[n] (TRRANK=4)
+
+
+
+
+! ORDER: h,h,[n],v (TRRANK=3)  OR h,h,v,[n] (TRRANK=4)
+# 29
+
+
+# 33
+
+
+
+
+! ----------------------------------------------------------------------
+! GENERIC SETTINGS
+! ----------------------------------------------------------------------
+
+! ----------------------------------------------------------------------
+! ORDER: h,v,[n],h OR h,v,h,[n]
+
+! ----------------------------------------------------------------------
+
+! op_pj_20170228: macros required for TTRANK=3 (messy_main_tracer)
+
+
+
+
+
+
+
+
+
+
+
+
+
+! classical RI to pass one `jrow` to SMCL:
+
+
+
+
+
+! only ONEMIS, BIOBURN, GMXE, VEG:
+
+
+
+
+
+
+! op_pj_20170228: macros required for TTRANK=4 (messy_main_tracer)
+# 97
+
+!
+! ----------------------------------------------------------------------
+
+! ----------------------------------------------------------------------
+
+! ----------------------------------------------------------------------
+! ORDER: h,h,[n],v OR h,h,v,[n]
+# 160
+
+! ----------------------------------------------------------------------
+# 33 "../../messy/smil/messy_oasis3mct_si.f90" 2 
+
+! **********************************************************************
+MODULE messy_oasis3mct_si
+! **********************************************************************
+!!$#ifdef COSMO
+!!$#define WRITEGRIDPARALLEL 1
+!!$#endif
+
+! MESSy BASEMODEL INTERFACE LAYER (BMIL)
+  USE messy_main_blather_bi,    ONLY: error_bi
+# 47
+
+
+  USE messy_main_blather_bi,    ONLY: error_bi
+! SMCL
+  USE messy_main_channel,       ONLY: STRLEN_CHANNEL, t_chaobj_cpl
+  USE messy_main_constants_mem, ONLY: STRLEN_MEDIUM &
+                                    , STRLEN_VLONG, iouerr
+  USE messy_oasis3mct
+
+# 61
+
+
+  IMPLICIT NONE
+  INTRINSIC :: NULL
+  PRIVATE
+  SAVE
+
+! COMPONENT
+# 94
+
+! ------------------------------------------------------------------
+! COUPLE MODEL
+! ------------------------------------------------------------------
+  TYPE t_cpl_model_io
+     CHARACTER(LEN=STRLEN_CHANNEL) :: modname= ''
+     CHARACTER(LEN=STRLEN_MEDIUM)  :: locsnd = ''
+     CHARACTER(LEN=STRLEN_MEDIUM)  :: locrcv = ''
+     INTEGER                       :: imask  = -99
+  END type t_cpl_model_io
+
+  TYPE t_cpl_model
+     CHARACTER(LEN=STRLEN_CHANNEL) :: modname   = ''
+     INTEGER                       :: locsndSR  = -99 ! subroutine to send data
+     INTEGER                       :: locsndBE  = -99 ! call at begin / end of subroutine
+     INTEGER                       :: locsndord = -99 ! order of send / receive
+     INTEGER                       :: locrcvSR  = -99 ! subroutine to recv data
+     INTEGER                       :: locrcvBE  = -99 ! call at begin / end of subroutine
+     INTEGER                       :: locrcvord = -99 ! order of send / receive
+     LOGICAL                       :: lactive   = .FALSE.
+     INTEGER                       :: masktype  = -99
+     LOGICAL,DIMENSION(:,:), POINTER :: mask => NULL()
+  END type t_cpl_model
+
+  INTEGER,              PARAMETER                 :: MAXNUM_MODELS = 20
+
+# 127
+
+! ------------------------------------------------------------------
+! COUPLE FIELD
+! ------------------------------------------------------------------
+ TYPE t_cpl_rfield_io
+# 134
+
+     TYPE(t_chaobj_cpl)           :: messyname
+     LOGICAL                      :: lcreatine = .FALSE. ! create if not exists
+! Mask field 0: all points are used, 1: land points 2: sea points
+     INTEGER                      :: imask = -99         ! mask field
+! ACTION STRING DEFINES THE POSTPROCESSING OF THE FIELD
+! non-empty variable needs specific treatment
+!    - ABS      use absolute value
+!    - x:fac    multiply by "fac", e.g. "-1"
+!    - +:const  add constant
+     CHARACTER(LEN=STRLEN_VLONG)  :: postproc    = ' ' ! variable needs to
+! DEFINES HOW TO INTERPRET THE OASIS MULTI-LEVEL INFORMATION
+! FORMAT:  'Z;N:nnum;T:tlev' => respective order is important !
+!           'Z' can be without specifier => nlev
+     CHARACTER(LEN=STRLEN_MEDIUM) :: oasaxis   = ' '
+!
+! SPECIFIES LEVEL of variable , enables rank reduction
+! timelev:  nnow: -1 ; nnew: -2 ; nold: -3
+     CHARACTER(LEN=STRLEN_MEDIUM) :: levelstr  = ' '     ! if variable with time
+! be calculated
+     CHARACTER(LEN=STRLEN_MEDIUM) :: repr      =' '
+  END type t_cpl_rfield_io
+
+ TYPE t_cpl_sfield_io
+# 160
+
+     TYPE(t_chaobj_cpl)           :: messyname
+! DEFINES HOW TO INTERPRET THE OASIS MULTI-LEVEL INFORMATION
+! FORMAT:  'Z;N:nnum;T:tlev' => respective order is important !
+!           'Z' can be without specifier => nlev
+     CHARACTER(LEN=STRLEN_MEDIUM) :: oasaxis   = ' '
+!
+! SPECIFIES LEVEL of variable , enables rank reduction
+! timelev:  nnow: -1 ; nnew: -2 ; nold: -3
+     CHARACTER(LEN=STRLEN_MEDIUM) :: levelstr  = ' '     ! if variable with time
+! be calculated
+   END type t_cpl_sfield_io
+
+
+   TYPE t_postproc_info
+      CHARACTER(LEN=STRLEN_MEDIUM) :: action = ' '
+      REAL(dp)                     :: number = -9999.e-36
+      REAL(dp)                     :: limit  = -9999.e-36
+   END type t_postproc_info
+
+  TYPE t_cpl_rfield
+# 183
+
+     TYPE(t_chaobj_cpl)           :: messyname
+     LOGICAL                      :: lcreatine = .FALSE.  ! create if not exists
+     CHARACTER(LEN=STRLEN_MEDIUM) :: repr      = ' '
+     INTEGER                      :: vertlev   = -99
+     INTEGER                      :: numblev   = -99
+     INTEGER                      :: timelev   = -99
+     LOGICAL                      :: lcalc     = .FALSE.
+     INTEGER                      :: cplcompID = -99 ! id of coupled component
+! corresponds to LOCCOUPLE IDX
+     INTEGER                      :: reprID    = -99
+     INTEGER                      :: oasvarID  = -99
+     INTEGER                      :: rank = -99
+     REAL(dp), POINTER, DIMENSION(:,:)     :: store => NULL()
+     REAL(dp), POINTER, DIMENSION(:,:)     :: ptr2d => NULL()
+     REAL(dp), POINTER, DIMENSION(:,:,:)   :: ptr3d => NULL()
+     INTEGER                      :: idt = -99 ! TEST
+! POST-PROCESS FIELD
+! mask field?
+! 0: all points
+! 1: land points only
+! 2: sea points only
+     INTEGER                                          :: imask
+     TYPE(t_postproc_info), DIMENSION(:), ALLOCATABLE :: pp
+ END type t_cpl_rfield
+
+  TYPE t_cpl_sfield
+# 212
+
+     TYPE(t_chaobj_cpl)           :: messyname
+     INTEGER                      :: cplcompID = -99 ! id of coupled component
+! corresponds to LOCCOUPLE IDX
+     INTEGER                      :: oasvarID  = -99
+     INTEGER                      :: vertlev   = -99
+     INTEGER                      :: numblev   = -99
+     INTEGER                      :: timelev   = -99
+     INTEGER                      :: rank = -99
+     REAL(dp), POINTER, DIMENSION(:,:)     :: ptr2d => NULL()
+     REAL(dp), POINTER, DIMENSION(:,:,:)   :: ptr3d => NULL()
+     INTEGER                      :: idt = -99 ! TEST
+ END type t_cpl_sfield
+
+# 246
+
+
+
+! PUBLIC SUBROUTINES (called from messy_main_control_e5.f90)
+! NOTE: in case you activate further entry points, make sure to call them
+!       in messy_main_control_e5.f90
+  PUBLIC :: oasis3mct_setup         ! setup OASIS interface
+  PUBLIC :: oasis3mct_initialize    ! initialize submodel
+  PUBLIC :: oasis3mct_init_memory   ! request memory
+  PUBLIC :: oasis3mct_init_coupler  ! wrapper init_memory / init_coupling
+  PUBLIC :: oasis3mct_init_coupling ! set pointers for coupling to BM and other SMs
+  PUBLIC :: oasis3mct_time            ! currently used in 1
+  PUBLIC :: oasis3mct_init_loop     ! currently used in COSMO
+  PUBLIC :: oasis3mct_global_start  ! currently used in 1
+  PUBLIC :: oasis3mct_convec        ! currently used in COSMO
+  PUBLIC :: oasis3mct_write_output   ! currently used in ECHAM (for FESOM2)
+
+
+  PUBLIC :: oasis3mct_finalize  ! TODO: implement CALL to subroutine!!
+
+! PRIVATE SUBROUTINES
+! PRIVATE :: oasis3mct_read_nml_cpl
+! PRIVATE :: oasis3mct_read_nml_cpl_extdata
+! PRIVATE :: oasis3mct_sndrcv    ! Subroutine for data exchange
+! CALL from each possible entry point
+
+! PRIVATE :: parse_location
+
+CONTAINS
+
+! ####################################################################
+! PUBLIC SUBROUTINES
+! ####################################################################
+! ====================================================================
+  SUBROUTINE oasis3mct_setup(lcoupled)
+
+
+! MMD
+    USE mmd_handle_communicator, ONLY: MMD_instance_name  &
+                                     , MMD_numberofNonMMDcoupledmodels
+
+    IMPLICIT NONE
+
+! I/O
+    LOGICAL,          INTENT(in)  :: lcoupled
+# 326
+
+  END SUBROUTINE oasis3mct_setup
+! ====================================================================
+
+! ====================================================================
+  SUBROUTINE oasis3mct_initialize
+
+! ------------------------------------------------------------------
+! This subroutine is used to
+! - read (and broadcast) the CTRL-namelist,
+! - read (and broadcast) the CPL-namelist,
+! - perform the basic setup of the submodel.
+! ------------------------------------------------------------------
+
+# 347
+
+
+    IMPLICIT NONE
+
+! LOCAL
+# 1129
+
+  END SUBROUTINE oasis3mct_initialize
+! ====================================================================
+
+ SUBROUTINE oasis3mct_init_memory
+
+# 1137
+
+
+   IMPLICIT NONE
+
+   CHARACTER(LEN=*), PARAMETER :: substr = 'oasis3mct_init_memory'
+
+# 1145
+
+   CALL oasis3mct_write_grids_echam
+# 1149
+
+
+ END SUBROUTINE oasis3mct_init_memory
+
+! ====================================================================
+  SUBROUTINE oasis3mct_init_coupler(flag)
+
+    IMPLICIT NONE
+
+    INTEGER, INTENT(in) :: flag
+
+    SELECT CASE(flag)
+    CASE (1)
+       CALL oasis3mct_init_memory
+    CASE (2)
+       CALL oasis3mct_init_coupling
+    END SELECT
+
+  END SUBROUTINE oasis3mct_init_coupler
+! ====================================================================
+
+! ====================================================================
+  SUBROUTINE oasis3mct_init_coupling
+
+# 1188
+
+
+    IMPLICIT NONE
+
+# 1435
+
+
+  END SUBROUTINE oasis3mct_init_coupling
+! ====================================================================
+
+  SUBROUTINE oasis3mct_init_loop(callID,flag)
+
+! currently called by COSMO
+
+    INTEGER, INTENT(IN) :: callID
+    INTEGER, INTENT(IN) :: flag
+
+    CALL oasis3mct_sndrcv(callID,flag)
+
+  END SUBROUTINE oasis3mct_init_loop
+
+! ====================================================================
+
+  SUBROUTINE oasis3mct_time(callID,flag)
+
+! currently called by 1 for FESOM coupling
+
+    INTEGER, INTENT(IN) :: callID
+    INTEGER, INTENT(IN) :: flag
+
+    CALL oasis3mct_sndrcv(callID,flag)
+
+  END SUBROUTINE oasis3mct_time
+
+! ====================================================================
+
+  SUBROUTINE oasis3mct_global_start(callID,flag)
+
+! currently called by 1
+
+    INTEGER, INTENT(IN) :: callID
+    INTEGER, INTENT(IN) :: flag
+
+    CALL oasis3mct_sndrcv(callID,flag)
+
+  END SUBROUTINE oasis3mct_global_start
+
+! ====================================================================
+
+  SUBROUTINE oasis3mct_convec(callID,flag)
+
+! currently called by COSMO
+
+    INTEGER, INTENT(IN) :: callID
+    INTEGER, INTENT(IN) :: flag
+
+    CALL oasis3mct_sndrcv(callID,flag)
+
+  END SUBROUTINE oasis3mct_convec
+
+! ====================================================================
+! ====================================================================
+
+  SUBROUTINE oasis3mct_write_output(callID,flag)
+
+! currently called from ECHAM
+
+    INTEGER, INTENT(IN) :: callID
+    INTEGER, INTENT(IN) :: flag
+
+    CALL oasis3mct_sndrcv(callID,flag)
+
+  END SUBROUTINE oasis3mct_write_output
+
+! ====================================================================
+
+  SUBROUTINE oasis3mct_finalize(lcoupled)
+
+    IMPLICIT NONE
+
+    LOGICAL, INTENT(IN) :: lcoupled
+
+
+# 1539
+
+
+  END SUBROUTINE oasis3mct_finalize
+
+! ====================================================================
+
+
+
+! ####################################################################
+! PRIVATE SUBROUTINES
+! ####################################################################
+
+
+  SUBROUTINE oasis3mct_sndrcv(callID,flag)
+
+# 1562
+
+
+    IMPLICIT NONE
+
+    INTEGER, INTENT(IN) :: callID
+    INTEGER, INTENT(IN) :: flag
+
+# 1988
+
+  END SUBROUTINE oasis3mct_sndrcv
+
+
+! ====================================================================
+  SUBROUTINE oasis3mct_read_nml_cpl(status, iou)
+
+! ------------------------------------------------------------------
+! This subroutine is used to read the CPL-namelist of the submodel.
+! ------------------------------------------------------------------
+
+# 2002
+
+    IMPLICIT NONE
+
+! I/O
+    INTEGER, INTENT(OUT) :: status     ! error status
+    INTEGER, INTENT(IN)  :: iou        ! I/O unit
+
+# 2029
+
+    status = 0
+
+
+  END SUBROUTINE oasis3mct_read_nml_cpl
+! ====================================================================
+
+! ====================================================================
+  SUBROUTINE oasis3mct_read_nml_cpl_extdata(status, iou)
+
+! ------------------------------------------------------------------
+! This subroutine is used to read the CPL-namelist of the submodel.
+! ------------------------------------------------------------------
+# 2045
+
+
+    IMPLICIT NONE
+
+! I/O
+    INTEGER, INTENT(OUT) :: status     ! error status
+    INTEGER, INTENT(IN)  :: iou        ! I/O unit
+
+# 2078
+
+    status = 0
+
+
+  END SUBROUTINE oasis3mct_read_nml_cpl_extdata
+! ====================================================================
+
+! =========================================================================
+  SUBROUTINE parse_postproc(string, FLD)
+
+    USE messy_main_tools,         ONLY: strcrack, str2num
+    USE messy_main_constants_mem, ONLY: STRLEN_MEDIUM
+
+    IMPLICIT NONE
+
+! I/O
+    CHARACTER(LEN=*),   INTENT(IN)    :: string
+    TYPE(t_cpl_rfield), INTENT(INOUT) :: FLD
+
+! LOCAL
+    CHARACTER(LEN=*), PARAMETER            :: substr ="parse_postproc"
+    CHARACTER(LEN=STRLEN_MEDIUM), POINTER  :: str1(:)  => NULL()
+    CHARACTER(LEN=STRLEN_MEDIUM), POINTER  :: str2(:)  => NULL()
+    CHARACTER(LEN=STRLEN_MEDIUM), POINTER  :: str3(:)  => NULL()
+    INTEGER                                :: num1, num2, num3
+    INTEGER                                :: ix
+    INTEGER                                :: status
+
+    status = -99
+    num1 = -1
+    num2 = -1
+    num2 = -1
+
+    IF (TRIM(ADJUSTL(string)) == ' ') RETURN
+
+    write (*,*) 'FIELD requires postprocessing '
+
+! CRACK STRING
+    CALL strcrack(string,';',str1,num1)
+    IF (num1 < 0 .OR. num1 > 33) THEN
+       CALL error_bi('postproc string must contain colon seperated entries'&
+            , substr)
+    END IF
+
+    ALLOCATE(FLD%pp(num1))
+    DO ix = 1, num1
+       CALL strcrack(str1(ix),':',str2,num2)
+       SELECT CASE(TRIM(ADJUSTL(str2(1))))
+       CASE('ABS')
+          FLD%pp(ix)%action='ABS'
+          FLD%pp(ix)%number=-9999.e-36
+          FLD%pp(ix)%limit =-9999.e-36
+          write (*,*) ' take absolute value'
+       CASE('+')
+          FLD%pp(ix)%action='+'
+          CALL str2num(str2(2),FLD%pp(ix)%number, status)
+          FLD%pp(ix)%limit =-9999.e-36
+          IF (status /= 0) CALL error_bi( &
+               'ERROR in string conversion +', substr)
+          write (*,*) ' add constant: ', FLD%pp(ix)%number
+       CASE('x')
+          FLD%pp(ix)%action='x'
+          CALL str2num(str2(2),FLD%pp(ix)%number, status)
+          FLD%pp(ix)%limit =-9999.e-36
+          IF (status /= 0) CALL error_bi( &
+               'ERROR in string conversion x ', substr)
+          write (*,*) ' multiply with factor: ', FLD%pp(ix)%number
+       CASE('GT')
+          FLD%pp(ix)%action='GT'
+          CALL strcrack(str2(2),'=',str3,num3)
+          CALL str2num(str3(1),FLD%pp(ix)%limit,  status)
+          CALL str2num(str3(2),FLD%pp(ix)%number, status)
+          IF (status /= 0) CALL error_bi( &
+               'ERROR in string conversion GT ', substr)
+          write (*,*) 'Greater than limit: ', FLD%pp(ix)%limit &
+               ,' set to ', FLD%pp(ix)%number
+          DEALLOCATE(str3); NULLIFY(str3)
+          num3 = -1
+       CASE('LT')
+          FLD%pp(ix)%action='LT'
+          CALL strcrack(str2(2),'=',str3,num3)
+          CALL str2num(str3(1),FLD%pp(ix)%limit,  status)
+          CALL str2num(str3(2),FLD%pp(ix)%number, status)
+          IF (status /= 0) CALL error_bi( &
+               'ERROR in string conversion LT ', substr)
+          write (*,*) 'LESS than limit: ', FLD%pp(ix)%limit &
+               ,' set to ', FLD%pp(ix)%number
+          DEALLOCATE(str3); NULLIFY(str3)
+          num3 = -1
+       CASE('GE')
+          FLD%pp(ix)%action='GT'
+          CALL strcrack(str2(2),'=',str3,num3)
+          CALL str2num(str3(1),FLD%pp(ix)%limit,  status)
+          CALL str2num(str3(2),FLD%pp(ix)%number, status)
+          IF (status /= 0) CALL error_bi( &
+               'ERROR in string conversion GT ', substr)
+          write (*,*) 'Greater/Equal than limit: ', FLD%pp(ix)%limit &
+               ,' set to ', FLD%pp(ix)%number
+          DEALLOCATE(str3); NULLIFY(str3)
+          num3 = -1
+       CASE('LE')
+          FLD%pp(ix)%action='LT'
+          CALL strcrack(str2(2),'=',str3,num3)
+          CALL str2num(str3(1),FLD%pp(ix)%limit,  status)
+          CALL str2num(str3(2),FLD%pp(ix)%number, status)
+          IF (status /= 0) CALL error_bi( &
+               'ERROR in string conversion LT ', substr)
+          write (*,*) 'LESS/EQUAL than limit: ', FLD%pp(ix)%limit &
+               ,' set to ', FLD%pp(ix)%number
+          DEALLOCATE(str3); NULLIFY(str3)
+          num3 = -1
+       CASE('EXP')
+          FLD%pp(ix)%action='EXP'
+          CALL str2num(str2(2),FLD%pp(ix)%number, status)
+          FLD%pp(ix)%limit =-9999.e-36
+          IF (status /= 0) CALL error_bi( &
+               'ERROR in string conversion EXP ', substr)
+          write (*,*) ' exponentiate with: ', FLD%pp(ix)%number
+       CASE DEFAULT
+          CALL error_bi('Postproc string contains unknown options', substr)
+       END SELECT
+
+       DEALLOCATE(str2); NULLIFY(str2)
+       num2 = -1
+    END DO
+
+
+    DEALLOCATE(str1); NULLIFY(str1)
+    num1 = -1
+
+  END SUBROUTINE parse_postproc
+! **********************************************************************
+  SUBROUTINE postprocess_field(FLD, cptr)
+
+    IMPLICIT NONE
+
+    TYPE(t_cpl_rfield), INTENT(INOUT) :: FLD
+    REAL(dp), DIMENSION(:,:), POINTER :: cptr
+
+! LOCAL
+    CHARACTER(LEN=*), PARAMETER            :: substr ="postprocess_field"
+    INTEGER :: ix, jx, ii
+
+    IF (.NOT. ALLOCATED(FLD%pp)) RETURN
+
+    DO ii = 1, SIZE(FLD%pp)
+
+       SELECT CASE(TRIM(FLD%pp(ii)%action))
+       CASE('ABS')
+          cptr = ABS(cptr)
+       CASE('+')
+          cptr = cptr + FLD%pp(ii)%number
+       CASE('x')
+          cptr = cptr * FLD%pp(ii)%number
+       CASE('EXP')
+          cptr = cptr**FLD%pp(ii)%number
+       CASE('GT')
+           DO ix = LBOUND(cptr,1), UBOUND(cptr,1)
+             DO jx = LBOUND(cptr,2), UBOUND(cptr,2)
+                IF (cptr(ix,jx) > FLD%pp(ii)%limit) &
+                     cptr(ix,jx) = FLD%pp(ii)%number
+             END DO
+          END DO
+       CASE('LT')
+          DO ix = LBOUND(cptr,1), UBOUND(cptr,1)
+             DO jx = LBOUND(cptr,2), UBOUND(cptr,2)
+                IF (cptr(ix,jx) < FLD%pp(ii)%limit) &
+                     cptr(ix,jx) = FLD%pp(ii)%number
+             END DO
+          END DO
+       CASE('GE')
+          DO ix = LBOUND(cptr,1), UBOUND(cptr,1)
+             DO jx = LBOUND(cptr,2), UBOUND(cptr,2)
+
+                IF (cptr(ix,jx) >= FLD%pp(ii)%limit) &
+                     cptr(ix,jx) = FLD%pp(ii)%number
+             END DO
+          END DO
+       CASE('LE')
+          DO ix = LBOUND(cptr,1), UBOUND(cptr,1)
+             DO jx = LBOUND(cptr,2), UBOUND(cptr,2)
+                IF (cptr(ix,jx) <= FLD%pp(ii)%limit) &
+                     cptr(ix,jx) = FLD%pp(ii)%number
+             END DO
+          END DO
+       CASE DEFAULT
+          CALL error_bi('Postproc string contains unknown options', substr)
+       END SELECT
+    END DO
+
+  END SUBROUTINE postprocess_field
+! **********************************************************************
+# 2703
+
+!COSMO
+
+
+! ====================================================================
+  SUBROUTINE oasis3mct_write_grids_echam
+
+# 2721
+
+
+    IMPLICIT NONE
+
+# 3035
+
+  END SUBROUTINE oasis3mct_write_grids_echam
+
+! ====================================================================
+! OASIS3MCT
+
+  SUBROUTINE parse_location(status, string, isubroutine, ibegend, iorder)
+
+    USE messy_main_constants_mem, ONLY: STRLEN_MEDIUM
+    USE messy_main_tools,         ONLY: strcrack, str2num
+    USE messy_main_control,       ONLY: MEP_ENTRY_MAX, entry_name &
+                                      , MEPS_BEGIN, MEPS_END
+
+
+    IMPLICIT NONE
+
+! I/O
+    INTEGER,          INTENT(OUT) :: status
+    CHARACTER(LEN=*), INTENT(IN)  :: string
+    INTEGER,          INTENT(OUT) :: isubroutine
+    INTEGER,          INTENT(OUT) :: ibegend
+    INTEGER,          INTENT(OUT) :: iorder
+
+! LOCAL
+    CHARACTER(LEN=STRLEN_MEDIUM), POINTER  :: strchunk(:)  => NULL()
+    INTEGER                                :: chunknum
+    INTEGER                                :: ix
+
+! INITIALIZE
+    status = -1
+    ibegend = MEPS_END ! set default
+    iorder  = -99
+
+! CRACK STRING
+    CALL strcrack(string,':',strchunk,chunknum)
+    IF (chunknum < 1 .OR. chunknum > 3) THEN
+       status = 100  ! location string must contain 1-3 colon seperated entries
+       RETURN
+    END IF
+
+! Find subroutine name and index
+    DO ix=1,MEP_ENTRY_MAX
+       IF (TRIM(ADJUSTL(strchunk(1))) == TRIM(entry_name(ix))) THEN
+          isubroutine = ix
+          EXIT
+       END IF
+    END DO
+    IF (ix > MEP_ENTRY_MAX) THEN
+       status = 101 ! parse_location: subroutine names do not much
+       RETURN
+    END IF
+
+    IF (chunknum < 2) RETURN
+
+! couple at subroutine start or end
+    IF (TRIM(ADJUSTL(strchunk(2))) == 'B') THEN
+       ibegend = MEPS_BEGIN
+    ELSE IF (TRIM(ADJUSTL(strchunk(2))) == 'E') THEN
+       ibegend = MEPS_END
+    ELSE
+       status = 102 ! parse_location: second chunk must equal B or E
+       RETURN
+    END IF
+
+    IF (chunknum < 3) RETURN
+! fix sequence
+    CALL str2num(strchunk(3),iorder)
+
+    DEALLOCATE(strchunk); NULLIFY(strchunk)
+    chunknum = 0
+
+  END SUBROUTINE parse_location
+
+! ====================================================================
+END MODULE messy_oasis3mct_si
+! **********************************************************************

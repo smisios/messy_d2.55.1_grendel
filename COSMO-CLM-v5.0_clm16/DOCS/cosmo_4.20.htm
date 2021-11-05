@@ -1,0 +1,512 @@
+<!DOCTYPE html 
+     PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+     "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xml:lang="en" lang="en">
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="GENERATOR" content="Mozilla/4.7C-SGI [en] (X11; I; IRIX64 6.5 IP27) [Netscape]">
+   <title>Changes in the COSMO-Model 4.20</title>
+<style type="text/css">
+  body { font-family:       Arial;
+         font-size:         12pt;
+         background-repeat: no-repeat; 
+         margin:            1em; }
+
+  tt   { font-size:         12pt;}
+
+  li   { margin-top:         5pt;
+         margin-bottom:      5pt }
+
+  th   { border:           1px solid black;
+         padding:          3pt;
+         vertical-align:   top;
+         background-color: lightblue;}
+
+  td   { border:           1px solid black;
+         padding:          3pt;
+         vertical-align:   top;}
+
+  td.middl   { border:           1px solid black;
+               padding:          3pt;
+               vertical-align:   middle;}
+
+  td.hilit       { border:           1px solid black;
+                   padding:          1pt;
+                   vertical-align:   top;
+                   background-color: lightblue;}
+
+  td.clean       { padding:          0pt;
+                   border-style:     none;
+                   vertical-align:   top;}
+
+  td.notes       { padding:          3pt;
+                   border-style:     none;
+                   vertical-align:   top;}
+
+  td.nomid       { padding:          3pt;
+                   border-style:     none;
+                   vertical-align:   middle;}
+
+  table.note     { border-width:     0pt;
+                   border-style:     none;
+                   margin-left:      5pt;
+                   margin-top:       1pt;
+                   margin-bottom:    1pt;
+                   cell-padding:     5pt;
+                   vertical-align:   top;
+                   text-align:       left;}
+  
+  table.atte     { border-width:     0pt;
+                   border-style:     none;
+                   margin-left:      5pt;
+                   margin-top:       1pt;
+                   margin-bottom:    1pt;
+                   cell-padding:     5pt;
+                   vertical-align:   top;
+                   text-align:       left;
+                   background-color: red;}
+  
+  table.namelist { border-width:  2pt;
+                   border-style:  groove;
+                   border-color:  black;
+                   width:         90%;
+                   text-align:    left;
+                   margin-top:    1pt;
+                   margin-bottom: 1pt;
+                   padding:       3pt;
+                   align:         center;}
+  
+  tr.headings    { text-align:       left;
+                   vertical-align:   top;
+                   border-width:     1pt;
+                   border-style:     groove;
+                   border-color:     grey;
+                   padding:          2pt;
+                   font-weight:      bold;}
+
+</style>
+
+</head>
+  <body text="#000000" bgcolor="#FFFFFF" link="#0000EE" vlink="#551A8B" alink="#FF0000">
+
+<center>
+<h1>
+<a NAME="begin">Documentation of the Changes in the COSMO-Model <br /> Version 4.20</a>
+</h1>
+<h3>
+31.08.2011
+</h3>
+</center>
+
+<p>
+This version summarizes some "small" bug fixes and changes, but most of them also do 
+change the results.</p>
+
+<h4><a NAME="content">Contents:</a></h4>
+
+<ol>
+<li><a href="#cosicon">Technical changes regarding unified COSMO-ICON physics</a></li>
+<li><a href="#chandfi">Digital Filter Initialization</a></li>
+<li><a href="#chandyn">Changes in the dynamics</a></li>
+<li><a href="#chanphy">Changes in the physics</a></li>
+<li><a href="#chanide">Idealized Test Cases</a></li>
+<li><a href="#oasisin">Interfaces for coupling with OASIS</a></li>
+<li><a href="#bugfixe">Bug Fixes</a></li>
+<li><a href="#technic">Some technical modifications</a></li>
+<li><a href="#results">Changes of Results</a></li>
+</ol>
+<p>
+<hr>
+
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="cosicon">1. Technical changes regarding unified COSMO-ICON physics</a></h3>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+
+<p>
+The organizational structure of calling the different schemes within the
+turbulence has been modified with regard to the future changes for the
+unified COSMO-ICON physics.
+</p>
+
+<p>
+The most important changes are:
+
+<ul>
+ <li>Introduced new utility module:  <tt>turbulence_utilities.f90</tt><br />
+     contains subroutines: <tt>canopy_source</tt>, <tt>diag_level</tt>, <tt>init_volume_canopy</tt>,
+                         <tt>init_surface_canopy</tt>, <tt>stab_funct</tt>, <tt>turb_param</tt></li>
+
+ <li>Introduced new interface module <tt>turbulence_interface.f90</tt><br />
+   contains subroutine <tt>organize_turbulence</tt>.
+   This subroutine is called from <tt>organize_physics</tt> and contains the part
+   <tt>IF (ltur)</tt> from there. In addition it does some presettings for TKE
+   time stepping.</li>
+ 
+ <li>Introduced new module      <tt>turbulence_tran.f90</tt><br />
+   contains the subroutine <tt>turbtran</tt>.
+   This is the former include file <tt>turbtran.incf</tt>, now as an extra module.
+   The subroutine is called with a bigger argument list, where all 
+   fields and some control variables are passed (as is required by the
+   COSMO-ICON physics).</li>
+ 
+ <li>Introduced new module      <tt>turbulence_diff.f90</tt><br />
+   contains the subroutine <tt>turbdiff</tt>.
+   This is the former include file <tt>turbdiff.incf</tt>, now as an extra module.
+   The subroutine is called with a bigger argument list, where all 
+   fields and some control variables are passed (as is required by the
+   COSMO-ICON physics).</li>
+ 
+ <li>Moved some global data definitions to module <tt>data_turbulence.f90</tt>.</li>
+ 
+ <li><tt>organize_physics.f90</tt>:<br />
+  <ul>
+   <li>Introduced call to new subroutine <tt>organize_turbulence</tt> which organizes the
+     calls to the packages for turbulence parameterization.</li>
+   <li>Re-organized 'init'-phase for the turbulence (now calls init_volume_canopy
+     and init_surface_canopy.</li>
+  </ul>
+ 
+ <li>The former module <tt>src_turbdiff.f90</tt> now is obsolete.</li>
+</ul>
+</p>
+
+<p align="right"><a href="#content">Back to Contents</a>
+
+<hr>
+
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="chandfi">2. Digital Filter Initialization</a></h3>
+  <h4>(by Uli Sch&auml;ttler)</h4>
+
+<!---------------------------------------------------------------------------->
+
+<p>
+The backward-forward filtering (ndfi=2) has been disabled for the 
+Runge-Kutta scheme. Because of the nature of this scheme, an adiabatic
+backward integration is not possible.
+</p>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+
+<p align="right"><a href="#content">Back to Contents</a>
+
+<hr>
+
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="chandyn">3. Changes in the dynamics</a></h3>
+
+<!---------------------------------------------------------------------------->
+
+<p>
+<ul>
+  <li>Runge-Kutta substeps:<br />
+      The sub-stepping in the Runge-Kutta scheme has been modified, so that
+      an additional small step is done in the third Runge-Kutta step.
+      Now, always the 2/3/6 or 4/6/12 ... small steps are done for the Runge-Kutta
+      steps. This is slightly more stable but will also increase the run time
+      a bit.<br />
+      The modification has been implemented with an internal switch in the
+      subroutine <tt>calc_small_timestep</tt>: <tt>icalc_version</tt>
+    <ul>
+       <li><tt>icalc_version = 0</tt>: use new method (this is now the default)</li>
+       <li><tt>icalc_version = 1</tt>: do the same as before</li>
+    </ul></li>
+ 
+  <li><tt>src_slow_tendencies_rk.f90</tt>, <tt>slow_tendencies.f90</tt>:<br />
+   Limit the horizontal velocity to a maximal value of <tt>vel_min=0.01</tt>,
+   to prevent 0 heat/moisture fluxes at 0 windspeed.</li>
+</ul>
+</p>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+
+<p align="right"><a href="#content">Back to Contents</a>
+
+<hr>
+
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="chanphy">4. Changes in the physics</a></h3>
+
+<!---------------------------------------------------------------------------->
+
+<p>
+<ul>
+ <li>Radiation: (by J&uuml;rgen Helmert)<br />
+     Bug fix in sub grid scale cloudiness.
+   </li>
+ <li>Microphysics: (by Axel Seifert, Thorsten Reinhardt)<br />
+  Correction of size distribution for rain droplets (in hydci_pp, hydci_pp_gr).
+  Generalization of implementation for arbitrary mu_rain.
+  (by Axel Seifert)<br />
+  Bugfix in density correction of fall speeds (by Thorsten Reinhardt).
+  Added missing factor zrho1o2 for consideration of density in the sedimentation
+      of rain and snow (in hydci_pp).
+   </li>
+ <li>Turbulence: (by Matthias Raschendorfer)<br />
+  Additional 3D arrays for additional TKE sources by the action of other
+  sub grid scale flow patterns have been introduced:
+  <ul>
+    <li><tt>tket_conv</tt>:  TKE-tendency due to convective buoyancy</li>
+    <li><tt>tket_hshr</tt>:  TKE-tendency due to (seperated) horizontal shear</li>
+    <li><tt>tket_sso</tt>:   TKE-tendency due to SSO wake production</li>
+  </ul>
+  These fields are allocated in the long term storage (by <tt>src_allocation.f90</tt>)
+  To consider the convective buoyancy production for TKE, a new namelist switch
+  has been introduced in <tt>/PHYCTL/</tt> (similar to <tt>ltkesso</tt>):
+
+   <center>
+   <table border="1" cellspacing="3" class="namelist">
+    <tbody>
+      <tr>
+        <th>Group</th>
+        <th>Name</th>
+        <th>Meaning</th>
+        <th align="center", width="5%">Default</th>
+      </tr>
+      <tr>
+        <td class="hilit" rowspan="1"><tt>/PHYCTL/</tt></td>
+        <td><tt>ltkecon</tt></td>
+        <td class="middl" rowspan="1">to consider the convective buoyancy production for TKE</td>
+        <td class="middl" align="center" rowspan="1"><tt>.FALSE.</tt></td>
+      </tr>
+    </tbody>
+   </table>
+   </center>
+   The reference pressure <tt>p0ref</tt>, which is used in the Exner function, has
+   been declared in <tt>data_constants.f90</tt>.
+   </li>
+ <li>Convection: (by Matthias Raschendorfer)<br />
+   <ul>
+      <li><tt>src_conv_shallow</tt>:
+          Introducing calculation of convective buoyant TKE production <tt>tket_conv</tt></li>
+      <li><tt>src_conv_tiedtke:</tt>
+          Using tke-field only, if 'lctke=T'.<br />
+          Introducing calculation of convective buoyant TKE production <tt>tket_conv</tt></li>
+    </ul>
+   </li>
+ <li>Soil Model: (by J&uuml;rgen Helmert)<br />
+  Removed the dependency on diagnostic quantity <tt>t_2m</tt> by replacing it with the
+  lowest atmospheric temperature level (as is in GME)
+   </li>
+</ul>
+</p>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+
+<p align="right"><a href="#content">Back to Contents</a>
+
+<hr>
+
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="chanide">5. Idealized Test Cases</a></h3>
+   <h4>(by Uli Blahak)</h4>
+
+<!---------------------------------------------------------------------------->
+
+<ul>
+  <li>Additional bug fixes and modifications</li>
+  <li>Possibility to specify theta instead of t in radiosondes files</li>
+  <li>Improved error messages for Namelist-errors by using IOMSG-mechanism
+   (can be used by defining <tt>#define</tt> HAS_IOMSG, if the compiler supports it.</li>
+</ul>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+
+<p align="right"><a href="#content">Back to Contents</a>
+
+<hr>
+
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="oasisin">6. Interfaces for coupling with OASIS</a></h3>
+  <h4>(by Edouard Davin, Eric Maisonnave, Andy Dobler, et al.)</h4>
+
+<!---------------------------------------------------------------------------->
+
+<p>
+An interface to the OASIS coupler has been implemented into the COSMO-Model.
+In the CLM community there have been already activities to couple the
+Community Land Model (CLM) and an ocean model to the COSMO-Model using such
+an interface.
+</p>
+
+<p>
+The interface is implemented using conditional compilation with -DCOUP_OAS.
+Sources from applications that should be coupled with the COSMO-Model or the
+coupler itself are NOT part of the COSMO-Model package. Such sources have to
+be obtained elsewhere. The COSMO-Model only provides the interfaces.
+</p>
+
+<p>
+Necessary changes in the COSMO-Model:
+
+<ul>
+ <li><tt>lmorg.f90</tt>
+     Call to OASIS routines for initialization (at the beginning) and for
+     update (during the timeloop).
+   </li>
+ <li><tt>src_setup.f90</tt>
+     Added <tt>icomm_world</tt> to the argument list of subroutine <tt>init_procgrid</tt>
+     (up to now this routine started with <tt>MPI_COMM_WORLD</tt>)
+   </li>
+ <li><tt>environment.f90</tt>
+     Changed definition of <tt>icomm_world</tt>: in case of coupling, this communicator
+     is defined by OASIS; only in case of un-coupled runs, it is <tt>MPI_COMM_WORLD</tt>.
+     Therefore some uses of <tt>MPI_COMM_WORLD</tt> have to be replaced by <tt>icomm_world</tt>.
+   </li>
+</ul>
+</p>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+
+<p align="right"><a href="#content">Back to Contents</a>
+
+<hr>
+
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="bugfixe">7. Bug Fixes</a></h3>
+
+<!---------------------------------------------------------------------------->
+
+<p>
+<ul>
+ <li>Usage of <tt>tgrlat</tt>: (reported by Andreas Will and Jack Ogaja)<br />
+   <tt>tgrlat</tt> (tangens of transformed latitude) has been computed only on
+   u-latitudes (same latitudes as mass grid points). But it has also to be considered
+   on v-latitudes, which are different from the u-latitudes because of the staggering.<br />
+   Modified modules:  <tt>data_fields.f90</tt>, <tt>numeric_utilities.f90</tt>, <tt>src_2timelevel.f90</tt>,
+                      <tt>src_allocation.f90</tt>, <tt>src_advection_rk.f90</tt>, <tt>src_setup.f90</tt>
+    </li>
+ <li><tt>src_runge_kutta.f90</tt> (reported by Oli Fuhrer)<br />
+   The variable <tt>govcp</tt> was initialized only for <tt>itheta_adv >= 1</tt>, but was used in
+   some idealized tests also for other cases. Therefore initialize this (and some
+   other variables) in any case.
+    </li>
+ <li><tt>src_radiation.f90</tt>: (reported by Thorsten Reinhardt)<br />
+   In Section 6:  Heating rates and radiation budget at surface:
+   Variables <tt>dp0</tt> and <tt>zsmu0</tt> must not be referenced with <tt>js</tt>, 
+   but with loop variable <tt>jz1</tt>
+    </li>
+ <li><tt>organize_satellites.f90</tt>: (reported by Oli Fuhrer)<br />
+   The variable <tt>nsat_steps</tt> had only been allocated, if output of synthetic satellite
+   images was switched on. But in the init- and compute-phase of organize_satellites
+   it was accessed in all cases. Therefore allocate this variable also in all cases.
+    </li>
+ <li><tt>src_lheat_nudge.f90</tt>: (by Klaus Stephan)<br />
+   Bug correction: To consider both, blacklist flag and bright band flag for
+   calculation of pr_obs and the weight, it should be an <tt>.AND.</tt> instead of <tt>.OR.</tt>
+   (around line number 2135).
+    </li>
+</ul>
+</p>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+
+<p align="right"><a href="#content">Back to Contents</a>
+
+<hr>
+
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="technic">8. Some technical modifications</a></h3>
+
+<!---------------------------------------------------------------------------->
+
+<p>
+<ul>
+  <li><tt>mpe_io.f90, dummy_mpi.f90</tt><br />
+    Modifications and extensions because of some compiler problems.
+    </li>
+  <li><tt>meteo_utilities.f90</tt><br />
+    Replaced arguments <tt>p0</tt>, <tt>pp</tt> of subroutine 
+    <tt>cloud_diag</tt> with full pressure <tt>p_tot</tt>.
+    </li>
+  <li><tt>organize_data.f90, src_output.f90</tt><br />
+   Replaced variable name <tt>namelist</tt> (which is a Fortran Keyword) by 
+   <tt>outblock</tt>.
+    </li>
+  <li><tt>src_allocation.f90</tt><br />
+   Introduction of additional 3D-arrays <tt>tket_(conv, sso, hshr)</tt> for additional
+    TKE source by the action of other sub grid scale flow patterns.<br />
+   Removed <tt>yaction=canopy</tt> fully and move allocation of canopy fields to 
+    <tt>init</tt> phase of <tt>organize_physics</tt>.
+    </li>
+  <li><tt>src_radiation.f90</tt><br />
+    Replaced arguments <tt>p0</tt>, <tt>pp</tt> of subroutine 
+    <tt>cloud_diag</tt> with full pressure <tt>p_tot</tt>.
+    </li>
+  <li><tt>src_setup.f90</tt><br />
+     Introduction of <tt>ifndef</tt> for SCLM.
+     Introduction of <tt>p0ref</tt> and presetting of <tt>kcm</tt>
+    </li>
+  <li><tt>src_setup_vartab.f90</tt><br />
+     Added instantaneous values of <tt>swdir_s, swdifd_s, swdifu_s, lwd_s, lwu_s</tt>
+    </li>
+  <li><tt>src_soil.f90</tt><br />
+     Warning if SCLM mode is used with surface flux forcing (with ifdef)
+    </li>
+  <li><tt>src_turbulence.f90</tt><br />
+     Eliminated unnecessary MAX-construct for index computations
+    </li>
+</ul>
+</p>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+
+<p align="right"><a href="#content">Back to Contents</a>
+
+<hr>
+
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="results">9. Changes of Results</a></h3>
+
+<p>
+Most of the above modifications do change the results slightly.
+But no significant changes are expected.
+</p>
+
+<p>
+The run times of the very high resolution runs (2-3 km) are increasing
+by about 2-4 percent. This is mainly (but not only) due to the additional
+small time step in the 3rd Runge-Kutta step.
+</p>
+
+<p align="right"><a href="#content">Back to Contents</a>
+
+</body>
+</html>

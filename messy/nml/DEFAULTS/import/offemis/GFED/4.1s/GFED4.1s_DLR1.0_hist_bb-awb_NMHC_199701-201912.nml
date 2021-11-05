@@ -1,0 +1,63 @@
+! -*- f90 -*-
+
+! ######################################################################
+! UNIT CONVERSION
+! Species units in the NetCDF file are [molecules m-2 s-1]
+! For NMHC the molar mass is, according to GFED 4.1s, listed as
+!   MW_nmhc = 15 g/mol.
+! In oder to convert the fluxes back to [kg m-2 s-1] we need to multiply
+! with  MW_nmhc/(1000*Navo) ... 
+! 
+! Convert [kg m-2 s-1] to [molec m-2 s-1]: multiply by 1000*Navo/MW
+!
+! ######################################################################
+! NMHC SPECIATION
+! The original speciation factors were based on the flux of
+! NMHC in [kg(NMHC) m-2 s-1]. This needs to be converted to kg(C) by   
+! the "usual" factor 161/210.  
+!
+! Therefore, to get the flux of a species X in [molec m-2 s-1], do:
+!
+!   flux(X) = TOTAL(NMHC) * 161/210 * FRAC * 1000 * Navo / (MW(C) * #C)
+!
+! where FRAC is the C mass fraction provided by the given species.
+!
+! Since here the flux is provided already in [molecules m-2 s-1],
+! we need to apply another factor of  MW_nmhc/(1000*Navo), see above.,
+! thus
+!  
+!   flux(X) = TOTAL(NMHC) * 161/210 * FRAC * MW_nmhc / (MW(C) * #C)
+!
+! ----------------------------------------------------------------------
+! | SPECIES  | 161/210 * FRAC   | #C | CONVERSION FACTOR                 |
+! |          | [g(C) g-1(NMHC)] |    | 161/210*FRAC*1000*Navo/(MW(C)*#C) |
+! |          |                  |    | [molec kg-1(NMHC)]                |
+! ---------------------------------------------------------------------- |
+! |          |                  |    |             | *MW_nmhc/(1000*Navo)|
+! ----------------------------------------------------------------------
+! | C2H4     |          0.14600 |  2 | 3.66011e+24 |    0.09117
+! | C2H6     |          0.07770 |  2 | 1.94788e+24 |    0.04852
+! | C3H6     |          0.06510 |  3 | 1.08801e+24 |    0.02710
+! | C3H8     |          0.02470 |  3 | 4.12808e+23 |    0.01028
+! | NC4H10   |          0.03200 |  4 | 4.01108e+23 |    0.00999
+! | CH3CHO   |          0.03710 |  2 | 9.30070e+23 |    0.02317
+! | CH3COCH3 |          0.03840 |  3 | 6.41774e+23 |    0.01599
+! | CH3CO2H  |          0.08710 |  2 | 2.18353e+24 |    0.05439
+! | CH3OH    |          0.08240 |  1 | 4.13142e+24 |    0.10291
+! | HCHO     |          0.04670 |  1 | 2.34147e+24 |    0.05832
+! | HCOOH    |          0.03100 |  1 | 1.55430e+24 |    0.03871
+! | MEK      |          0.09830 |  4 | 1.23216e+24 |    0.03069
+! ----------------------------------------------------------------------
+! |      SUM = 0.76650 = 161/210 (= 0.766667)                            |
+! ----------------------------------------------------------------------
+! ######################################################################
+
+&regrid
+infile    = "$INPUTDIR_MESSY/offemis/GFED/4.1s/GFED4.1s_DLR1.0_hist_bb-awb_MISC_199701-201912.xc"
+i_latm    = 'lat',
+i_latr    = -90.0,90.0,
+i_lonm    = 'lon',
+i_lonr    = -180.0,180.0,
+i_timem   = 'time',
+var       = 'C2H4=NMHC_flux,0.09117|units=molecules m-2 s-1|longname=emission flux of C2H4;C2H6=NMHC_flux,0.04852|units=molecules m-2 s-1|longname=emission flux of C2H6;C3H6=NMHC_flux,0.02710|units=molecules m-2 s-1|longname=emission flux of C3H6;C3H8=NMHC_flux,0.01028|units=molecules m-2 s-1|longname=emission flux of C3H8;NC4H10=NMHC_flux,0.00999|units=molecules m-2 s-1|longname=emission flux of NC4H10;CH3CHO=NMHC_flux,0.02317|units=molecules m-2 s-1|longname=emission flux of CH3CHO;CH3COCH3=NMHC_flux,0.01599|units=molecules m-2 s-1|longname=emission flux of CH3COCH3;CH3CO2H =NMHC_flux,0.05439|units=molecules m-2 s-1|longname=emission flux of CH3CO2H;CH3OH=NMHC_flux,0.10291|units=molecules m-2 s-1|longname=emission flux of CH3OH;HCHO=NMHC_flux,0.05832|units=molecules m-2 s-1|longname=emission flux of HCHO;HCOOH=NMHC_flux,0.03871|units=molecules m-2 s-1|longname=emission flux of HCOOH;MEK=NMHC_flux,0.03069|units=molecules m-2 s-1|longname=emission flux of MEK;'
+/

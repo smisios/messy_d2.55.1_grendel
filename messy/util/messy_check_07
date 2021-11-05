@@ -1,0 +1,68 @@
+#! /bin/tcsh -f
+
+### CHECK f90 FILES FOR MESSy-CONFORMITY:
+### 07: STOP statements MUST NOT BE USED
+###
+### Author: Patrick Jöckel, MPICH, Mainz, Germany, Oct 2004
+
+if ($# != 2) then
+   echo "USAGE: `basename $0` <BASEMODEL> <f90-file>"
+   exit 1
+endif
+
+set BASEMODEL = $1
+set file = $2
+set checkid = 07
+
+### BASEMODEL SETTINGS
+if ( -r messy/$BASEMODEL/messy_setup != 0 ) then
+   source messy/$BASEMODEL/messy_setup
+else
+   echo "ERROR: MESSY SETUP messy/$BASEMODEL/messy_setup IS UNREADABLE\!"
+   exit 1
+endif
+
+# SET SUBMODEL
+set smodel = `echo $file | awk -F '_' '{print tolower($2)}' | sed 's|\.f90||g'`
+
+# LIST OF LINES CONTAINIG STOP - statements
+#set q_stop = `grep -iE '^[^\\!]*[^A-z0-9_]stop[^A-z0-9_]' $file | sed 's|[ ?*]|_|g'`
+#set q_stop = `grep -iE '^[^\\!]* stop' $file | sed 's|[ ?*]|_|g'`
+set q_stop = `grep -iE '^[^\\!'\'']*\<stop\>' $file | sed 's|[ ?*]|_|g'`
+
+# NUMBER OF STOP STATEMENTS
+set n = ${#q_stop}
+
+#######################################
+set wrong = ($q_stop)
+#######################################
+
+#######################################
+switch ($smodel)
+   ### EXCLUDE INFRASTRUCTURE
+   case "ncregrid":
+        breaksw
+   ### EXCLUDE AUTOMATICALLY GENERATED CODE
+   case "scav"
+        if (`basename $file` == "messy_scav_kpp.f90") then
+           if (${#wrong} == 1) exit 0
+        endif
+   case "mecca1"
+        if (`basename $file` == "messy_mecca1_kpp.f90") then
+           if (${#wrong} == 1) exit 0
+        endif
+   default:
+        if (${#wrong} > 0) then
+            echo '-----------------------------------------------------'
+            echo 'SUBMODEL: '$smodel
+	    echo 'CHECK-ID: '$checkid
+            echo 'FILE    : '$file
+            echo ${#wrong}' NON-MESSy-CONFORM STOP-STATEMENT(S) FOUND: '
+            echo ${wrong} | tr ' ' '\n'
+            echo '-----------------------------------------------------'
+        endif
+        breaksw
+endsw
+#######################################
+
+exit 0

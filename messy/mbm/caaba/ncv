@@ -1,0 +1,131 @@
+#! /bin/tcsh -f
+# Time-stamp: <2019-01-03 17:46:37 sander>
+# create a self-consistent zip file of a new caaba version
+
+set dontedit = "created automatically by ncv, DO NOT EDIT\!"
+set current_version = `grep -i "modver *=" messy_mecca.f90 | sed "s/.*'\(.*\)'.*/\1/g"`
+
+if ( "$1" == "" ) then
+  echo ""
+  echo "Info (before making a new version):"
+  set version = `date +'%Y%m%d_%H%M%S'`
+  echo "- Add all changes and current date to CHANGELOG,"
+  echo "  update version number (modver = '$current_version'):"
+  echo
+  echo "  e CHANGELOG messy_mecca.f90"
+  echo
+  echo "- Enter standard settings:"
+  echo "  - Makefile:         COMPILER = g95"
+  echo "                      F90FLAGS = with checks"
+  echo "  - pycaaba/mecca.py: activate modelruns.append 'latest run' (no other plots)"
+  echo
+  echo "- Run model and plot results with:"
+  echo "  ./xcaaba.py mbl"
+  echo
+  echo "Usage:"
+  echo "  ncv nn"
+  echo "  (nn = version number)"
+  echo "Examples:"
+  echo "  snapshot with current date:        ncv $version"
+  echo "  proper version number, e.g.:       ncv $current_version"
+  echo ""
+  exit
+else
+  set version = $1
+endif
+
+# if (! -e mecca/smcl/messy_mecca_kpp_parameters.f90) then
+#   echo;echo "Please run xmecca with KPP (not KP4) before executing ncv\!"
+#   exit 1
+# endif
+
+if (! -e sfmakedepend) then
+  echo;echo "The perl script sfmakedepend does not exist. Please run"
+  echo "configure to create it from sfmakedepend.pl.in:"
+  echo "  ( cd ../../.. ; ./configure ; cd - )" ; echo
+  exit 1
+endif
+
+##############################################################################
+
+# check for changed internal links and update _internal_links.tcsh:
+_update_internal_links.tcsh
+if ( $status != '0' ) exit 1
+
+##############################################################################
+
+set basedir = `basename $PWD`
+set dirname = ${basedir}_$version
+set oridir  = $HOME/messy/mecca/ori
+
+if ( -d $oridir) then
+  set zipfile = $oridir/$dirname.zip
+else
+  cd ..
+  set zipfile = $PWD/$dirname.zip
+  cd -
+endif
+
+if ( -e $zipfile) then
+  echo;echo "Error, the zip file exists already:"
+  ls -la $zipfile
+  echo "Please choose another version number\!"
+  exit 1
+endif
+
+set infofile = "manual/mecca_info.tex"
+echo "% $dontedit"                            > $infofile
+echo "\\def\\meccaversion{$current_version}" >> $infofile
+
+echo "Update meccanism.pdf and caaba_mecca_manual.pdf? [y/n/q, default=y]"
+set inputstring = $<
+if ( $inputstring == 'q' ) exit
+if ( $inputstring != 'n' ) then
+  # select full mechanism:
+  cd mecca
+  xmecca latex
+  cd -
+  # run pdflatex:
+  cd mecca/latex
+  ./xmeccanism
+  cd -
+  # move meccanism.pdf to manual/ directory, otherwise it would be
+  # deleted by "xmecca simple":
+  mv mecca/latex/meccanism.pdf manual/meccanism.pdf
+  # user manual:
+  cd manual
+  gmake
+  cd -
+endif
+
+# select simple mechanism:
+cd mecca
+xmecca simple
+cd -
+ln -fs nml/caaba_simple.nml caaba.nml
+
+echo "\nCreating zip file"
+echo "$zipfile"
+echo "Continue? [y/n/q, default=y]"
+set inputstring = $<
+if ( $inputstring == 'q' ) exit
+if ( $inputstring == 'n' ) exit
+
+# temporarily rename the caaba directory to include the version:
+cd .. ; mv $basedir $dirname ; cd $dirname
+
+# create zip file:
+_zipcaaba.tcsh zip
+
+# rename the caaba directory back to its original name:
+cd .. ; mv $dirname $basedir ; cd $basedir
+
+# move zip file to final directory:
+mv $dirname.zip $zipfile
+
+echo;echo "The zipfile has been created:"
+ls -la $zipfile
+
+exit
+
+##############################################################################

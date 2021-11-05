@@ -1,0 +1,207 @@
+#! /bin/tcsh -f
+
+### USE FORCHECK FOR DEBUGGING BASEMODEL/MESSy SOURCE CODE
+### AUTHORS:
+###   Patrick Joeckel, MPICH, Mainz, May 2003-2006, 2009
+###   Rolf Sander, MPICH, Mainz, Jan 2006 (creation of summary file)
+###   Patrick Joeckel, DLR, Oberpfaffenhofen, 2015
+
+set MINVERS = "14.6.07"
+
+### INITIALIZE REQUIRED SOFTWARE
+# NOTE: ALL COMMAND LINE PARAMETERS MUST HAVE BEEN shiftED AWAY,
+#       SINCE OTHERWISE THE FOLLOWING SOURCE COMMAND WILL FAIL !
+echo 'INITIALIZING FORCHECK ..........................................'
+set FCWHERE=(`where forchk`)
+if ( ${#FCWHERE} == 0) then
+   echo 'ERROR: forchk not found!'
+   exit 1
+else 
+  set FCEXE=$FCWHERE[1]
+  echo '  ->  '$FCEXE
+endif
+#setenv FCKCNF $FCKDIR/f95.cnf
+#setenv FCKCNF $FCKDIR/share/forcheck/f95.cnf
+#  op_pj_20150805+
+set VERSION = `forchk -batch | head -n 1 | awk '{print $NF}' | sed 's|V||g'`
+set OK = `echo "$VERSION" "$MINVERS" | gawk '{print ($1 < $2) ? "false" : "true" }'`
+echo 'You have version '$VERSION' of forcheck.'
+if ("$OK" == "false") then
+   echo 'You need at least version '$MINVERS' of forcheck!'
+   echo '.......................................................... done\!'
+   exit 1
+endif
+#  op_pj_20150805-
+echo '.......................................................... done\!'
+
+### PARSE COMMAND LINE
+echo 'COMMAND LINE PARAMETERS ........................................'
+# BASEMODEL
+set BASEMODEL=$1
+shift
+echo 'basemodel                  : '$BASEMODEL
+
+# PREPROCESSOR DIRECTIVES
+set F90DEFS=`echo $1 | sed 's|[ +]|,|g'`
+shift
+echo 'preprocessor definitions   : '$F90DEFS
+
+# SOURCE DIRECTORIES
+set F90DIRS= ( $1 )
+shift
+echo 'f90 source code directories: '$F90DIRS
+
+### BASEMODEL INCLUDE PATHS
+set BMINC= ( `echo $1 | sed 's|-I||g' | sed 's|../../libsrc|../libsrc|g'` )
+shift
+if (${#BMINC} > 0) then 
+   set BMINCSTR = $BMINC[1]
+   @ n=2
+   while ($n <= ${#BMINC})
+      set BMINCSTR = ${BMINCSTR}:${BMINC[$n]}
+   @ n++
+   end
+else
+   set BMINCSTR = ''
+endif
+echo 'Basemodel include paths    : '$BMINCSTR
+
+### MPI-2 INCLUDE PATHS
+set F90=`echo $1 | awk '{print $1}'`
+shift
+echo 'f90 compiler               : '$F90
+set MPISETUP=`$F90 -show`
+if ($status == 0) then
+   set MPIINC=(`echo $MPISETUP | tr ' ' '\n' | grep "\-I" | sed 's|-I||g'`)
+   if (${#MPIINC} > 0) then
+      set MPIINCSTR = $MPIINC[1]
+      @ n=2
+      while ($n <= ${#MPIINC})
+         set MPIINCSTR = ${MPIINCSTR}:${MPIINC[$n]}
+      @ n++
+      end
+   else
+      set MPIINCSTR = ''
+      if (-e a.out) then
+         rm -f a.out
+      endif
+   endif
+   echo 'MPI-2 include paths        : '$MPIINCSTR
+else
+   set MPIINCSTR = ''
+   echo ' ... no MPI-2 wrapper used, or -show option not recognised\!'
+endif
+
+# FORCHECK LIBRARIES
+set FCKLIBS=($1)
+shift
+echo 'forcheck library files     : '$FCKLIBS
+echo '.......................................................... done\!'
+set FCKLIBS="-lib `echo $FCKLIBS | sed 's|[ ]\+| -lib |g'`"
+
+### SYSTEM SETTINGS
+echo 'SYSTEM SPECIFIC SETTINGS .......................................'
+set SYSTEM=`uname -s`
+echo 'system                       : '$SYSTEM
+
+# INCLUDE DIRECTORIES
+set INCDIRS=.:./include:./modules:./src:../messy/$BASEMODEL/smil:../messy/bmil:../messy/$BASEMODEL/bmil:../messy/smcl:../messy/smil:${MPIINCSTR}:${BMINCSTR}
+echo 'forcheck include directories : '$INCDIRS
+echo '.......................................................... done\!'
+
+### SOURCE CODE SETTINGS ..............................................
+# SOURCE FILES 
+echo 'f90-SOURCE FILES ................................................'
+set F90SRCS= ()
+foreach dir (${F90DIRS})
+    echo ' ... in '$dir
+    set F90SRCS = ($F90SRCS `ls $dir/*.f90`) 
+end
+echo '.......................................................... done\!'
+
+### DELETING OLD .log-FILES
+echo 'DELETING OLD FORCHECK FILES ....................................'
+foreach dir (${F90DIRS})
+    echo ' ... in '$dir
+    rm -f $dir/*.$BASEMODEL.log
+end
+#
+echo ' ... delete summary output'
+rm -f fchk_logfile.log
+rm -f fchk_filelist.log
+rm -f fchk_report.log
+#rm -f forcheck.log
+#rm -f filelist.log
+echo '.......................................................... done\!'
+
+### RUN FORCHECK:
+## OUTPUT: tmp_forcheck.lst  (LISTING)
+## Note: define cpp-directives with '-define'
+echo 'RUNNING FORCHECK ...............................................'
+echo $FCEXE -log -cpp -define ${F90DEFS} -rigor -cond -f95 -obs -ff -decl -ext -intr -spec -ancmpl -anprg -anref -shcom -shinc -shprg -shref -shsrc -shsub -inf -plen 25 -pwid 132 -I ${INCDIRS} -l tmp_forcheck -rep fchk_report.log ${F90SRCS} ${FCKLIBS}
+
+#-cpp
+$FCEXE -log -cpp -define ${F90DEFS} -rigor -cond -f95 -obs -ff -decl -ext -intr -spec -ancmpl -anprg -anref -shcom -shinc -shprg -shref -shsrc -shsub -inf -plen 25 -pwid 132 -I ${INCDIRS} -l tmp_forcheck -rep fchk_report.log ${F90SRCS} ${FCKLIBS}
+
+echo '.......................................................... done\!'
+
+### SEPARATE FILE
+echo 'CREATING LOG-FILES .............................................'
+#
+#gawk -f ./messy/util/lst2log.gawk tmp_forcheck.lst
+gawk -v BASEMODEL=$BASEMODEL -f `dirname $0`/lst2log.gawk tmp_forcheck.lst
+#
+echo '.......................................................... done\!'
+
+### SUMMARY FILE (FILE SPECIFIC)
+echo 'FORCHECK SUMMARY ...............................................'
+set tmpfile = tmp_`date +"%y%m%d%H%M%S"`
+# if $TMP is defined, put temporary file there
+#if ($?TMP) set tmpfile = "$TMP/$tmpfile"
+set summaryfile = "fchk_summary.txt"
+echo "FORCHECK SUMMARY" >! $summaryfile
+
+set F90LOGS= ()
+foreach dir (${F90DIRS})
+    echo "creating summary of files in $dir"
+    set F90LOGS = ($F90LOGS `ls $dir/*.$BASEMODEL.log`) 
+end
+foreach forcheckfile (${F90LOGS})
+  set f90file = "`basename $forcheckfile .$BASEMODEL.log`.f90"
+  grep -E "\[[ 0-9]+ E\]" $forcheckfile | sort | uniq -c >! $tmpfile
+  grep -E "\[[ 0-9]+ W\]" $forcheckfile | sort | uniq -c >> $tmpfile
+  grep -E "\[[ 0-9]+ I\]" $forcheckfile | sort | uniq -c >> $tmpfile
+  if ( -s $tmpfile != 0 ) then
+    echo "  $f90file"
+    echo "$f90file (START)" >> $summaryfile
+    cat $tmpfile            >> $summaryfile
+    echo "$f90file (END)"   >> $summaryfile
+  endif
+  rm -f $tmpfile
+end
+
+echo '.......................................................... done\!'
+
+### CLEAN UP
+echo 'CLEANING UP ....................................................'
+rm -f tmp_forcheck.lst
+echo '.......................................................... done\!'
+
+### INFO
+set outputdir=`pwd`
+set outputdir=`basename $outputdir`
+echo " "
+echo "The forcheck output is now in these files:"
+echo "--> SUMMARY:         $outputdir/$summaryfile"
+echo "--> LIST OF FILES:   $outputdir/fchk_filelist.log"
+echo "--> LOGFILE:         $outputdir/fchk_logfile.log"
+echo "--> REPORT:          $outputdir/fchk_report.log"
+echo "--> SOURCE-LISTINGS: *.log in these directories:"
+foreach dir (${F90DIRS})
+  cd $dir
+  echo "    `pwd`"
+  cd -
+end
+echo " "
+
+exit 0

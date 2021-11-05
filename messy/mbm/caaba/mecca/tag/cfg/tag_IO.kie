@@ -1,0 +1,255 @@
+->>- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ {>CASE:REM}
+
+// ----------------------------------------------------------------------------
+// This file contains necessary consts and expressions to be included into
+// - equation file of the MECCA chemistry module tagged by imtag
+// to process kinetic isotope effects for oxygen isotopes
+//
+// [Gromov, MPICH, 2007-2008, 2020]
+// ----------------------------------------------------------------------------
+
+-<<- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ {<CASE:REM}
+->>- ++++++++++++++++++++++++++++++++++++++++++++++++++++ {>CASE:TAG}
+#INLINE F90_GLOBAL
+-<<- ++++++++++++++++++++++++++++++++++++++++++++++++++++ {<CASE:TAG}
+  ! ----- declaration part -----
+->>- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ {>REAC:G1001}
+  !
+  ! = G1001 ===== O2+O3P ozone formation ======================================
+  REAL(dp), PARAMETER :: e_G1001_p12_18O = 2.02e5_dp, &
+                          e_G1001_e0_18O = 128.1_dp, &       ! check 113.7
+                           e_G1001_b_18O = 0.9176_dp, &
+                          e_G1001_s1_18O = 3.7e-3_dp, &
+                          e_G1001_s2_18O = -0.105_dp
+  REAL(dp), PARAMETER :: e_G1001_p12_17O = 2.60e5_dp, &
+                          e_G1001_e0_17O = 109.4, &          ! check 98.6
+                           e_G1001_b_17O = 0.9244_dp, &
+                          e_G1001_s1_17O = 2.8e-3_dp, &
+                          e_G1001_s2_17O = -0.118_dp
+  REAL(dp), PARAMETER :: e_G1001_T0 = 300.0_dp
+  REAL(dp) :: e_G1001_18O, e_G1001_17O,   &        ! enrichments (permil)
+              r_G1001_k16_k18, r_G1001_k16_k17, &  ! rate modifiers
+              e_G1001_dc17O  ! expected cap-17O enrichment in O3 formed from O2
+-<<- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ {<REAC:G1001}
+->>- +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ {>REAC:IEXO05}
+  !
+  ! = IEXO05 =====  O(3P) <-> O2 isotope exchange =============================
+  REAL(dp) :: m_IEXO05_G1001_k8a66, &
+              r_IEXO05_k8a66_k6a68, &
+              r_IEXO05_k7a66_k6a67
+-<<- +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ {<REAC:IEXO05}
+->>- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ {>REAC:G4110}
+  !
+  ! = G4110 ===== CO+OH =======================================================
+  ! ----- p-only polynomial fit -----
+    REAL(dp) :: r_G4110_k16_k18_p2, r_G4110_k16_k17_p2, e_G4110_dc17O_p2
+  !
+  ! ----- 3-step parameterisation ( 2005.JPCRD34.Troe,etal ) -----
+    REAL(dp) :: r_G4110_k16_k18, r_G4110_k16_k17, e_G4110_dc17O
+    REAL(dp) :: k_G4110_k0, k_G4110_ki, k_G4110_atp, k_G4110_fc, k_G4110_fx, &
+                k_G4110_x, k_G4110_kab, k_G4110_kac, &
+                k_G4110_kr, k_G4110_k18, k_G4110_k17, &
+                a_G4110_k18a, a_G4110_k18b, a_G4110_k18c, &
+                a_G4110_k17a, a_G4110_k17b, a_G4110_k17c
+-<<- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ {<REAC:G4110}
+
+->>- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ {>REAC:Gxxxx}
+  ! = Gxxxx ===================================================================
+-<<- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ {<REAC:Gxxxx}
+->>- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ {>REAC:Gxxxx}
+  ! = Gxxxx ===================================================================
+-<<- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ {<REAC:Gxxxx}
+->>- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ {>REAC:Gxxxx}
+  ! = Gxxxx ===================================================================
+-<<- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ {<REAC:Gxxxx}
+
+->>- ++++++++++++++++++++++++++++++++++++++++++++++++++++ {>CASE:TAG}
+#ENDINLINE {above lines go into MODULE messy_mecca_kpp_Global}
+
+#INLINE F90_RCONST
+! USE messy_main_constants_mem ! atm2Pa, N_A, R_gas
+-<<- ++++++++++++++++++++++++++++++++++++++++++++++++++++ {<CASE:TAG}
+->>- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ {>CASE:TAG}
+  !
+-<<- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ {<CASE:TAG}
+  ! ----- calculation part -----
+  !
+->>- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ {>REAC:G1001}
+  ! = G1001 ===== O2+O3P ozone formation ======================================
+  !
+  ! temperature-pressure dependence 
+  ! combined/modified after 1999.CPL306.Guenther,etal, 2005.JGR110.Jannsen
+  !
+  ! fit expression:
+  ! e(p,T) = 1/(1 + p/p12) * e0 * (b + s1 * (T-T0) + s2 * (T0/T-1))
+  !
+  ! final enrichments (per mil!)
+    e_G1001_18O = 1.0_dp/(1.0_dp + press/e_G1001_p12_18O) * e_G1001_e0_18O * &
+                  (e_G1001_b_18O + e_G1001_s1_18O * (temp - e_G1001_T0) + &
+                   e_G1001_s2_18O * (e_G1001_T0/temp - 1.0_dp))
+    e_G1001_17O = 1.0_dp/(1.0_dp + press/e_G1001_p12_17O) * e_G1001_e0_17O * &
+                  (e_G1001_b_17O + e_G1001_s1_17O * (temp - e_G1001_T0) + &
+                   e_G1001_s2_17O * (e_G1001_T0/temp - 1.0_dp))
+  !
+  ! reaction rate modifiers
+    r_G1001_k16_k18 = 1.0_dp/( e_G1001_18O/1.0e3_dp + 1.0_dp )
+    r_G1001_k16_k17 = 1.0_dp/( e_G1001_17O/1.0e3_dp + 1.0_dp )
+  !
+  ! expected cap-17O enrichment when formed
+  !#e_G1001_dc17O = (1.0_dp / r_G1001_k16_k17 - 1.0) - &
+  !#                (1.0_dp / r_G1001_k16_k18 - 1.0) * 0.5281_dp
+  ! capital delta 17 enrichment in product (O3), beta = 0.5281
+    e_G1001_dc17O = r_G1001_k16_k18**0.5281_dp / r_G1001_k16_k17 - 1.0_dp
+#ifdef DISABLEMEFORDEBUG
+  print *,'----- G1001 KIE 18O 17O -----'
+  print *,'T: ',temp,' (K), press: ',press,' (Pa)'
+  print *,'    e_G1001_18O: ',e_G1001_18O,' (o/oo)'
+  print *,'    e_G1001_17O: ',e_G1001_17O,' (o/oo)'
+  print *,'          eps17: ',e_G1001_17O/e_G1001_18O
+  print *,'r_G1001_k16_k18: ',r_G1001_k16_k18
+  print *,'r_G1001_k16_k17: ',r_G1001_k16_k17
+  print *,'  e_G1001_dc17O: ',e_G1001_dc17O*1000.,' (o/oo)'
+#endif
+-<<- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ {<REAC:G1001}
+->>- +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ {>REAC:IEXO05}
+  !
+  ! = IEXO05 =====  O(3P) <-> O2 isotope exchange =============================
+  !
+  ! temperature-dependent
+  ! after [2003.Fleurat-Lessard,etal], [2005.Janssen]
+  ! see also [2005.Shaheen]
+  !
+  ! conversion from regular O + OO -> O3 formation rate
+  !                      to 18O(3P) + 16O2 initiated <-> exchange rate
+  m_IEXO05_G1001_k8a66 = 4.42e21 * ( 300._dp / temp )**(-1.58) * &                ! to 16O(3P) + 18O2
+                         1.27 * exp( 50._dp * ( 1._dp/temp + 1._dp/300._dp ) )    ! to 18O(3P) + 16O2
+  !
+  ! ratio of Q(3P) + OO   -> exchange rate
+  !       to Q(3P) + OQ -> exchange rate
+  !
+  ! measured for Q=18O - [2003.Fleurat-Lessard,etal]
+  r_IEXO05_k8a66_k6a68 = 1.9456_dp * exp( 31.782_dp / temp ) * &
+                         ( 1.0_dp - 9.3e-6_dp * temp + 1.97e-8_dp * (temp**2) ) &
+                         / 2.0_dp !# original KIE is given accounting for probability in IEX, thus dividing
+  !
+  ! assumed for Q=17O - [2005.Shaheen]
+  ! modified with /2.0_dp for IEX probability, linear
+  ! r_IEXO05_k7a66_k6a67 = ( ( r_IEXO05_k8a66_k6a68 - 1.0_dp ) * 0.52_dp + 1.0_dp )
+  ! same, but correct ln-power eqn. and beta = 0.5281
+    r_IEXO05_k7a66_k6a67 = ( r_IEXO05_k8a66_k6a68 )**0.5281_dp
+  !  
+#ifdef DISABLEMEFORDEBUG
+  print *,'----- IEXO05 KIE 18O 17O -----'
+  print *,'m_IEXO05_G1001_k8a66: ',m_IEXO05_G1001_k8a66
+  print *,'r_IEXO05_k8a66_k6a68: ',r_IEXO05_k8a66_k6a68
+  print *,'r_IEXO05_k7a66_k6a67: ',r_IEXO05_k7a66_k6a67
+  print *,'        e_IEXO05_18O: ',(r_IEXO05_k8a66_k6a68-1.0_dp)*1E3_dp,' (o/oo)'
+  print *,'        e_IEXO05_17O: ',(r_IEXO05_k7a66_k6a67-1.0_dp)*1E3_dp,' (o/oo)'
+  print *,'      e_IEXO05_dc17O: ', &
+    ( r_IEXO05_k7a66_k6a67 / r_IEXO05_k8a66_k6a68**0.5281_dp - 1.0_dp ) * 1e3_dp, '(o/oo)'
+  print *,'                temp: ',temp,' K'
+#endif
+-<<- +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ {<REAC:IEXO05}
+->>- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ {>REAC:G4110}
+  ! = G4110 ===== CO+OH =======================================================
+  !
+  ! reaction rate  k_CO_OH = (1.57E-13 + cair*3.54E-33)
+  !
+  !#----- older versions -----
+  !#
+  !#- constant values ---------------------------------------------------------
+  !#  r_G4110_k16_k18 = 1 - 10.0_dp / 1000.0_dp
+  !#  r_G4110_k16_k17 = 1 - 1.28_dp / 1000.0_dp
+  !#
+  ! - 2nd order fit -----------------------------------------------------------
+  ! (as p0 * x**2 + p1 * x + p2)
+      r_G4110_k16_k18_p2 = ( -3.099415E-13_dp * (press**2) &
+                             +5.724561E-08_dp *  press     &
+                             +9.881126E-01_dp )
+      r_G4110_k16_k17_p2 = ( -3.273918E-13_dp * (press**2) &
+                             +7.650639E-08_dp *  press     &
+                             +9.954188E-01_dp )
+      e_G4110_dc17O_p2   = (1.0_dp / r_G4110_k16_k17 - 1.0) - &
+                           (1.0_dp / r_G4110_k16_k18 - 1.0) * 0.5281_dp
+  ! 
+  ! ----- 3-step parameterisation ( 2005.JPCRD34.Troe,etal ) -----
+  !
+  ! low/high-pressure range rate koefficients
+    k_G4110_k0 = 1.661E-11_dp*exp(-8050_dp/temp) &
+               + 1.494E-12_dp*exp(-2300_dp/temp) &
+               + 1.677E-13_dp*exp( -030_dp/temp)
+    k_G4110_ki = 2.042E-09_dp*exp(-7520_dp/temp) &
+               + 1.827E-11_dp*exp(-1850_dp/temp) &
+               + 1.328E-12_dp*exp( -120_dp/temp)
+  !
+  ! pressure modifier: A0 = 5.9, TS = 161K, pressure in bars
+    k_G4110_atp = 5.9_dp * exp(-temp/161_dp) * (press*1E-5_dp)
+  !
+  ! broadening factor calculation
+    k_G4110_fc = 0.49_dp + 0.51_dp * exp(-temp/300_dp)
+    k_G4110_fx = k_G4110_fc**( 1.0_dp/( 1.0_dp + & 
+                 ( log10( k_G4110_atp * k_G4110_k0/(k_G4110_ki - k_G4110_k0) ) )**2 ) )
+  !
+  ! fractionation factors from enrichments
+  ! careful, enrichment in educt (CO) !
+  !
+  ! - C18O - specify enrichments here
+    a_G4110_k18a = 1.0_dp-(  00.00_dp / 1E3_dp )
+    a_G4110_k18b = 1.0_dp-( -11.90_dp / 1E3_dp )
+    a_G4110_k18c = 1.0_dp-( -05.74_dp / 1E3_dp )
+  !
+  ! - C17O - specify enrichments here
+    a_G4110_k17a = 1.0_dp-(  00.00_dp / 1E3_dp )
+    a_G4110_k17b = 1.0_dp-( -04.95_dp / 1E3_dp )
+    a_G4110_k17c = 1.0_dp-(  06.04_dp / 1E3_dp )
+  !
+  ! channel rates
+    k_G4110_x = k_G4110_atp * ( k_G4110_k0 / (k_G4110_ki - k_G4110_k0) )
+    k_G4110_kab = k_G4110_k0 * ( 1.0_dp - k_G4110_fx * k_G4110_x / (1.0 + k_G4110_x) )
+    k_G4110_kac = k_G4110_atp * k_G4110_k0 * k_G4110_fx * &
+                  (1.0_dp + k_G4110_x / k_G4110_atp) / (1.0 + k_G4110_x)
+  ! regular rate
+    k_G4110_kr  = k_G4110_kab + k_G4110_kac
+  !
+  ! substituted rates
+    k_G4110_k18 = a_G4110_k18a * ( a_G4110_k18b * k_G4110_kab + a_G4110_k18c * k_G4110_kac ) 
+    k_G4110_k17 = a_G4110_k17a * ( a_G4110_k17b * k_G4110_kab + a_G4110_k17c * k_G4110_kac ) 
+  !
+  ! final fractionation factors
+    r_G4110_k16_k18 = k_G4110_kr / k_G4110_k18
+    r_G4110_k16_k17 = k_G4110_kr / k_G4110_k17 
+  ! capital delta 17 enrichment in educt (CO)
+    e_G4110_dc17O = r_G4110_k16_k17 / r_G4110_k16_k18**0.5281_dp - 1.0_dp
+  !
+#ifdef DISABLEMEFORDEBUG
+  print *,'----- G4110 KIE 18O 17O -----'
+  print *,'r_G4110_k16_k18: ',r_G4110_k16_k18
+  print *,'r_G4110_k16_k17: ',r_G4110_k16_k17
+  print *,'    e_G4110_18O: ',(r_G4110_k16_k18-1.0_dp)*1E3_dp,' (o/oo)'
+  print *,'    e_G4110_17O: ',(r_G4110_k16_k17-1.0_dp)*1E3_dp,' (o/oo)'
+  print *,' e_G4110_dc17CO: ',e_G4110_dc17O*1000_dp,' (o/oo)'
+  print *,'    k_G4110_atp: ',k_G4110_atp
+  print *,'     k_G4110_fx: ',k_G4110_fx
+  print *,'     k_G4110_k0: ',k_G4110_k0
+  print *,'     k_G4110_ki: ',k_G4110_ki
+  print *,'    k_G4110_kab: ',k_G4110_kab
+  print *,'    k_G4110_kac: ',k_G4110_kac
+  print *,'     k_G4110_kr: ',k_G4110_kr
+  print *,'           temp: ',temp,' K'
+  print *,'          press: ',press,' Pa'
+#endif
+-<<- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ {<REAC:G4110}
+
+->>- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ {>REAC:Gxxxx}
+  ! = Gxxxx ===================================================================
+-<<- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ {<REAC:Gxxxx}
+->>- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ {>REAC:Gxxxx}
+  ! = Gxxxx ===================================================================
+-<<- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ {<REAC:Gxxxx}
+->>- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ {>REAC:Gxxxx}
+  ! = Gxxxx ===================================================================
+-<<- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ {<REAC:Gxxxx}
+
+->>- ++++++++++++++++++++++++++++++++++++++++++++++++++++ {>CASE:TAG}
+#ENDINLINE {above lines go into the SUBROUTINES UPDATE_RCONST and UPDATE_PHOTO}
+-<<- ++++++++++++++++++++++++++++++++++++++++++++++++++++ {<CASE:TAG}

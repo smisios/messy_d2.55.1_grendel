@@ -1,0 +1,103 @@
+; [Gromov, MPI-C, 2010-2020]
+;
+; Mon 22 Nov 2010 09:00:10 PM CET
+; 200410: taken out as C section (mim), updated, cleaned up
+;
+; tag_IO.src
+;
+; ISOTOPIC OXYGEN SOURCES & TRANSFER INCLUDE FILE
+;
+; MMO: MIM methane oxidation chemistry
+
+
+; = methane chain ====================================================
+;<G4100> CH4 + O1D = 0.75 CH3O2 + 0.75 OH + 0.25 HCHO + 0.4 H + 0.05 H2
+;  [see refs. Atkinson et al. ? ; Sander et al. 2006]
+  G4100  O2 = CH3O2
+  G4100 O1D =       OH HCHO
+; ----------------------------------------------------------
+;<G4101> CH4 + OH = CH3O2 + H2O
+;  [Weston, 2001]: CH4 + OH     -> CH3 + H2O
+;                  CH3 + O2 + M -> CH3O2 + M
+  G4101 O2 = CH3O2
+  G4101 OH = H2O
+; ----------------------------------------------------------
+;<G4102>  CH3OH   + OH      = HCHO + HO2 + H2O  : {%TrG}    2.9E-12{§1.10}*EXP(-345./temp); {&2626}
+  G4102    OH = H2O
+  G4102 CH3OH =     HCHO
+  G4102    O2 =          HO2
+; ----------------------------------------------------------
+;<G4103> CH3O2 + HO2 = CH3OOH {+ O2}
+;
+  G4103 CH3O2 = CH3OOH
+  G4103   HO2 = O2
+; ----------------------------------------------------------
+;<G4104> CH3O2 + NO = HCHO + NO2 + HO2
+;  [Weston, 2001]: CH3O2 + NO -> CH3O + NO2
+;                  CH3O  + O2 -> HCHO + HO2
+  G4104 CH3O2 = NO2 HCHO
+  G4104    NO = NO2
+  G4104    O2 =          HO2
+; ----------------------------------------------------------
+;<G4105>  CH3O2 + NO3 = HCHO + HO2 + NO2
+;                  Analogous to G4104 (?) & NO3 -> NO + O2
+  G4105 CH3O2 = NO2 HCHO
+  G4105   NO3 = NO2      HO2
+; ----------------------------------------------------------
+;<G4106a> CH3O2 + CH3O2 = 2 HCHO + 2 HO2 : {%*} tag_kG4106a; {&&} {?1}
+; originally not balanced in MECCA!
+  G4106a CH3O2 = HCHO HO2
+  G4106a    O2 =      HO2
+; ----------------------------------------------------------
+;<G4107> CH3OOH + OH = .7 CH3O2 + .3 HCHO + .3 OH + H2O
+;  [Weston, 2001]: CH3OOH + OH -> CH3O2 + H2O
+;                  CH3OOH + OH -> CH2OOH + H2O
+;                  CH2OOH + M  -> HCHO + OH + M
+  G4107 CH3OOH = CH3O2 HCHO OH
+  G4107     OH =               H2O
+; ----------------------------------------------------------
+;<G4108> HCHO + OH = CO + H2O + HO2
+;  [Weston, 2001]: HCHO + OH -> HCO + H2O  : k ~ E-11
+;                  HCO  + O2 -> CO  + HO2  : k ~ E-12
+;                  HCO  + OH -> CO  + H2O  : k ~ E-10     // [OH]<<[O2], thus neglected in MECCA (?)
+  G4108 HCHO = CO
+  G4108   OH =    H2O
+  G4108   O2 =        HO2
+; ----------------------------------------------------------
+;<G4109>  HCHO    + NO3   = HNO3 + CO + HO2       : {%TrG}    3.4E-13{§1.3}*EXP(-1900./temp); {&&2626}
+; assuming H binds rapidly with O2 om => *+HCHO -> H* + H + CO pathway [2003.PCCP5.D'Anna,etal]
+  G4109 HCHO = CO
+  G4109  NO3 =    HNO3
+  G4109   O2 =         HO2
+; ----------------------------------------------------------
+;<G4111>  HCOOH + OH {+O2} = CO2 + HO2 + H2O   : {%TrG}    4.0E-13{§1.2}; {&2626}
+  G4111    OH = H2O
+  G4111 HCOOH =     CO2
+  G4111    O2 =         HO2
+; ----------------------------------------------------------
+;<G4113>  CH4 + O3P {+O2} = CO + 2 OH + H2O {+ 638. kJmol} : {%UpG} 3.50E-11*EXP(-4550./temp); {&2615}
+  G4113 O3P = H2O CO
+  G4113  O2 =     CO OH
+; newer version, i,e, mim+
+;<G4113>  CH4 + O3P {+O2} = .51 OH + .51 CH3O2 + .49 H + .49 HCHO + .49 HO2 - O2 {+ 638. kJmol} : {%UpStG} 6.03E-18{§}*temp**(2.17)*EXP(-3619./temp); {&2615, 3059, 3060}
+; G4113 O3P = OH       HCHO
+; G4113  O2 =    CH3O2      HO2
+; ----------------------------------------------------------
+;<J4100> CH3OOH + hv = HCHO + OH + HO2
+;  [Weston, 2001]: CH3OOH + hv -> CH3O + OH
+;                  CH3O   + O2 -> HCHO + HO2
+  J4100 CH3OOH = OH HCHO
+  J4100     O2 = HO2
+; ----------------------------------------------------------
+;<J4101b> HCHO + hv = H + CO + HO2
+;  [Weston, 2001]: HCHO + hv -> H + HCO
+;                  HCO  + O2 -> CO  + HO2  : k ~ E-12
+;                  HCO  + OH -> CO  + H2O  : k ~ E-10     // [OH]<<[O2], thus neglected in MECCA (?)
+  J4101b HCHO = CO
+  J4101b   O2 = HO2
+; ----------------------------------------------------------
+; ! new reaction (diff CAABA2.5 from MECCA2.2 reactions list)
+;<J4103>  CH4     + hv = CO + 0.31 H + 0.69 H2 + 1.155 H2O : {%StGJ} jx(ip_CH4); {&&}
+; assuming air O2 as a source
+  J4103 O2 =
+

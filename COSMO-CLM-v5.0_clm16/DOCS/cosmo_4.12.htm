@@ -1,0 +1,1026 @@
+<!DOCTYPE html 
+     PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+     "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xml:lang="en" lang="en">
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="GENERATOR" content="Mozilla/4.7C-SGI [en] (X11; I; IRIX64 6.5 IP27) [Netscape]">
+   <title>Changes in the COSMO-Model 4.12</title>
+<style type="text/css">
+  body { font-family:       Arial;
+         font-size:         12pt;
+         background-repeat: no-repeat; 
+         margin:            1em; }
+
+  tt   { font-size:         12pt;}
+
+  li   { margin-top:         5pt;
+         margin-bottom:      5pt }
+
+  th   { border:           1px solid black;
+         padding:          3pt;
+         vertical-align:   top;
+         background-color: lightblue;}
+
+  td   { border:           1px solid black;
+         padding:          3pt;
+         vertical-align:   top;}
+
+  td.middl   { border:           1px solid black;
+               padding:          3pt;
+               vertical-align:   middle;}
+
+  td.hilit       { border:           1px solid black;
+                   padding:          1pt;
+                   vertical-align:   top;
+                   background-color: lightblue;}
+
+  td.clean       { padding:          0pt;
+                   border-style:     none;
+                   vertical-align:   top;}
+
+  td.notes       { padding:          3pt;
+                   border-style:     none;
+                   vertical-align:   top;}
+
+  td.nomid       { padding:          3pt;
+                   border-style:     none;
+                   vertical-align:   middle;}
+
+  table.note     { border-width:     0pt;
+                   border-style:     none;
+                   margin-left:      5pt;
+                   margin-top:       1pt;
+                   margin-bottom:    1pt;
+                   cell-padding:     5pt;
+                   vertical-align:   top;
+                   text-align:       left;}
+  
+  table.atte     { border-width:     0pt;
+                   border-style:     none;
+                   margin-left:      5pt;
+                   margin-top:       1pt;
+                   margin-bottom:    1pt;
+                   cell-padding:     5pt;
+                   vertical-align:   top;
+                   text-align:       left;
+                   background-color: red;}
+  
+  table.namelist { border-width:  2pt;
+                   border-style:  groove;
+                   border-color:  black;
+                   width:         90%;
+                   text-align:    left;
+                   margin-top:    1pt;
+                   margin-bottom: 1pt;
+                   padding:       3pt;
+                   align:         center;}
+  
+  tr.headings    { text-align:       left;
+                   vertical-align:   top;
+                   border-width:     1pt;
+                   border-style:     groove;
+                   border-color:     grey;
+                   padding:          2pt;
+                   font-weight:      bold;}
+
+</style>
+
+</head>
+  <body text="#000000" bgcolor="#FFFFFF" link="#0000EE" vlink="#551A8B" alink="#FF0000">
+
+<center>
+<h1>
+<a NAME="begin">Documentation of the Changes in the COSMO-Model <br /> Version 4.12</a></h1></center>
+
+<p>
+In the following, the main changes for the COSMO-Model between Version 4.2 and Version 4.12
+are briefly documented. For more comprehensive explanations take a look to the file
+<tt>misc.global</tt>, which is distributed with the COSMO-Model source code. Also, only
+the most important Namelist changes are described here. For a full documentation please
+refer to the User Guide.
+</p>
+
+<h4><a NAME="content">Contents:</a></h4>
+
+<ol>
+<li><a href="#chandyn">Changes in the Dynamics</a></li>
+  <ul>
+    <li><a href="#BBC">Changes in the bottom boundary condition for the Runge-Kutta dynamics</a></li>
+    <li><a href="#DIF">Changes in the horizontal diffusion</a></li>
+  </ul>
+<li><a href="#chanphy">Changes in the Physics</a></li>
+  <ul>
+    <li><a href="#SNO">Update of the multi-layer snow model</a></li>
+    <li><a href="#SEA">Update of the sea-ice scheme</a></li>
+  </ul>
+<li><a href="#chandia">Changes in the Diagnostics and Postprocessing</a></li>
+  <ul>
+    <li><a href="#PVO">Computation of the potential vorticity</a></li>
+  </ul>
+<li><a href="#chanass">Changes in the Assimilation</a></li>
+  <ul>
+    <li><a href="#LHN">Changes in the Latent Heat Nudging</a></li>
+  </ul>
+<li><a href="#chantec">Technical Changes</a></li>
+<li><a href="#namelis">Summary of Namelist Variables Changes</a></li>
+<li><a href="#results">Changes of Results</a></li>
+</ol>
+<p>
+<hr>
+
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="chandyn">1. Changes in the Dynamics</a></h3>
+
+<!---------------------------------------------------------------------------->
+
+<h4><a NAME="BBC">Changes in the bottom boundary condition for the 
+    Runge-Kutta dynamics <br />
+   (by G&uuml;nther Z&auml;ngl)</a></h4>
+
+<p>
+The namelist parameter to choose an option for computing the bottom 
+boundary condition has been renamed from <tt>itype_lbc_w</tt> to 
+<tt>itype_bbc_w</tt> (because <i>lbc</i> is used for <i>lateral boundary 
+condition</i> and <i>bbc</i> now is used for <i>bottom boundary condition</i>).
+</p>
+
+<p>
+Moreover, the options <tt>itype_bbc_w = 2/3</tt> have been changed from
+second order differences to a differencing following <tt>iadv_order</tt>
+without Runge-Kutta stepping. The options <tt>0/1</tt> still are for a Runge-Kutta
+stepping using <tt>iadv_order</tt> and <tt>4/5</tt> are using fourth-order centered
+differences.
+</p>
+
+<p>
+For <tt>itype_bbc_w = 0/2/4</tt> a quadratic extrapolation of the horizontal 
+wind to the surface is  computed, while for <tt>itype_bbc_w = 1/3/5</tt> a 
+linear one is used. The latter options are then only used for computing
+the metric terms.
+</p>
+
+<p>
+Because of the changes for <tt>itype_bbc_w = 1</tt> the results of COSMO-DE
+are changed.
+</p>
+
+<p align="right"><a href="#content">Back to Contents</a>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+
+<h4><a NAME="DIF">Changes in the horizontal diffusion<br />
+   (by Oliver Fuhrer)</a></h4>
+
+<p><b>Situation up to now</b></p>
+
+<p>
+There are (mainly) two types of horizontal diffusion, which can be chosen
+by the Namelist variable <tt>itype_hdiff</tt>:
+<ol>
+  <li>4th order linear horizontal diffusion</li>
+  <li>4th order linear monotonic horizontal diffusion with an orographic limiter</li>
+</ol>
+
+With another Namelist variable <tt>lhdiff_mask</tt>, it could be chosen,
+whether the horizontal diffusion is performed on the whole field
+(<tt>lhdiff_mask=.FALSE.</tt>) or only in the boundary zone (<tt>lhdiff_mask=.TRUE.</tt>)
+</p>
+
+<p>
+For <tt>itype_hdiff=2</tt>, correction factors could be given for the diffusion
+of the winds (<tt>hd_corr_u</tt>), the humidities and other tracers (<tt>hd_corr_q</tt>)
+and the temperature and pressure deviation (<tt>hd_corr_t</tt>).
+</p>
+
+<p>
+For <tt>itype_hdiff=1</tt>, only the diffusion of the humidities and other tracers
+could be switched off completely by setting <tt>hd_corr_q=0</tt>.
+</p>
+
+<p>
+A third variant (<tt>itype_hdiff=3</tt>) was only used earlier during the development
+of the Runge-Kutta scheme.
+</p>
+
+<p><b>Changes to the scheme</b></p>
+
+<p>
+Computation of the horizontal diffusion has been generalized in order
+<ul>
+  <li>to treat the diffusion in the interior and in the boundary zone differently:<br />
+      For every (former) Namelist variable <tt>hd_corr_x</tt>, two variables 
+      <tt>hd_corr_x_in</tt> and <tt>hd_corr_x_bd</tt> have been introduced.</li>
+  <li>to treat diffusion of pressure deviation differently from temperature:<br />
+      Also, two new variables <tt>hd_corr_p_in</tt> and <tt>hd_corr_p_bd</tt> have 
+      been introduced to separate diffusion for temperature and pressure deviation.</li>
+</ul>
+
+By an appropriate setting of the variables <tt>hd_corr_x_bd</tt>, the effect of
+<tt>lhdiff_mask</tt> can be reproduced:
+<ul>
+  <li><tt>hd_corr_x_in=0.0</tt>:   No diffusion in the interior, as is for 
+                                   <tt>lhdiff_mask=.TRUE.</tt></li>
+  <li><tt>hd_corr_x_in>0.0</tt>:      Diffusion in the interior, as is for 
+                                   <tt>lhdiff_mask=.FALSE.</tt></li>
+</ul>
+The variable <tt>lhdiff_mask</tt> therefore has been eliminated.
+</p>
+
+<p>
+The effect of the generalization now is, that also for <tt>itype_hdiff=1</tt> 
+reduction factors can be specified for the interior and for the boundary zone 
+of the domain separately. And pressure deviation can be treated separately from
+temperature.
+</p>
+
+<p>
+The option <tt>itype_hdiff=3</tt> has been eliminated, because it is not used any more.
+</p>
+
+
+<p><b>Changes in the Namelist <tt>/DYNCTL/</tt></b></p>
+
+<p>
+Deleted Namelist variables:  <tt>lhdiff_mask</tt>, <tt>hd_corr_u</tt>, <tt>hd_corr_q</tt>, <tt>hd_corr_t</tt>
+</p>
+
+<p>
+New Namelist variables:
+</p>
+
+<p>
+<center>
+<table border="1" cellspacing="3" class="namelist">
+ <tbody>
+   <tr>
+     <th>Name</th>
+     <th>Meaning</th>
+     <th align="center">Default</th>
+   </tr>
+   <tr>
+     <td><tt>hd_corr_u_in</tt></td>
+     <td>correction factor for horizontal diffusion flux of <tt>u,v,w</tt> in interior domain</td>
+     <td><tt>1.0</tt></td>
+   </tr>
+   <tr>
+     <td><tt>hd_corr_u_bd</tt></td>
+     <td>correction factor for horizontal diffusion flux of <tt>u,v,w</tt> in boundary zone</td>
+     <td><tt>1.0</tt></td>
+   </tr>
+   <tr>
+     <td><tt>hd_corr_t_in</tt></td>
+     <td>correction factor for horizontal diffusion flux of <tt>t</tt> in interior domain</td>
+     <td><tt>0.75</tt></td>
+   </tr>
+   <tr>
+     <td><tt>hd_corr_t_bd</tt></td>
+     <td>correction factor for horizontal diffusion flux of <tt>t</tt> in boundary zone</td>
+     <td><tt>0.75</tt></td>
+   </tr>
+   <tr>
+     <td><tt>hd_corr_p_in</tt></td>
+     <td>correction factor for horizontal diffusion flux of <tt>pp</tt> in interior domain</td>
+     <td><tt>0.75</tt></td>
+   </tr>
+   <tr>
+     <td><tt>hd_corr_p_bd</tt></td>
+     <td>correction factor for horizontal diffusion flux of <tt>pp</tt> in boundary zone</td>
+     <td><tt>0.75</tt></td>
+   </tr>
+   <tr>
+     <td><tt>hd_corr_q_in</tt></td>
+     <td>correction factor for horizontal diffusion flux of <tt>qv,qc</tt> in interior domain</td>
+     <td><tt>0.5</tt></td>
+   </tr>
+   <tr>
+     <td><tt>hd_corr_q_bd</tt></td>
+     <td>correction factor for horizontal diffusion flux of <tt>qv,qc</tt> in boundary zone</td>
+     <td><tt>0.5</tt></td>
+   </tr>
+ </tbody>
+</table>
+</center>
+</p>
+
+
+<p><b>Reproducing the old settings</b></p>
+
+<p>
+All old settings can be reproduced with the new namelist variables by a proper
+setting. This is explained shortly. Here, <tt>hd_corr_u</tt>, <tt>hd_corr_q</tt> 
+and <tt>hd_corr_t</tt>, resp., are the settings of the old Namelist variables.
+</p>
+
+<p>
+<center>
+<table border="1" cellspacing="3" class="namelist">
+ <tbody>
+   <tr>
+     <th><tt>itype_hdiff</tt></th>
+     <th><tt>lhdiff_mask</tt></th>
+     <th align="center">Settings</th>
+   </tr>
+   <tr>
+     <td class="middl" align="center" rowspan="2"><tt>1</tt></td>
+     <td class="middl" align="center"><tt>.TRUE.</tt></td>
+     <td>Diffusion only in the boundary zone, no reduction of horizontal diffusion fluxes:
+
+       <table cellspacing="3" class="note">
+        <tbody>
+          <tr>
+            <td class="notes"><tt>hd_corr_u_bd = 1.0;</tt></td>
+            <td class="notes">                      </tt></td>
+            <td class="notes"><tt>hd_corr_u_in = 0.0;</tt></td>
+          </tr>
+          <tr>
+            <td class="notes"><tt>hd_corr_t_bd = 1.0;</tt></td>
+            <td class="notes">                      </tt></td>
+            <td class="notes"><tt>hd_corr_t_in = 0.0;</tt></td>
+          </tr>
+          <tr>
+            <td class="notes"><tt>hd_corr_p_bd = 1.0;</tt></td>
+            <td class="notes">                      </tt></td>
+            <td class="notes"><tt>hd_corr_p_in = 0.0;</tt></td>
+          </tr>
+          <tr>
+            <td class="notes">                      </tt></td>
+            <td class="notes">                      </tt></td>
+            <td class="notes"><tt>hd_corr_q_in = 0.0;</tt></td>
+          </tr>
+        </tbody>
+       </table>
+
+       For the diffusion of the humidities in the boundary zone, the situation
+       is a bit different, because it could be switched off before with
+       <tt>hd_corr_q = 0.0</tt>. So the setting must be
+
+       <table cellspacing="3" class="note">
+        <tbody>
+          <tr>
+            <td class="nomid" rowspan="2" valign="middle"><tt>hd_corr_q_bd</tt></td>
+            <td class="notes"><tt>= 1.0</tt> if <tt>hd_corr_q /= 0.0</tt>: diffusion, no reduction</td>
+          </tr>
+          <tr>
+            <td class="notes"><tt>= 0.0</tt> if <tt>hd_corr_q == 0.0</tt>: no diffusion</td>
+          </tr>
+        </tbody>
+       </table>
+
+     </td>
+   </tr>
+   <tr>
+     <td class="middl" align="center"><tt>.FALSE.</tt></td>
+     <td>Diffusion in the boundary and in the interior zone, no reduction of 
+         horizontal diffusion fluxes:
+
+       <table cellspacing="3" class="note">
+        <tbody>
+          <tr>
+            <td class="notes"><tt>hd_corr_u_bd = 1.0;</tt></td>
+            <td class="notes">                      </tt></td>
+            <td class="notes"><tt>hd_corr_u_in = 1.0;</tt></td>
+          </tr>
+          <tr>
+            <td class="notes"><tt>hd_corr_t_bd = 1.0;</tt></td>
+            <td class="notes">                      </tt></td>
+            <td class="notes"><tt>hd_corr_t_in = 1.0;</tt></td>
+          </tr>
+          <tr>
+            <td class="notes"><tt>hd_corr_p_bd = 1.0;</tt></td>
+            <td class="notes">                      </tt></td>
+            <td class="notes"><tt>hd_corr_p_in = 1.0;</tt></td>
+          </tr>
+        </tbody>
+       </table>
+
+       Again, the diffusion of the humidities could be switched off in the old
+       settings, which must now be reflected for the boundary and the 
+       interior zone:
+
+       <table cellspacing="3" class="note">
+        <tbody>
+          <tr>
+            <td class="nomid" rowspan="2" valign="middle"><tt>hd_corr_q_bd</tt> <br />
+                                                          <tt>hd_corr_q_in</tt></td>
+            <td class="notes"><tt>= 1.0</tt> if <tt>hd_corr_q /= 0.0</tt>: diffusion, no reduction</td>
+          </tr>
+          <tr>
+            <td class="notes"><tt>= 0.0</tt> if <tt>hd_corr_q == 0.0</tt>: no diffusion</td>
+          </tr>
+        </tbody>
+       </table>
+
+     </td>
+   </tr>
+
+   <tr>
+     <td class="middl" align="center" rowspan="2"><tt>2</tt></td>
+     <td class="middl" align="center"><tt>.TRUE.</tt></td>
+     <td>This is the COSMO-DE setting. Diffusion and reduction of fluxes only in the boundary zone:
+
+       <table cellspacing="3" class="note">
+        <tbody>
+          <tr>
+            <td class="notes"><tt>hd_corr_u_bd = hd_corr_u;</tt></td>
+            <td class="notes">                      </tt></td>
+            <td class="notes"><tt>hd_corr_u_in = 0.0;</tt></td>
+          </tr>
+          <tr>
+            <td class="notes"><tt>hd_corr_t_bd = hd_corr_t;</tt></td>
+            <td class="notes">                      </tt></td>
+            <td class="notes"><tt>hd_corr_t_in = 0.0;</tt></td>
+          </tr>
+          <tr>
+            <td class="notes"><tt>hd_corr_p_bd = hd_corr_t;</tt></td>
+            <td class="notes">                      </tt></td>
+            <td class="notes"><tt>hd_corr_p_in = 0.0;</tt></td>
+          </tr>
+          <tr>
+            <td class="notes"><tt>hd_corr_q_bd = hd_corr_q;</tt></td>
+            <td class="notes">                      </tt></td>
+            <td class="notes"><tt>hd_corr_q_in = 0.0;</tt></td>
+          </tr>
+        </tbody>
+       </table>
+     </td>
+   </tr>
+   <tr>
+     <td class="middl" align="center"><tt>.FALSE.</tt></td>
+     <td>This is the COSMO-EU setting. Diffusion and reduction of fluxes in the boundary and in the interior zone:
+
+       <table cellspacing="3" class="note">
+        <tbody>
+          <tr>
+            <td class="notes"><tt>hd_corr_u_bd = hd_corr_u;</tt></td>
+            <td class="notes">                      </tt></td>
+            <td class="notes"><tt>hd_corr_u_in = hd_corr_u;</tt></td>
+          </tr>
+          <tr>
+            <td class="notes"><tt>hd_corr_t_bd = hd_corr_t;</tt></td>
+            <td class="notes">                      </tt></td>
+            <td class="notes"><tt>hd_corr_t_in = hd_corr_t;</tt></td>
+          </tr>
+          <tr>
+            <td class="notes"><tt>hd_corr_p_bd = hd_corr_t;</tt></td>
+            <td class="notes">                      </tt></td>
+            <td class="notes"><tt>hd_corr_p_in = hd_corr_t;</tt></td>
+          </tr>
+          <tr>
+            <td class="notes"><tt>hd_corr_q_bd = hd_corr_q;</tt></td>
+            <td class="notes">                      </tt></td>
+            <td class="notes"><tt>hd_corr_q_in = hd_corr_q;</tt></td>
+          </tr>
+        </tbody>
+       </table>
+     </td>
+
+     </td>
+   </tr>
+ </tbody>
+</table>
+</center>
+</p>
+
+<p>
+With the appropriate settings, the results are not changed.
+</p>
+
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+
+<p align="right"><a href="#content">Back to Contents</a>
+
+<hr>
+
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="chanphy">2. Changes in the Physics</a></h3>
+
+<!---------------------------------------------------------------------------->
+
+<h4><a NAME="SNO">Update of the multi-layer snow model<br />
+    (by Ekaterina Machulskaya)</a></h4>
+
+<p>
+An update of this scheme has been implemented. This is still a preliminary,
+non-operational version, which is under testing at DWD. It is not meant
+for <i>public use</i>.
+
+<p align="right"><a href="#content">Back to Contents</a>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+
+<h4><a NAME="SEA">Update of the sea-ice scheme <br />
+   (by Jan-Peter Schulz)</a></h4>
+
+<p>
+An adapted sea-surface temperature is passed to subroutine <tt>tgcom</tt> as
+argument: <tt>t_s</tt> now contains <tt>t_ice</tt> at sea points covered with ice.
+</p>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+
+<p align="right"><a href="#content">Back to Contents</a>
+
+<hr>
+
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="chandia">3. Changes in the Diagnostics and Postprocessing</a></h3>
+
+<!---------------------------------------------------------------------------->
+
+<h4><a NAME="PVO">Computation of the potential vorticity<br />
+   (by Michael Baldauf)</a></h4>
+
+<p>
+The COSMO-Model now contains the possibility to calculate the 3 compontents
+of the (relative) vorticity  <tt>curl v</tt> (physical components in the system of
+spherical base vectors) and the potential vorticity (PV). This is a material
+invariant under quite general conditions, namely adiabatic and frictionless
+processes. Analogously, <i>P &sdot; &rho;</i> is an integral invariant under the same
+conditions.
+</p>
+
+<p>
+New subroutines in the module <tt>numeric_utilities</tt>:   
+<ul>
+  <li><tt>metric_coeffs</tt><br />
+      To calculate the metric coefficients (see Doms and Sch&auml;ttler (2002), Sect. 3)
+      at the scalar grid positions:
+
+      <p align="center">
+         d&zeta; &frasl; d&lambda; (&phi;=const,    z) = - d&zeta; &frasl; dz &sdot; dz &frasl; d&lambda;<br />
+         d&zeta; &frasl; d&phi;    (&lambda;=const, z) = - d&zeta; &frasl; dz &sdot; dz &frasl; d&phi;
+      </p>
+
+      Remarks:
+      <ul>
+       <li>d&zeta; &frasl; dz   = 1 &frasl; (dz &frasl; d&zeta;) = -1 &frasl; &radic;G 
+         (see subroutine <tt>calc_sqrtg_r</tt>)</li>
+       <li>dz &frasl; d&zeta; = -&radic;G</li>
+      </ul>
+
+       This subroutine is closely related to <tt>calc_sqrtg_r</tt> and should be
+       called after that.</li>
+   
+  <li><tt>curl</tt><br />
+       To calculate the contravariant (physical or 'non-physical') components of
+       <tt>curl</tt> <i>v</i> in spherical base vectors for given contravariant,
+       physical components of a vector field <i>v</i> (in spherical base vectors)</li>
+
+  <li><tt>calc_Theta_Tppp</tt><br />
+       To calculate the potential temperature &Theta; from T' and p'</li>
+</ul>   
+</p>
+
+<p>
+New subroutines in the module <tt>pp_utilities</tt>:   
+<ul>
+  <li><tt>potential_vorticity_rho</tt><br />
+       calculate  &rho; &sdot; <i>PV</i>  =  &part; &Theta; &sdot;  ( <tt>curl</tt> <i>v</i> + 2 &Omega; )</li>
+</ul>   
+</p>
+   
+<p>
+Source code changes:
+<ul>
+  <li>New fields: <tt>dzeta_dlam</tt>, <tt>dzeta_dphi</tt></li>
+  <li>New variable: <tt>l_dzeta_d_needed</tt> (only for internal purposes, NO Namelist variable)</li>
+  <li>New output parameters: There are 4 new output parameters, that can be chosen:
+    <table cellspacing="3" class="note">
+     <tbody>
+       <tr>
+         <td class="notes"><tt>VORTIC_U</tt>:</td>
+         <td class="notes"></td>
+         <td class="notes">relative vorticity, u-component in rotated grid</td>
+       </tr>
+       <tr>
+         <td class="notes"><tt>VORTIC_V</tt>:</td>
+         <td class="notes"></td>
+         <td class="notes">relative vorticity, v-component in rotated grid</td>
+       </tr>
+       <tr>
+         <td class="notes"><tt>VORTIC_W</tt>:</td>
+         <td class="notes"></td>
+         <td class="notes">relative vorticity, vertical component</td>
+       </tr>
+       <tr>
+         <td class="notes"><tt>POT_VORTIC</tt>:</td>
+         <td class="notes"></td>
+         <td class="notes">Potential vorticity</td>
+       </tr>
+     </tbody>
+    </table>
+
+</ul>
+</p>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+
+<p align="right"><a href="#content">Back to Contents</a>
+
+<hr>
+
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="chanass">4. Changes in the Assimilation</a></h3>
+
+<!---------------------------------------------------------------------------->
+
+<h4><a NAME="LHN">Changes in the Latent Heat Nudging<br />
+       (by Daniel Leuenberger; Klaus Stephan)</a></h4>
+
+<p><b>Reintroduction of spatial quality function <i>w</i></b></p>
+
+<p>
+In the original LHN method of Jones and Macpherson (1997), a spatial quality function
+<i>w</i> is used to weight the radar observed and model precipitation to form the
+analysed precipitation. They calculated <i>w</i> from the distance to the next radar
+station, which is a good approximation to the radar quality over flat
+terrain. In mountainous regions such a quality function may not be optimal
+since in such regions the quality of radar precipitation is affected by
+various effects such as partial beam blocking or ground clutter. Leuenberger
+(2005) introduced a quality function based on geometrical visibility
+calculations of the Swiss radar network taking into account terrain induced
+radar problems. More recently, Rossa et al. (2009) proposed a spatial quality
+function based on statistical radar information, mainly using frequency of
+occurence as means to detect ground clutter and regions with low radar
+visibility. 
+</p>
+
+<p>
+In order to take such spatial quality information into account, the COSMO
+LHN code needed an upgrade, mainly to reactivate the possibility to use <i>w</i> in
+the calculation of the analysed precipitation, on which the determination of
+the latent heat increments are based. No fundamentally new code has been 
+written to this end, instead the existing code that was still present for the
+use of the PI product has been refactured. A switch lhn_spqual has
+been introduced. If this switch is set to true, a 2D grib record named
+RADSPQUAL is read after each radar observation record (TOT_PREC). The order of
+the records is important, meaning that after each obs record, a quality record
+has to follow immediately. The field spqual must contain values in [0,1], so
+in contrast to the old code, no distances to the next radar station are read
+in, but directly the quality <i>w</i>. 
+</p>
+
+<p><b>Generalisation of the use of the radar observation input frequency</b></p>
+
+<p>
+Up to now there was no possibility to chose the radar observation input
+frequency, but it was determined based on the switch <tt>lhn_radar_dx</tt>. This switch
+was introduced to differentiate between two DWD radar products, namely the
+old PI and the new DX product. The switch not only determined the radar input
+frequency but also the time interpolation between two subsequent radar
+observations and the use of the spatial radar weigth <i>w</i>.
+Now, the radar input time step can be specified in the namelist <tt>INPUT_ASS</tt>
+(<tt>lhn_dt_obs</tt>). Dependent on the radar input frequency, the time interpolation
+between subsequent radar observations is chosen:
+<ul>
+ <li><tt>lhn_dt_obs</tt> &le; 10min: observations in the range [-2,3] &sdot; <tt>lhn_dt_obs</tt> 
+     are considered in the time interpolation (like up to now using <tt>lhn_radar_dx = .TRUE.</tt>)</li>
+ <li><tt>lhn_dt_obs</tt> > 10min: observations in the range [0,1] &sdot; <tt>lhn_dt_obs</tt> are
+     considered in the time interpolation, i.e. only the current and next
+     observation is used (like up to now using <tt>lhn_radar_dx = .FALSE.</tt>)</li>
+</ul>
+</p>
+
+<p><b>More robust check in input of radar observations</b></p>
+
+<p>
+Up to now no consistency check was made upon the radar observation grib
+records read in from the LHN input files, making the code vulnerable to the
+input of completely wrong grib fields. Therefore a more robust check was
+introduced if the input observations are consistent with the expected input.
+Beside the check for the appropriate observation time, the following
+additional properties of the grib records are now checked:
+<ul>
+ <li>grib number and grib table number</li>
+ <li>dimensions of the 2D domain</li>
+</ul>
+</p>
+
+
+<p><b>References</b></p>
+
+<p>
+<ul>
+  <li>Jones, C. D. and B. Macpherson, 1997:<br />
+        A Latent Heat Nudging Scheme for the Assimilation of Precipitation 
+        Data into an Operational Mesoscale Model.  Meteorol. Appl., 4, 269-277
+  <li>Leuenberger, D., 2005:<br />
+        High-resolution Radar Rainfall Assimilation:
+        Exploratory  Studies with Latent Heat Nudging, Dissertation Nr. 15884,
+        ETH Zuerich. Available from
+        http://e-collection.ethbib.ethz.ch/cgi-bin/show.pl?type=diss&nr=15884
+  <li>Rossa, A., del Guerra, F. and Leuenberger, D., 2009:<br />
+        An Empirical Radar Data Quality Function, Proceedings of the 34th AMS 
+        Conference on Radar Meteorology, 5. - 9. October 2009 (Williamsburg,VA, USA), 8pp.
+</ul>
+
+<p><b>Changes in the Namelist switches (<tt>INPUT_ASS</tt>)</b></p>
+
+<p>
+Deleted Namelist variables:  <tt>lhn_radar_dx</tt>
+</p>
+
+<p>
+New Namelist variables:
+</p>
+
+<p>
+<center>
+<table border="1" cellspacing="3" class="namelist">
+ <tbody>
+   <tr>
+     <th>Name</th>
+     <th>Meaning</th>
+     <th align="center">Default</th>
+   </tr>
+   <tr>
+     <td><tt>lhn_spqual</tt></td>
+     <td>Switch for the use of a spatial quality function</td>
+     <td><tt>.FALSE.</tt></td> 
+   </tr>
+   <tr>
+     <td><tt>lhn_dt_obs</tt></td>
+     <td>Time step of input data in minute</td>
+     <td><tt>5</tt></td> 
+   </tr>
+ </tbody>
+</table>
+</center>
+
+ <p><table class="note">
+   <tr><td class="notes">Note:</td>
+   <td class="notes">
+     No changes to the namelist variables are required, the defaults
+     should match the behaviour of the old code. In this case, there are also
+     no changes of the results.
+   </td></tr>
+  </table></p>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+
+<p align="right"><a href="#content">Back to Contents</a>
+
+<hr>
+
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="chantec">5. Technical Changes</a></h3>
+
+<ul>
+ <li>Modification of interfaces in <tt>pp_utilities</tt> and <tt>meteo_utilities</tt>:
+     Some interfaces in these modules have been changed for their usage
+     in the postprocessing program <tt>FieldExtra</tt>. The modified subroutines
+     are:
+   <ul>
+    <li>Subroutine <tt>cal_conv_ind</tt> in module <tt>pp_utilities</tt>:<br />
+        Insertion of additional interface arguments for error checking
+        and provision of a mask, for which the computations have to be done.</li>
+    <li>Subroutine <tt>calc_sdi</tt> has been moved from module <tt>pp_utilities</tt> to
+        module <tt>src_output</tt>, because of formal reasons.
+        It does not fit to a utility module, because it uses other utility
+        and data modules. This restricts its usage in <tt>FieldExtra</tt></li>
+    <li><tt>reference_atmosphere</tt>, <tt>reference_atmosphere_2</tt> in module 
+        <tt>meteo_utilities</tt>:<br />
+        Some arguments have been declared as optional.</li>
+   </ul></li>
+
+ <li>Introduced a new subroutine in <tt>src_input.f90</tt>, to check consistency of
+     vertical coordinate parameters for all fields.</li>
+
+ <li><tt>src_radiation.f90</tt><br />
+   <ul>
+     <li>Bug fix in the call to <tt>exchg_boundaries</tt> where a wrong vertical dimension in the
+     9th position of array <tt>kzdims</tt> had been used (by Lucio Torrisi)</li>
+     <li>Added computations for sunshine durations (by MCH)</li>
+     <li>Some changes in the ART part for new aerosol developments (by KIT)</li>
+   </ul></li>
+
+ <li><tt>numeric_utilities_rk.f90</tt>, SR <tt>zadv_pd_rk_cri_bott</tt> (by Stephan Pfahl)</br >
+     The 4th order option had erroneously been mixed with the vector
+     optimizations of the 2nd order option
+     (this changes results for 4th order option of Bott advection).</li>
+
+ <li>Corrected a comment for dimension of <tt>qvsflx</tt> in several subroutines.</li>
+
+ <li>Renamed <tt>t0</tt> to <tt>t0_melt</tt> because of conflicting names.</li>
+
+ <li>Changed following short names because of conflicting names with
+     other applications:
+
+     <center>
+     <table border="1" cellspacing="3" class="namelist">
+      <tbody>
+        <tr>
+          <th>Old Name</th>
+          <th>New Name</th>
+          <th align="center">Explanation</th>
+        </tr>
+        <tr>
+          <td><tt>QNC</tt></td>
+          <td><tt>QNCLOUD</tt></td>
+          <td rowspan="6">Especially <tt>QNH</tt> is used for surface pressure
+                          reduced to Mean-Sea Level in air traffic applications
+                          <br />(reported by MeteoSwiss) </td>
+        </tr>
+        <tr>
+          <td><tt>QNR</tt></td>
+          <td><tt>QNRAIN</tt></td>
+        </tr>
+        <tr>
+          <td><tt>QNI</tt></td>
+          <td><tt>QNICE</tt></td>
+        </tr>
+        <tr>
+          <td><tt>QNS</tt></td>
+          <td><tt>QNSNOW</tt></td>
+        </tr>
+        <tr>
+          <td><tt>QNG</tt></td>
+          <td><tt>QNGRAUPEL</tt></td>
+        </tr>
+        <tr>
+          <td><tt>QNH</tt></td>
+          <td><tt>QNHAIL</tt></td>
+        </tr>
+        <tr>
+          <td><tt>PRS_MIN</tt></td>
+          <td><tt>RSMIN</tt></td>
+          <td>This is the minimum stomata resistance of plants, but the old name
+              is confusing because of <tt>PRS_GSP</tt>, <tt>PRS_CON</tt>, which 
+              stand for the Precipitation Rate of Snow. The COSMO variable is 
+              now called <tt>rsmin2d</tt>, to distinguish from the real value 
+              <tt>crsmin</tt></td>
+        </tr>
+      </tbody>
+     </table>
+     </center>
+     </li>
+  <li>The Namelist Variables <tt>yvarini</tt> and <tt>yvarbd</tt> have been eliminated.
+      With these variables, the lists of initial and boundary variables,
+      resp., could be specified. But depending on the configuration
+      chosen, these lists are also set up by the program.
+      Specifying them by hand was too error-prone.</li>
+</ul>
+
+<!---------------------------------------------------------------------------->
+
+<p align="right"><a href="#content">Back to Contents</a>
+<hr>
+
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="namelis">6. Summary of Namelist Variables Changes</a></h3>
+
+<p>There were the following changes for the Namelist variables:</p>
+
+<center>
+<table border="1" cellspacing="3" class="namelist">
+ <tbody>
+   <tr>
+     <th>Group</th>
+     <th>Name</th>
+     <th>Meaning</th>
+     <th align="center", width="5%">Default</th>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td class="hilit" rowspan="12"><tt>/DYNCTL/</tt></td>
+     <td><tt>lhdiff_mask</tt></td>
+     <td class="middl" rowspan="4">eliminated</td>
+     <td class="middl" rowspan="4"><tt>-</tt></td>
+   </tr>
+   <tr>
+     <td><tt>hd_corr_u</tt></td>
+   </tr>
+   <tr>
+     <td><tt>hd_corr_q</tt></td>
+   </tr>
+   <tr>
+     <td><tt>hd_corr_t</tt></td>
+   </tr>
+   <tr>
+     <td><tt>hd_corr_u_in</tt></td>
+     <td>correction factor for horizontal diffusion flux of <tt>u,v,w</tt> in interior domain</td>
+     <td align="center"><tt>1.0</tt></td>
+   </tr>
+   <tr>
+     <td><tt>hd_corr_u_bd</tt></td>
+     <td>correction factor for horizontal diffusion flux of <tt>u,v,w</tt> in boundary zone</td>
+     <td align="center"><tt>1.0</tt></td>
+   </tr>
+   <tr>
+     <td><tt>hd_corr_t_in</tt></td>
+     <td>correction factor for horizontal diffusion flux of <tt>t</tt> in interior domain</td>
+     <td align="center"><tt>0.75</tt></td>
+   </tr>
+   <tr>
+     <td><tt>hd_corr_t_bd</tt></td>
+     <td>correction factor for horizontal diffusion flux of <tt>t</tt> in boundary zone</td>
+     <td align="center"><tt>0.75</tt></td>
+   </tr>
+   <tr>
+     <td><tt>hd_corr_p_in</tt></td>
+     <td>correction factor for horizontal diffusion flux of <tt>pp</tt> in interior domain</td>
+     <td align="center"><tt>0.75</tt></td>
+   </tr>
+   <tr>
+     <td><tt>hd_corr_p_bd</tt></td>
+     <td>correction factor for horizontal diffusion flux of <tt>pp</tt> in boundary zone</td>
+     <td align="center"><tt>0.75</tt></td>
+   </tr>
+   <tr>
+     <td><tt>hd_corr_q_in</tt></td>
+     <td>correction factor for horizontal diffusion flux of <tt>qv,qc</tt> in interior domain</td>
+     <td align="center"><tt>0.5</tt></td>
+   </tr>
+   <tr>
+     <td><tt>hd_corr_q_bd</tt></td>
+     <td>correction factor for horizontal diffusion flux of <tt>qv,qc</tt> in boundary zone</td>
+     <td align="center"><tt>0.5</tt></td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td class="hilit" rowspan="3"><tt>/NUDGING/</tt></td>
+     <td><tt>lhn_radar_dx</tt></td>
+     <td>eliminated</td>
+     <td align="center"><tt>-</tt></td>
+   </tr>
+   <tr>
+     <td><tt>lhn_spqual</tt></td>
+     <td>Switch for the use of a spatial quality function</td>
+     <td align="center"><tt>.FALSE.</tt></td>
+   </tr>
+   <tr>
+     <td><tt>lhn_dt_obs</tt></td>
+     <td>Time step of input data in minute</td>
+     <td align="center"><tt>5</tt></td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td class="hilit" rowspan="2"><tt>/GRIBIN/</tt></td>
+     <td><tt>yvarini</tt></td>
+     <td>eliminated</td>
+     <td align="center"><tt>-</tt></td>
+   </tr>
+   <tr>
+     <td><tt>yvarbd</tt></td>
+     <td>eliminated</td>
+     <td align="center"><tt>-</tt></td>
+   </tr>
+<!---------------------------------------------------------------------------->
+ </tbody>
+</table>
+</center>
+
+<p align="right"><a href="#content">Back to Contents</a>
+<spacer type=vertical size=10>
+<hr>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="results">7. Changes of Results</a></h3>
+
+<p>
+Leapfrog-Dynamics (COSMO-EU):<br />
+No changes.
+</p> 
+
+<p>
+Runge-Kutta-Dynamics (COSMO-DE):<br />
+Changes due to the modifications in the bottom boundary condition 
+(for <tt>itype_bbc_w=2/3</tt>) <br />
+and for 4th order Bott advection (for <tt>yef_adv_qx='Bott_4'</tt>).
+</p> 
+
+<p align="right"><a href="#content">Back to Contents</a>
+
+</body>
+</html>

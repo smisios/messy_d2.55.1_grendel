@@ -1,0 +1,87 @@
+#! /bin/sh -e
+############################################################################
+##  script for modifing date and time of restart files of a MESSy simulation
+##  by Andrea Pozzer (MPI-C) 
+############################################################################
+#  
+script=`basename $0`
+if [ $# -ne 1 ]; then
+    echo "Use $script -h for more information!"
+    exit 127
+fi
+
+case $1 in
+  -h)
+     echo "                                                         "
+     echo "-------------------------------------------------------- "
+     echo "  modify date and time in MESSy restart files            "
+     echo "                                                         "
+     echo "  USAGE:                                                 "
+     echo "  $script [-h] <desired date>                            "
+     echo "                                                         "
+     echo "   -h : show this help and exit                          "
+     echo "   desired date : new date (\"YYYYMMDD hhmmss\")         "
+     echo "                                                         "
+     echo "  Execute this script in the working directory after     "
+     echo "  executing init_restart.                                "
+     echo "---------------------------------------------------------"
+     echo "                                                         "
+     exit 0
+esac 
+
+echo " "
+
+# check prerequisites
+if which ncl ; then
+   echo "ncl is present!"
+else
+   echo "problem with the ncl ----> missing!"
+   exit 127
+fi
+echo " "
+
+############################ PROGRAM START ####################################
+
+echo "************************************************************************"
+echo "*                                                                      *"
+echo "*              Modification of restart date / time for MESSy           *"
+echo "*                                                                      *"
+echo "*                  MPI-C, Andrea Pozzer, Feb 2014                      *"
+echo "*                                                                      *"
+echo "************************************************************************"
+echo
+
+new_start_date_time=`echo "$1" | tr -d '\0'`
+
+echo " "
+echo "new date / time is (YYYYMMDD hhmmss):" $new_start_date_time
+echo " "
+
+for file in restart_*.nc 
+do
+    echo $file
+
+
+cat > change_att.ncl << EOF 
+    fout = addfile("$file", "w") 
+    fout@org_nstep = fout@nstep
+    fout@org_start_date_time = fout@start_date_time
+    fout@org_restart_date_time = fout@restart_date_time
+    fout@nstep = 1
+    fout@start_date_time = "$new_start_date_time"
+    fout@restart_date_time = "$new_start_date_time"
+EOF
+
+ncl change_att.ncl
+rm change_att.ncl
+
+done
+
+echo " "
+echo '********************************************************'
+echo '*** You need to modify restart_ncregrid.rst by hand. ***'
+echo '********************************************************'
+echo " "
+
+exit 0
+

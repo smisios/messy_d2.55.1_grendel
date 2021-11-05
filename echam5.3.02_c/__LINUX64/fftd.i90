@@ -1,0 +1,51 @@
+# 1 "../src/fftd.f90"
+# 3
+
+SUBROUTINE fftd
+
+
+  USE mo_kind,          ONLY: dp
+  USE mo_fft991,        ONLY: fft991cy
+# 11
+
+  USE mo_buffer_fft,    ONLY: fftz, nvar
+  USE mo_decomposition, ONLY: dc => local_decomposition
+# 17
+
+
+  IMPLICIT NONE
+
+!  Local scalars:
+  INTEGER :: inc, isign
+  INTEGER :: nlon, nlp2, nlev, nlat
+# 31
+
+  LOGICAL :: col_1d
+
+!  Local arrays:
+
+  REAL(dp) :: zwork((dc%nlon+2) * dc%nflevp1 * dc%nflat * nvar)
+
+
+!-- 2. direct *Fourier transforms
+
+!-- 2.1 Set constants
+
+  inc    = 1
+  isign  = -1
+  nlon   = dc% nlon
+  nlp2   = nlon + 2
+  nlev   = dc %nflevp1
+  nlat   = dc% nflat
+  col_1d = dc% col_1d
+
+!-- 2.2 fft(*vo*,*d*,*t*,*alps*,*u*,*v*,*dtl*,*dtm*,*dalpsl*,*dalpsm*)
+
+  IF (.NOT.col_1d) THEN
+
+    CALL fft991cy(fftz,zwork,inc,nlp2,nlon,nvar*nlev*nlat,isign)
+# 91
+
+  ENDIF
+
+END SUBROUTINE fftd

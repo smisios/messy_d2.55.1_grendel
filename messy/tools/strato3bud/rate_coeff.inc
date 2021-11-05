@@ -1,0 +1,16 @@
+k_ClO_ClO = k_3rd(temp(ilo,ila,ilev,it),cair,1.9E-32,3.6,3.7E-12,1.6,0.6)
+k_NO_HO2 = 3.3E-12*EXP(270./temp(ilo,ila,ilev,it)) ! G3201
+k_NO_CH3O2 = 2.8E-12*EXP(300./temp(ilo,ila,ilev,it)) ! G4104
+k_O3_O3P = 8.0E-12*EXP(-2060./temp(ilo,ila,ilev,it)) ! G1003
+k_O1D_H2O = 1.63E-10*EXP(60./temp(ilo,ila,ilev,it)) ! G2111
+k_NO2_O3P = 5.1E-12*EXP(210./temp(ilo,ila,ilev,it)) ! G3105
+k_O3_HO2 = 1.E-14*EXP(-490./temp(ilo,ila,ilev,it)) ! G2107
+k_OH_O3 = 1.7E-12*EXP(-940./temp(ilo,ila,ilev,it)) ! G2104
+k_HO2_O3P = 3.E-11*EXP(200./temp(ilo,ila,ilev,it)) ! G2106
+k_O3_H = 1.4E-10*EXP(-470./temp(ilo,ila,ilev,it)) ! G2101
+k_OH_O3P = 1.8E-11*EXP(180./temp(ilo,ila,ilev,it)) ! G2103
+k_ClO_O3P = 2.5E-11*EXP(110./temp(ilo,ila,ilev,it)) ! G6101
+k_ClO_HO2 = 2.2E-12*EXP(340./temp(ilo,ila,ilev,it)) ! G6204
+k_BrO_O3P = 1.9E-11*EXP(230./temp(ilo,ila,ilev,it)) ! G7101
+k_BrO_ClO = 2.9E-12*EXP(220./temp(ilo,ila,ilev,it)) ! G7603b
+k_BrO_ClO = k_BrO_ClO + 5.8E-13*EXP(170./temp(ilo,ila,ilev,it)) ! + G7603c

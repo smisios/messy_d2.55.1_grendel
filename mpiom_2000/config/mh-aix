@@ -1,0 +1,164 @@
+# DKRZ, RZG
+
+# Enable CC and FC only, if not the standard compiler should be used
+
+ARCH       = Power6
+
+unset MPIROOT
+unset MPI_LIB
+unset NETCDF_LIB
+
+case "$mh_setup" in
+  *-rzg|*-rzg-*)
+    . /usr/lpp/ppe.hpct/env_sh
+    ;;
+  *-blizzard|*-blizzard-*|*)
+    IHPCT_BASE = /usr/lpp/ppe.hpct
+    ;;
+esac
+
+# select netcdf 4 environment on blizzard, alternatively one could
+# invoke configure with the arguments:
+# --with-hdf5-root=/sw/aix61/hdf5-1.8.4-patch1
+# --with-szip-root=/sw/aix53/szip-2.1
+# --with-zlib-root=/sw/aix53/zlib-1.2.3
+# --with-netcdf-root=/sw/aix61/netcdf-4.1.1-rc1
+case "$mh_setup" in
+  *-rzg|*-rzg-*)
+    NETCDFROOT = /u/m214003/local
+    ;;
+  *-netcdf3|*-netcdf3-*)
+    NETCDFROOT = /sw/aix53/netcdf-3.6.3
+    ;;
+  *-netcdf4|*-netcdf4-*|*)
+    NETCDFROOT = /sw/aix61/netcdf-4.1.1-rc1
+    HDF5ROOT = /sw/aix61/hdf5-1.8.4-patch1
+    SZIPROOT = /sw/aix53/szip-2.1
+    ZLIBROOT = /sw/aix53/zlib-1.2.3
+    ;;
+esac
+
+TWS_LL_ROOT = /usr/lpp/LoadL/full
+
+INCLUDES =
+
+CC       = xlc_r
+CFLAGS   = -q64 -qarch=pwr6 -Dextname
+
+LDFLAGS  =  $LDFLAGS -Wl,-bdatapsize:64K -Wl,-bstackpsize:64K -Wl,-btextpsize:64K
+
+LIBS     = -lessl ${LIBS}
+
+
+# currently OpenMP support is broken ;-)
+
+case "$mh_setup" in
+  gfortran)
+    FC=gfortran
+    FCFLAGS=-maix64
+    ;;
+  xlf*|*)
+    FPP_DEFOPT   = -WF,-D
+    if test x"$enable_MPI" = x"no" ; then
+      FC     = xlf95_r
+    else
+      FC     = ccache mpxlf95_r
+    fi
+    FCFLAGS = -qdpc=e -q64 -qextname \
+      -qsuppress=1518-061:1518-128 -qstrict -qarch=pwr6 \
+      -qtune=balanced -qsuffix=cpp=f90 -qzerosize
+    FORT_REAL_LEN=4
+    case "$mh_setup" in
+      *-debug|*-debug-*)
+        # debug build
+        FCFLAGS=-g -qfullpath -C -qtbtable=full $FCFLAGS
+        CFLAGS=-g $CFLAGS
+        LDFLAGS=-g $LDFLAGS
+        ;;
+    esac
+    # settings for optimizer safe parameters
+    case "$mh_setup" in
+      *-quick|*-quick-*)
+        CFLAGS=-O $CFLAGS
+        FCFLAGS=-O $FCFLAGS
+        ;;
+      *-noopt|*-noopt-*)
+        ;;
+      *-opt|*-opt-*|*)
+        # optimized build (default)
+        CFLAGS=-O3 -qhot $CFLAGS
+        FCFLAGS=-O3 $FCFLAGS -qessl -qhot -qxflag=nvectver -qxflag=nsmine \
+          -qfloat=fltint
+        # -qarch=auto also selects -qtune=auto
+        # -qhot is very desirable but doesn't work with xlf 12.1.0.3,
+        #   but always use:
+        #   -qhot -qxflag=nvectver -qxflag=nsmine
+        # openmp is currently not tested
+        #   -qsmp=omp
+        # disabled for unknown reason, tj 20090508
+        #   -qcache=auto -qessl
+        # inline integer/floating point conversions
+        #   -qfloat=fltint
+        ;;
+    esac
+    # OpenMP?
+    case "$mh_setup" in
+      *-omp|*-omp-*)
+        # openmp is currently not tested
+        FCFLAGS=$FCFLAGS -qsmp=omp
+        ;;
+    esac
+    # run the interprocedural optimizer (takes long on compilation,
+    # but might produce much more optimized code)
+    case "$mh_setup" in
+      *-ipa|*-ipa-*)
+        FCFLAGS=$FCFLAGS -qipa
+        CFLAGS=$CFLAGS -qipa
+        LDFLAGS=$LDFLAGS -qipa
+        ;;
+    esac
+    case "$mh_setup" in
+      *-mass|*-mass-*)
+        PLATFORM_OPT_LIBM=-lmass -lm
+        ;;
+    esac
+    # settings for computation profiling
+    case "$mh_setup" in
+      *-profile*)
+        # trace performance
+        FCFLAGS = $FCFLAGS ${FPP_DEFOPT}_PROFILE ${FPP_DEFOPT}__hpm__
+        INCLUDES = $INCLUDES -I${IHPCT_BASE}/include
+        case "$mh_setup" in
+          *-rzg|*-rzg-*)
+            FCFLAGS = $FCFLAGS ${FPP_DEFOPT}USE_NEW_HPC
+            LIBS    = -L${IHPCT_BASE}/lib64  -lhpc -lpmapi ${LIBS}
+            ;;
+          *-blizzard|*-blizzard-*|*)
+            FCFLAGS = $FCFLAGS ${FPP_DEFOPT}USE_NEW_HPC
+            LIBS = -L${IHPCT_BASE}/lib64  -lhpc -lpmapi ${LIBS}
+            ;;
+        esac
+        #FCFLAGS =  ${FPP_DEFOPT}__ibm__ ${FPP_DEFOPT}INSTR
+        ;;
+      *-noprofile*|*)
+        ;;
+    esac
+    # settings needed for MPI communication profiling
+    case "$mh_setup" in
+      *-mpiprofile*)
+        LIBS    = ${LIBS} -L${IHPCT_BASE}/lib64 -lmpitrace
+        ;;
+      *-nompiprofile*|*)
+        ;;
+    esac
+    ;;
+esac
+
+
+ARFLAGS  = -X64 crv
+
+SRCDIRS  =
+
+# Local Variables:
+# mode: sh
+# End:

@@ -1,0 +1,730 @@
+!OPTIONS XOPT(HSFUN)
+
+SUBROUTINE CUASCN &
+ & ( KIDIA,    KFDIA,    KLON,     KTDIA,    KLEV,&
+ & PTSPHY,&
+ & PTENH,    PQENH,    PUEN,     PVEN,&
+ & PTEN,     PQEN,     PQSEN,    PLITOT,&
+ & PGEO,     PGEOH,    PAP,      PAPH,&
+ & PTENQ,    PVERVEL,  pwubase,  KLWMIN,&
+ & LDLAND,   LDCUM,    KTYPE,    KLAB,&
+ & PTU,      PQU,      PLU,&
+ & PMFU,     PMFUB,    PENTR,    PLGLAC,&
+ & PMFUS,    PMFUQ,    PMFUL,    PLUDE,    PDMFUP,&
+ & PDMFEN,&
+ & KCBOT,    KCTOP,    KCTOP0,   KDPL,     PMFUDE_RATE,    PKINEU,  PWMEAN )  
+
+!          THIS ROUTINE DOES THE CALCULATIONS FOR CLOUD ASCENTS
+!          FOR CUMULUS PARAMETERIZATION
+
+!          M.TIEDTKE         E.C.M.W.F.     7/86 MODIF. 12/89
+
+!          PURPOSE.
+!          --------
+!          TO PRODUCE CLOUD ASCENTS FOR CU-PARAMETRIZATION
+!          (VERTICAL PROFILES OF T,Q,L,U AND V AND CORRESPONDING
+!           FLUXES AS WELL AS PRECIPITATION RATES)
+
+!          INTERFACE
+!          ---------
+
+!          THIS ROUTINE IS CALLED FROM *CUMASTR*.
+
+!          METHOD.
+!          --------
+!          LIFT SURFACE AIR DRY-ADIABATICALLY TO CLOUD BASE
+!          AND THEN CALCULATE MOIST ASCENT FOR
+!          ENTRAINING/DETRAINING PLUME.
+!          ENTRAINMENT AND DETRAINMENT RATES DIFFER FOR
+!          SHALLOW AND DEEP CUMULUS CONVECTION.
+!          IN CASE THERE IS NO PENETRATIVE OR SHALLOW CONVECTION
+!          CHECK FOR POSSIBILITY OF MID LEVEL CONVECTION
+!          (CLOUD BASE VALUES CALCULATED IN *CUBASMC*)
+
+!     PARAMETER     DESCRIPTION                                   UNITS
+!     ---------     -----------                                   -----
+!     INPUT PARAMETERS (INTEGER):
+
+!    *KIDIA*        START POINT
+!    *KFDIA*        END POINT
+!    *KLON*         NUMBER OF GRID POINTS PER PACKET
+!    *KTDIA*        START OF THE VERTICAL LOOP
+!    *KLEV*         NUMBER OF LEVELS
+!    *KLWMIN*       LEVEL OF MAXIMUM VERTICAL VELOCITY
+!    *KTYPE*        TYPE OF CONVECTION
+!                       1 = PENETRATIVE CONVECTION
+!                       2 = SHALLOW CONVECTION
+!                       3 = MIDLEVEL CONVECTION
+!    *KCBOT*        CLOUD BASE LEVEL
+!    *KDPL*         DEPARTURE LEVEL FOR CONVECTION
+
+!    INPUT PARAMETERS (REAL):
+
+!    *PTSPHY*       TIME STEP FOR THE PHYSICS                      S
+!    *PTENH*        ENV. TEMPERATURE (T+1) ON HALF LEVELS          K
+!    *PQENH*        ENV. SPEC. HUMIDITY (T+1) ON HALF LEVELS     KG/KG
+!    *PUEN*         PROVISIONAL ENVIRONMENT U-VELOCITY (T+1)      M/S
+!    *PVEN*         PROVISIONAL ENVIRONMENT V-VELOCITY (T+1)      M/S
+!    *PTEN*         PROVISIONAL ENVIRONMENT TEMPERATURE (T+1)      K
+!    *PQEN*         PROVISIONAL ENVIRONMENT SPEC. HUMIDITY (T+1) KG/KG
+!    *PQSEN*        ENVIRONMENT SPEC. SATURATION HUMIDITY (T+1)  KG/KG
+!    *PGEO*         GEOPOTENTIAL                                 M2/S2
+!    *PLITOT*       GRID MEAN LIQUID WATER+ICE CONTENT           KG/KG
+!    *PGEOH*        GEOPOTENTIAL ON HALF LEVELS                  M2/S2
+!    *PAP*          PROVISIONAL PRESSURE ON FULL LEVELS           PA
+!    *PAPH*         PROVISIONAL PRESSURE ON HALF LEVELS           PA
+!    *PTENQ*        MOISTURE TENDENCY                            KG/(KG S)
+!    *PVERVEL*      VERTICAL VELOCITY                            PA/S
+
+!    INPUT PARAMETERS (LOGICAL):
+
+!    *LDLAND*       LAND SEA MASK (.TRUE. FOR LAND)
+!    *LDCUM*        FLAG: .TRUE. FOR CONVECTIVE POINTS 
+
+!    UPDATED PARAMETERS (INTEGER):
+
+!    *KLAB*         FLAG KLAB=1 FOR SUBCLOUD LEVELS
+!                        KLAB=2 FOR CLOUD LEVELS
+
+!    UPDATED PARAMETERS (REAL):
+
+!    *PTU*          TEMPERATURE IN UPDRAFTS                        K
+!    *PQU*          SPEC. HUMIDITY IN UPDRAFTS                   KG/KG
+!    *PLU*          LIQUID WATER CONTENT IN UPDRAFTS             KG/KG
+
+!    OUTPUT PARAMETERS (INTEGER):
+
+!    *KCTOP*        CLOUD TOP LEVEL
+!    *KCTOP0*       FIRST GUESS OF CLOUD TOP LEVEL 
+
+!    OUTPUT PARAMETERS (REAL):
+
+!    *PMFU*         MASSFLUX IN UPDRAFTS                         KG/(M2*S)
+!    *PMFUB*        MASSFLUX IN UPDRAFTS AT CLOUD BASE           KG/(M2*S)
+!    *PENTR*        FRACTIONAL MASS ENTRAINMENT RATE              1/M
+!    *PMFUS*        FLUX OF DRY STATIC ENERGY IN UPDRAFTS         J/(M2*S)
+!    *PMFUQ*        FLUX OF SPEC. HUMIDITY IN UPDRAFTS           KG/(M2*S)
+!    *PMFUL*        FLUX OF LIQUID WATER IN UPDRAFTS             KG/(M2*S)
+!    *PLUDE*        DETRAINED LIQUID WATER                       KG/(M2*S)
+!    *PLGLAC*       FROZEN CLOUD WATER CONTENT                   KG/KG
+!    *PDMFUP*       FLUX DIFFERENCE OF PRECIP. IN UPDRAFTS       KG/(M2*S)
+!    *PMFUDE_RATE*  UPDRAFT DETRAINMENT RATE                     KG/(M2*S)
+!    *PKINEU*       UPDRAFT KINETIC ENERGY                       M2/S2
+!    *PWMEAN*       MEAN UPDRAUGHT VELOCITY                      M/S
+
+!          EXTERNALS
+!          ---------
+!          *CUADJTQ* ADJUST T AND Q DUE TO CONDENSATION IN ASCENT
+!          *CUENTR*  CALCULATE ENTRAINMENT/DETRAINMENT RATES
+!          *CUBASMC* CALCULATE CLOUD BASE VALUES FOR MIDLEVEL CONVECTION
+
+!          REFERENCE
+!          ---------
+!          (TIEDTKE,1989)
+
+!          MODIFICATIONS
+!          -------------
+!             92-09-21 : Update to Cy44      J.-J. MORCRETTE
+!             99-06-14 : Optimisation        D.SALMOND
+!             01-05-22 : Modified flux limiter M.CULLEN
+!             02-08-14 : Allow for departure level =/ KLEV  P.BECHTOLD
+!             03-08-28 : Clean-up detrainment rates         P.BECHTOLD
+!        M.Hamrud      01-Oct-2003 CY28 Cleaning
+!        J.Hague       08-Dec-2005 Tuning: LLFLAG indexing
+!             07-06-01 : Organized entrainment based on RH  P.BECHTOLD
+
+!----------------------------------------------------------------------
+
+USE PARKIND1  ,ONLY : JPIM     ,JPRB
+USE YOMHOOK_IFS   ,ONLY : LHOOK,   DR_HOOK
+
+USE YOMCST   , ONLY : RG       ,RCPD     ,RETV     ,RLVTT    ,RLSTT    ,RTT    
+USE YOETHF   , ONLY : R2ES     ,R3LES    ,R3IES    ,R4LES    ,&
+ & R4IES    ,R5LES    ,R5IES    ,R5ALVCP  ,R5ALSCP  ,&
+ & RALVDCP  ,RALSDCP  ,RALFDCP  ,RTWAT    ,RTBER    ,&
+ & RTBERCU  ,RTICE    ,RTICECU  ,&
+ & RTWAT_RTICECU_R    ,RTWAT_RTICE_R  
+USE YOECUMF  , ONLY : ENTRORG  ,RMFCMIN  ,RPRCON   ,RMFCFL   ,RMFLIC   ,RMFLIA
+USE YOEPHLI  , ONLY : LPHYLIN  ,RLPTRC
+USE YOECLDP  , ONLY : RLMIN
+
+IMPLICIT NONE
+
+INTEGER(KIND=JPIM),INTENT(IN)    :: KLON 
+INTEGER(KIND=JPIM),INTENT(IN)    :: KLEV 
+INTEGER(KIND=JPIM),INTENT(IN)    :: KIDIA 
+INTEGER(KIND=JPIM),INTENT(IN)    :: KFDIA 
+INTEGER(KIND=JPIM)               :: KTDIA ! Argument NOT used
+REAL(KIND=JPRB)   ,INTENT(IN)    :: PTSPHY 
+REAL(KIND=JPRB)   ,INTENT(INOUT) :: PTENH(KLON,KLEV) 
+REAL(KIND=JPRB)   ,INTENT(INOUT) :: PQENH(KLON,KLEV) 
+REAL(KIND=JPRB)   ,INTENT(IN)    :: PUEN(KLON,KLEV) 
+REAL(KIND=JPRB)   ,INTENT(IN)    :: PVEN(KLON,KLEV) 
+REAL(KIND=JPRB)   ,INTENT(IN)    :: PTEN(KLON,KLEV) 
+REAL(KIND=JPRB)   ,INTENT(IN)    :: PQEN(KLON,KLEV) 
+REAL(KIND=JPRB)   ,INTENT(IN)    :: PQSEN(KLON,KLEV) 
+REAL(KIND=JPRB)   ,INTENT(IN)    :: PLITOT(KLON,KLEV) 
+REAL(KIND=JPRB)   ,INTENT(IN)    :: PGEO(KLON,KLEV) 
+REAL(KIND=JPRB)   ,INTENT(IN)    :: PGEOH(KLON,KLEV+1) 
+REAL(KIND=JPRB)   ,INTENT(IN)    :: PAP(KLON,KLEV) 
+REAL(KIND=JPRB)   ,INTENT(IN)    :: PAPH(KLON,KLEV+1) 
+REAL(KIND=JPRB)   ,INTENT(IN)    :: PTENQ(KLON,KLEV) 
+REAL(KIND=JPRB)   ,INTENT(IN)    :: PVERVEL(KLON,KLEV) 
+REAL(KIND=JPRB)   ,INTENT(IN)    :: PWUBASE(KLON) 
+INTEGER(KIND=JPIM),INTENT(IN)    :: KLWMIN(KLON) 
+LOGICAL           ,INTENT(IN)    :: LDLAND(KLON) 
+LOGICAL           ,INTENT(INOUT) :: LDCUM(KLON) 
+INTEGER(KIND=JPIM),INTENT(INOUT) :: KTYPE(KLON) 
+INTEGER(KIND=JPIM),INTENT(INOUT) :: KLAB(KLON,KLEV) 
+REAL(KIND=JPRB)   ,INTENT(INOUT) :: PTU(KLON,KLEV) 
+REAL(KIND=JPRB)   ,INTENT(INOUT) :: PQU(KLON,KLEV) 
+REAL(KIND=JPRB)   ,INTENT(INOUT) :: PLU(KLON,KLEV) 
+REAL(KIND=JPRB)   ,INTENT(INOUT) :: PMFU(KLON,KLEV) 
+REAL(KIND=JPRB)   ,INTENT(INOUT) :: PMFUB(KLON) 
+REAL(KIND=JPRB)   ,INTENT(INOUT) :: PENTR(KLON) 
+REAL(KIND=JPRB)   ,INTENT(OUT)   :: PLGLAC(KLON,KLEV) 
+REAL(KIND=JPRB)   ,INTENT(OUT)   :: PMFUS(KLON,KLEV) 
+REAL(KIND=JPRB)   ,INTENT(OUT)   :: PMFUQ(KLON,KLEV) 
+REAL(KIND=JPRB)   ,INTENT(OUT)   :: PMFUL(KLON,KLEV) 
+REAL(KIND=JPRB)   ,INTENT(OUT)   :: PLUDE(KLON,KLEV) 
+REAL(KIND=JPRB)   ,INTENT(OUT)   :: PDMFUP(KLON,KLEV) 
+REAL(KIND=JPRB)   ,INTENT(OUT)   :: PDMFEN(KLON,KLEV) 
+INTEGER(KIND=JPIM),INTENT(INOUT) :: KCBOT(KLON) 
+INTEGER(KIND=JPIM),INTENT(OUT)   :: KCTOP(KLON) 
+INTEGER(KIND=JPIM),INTENT(INOUT) :: KCTOP0(KLON) 
+INTEGER(KIND=JPIM),INTENT(IN)    :: KDPL(KLON) 
+REAL(KIND=JPRB)   ,INTENT(OUT)   :: PMFUDE_RATE(KLON,KLEV) 
+REAL(KIND=JPRB)   ,INTENT(OUT)   :: PKINEU(KLON,KLEV) 
+REAL(KIND=JPRB)   ,INTENT(OUT)   :: PWMEAN(KLON) 
+
+REAL(KIND=JPRB) ::     ZDMFEN(KLON),           ZDMFDE(KLON),&
+ & ZPBASE(KLON),           ZQOLD(KLON),&
+ & ZLRAIN(KLON,KLEV),&
+ & ZBUO(KLON,KLEV),        ZLUOLD(KLON),&
+ & ZPRECIP(KLON)  
+REAL(KIND=JPRB) ::     ZDLAND(KLON), ZDPMEAN(KLON)
+REAL(KIND=JPRB) ::     ZOENTR(KLON), ZPH(KLON)
+LOGICAL ::  LLFLAG(KLON), LLFLAGUV(KLON), LLO1(KLON), LLO3, LLO4
+
+INTEGER(KIND=JPIM) :: ICALL, IK, IS, JK, JL, IKB
+INTEGER(KIND=JPIM) :: JLL, JLM, JLX(KLON)
+
+REAL(KIND=JPRB) :: Z_CLCRIT, Z_CLDMAX, Z_CPRC2, Z_CWDRAG, Z_CWIFRAC, ZALFAW,&
+ & ZBC, ZBE, ZBUOC, ZC, ZCBF, ZCONS2, ZD, ZDFI, &
+ & ZDKBUO, ZDKEN, ZDNOPRC, ZDPHI, &
+ & ZDT, ZFAC, ZFACBUO, ZINT, ZKEDKE, ZLCRIT, &
+ & ZLEEN, ZLNEW, ZMFMAX, ZMFTEST, ZMFULK, ZMFUN, &
+ & ZMFUQK, ZMFUSK, ZOEALFA, ZOEALFAP, ZPRCDGW, &
+ & ZPRCON, ZQEEN, ZQUDE, ZRNEW, ZROLD, ZSCDE, &
+ & ZSEEN, ZTGLACE, ZVI, ZVV, ZVW, ZWU, ZZCO  
+
+REAL(KIND=JPRB) ::  ZCHANGE,ZXS,ZXE
+REAL(KIND=JPRB) :: ZHOOK_HANDLE
+
+LOGICAL LKLAB(KLON)
+
+#include "cuadjtq.intfb.h"
+#include "cubasmcn.intfb.h"
+#include "cuentr.intfb.h"
+
+!DIR$ VFUNCTION EXPHF
+#include "fcttre.h"
+!----------------------------------------------------------------------
+
+!*    1.           SPECIFY PARAMETERS
+!                  ------------------
+
+IF (LHOOK) CALL DR_HOOK('CUASCN',0,ZHOOK_HANDLE)
+ZCONS2=RMFCFL/(RG*PTSPHY)
+ZTGLACE=RTT  -13._JPRB
+ZFACBUO=0.5_JPRB/(1.0_JPRB+0.5_JPRB)
+ZPRCDGW=RPRCON/RG
+Z_CLCRIT=0.5E-3_JPRB
+Z_CLDMAX=5.E-3_JPRB
+Z_CWIFRAC=0.5_JPRB
+Z_CPRC2=0.5_JPRB
+Z_CWDRAG=(3._JPRB/8._JPRB)*0.506_JPRB/0.2_JPRB/RG
+
+!----------------------------------------------------------------------
+
+!     2.           SET DEFAULT VALUES
+!                  ------------------
+
+LLO3=.FALSE.
+DO JL=KIDIA,KFDIA
+  ZLUOLD(JL)=0.0_JPRB
+  IF(.NOT.LDCUM(JL)) THEN
+    KCBOT(JL)=-1
+    PMFUB(JL)=0.0_JPRB
+    PQU(JL,KLEV)=0.0_JPRB
+    KTYPE(JL)=0
+  ENDIF
+  PWMEAN(JL)=0.0_JPRB
+  ZDPMEAN(JL)=0.0_JPRB
+  ZOENTR(JL)=0.0_JPRB
+ENDDO
+
+! initalize various quantities
+! note that liquid water and kinetic energy at cloud base is 
+! preserved from cubase
+
+DO JL=KIDIA,KFDIA
+  LKLAB(JL)=.false.
+  IF(.NOT.LDCUM(JL).OR.KTYPE(JL) == 3) LKLAB(JL)=.true.
+ENDDO
+
+DO JK=1,KLEV
+  DO JL=KIDIA,KFDIA
+    IF (JK /= KCBOT(JL)) then 
+      PLU(JL,JK)=0.0_JPRB
+    ENDIF
+    PKINEU(JL,JK)=0.0_JPRB
+  ENDDO
+  DO JL=KIDIA,KFDIA
+    PMFU(JL,JK)=0.0_JPRB
+    PMFUS(JL,JK)=0.0_JPRB
+    PMFUQ(JL,JK)=0.0_JPRB
+    PMFUL(JL,JK)=0.0_JPRB
+  ENDDO
+  DO JL=KIDIA,KFDIA
+    PLUDE(JL,JK)=0.0_JPRB
+    PLGLAC(JL,JK)=0.0_JPRB
+    PDMFUP(JL,JK)=0.0_JPRB
+    ZLRAIN(JL,JK)=0.0_JPRB
+  ENDDO
+  DO JL=KIDIA,KFDIA
+    ZBUO(JL,JK)=0.0_JPRB
+    IF( LKLAB(JL) ) KLAB(JL,JK)=0
+    IF(.NOT.LDCUM(JL).AND.PAPH(JL,JK) < 4.E4_JPRB) KCTOP0(JL)=JK
+    PDMFEN(JL,JK)=0.0_JPRB
+    PMFUDE_RATE(JL,JK)=0.0_JPRB
+  ENDDO
+ENDDO
+!DIR$ IVDEP
+!OCL NOVREC
+DO JL=KIDIA,KFDIA
+  IF(LDLAND(JL)) THEN
+    ZDLAND(JL)=3.0E4_JPRB
+    IF(LDCUM(JL)) THEN
+      ZDPHI=PGEOH(JL,KCTOP0(JL))-PGEOH(JL,KCBOT(JL))
+      IF(PTU(JL,KCTOP0(JL)) >= ZTGLACE) ZDLAND(JL)=ZDPHI
+      ZDLAND(JL)=MAX(3.0E4_JPRB,ZDLAND(JL))
+      ZDLAND(JL)=MIN(5.0E4_JPRB,ZDLAND(JL))
+    ENDIF
+  ENDIF
+  IF(KTYPE(JL) == 3) LDCUM(JL)=.FALSE.
+ENDDO
+
+!----------------------------------------------------------------------
+
+!     3.0          INITIALIZE VALUES AT cloud base LEVEL
+!                  -------------------------------------
+
+DO JL=KIDIA,KFDIA
+  KCTOP(JL)=kcbot(jl)
+  IF(LDCUM(JL)) THEN
+    IKB=KCBOT(JL)
+    PKINEU(JL,IKB)=0.5*PWUBASE(JL)**2
+    PMFU(JL,IKB)=PMFUB(JL)
+    PMFUS(JL,IKB)=PMFUB(JL)*(RCPD*PTU(JL,IKB)+PGEOH(JL,IKB))
+    PMFUQ(JL,IKB)=PMFUB(JL)*PQU(JL,IKB)
+    PMFUL(JL,IKB)=PMFUB(JL)*PLU(JL,IKB)
+  ENDIF
+ENDDO
+
+!----------------------------------------------------------------------
+
+!     4.           DO ASCENT: SUBCLOUD LAYER (KLAB=1) ,CLOUDS (KLAB=2)
+!                  BY DOING FIRST DRY-ADIABATIC ASCENT AND THEN
+!                  BY ADJUSTING T,Q AND L ACCORDINGLY IN *CUADJTQ*,
+!                  THEN CHECK FOR BUOYANCY AND SET FLAGS ACCORDINGLY
+!                  -------------------------------------------------
+
+DO JK=KLEV-1,3,-1
+
+!                  SPECIFY CLOUD BASE VALUES FOR MIDLEVEL CONVECTION
+!                  IN *CUBASMC* IN CASE THERE IS NOT ALREADY CONVECTION
+!                  ----------------------------------------------------
+
+  IK=JK
+  CALL CUBASMCN &
+   & ( KIDIA,    KFDIA,    KLON,     KTDIA,    KLEV,&
+   & IK,&
+   & PTEN,     PQEN,     PQSEN,    PUEN,     PVEN,&
+   & PVERVEL,  PGEO,     PGEOH,    LDCUM,    KTYPE,    KLAB,&
+   & KCBOT,    PMFU,     PMFUB,    PENTR,    ZLRAIN,&
+   & PTU,      PQU,      PLU,&
+   & PMFUS,    PMFUQ,    PMFUL,    PDMFUP)  
+
+  IS=0
+  JLM=0
+  DO JL=KIDIA,KFDIA
+    LLFLAG(JL)=.FALSE.
+    ZPRECIP(JL)=0.0_JPRB
+    LLO1(JL)=.FALSE.
+    IS=IS+KLAB(JL,JK+1)
+    IF(KLAB(JL,JK+1) == 0) KLAB(JL,JK)=0
+    IF((LDCUM(JL).AND.KLAB(JL,JK+1) == 2).OR.&
+       & (KTYPE(JL) == 3 .and. KLAB(JL,JK+1) == 1)) THEN  
+      LLFLAG(JL)=.TRUE.
+      JLM=JLM+1
+      JLX(JLM)=JL
+    ENDIF
+    IF(KLAB(JL,JK+1) > 0) THEN
+      LLFLAGUV(JL)=.TRUE.
+    ELSE
+      LLFLAGUV(JL)=.FALSE.
+    ENDIF
+    ZPH(JL)=PAPH(JL,JK)
+    IF(KTYPE(JL) == 3.AND.JK == KCBOT(JL)) THEN
+      ZMFMAX=(PAPH(JL,JK)-PAPH(JL,JK-1))*ZCONS2*RMFLIC+RMFLIA
+      IF(PMFUB(JL) > ZMFMAX) THEN
+        ZFAC=ZMFMAX/PMFUB(JL)
+        PMFU(JL,JK+1)=PMFU(JL,JK+1)*ZFAC
+        PMFUS(JL,JK+1)=PMFUS(JL,JK+1)*ZFAC
+        PMFUQ(JL,JK+1)=PMFUQ(JL,JK+1)*ZFAC
+        PMFUB(JL)=ZMFMAX
+      ENDIF
+    ENDIF
+  ENDDO
+
+  IF(IS > 0) LLO3=.TRUE.
+
+!*                  SPECIFY ENTRAINMENT RATES IN *CUENTR*
+!                   -------------------------------------
+
+  IK=JK
+  CALL CUENTR &
+   & ( KIDIA,    KFDIA,    KLON,     KTDIA,    KLEV,&
+   & IK,       KLWMIN,   KTYPE,    KCBOT,    KCTOP0,&
+   & LDCUM,    LLO3,&
+   & PTENH,    PQENH,    PQSEN,    PAPH,     PGEOH,&
+   & PMFU,     PENTR,&
+   & ZPBASE,   ZDMFEN,   ZDMFDE )  
+
+!                  DO ADIABATIC ASCENT FOR ENTRAINING/DETRAINING PLUME
+!                  ---------------------------------------------------
+
+  IF(LLO3) THEN
+
+    llo4=ptsphy>1800.0_jprb.and.rmfcfl==1.0_jprb
+    DO JL=KIDIA,KFDIA
+      ZQOLD(JL)=0.0_JPRB
+    ENDDO
+    DO JLL=1,JLM  
+        JL=JLX(JLL)
+        ZDMFDE(JL)=MIN(ZDMFDE(JL),0.75_JPRB*PMFU(JL,JK+1))
+        IF(JK==KCBOT(JL)-1) THEN
+          ZOENTR(JL)=-ENTRORG*(MIN(1.0_JPRB,PQEN(JL,JK)/PQSEN(JL,JK))-1.0_JPRB)*&
+          &(PGEOH(JL,JK)-PGEOH(JL,JK+1))
+          ZOENTR(JL)=MIN(0.4_JPRB,ZOENTR(JL))*PMFU(JL,JK+1)
+        ENDIF
+        IF(JK < KCBOT(JL)) THEN
+          ZMFMAX=(PAPH(JL,JK)-PAPH(JL,JK-1))*ZCONS2*RMFLIC+RMFLIA
+          if(ktype(jl)==2.and.llo4) ZMFMAX=ZMFMAX*3._JPRB
+          ZXS=MAX(PMFU(JL,JK+1)-ZMFMAX,0.0_JPRB)
+          IF(KTYPE(JL)>=2)ZOENTR(JL)=0.0_JPRB
+          PWMEAN(JL)=PWMEAN(JL)+PKINEU(JL,JK+1)*(PAP(JL,JK+1)-PAP(JL,JK))
+          ZDPMEAN(JL)=ZDPMEAN(JL)+PAP(JL,JK+1)-PAP(JL,JK)
+          ZDMFEN(JL)=ZDMFEN(JL)+ZOENTR(JL)
+          ZMFTEST=PMFU(JL,JK+1)+ZDMFEN(JL)-ZDMFDE(JL)
+          ZCHANGE=MAX(ZMFTEST-ZMFMAX,0.0_JPRB)
+          ZXE=MAX(ZCHANGE-ZXS,0.0_JPRB)
+          ZDMFEN(JL)=ZDMFEN(JL)-ZXE
+          ZCHANGE=ZCHANGE-ZXE
+          ZDMFDE(JL)=ZDMFDE(JL)+ZCHANGE
+        ENDIF
+
+        PDMFEN(JL,JK) = ZDMFEN(JL)-ZDMFDE(JL)
+
+        PMFU(JL,JK)=PMFU(JL,JK+1)+ZDMFEN(JL)-ZDMFDE(JL)
+        ZQEEN=PQENH(JL,JK+1)*ZDMFEN(JL)
+        ZSEEN=(RCPD*PTENH(JL,JK+1)+PGEOH(JL,JK+1))*ZDMFEN(JL)
+        IF(PLITOT(JL,JK) > RLMIN) THEN
+          ZLEEN=PLITOT(JL,JK)*ZDMFEN(JL)
+        ELSE
+          ZLEEN=0.0_JPRB
+        ENDIF
+        ZSCDE=(RCPD*PTU(JL,JK+1)+PGEOH(JL,JK+1))*ZDMFDE(JL)
+        ZQUDE=PQU(JL,JK+1)*ZDMFDE(JL)
+        PLUDE(JL,JK)=PLU(JL,JK+1)*ZDMFDE(JL)
+        ZMFUSK=PMFUS(JL,JK+1)+ZSEEN-ZSCDE
+        ZMFUQK=PMFUQ(JL,JK+1)+ZQEEN-ZQUDE
+        ZMFULK=PMFUL(JL,JK+1)+ZLEEN-PLUDE(JL,JK)
+        PLU(JL,JK)=ZMFULK*(1.0_JPRB/MAX(RMFCMIN,PMFU(JL,JK)))
+        PQU(JL,JK)=ZMFUQK*(1.0_JPRB/MAX(RMFCMIN,PMFU(JL,JK)))
+        PTU(JL,JK)=(ZMFUSK*(1.0_JPRB/MAX(RMFCMIN,PMFU(JL,JK)))-&
+         & PGEOH(JL,JK))/RCPD  
+        PTU(JL,JK)=MAX(100._JPRB,PTU(JL,JK))
+        PTU(JL,JK)=MIN(400._JPRB,PTU(JL,JK))
+        ZQOLD(JL)=PQU(JL,JK)
+        ZLRAIN(JL,JK)=ZLRAIN(JL,JK+1)*(PMFU(JL,JK+1)-ZDMFDE(JL))*&
+         & (1.0_JPRB/MAX(RMFCMIN,PMFU(JL,JK)))  
+        ZLUOLD(JL)=PLU(JL,JK)
+    ENDDO
+        ! reset to environmental values if below departure level
+    DO JL=KIDIA,KFDIA
+      IF ( JK > KDPL(JL) ) THEN
+        PTU(JL,JK)=PTENH(JL,JK)      
+        PQU(JL,JK)=PQENH(JL,JK)      
+        PLU(JL,JK)=0.0_JPRB
+        ZLUOLD(JL)=PLU(JL,JK)
+      ENDIF
+    ENDDO
+
+!                  DO CORRECTIONS FOR MOIST ASCENT
+!                  BY ADJUSTING T,Q AND L IN *CUADJTQ*
+!                  -----------------------------------
+
+    IK=JK
+    ICALL=1
+    IF(JLM > 0) THEN
+      CALL CUADJTQ &
+       & ( KIDIA,    KFDIA,    KLON,     KTDIA,    KLEV,&
+       & IK,&
+       & ZPH,      PTU,      PQU,      LLFLAG,  ICALL )  
+    ENDIF
+
+    IF (LPHYLIN) THEN
+
+!DIR$ IVDEP
+!OCL NOVREC
+      DO JLL=1,JLM  
+        JL=JLX(JLL)
+        IF(PQU(JL,JK) /= ZQOLD(JL)) THEN
+          ZOEALFA   = 0.545_JPRB*(TANH(0.17_JPRB*(PTU(JL,JK  )-RLPTRC))+1.0_JPRB)
+          ZOEALFAP  = 0.545_JPRB*(TANH(0.17_JPRB*(PTU(JL,JK+1)-RLPTRC))+1.0_JPRB)
+          PLGLAC(JL,JK)=PLU(JL,JK)*((1.0_JPRB-ZOEALFA)-(1.0_JPRB-ZOEALFAP))
+          PTU(JL,JK)=PTU(JL,JK)+RALFDCP*PLGLAC(JL,JK)
+        ENDIF
+      ENDDO
+
+    ELSE
+
+!DIR$ IVDEP
+!OCL NOVREC
+      DO JLL=1,JLM  
+        JL=JLX(JLL)
+        IF(PQU(JL,JK) /= ZQOLD(JL)) THEN
+          PLGLAC(JL,JK)=PLU(JL,JK)*((1.0_JPRB-FOEALFCU(PTU(JL,JK)))-&
+           & (1.0_JPRB-FOEALFCU(PTU(JL,JK+1))))  
+          PTU(JL,JK)=PTU(JL,JK)+RALFDCP*PLGLAC(JL,JK)
+        ENDIF
+      ENDDO
+
+    ENDIF
+
+    DO JLL=1,JLM  
+      JL=JLX(JLL)
+      IF(PQU(JL,JK) /= ZQOLD(JL)) THEN
+        KLAB(JL,JK)=2
+        PLU(JL,JK)=PLU(JL,JK)+ZQOLD(JL)-PQU(JL,JK)
+        ZBC=PTU(JL,JK)*(1.0_JPRB+RETV*PQU(JL,JK)-PLU(JL,JK+1)-ZLRAIN(JL,JK+1))
+        ZBE=PTENH(JL,JK)*(1.0_JPRB+RETV*PQENH(JL,JK))
+        ZBUO(JL,JK)=ZBC-ZBE
+
+! set flags in case of midlevel convection
+
+        IF(KTYPE(JL) == 3 .AND. KLAB(JL,JK+1)== 1) THEN
+          IF(ZBUO(JL,JK) > -0.5_JPRB) THEN
+            LDCUM(JL)=.TRUE.
+            KCTOP(JL)=JK
+            PKINEU(JL,JK)=0.5_JPRB
+          ELSE
+            KLAB(JL,JK)=0
+            PMFU(JL,JK)=0.0_JPRB
+            PLUDE(JL,JK)=0.0_JPRB
+            PLU(JL,JK)=0.0_JPRB
+          ENDIF
+        ENDIF
+
+        IF(KLAB(JL,JK+1) == 2) THEN
+
+          IF(ZBUO(JL,JK) < 0.0_JPRB.AND.KLAB(JL,JK+1) == 2) THEN
+            PTENH(JL,JK)=0.5_JPRB*(PTEN(JL,JK)+PTEN(JL,JK-1))
+            PQENH(JL,JK)=0.5_JPRB*(PQEN(JL,JK)+PQEN(JL,JK-1))
+            ZBUO(JL,JK)=ZBC-PTENH(JL,JK)*(1.0_JPRB+RETV*PQENH(JL,JK))
+          ENDIF
+          ZBUOC=(ZBUO(JL,JK)/(PTENH(JL,JK)*(1.0_JPRB+RETV*PQENH(JL,JK)))&
+           & +ZBUO(JL,JK+1)/(PTENH(JL,JK+1)*(1.0_JPRB+RETV*&
+           & PQENH(JL,JK+1))))*0.5_JPRB  
+          ZDKBUO=(PGEOH(JL,JK)-PGEOH(JL,JK+1))*ZFACBUO*ZBUOC
+
+! either use entrainment rate or if zero
+! use detrainmnet rate as a subsitute for 
+! mixing and "pressure" gradient term in upper
+! troposphere
+
+          IF(ZDMFEN(JL) > 0.0_JPRB)THEN
+            ZDKEN=MIN(1.0_JPRB,(1 + RG*Z_CWDRAG)*&
+             & ZDMFEN(JL)/MAX(RMFCMIN,PMFU(JL,JK+1)))  
+          ELSE
+            ZDKEN=MIN(1.0_JPRB,(1 + RG*Z_CWDRAG)*&
+             & ZDMFDE(JL)/MAX(RMFCMIN,PMFU(JL,JK+1)))  
+          ENDIF
+          
+          PKINEU(JL,JK)=(PKINEU(JL,JK+1)*(1-ZDKEN)+ZDKBUO)/(1+ZDKEN)
+          IF(ZBUO(JL,JK) < 0.0_JPRB.AND.KLAB(JL,JK+1) == 2) THEN
+            ZKEDKE=PKINEU(JL,JK)/MAX(1.E-10_JPRB,PKINEU(JL,JK+1))
+            ZKEDKE=MAX(0.0_JPRB,MIN(1.0_JPRB,ZKEDKE))
+            ZMFUN=SQRT(ZKEDKE)*PMFU(JL,JK+1)
+            ZDMFDE(JL)=MAX(ZDMFDE(JL),PMFU(JL,JK+1)-ZMFUN)
+            PLUDE(JL,JK)=PLU(JL,JK+1)*ZDMFDE(JL)
+            PMFU(JL,JK)=PMFU(JL,JK+1)+ZDMFEN(JL)-ZDMFDE(JL)
+          ENDIF
+
+          IF(ZBUO(JL,JK) > -0.2_JPRB.AND.KLAB(JL,JK+1) == 2) THEN
+            IKB=KCBOT(JL)
+         !  ZOENTR(JL)=-ENTRORG*(MIN(1.0_JPRB,PQEN(JL,JK-1)/PQSEN(JL,JK-1))-1.0_JPRB)*&
+         !    &(PGEOH(JL,JK-1)-PGEOH(JL,JK))*MIN(1.0_JPRB,PQSEN(JL,JK)/PQSEN(JL,IKB))**3
+            ZOENTR(JL)=ENTRORG*(0.3_JPRB-(MIN(1.0_JPRB,PQEN(JL,JK-1)/PQSEN(JL,JK-1))-1.0_JPRB))*&
+              &(PGEOH(JL,JK-1)-PGEOH(JL,JK))*MIN(1.0_JPRB,PQSEN(JL,JK)/PQSEN(JL,IKB))**3
+            ZOENTR(JL)=MIN(0.4_JPRB,ZOENTR(JL))*PMFU(JL,JK)
+          ELSE
+            ZOENTR(JL)=0.0_JPRB
+          ENDIF
+
+           ! Erase values if below departure level
+          IF ( JK > KDPL(JL) ) THEN
+            PMFU(JL,JK)=PMFU(JL,JK+1)
+            PKINEU(JL,JK)=0.5_JPRB
+          ENDIF
+          IF(PKINEU(JL,JK) > 0.0_JPRB.AND.PMFU(JL,JK) > 0.0_JPRB) THEN
+            KCTOP(JL)=JK
+            LLO1(JL)=.TRUE.
+          ELSE
+            KLAB(JL,JK)=0
+            PMFU(JL,JK)=0.0_JPRB
+            PKINEU(JL,JK)=0.0_JPRB
+            ZDMFDE(JL)=PMFU(JL,JK+1)
+            PLUDE(JL,JK)=PLU(JL,JK+1)*ZDMFDE(JL)
+          ENDIF
+          
+! store detrainment rates for updraught
+
+          IF ( PMFU(JL,JK+1) > 0.0_JPRB ) THEN
+            PMFUDE_RATE(JL,JK)=ZDMFDE(JL)
+          ENDIF
+          
+        ENDIF
+
+!     ELSEIF(LLFLAG(JL).AND.KTYPE(JL)==2.AND.PQU(JL,JK) == ZQOLD(JL)) THEN
+      ELSEIF(KTYPE(JL)==2.AND.PQU(JL,JK) == ZQOLD(JL)) THEN
+        KLAB(JL,JK)=0
+        PMFU(JL,JK)=0.0_JPRB
+        PKINEU(JL,JK)=0.0_JPRB
+        ZDMFDE(JL)=PMFU(JL,JK+1)
+        PLUDE(JL,JK)=PLU(JL,JK+1)*ZDMFDE(JL)
+        PMFUDE_RATE(JL,JK)=ZDMFDE(JL)
+
+      ENDIF
+    ENDDO
+
+!              CALCULATE PRECIPITATION RATE BY
+!              ANALYTIC INTEGRATION OF EQUATION FOR L
+
+    DO JL=KIDIA,KFDIA
+      IF(LLO1(JL)) THEN
+      ! IF(LDLAND(JL)) THEN
+      !   ZDNOPRC=ZDLAND(JL)
+      ! ELSE
+      !   ZDNOPRC=1.5E4_JPRB
+      ! ENDIF
+        ZDNOPRC=0.0_JPRB
+      ! IF(ZPBASE(JL)-PAPH(JL,JK) > ZDNOPRC .AND. PLU(JL,JK) > 1.E-10_JPRB) THEN
+        if(plu(jl,jk) > 3.e-4_jprb) then
+          ZWU=MIN(15._JPRB,SQRT(2.0_JPRB*MAX(0.1_JPRB,PKINEU(JL,JK+1))))
+          ZPRCON=ZPRCDGW/(0.75_JPRB*ZWU)
+
+!           PARAMETERS FOR BERGERON-FINDEISEN PROCESS (T < -5C)
+
+          ZDT=MIN(RTBERCU-RTICECU,MAX(RTBER-PTU(JL,JK),0.0_JPRB))
+          ZCBF=1+Z_CPRC2*SQRT(ZDT)
+          ZZCO=ZPRCON*ZCBF
+          ZLCRIT=Z_CLCRIT/ZCBF
+
+          ZDFI=PGEOH(JL,JK)-PGEOH(JL,JK+1)
+          ZC=(PLU(JL,JK)-ZLUOLD(JL))
+          ZD=ZZCO*(1.0_JPRB-EXP(-(PLU(JL,JK)/ZLCRIT)**2))*ZDFI
+          ZINT=EXP(-ZD)
+          ZLNEW=ZLUOLD(JL)*ZINT+ZC/ZD*(1.0_JPRB-ZINT)
+          ZLNEW=MAX(0.0_JPRB,MIN(PLU(JL,JK),ZLNEW))
+          ZLNEW=MIN(Z_CLDMAX,ZLNEW)
+          ZPRECIP(JL)=MAX(0.0_JPRB,ZLUOLD(JL)+ZC-ZLNEW)
+          PDMFUP(JL,JK)=ZPRECIP(JL)*PMFU(JL,JK)
+          ZLRAIN(JL,JK)=ZLRAIN(JL,JK)+ZPRECIP(JL)
+          PLU(JL,JK)=ZLNEW
+        ENDIF
+      ENDIF
+    ENDDO
+
+    IF (LPHYLIN) THEN
+
+      DO JL=KIDIA,KFDIA
+        IF(LLO1(JL)) THEN
+          IF(ZLRAIN(JL,JK) > 0.0_JPRB) THEN
+            ZVW=21.18_JPRB*ZLRAIN(JL,JK)**0.2_JPRB
+            ZVI=Z_CWIFRAC*ZVW
+            ZALFAW=0.545_JPRB*(TANH(0.17_JPRB*(PTU(JL,JK)-RLPTRC))+1.0_JPRB)
+            ZVV=ZALFAW*ZVW+(1.0_JPRB-ZALFAW)*ZVI
+            ZROLD=ZLRAIN(JL,JK)-ZPRECIP(JL)
+            ZC=ZPRECIP(JL)
+            ZWU=MIN(15._JPRB,SQRT(2.0_JPRB*MAX(0.1_JPRB,PKINEU(JL,JK))))
+            ZD=ZVV/ZWU
+            ZINT=EXP(-ZD)
+            ZRNEW=ZROLD*ZINT+ZC/ZD*(1.0_JPRB-ZINT)
+            ZRNEW=MAX(0.0_JPRB,MIN(ZLRAIN(JL,JK),ZRNEW))
+            ZLRAIN(JL,JK)=ZRNEW
+          ENDIF
+        ENDIF
+      ENDDO
+
+    ELSE
+
+      DO JL=KIDIA,KFDIA
+        IF(LLO1(JL)) THEN
+          IF(ZLRAIN(JL,JK) > 0.0_JPRB) THEN
+            ZVW=21.18_JPRB*ZLRAIN(JL,JK)**0.2_JPRB
+            ZVI=Z_CWIFRAC*ZVW
+            ZALFAW=FOEALFCU(PTU(JL,JK))
+            ZVV=ZALFAW*ZVW+(1.0_JPRB-ZALFAW)*ZVI
+            ZROLD=ZLRAIN(JL,JK)-ZPRECIP(JL)
+            ZC=ZPRECIP(JL)
+            ZWU=MIN(15._JPRB,SQRT(2.0_JPRB*MAX(0.1_JPRB,PKINEU(JL,JK))))
+            ZD=ZVV/ZWU
+            ZINT=EXP(-ZD)
+            ZRNEW=ZROLD*ZINT+ZC/ZD*(1.0_JPRB-ZINT)
+            ZRNEW=MAX(0.0_JPRB,MIN(ZLRAIN(JL,JK),ZRNEW))
+            ZLRAIN(JL,JK)=ZRNEW
+          ENDIF
+        ENDIF
+      ENDDO
+
+    ENDIF
+
+    DO JLL=1,JLM  
+      JL=JLX(JLL)
+      PMFUL(JL,JK)=PLU(JL,JK)*PMFU(JL,JK)
+      PMFUS(JL,JK)=(RCPD*PTU(JL,JK)+PGEOH(JL,JK))*PMFU(JL,JK)
+      PMFUQ(JL,JK)=PQU(JL,JK)*PMFU(JL,JK)
+    ENDDO
+
+  ENDIF
+ENDDO
+
+!----------------------------------------------------------------------
+
+!     5.           FINAL CALCULATIONS 
+!                  ------------------
+
+DO JL=KIDIA,KFDIA
+  IF(KCTOP(JL) == -1) LDCUM(JL)=.FALSE.
+  KCBOT(JL)=MAX(KCBOT(JL),KCTOP(JL))
+  IF(LDCUM(JL)) THEN
+    PWMEAN(JL)=MAX(1.E-2_JPRB,PWMEAN(JL)/MAX(1.0_JPRB,ZDPMEAN(JL)))
+    PWMEAN(JL)=SQRT(2.0_JPRB*PWMEAN(JL))
+  ENDIF
+ENDDO
+
+IF (LHOOK) CALL DR_HOOK('CUASCN',1,ZHOOK_HANDLE)
+END SUBROUTINE CUASCN

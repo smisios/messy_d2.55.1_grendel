@@ -1,0 +1,2480 @@
+#! @PERL@
+#
+# Please run
+#   perlpod makef90depends
+# for usage information.
+#
+# Print Makefile-style dependencies for objects derived from Fortran
+# 90 source files, i.e. if a.f90 includes a line like
+#
+#  use b
+#
+# and b.f90 contains a line like
+#
+#  module b
+#
+# then the following will be emitted:
+#
+#  a.o: b.o
+#
+# The script tries to produce the same for include and #include
+# directives, but might infer both, too many and too few dependencies
+# because preprocessor conditionals are currently not evaluated
+# correctly and includes are not followed recursively.
+#
+# Author: Thomas Jahns <jahns@dkrz.de>, 2009.
+# Based on createMakefile.pl by by Uwe Schulzweida <schulzweida@dkrz.de>
+#
+use strict;
+use warnings;
+
+use Data::Dumper ();
+use File::Spec ();
+use File::Temp ();
+use Getopt::Long ();
+
+sub hashMerge(\%\%);
+
+my ($debug, $verbose, $dumpCppKeys) = (0, 0, undef);
+my (@includeDirs, %defines, @ignoredSysIncludes, @ignoredModules);
+my ($objDepOut, $objectSuffix, $stripObjDirname) = (1, '.o', 0);
+my (@nameSubst, @moduleSearchPath);
+
+parseOptions();
+foreach my $transformRule (@nameSubst)
+{
+   my $trCopy = $transformRule;
+   $transformRule = [ $transformRule =~ m{([^=]+)=(.*)} ];
+   die('Malformed rule of transformation: ', $trCopy, "\n")
+       if (@$transformRule != 2);
+}
+
+push @nameSubst, ['\.f90$', $objectSuffix];
+
+#print STDERR Data::Dumper->Dump([\@nameSubst], ['nameSubst']), "\n";
+#print STDERR Data::Dumper->Dump([\%defines], ['defines']), "\n";
+
+# filter duplicate filenames, duplicate dependencies make no sense
+my @srcs;
+pushUnique(\@srcs, @ARGV);
+
+
+MakeDependsf90mod({ 'includePaths' => \@includeDirs,
+                    'moduleDirs' => \@moduleSearchPath,
+                    'defines' => \%defines,
+                    'nameSubst' => \@nameSubst,
+                    'stripObjDirname' => $stripObjDirname,
+                    'ignoredSysIncludes' => \@ignoredSysIncludes,
+                    'ignoredModules' => \@ignoredModules,
+                    'dumpCppKeys' => $dumpCppKeys,
+                  }, @srcs);
+
+sub uniq {
+   my (%seen);
+   return grep { if (!exists $seen{$_}) { $seen{$_} = 1; } else { 0; } } @_;
+}
+
+#
+# &MakeDependsf90([optHASH, ] [FILE...]);
+#
+sub MakeDependsf90mod {
+   my (%moduleProvide, %incs, %sys_incs, %prg_incs, %moduleUse,
+       $objfile, $fh, @incDirs, @nameSubst, @moduleDirs,
+       @ignoredSysIncludes, @ignoredModules, $globalDefines, $dumpCppKeys);
+   my %cppKeys;
+   my $optArgs = {};
+   my ($stripObjDirname) = (0);
+   local $_;
+   my @srcs = @_;
+   if (ref($srcs[0]) eq 'HASH')
+   {
+      $optArgs = shift @srcs;
+      @nameSubst = @{$optArgs->{'nameSubst'}}
+          if (exists($optArgs->{'nameSubst'}));
+#      print STDERR Data::Dumper->Dump([\@nameSubst], ['nameSubst']);
+      $stripObjDirname = $optArgs->{'stripObjDirname'}
+          if (exists($optArgs->{'stripObjDirname'}));
+      @ignoredSysIncludes = @{$optArgs->{'ignoredSysIncludes'}}
+          if (exists($optArgs->{'ignoredSysIncludes'}));
+      @ignoredModules = @{$optArgs->{'ignoredModules'}}
+          if (exists($optArgs->{'ignoredModules'}));
+      $globalDefines = $optArgs->{'defines'}
+          if (exists($optArgs->{'defines'}));
+      $dumpCppKeys = exists($optArgs->{'dumpCppKeys'})?$optArgs->{'dumpCppKeys'}:0;
+      push(@incDirs, @{$optArgs->{'includePaths'}});
+      push(@moduleDirs, @{$optArgs->{'moduleDirs'}});
+   }
+   print(STDERR 'include paths: ', join(':', @incDirs), "\n") if $debug;
+   #
+   # Associate each module with the name of the file that contains it
+   #
+   foreach my $srcfile (@srcs) {
+      close($fh) if defined($fh);
+      open($fh, $srcfile) or die('Cannot open ', $srcfile, ': ');
+      $sys_incs{$srcfile} = [];
+      $prg_incs{$srcfile} = [];
+      $moduleUse{$srcfile} = [];
+      my %localDefines = %$globalDefines;
+      my @predicateLevels = ({'ignored' => 0});
+      my $ignored = 0;
+      while (<$fh>) {
+         $_ = transliterateTrigraphs($_);
+         while (m{(\\)$}x)
+         {
+            # adjoin continuation lines
+            my ($contLine, $continuation);
+            $continuation = $1;
+            while (defined($continuation))
+            {
+               my $contLine = <$fh>;
+               if (defined($contLine))
+               {
+                  ($contLine, $continuation) = $contLine =~ m{^(.*?)(\\)?$}x;
+                  $_ .= $contLine;
+               }
+            }
+         }
+         if (m{^\s*#\s*(if|ifdef|ifndef|endif|else|elif)\b\s*(.*?)\s*$})
+         {
+            my ($clause, $predicate) = ($1, $2);
+            print(STDERR 'Investigating ', $clause, ' ', $predicate, ' at ',
+                  $srcfile, ', line ', $., "\n") if $debug > 1;
+            if ($clause eq 'endif')
+            {
+               die('#endif without opening #if at line ', $.,
+                   ' of ', $srcfile, "\n")
+                   if (@predicateLevels < 2);
+               print(STDERR Data::Dumper->Dump([\@predicateLevels],
+                                               ['predicatelevels']))
+                   if $debug > 1;
+               pop(@predicateLevels);
+               $ignored = $predicateLevels[-1]{'ignored'};
+            }
+            elsif ($clause eq 'else')
+            {
+               die('#else without opening #if at line ', $.,
+                   ' of ', $srcfile, "\n")
+                   if (@predicateLevels < 2);
+               $ignored = $predicateLevels[-1]{'ignored'} =
+                   ($predicateLevels[-1]{'predValueAny'}
+                    or $predicateLevels[-2]{'ignored'});
+            }
+            elsif ($clause eq 'elif')
+            {
+               die('#elif without opening #if at line ', $.,
+                   ' of ', $srcfile, "\n")
+                   if (@predicateLevels < 2);
+               my @cppKeys;
+               my $predValue
+                   = evaluatePreProcExpression($predicate,
+                                               \%localDefines, \@cppKeys,
+                                               !$objDepOut);
+               my $newIgnored = (!$predValue
+                                 or $predicateLevels[-1]{'predValueAny'}
+                                 or $predicateLevels[-2]{'ignored'});
+               $predicateLevels[-1]{'ignored'} = $newIgnored;
+               $predicateLevels[-1]{'predValueAny'}
+                   = $predicateLevels[-1]{'predValueAny'} || $predValue;
+               $ignored = $newIgnored;
+               foreach my $key (@cppKeys)
+               {
+                  haPush(\%cppKeys, $key, $srcfile);
+               }
+            }
+            else
+            {
+               if ($clause eq 'if') {
+                  my @cppKeys;
+                  my $predValue
+                      = evaluatePreProcExpression($predicate,
+                                                  \%localDefines, \@cppKeys,
+                                                  !$objDepOut);
+                  my $newIgnored = (!$predValue or $ignored);
+                  push(@predicateLevels, { 'ignored' => $newIgnored,
+                                           'predValue' => $predValue,
+                                           'predValueAny' => $predValue,
+                                           'line' => $. });
+                  $ignored = $newIgnored;
+                  foreach my $key (@cppKeys)
+                  {
+                     haPush(\%cppKeys, $key, $srcfile);
+                  }
+               }
+               elsif (($clause eq 'ifdef') or ($clause eq 'ifndef'))
+               {
+                  my $predValue = 1;
+                  die('Malformed predicate: ', $clause, ' ', $predicate)
+                      if (not validPreProcSym($predicate));
+                  if ($objDepOut)
+                  {
+                     insertDefinitionOnDemand(\%localDefines, $predicate)
+                         if (!exists($localDefines{$predicate}));
+                     $predValue = defined($localDefines{$predicate})?1:0;
+                  }
+                  $predValue = !$predValue if ($clause eq 'ifndef');
+                  print(STDERR Data::Dumper->Dump([\$predValue],
+                                                  [qw(predicate)]))
+                      if $debug > 1;
+                  my $newIgnored = (!$predValue or $ignored);
+                  push(@predicateLevels, { 'ignored' => $newIgnored,
+                                           'predValue' => $predValue,
+                                           'predValueAny' => $predValue,
+                                           'line' => $. });
+                  $ignored = $newIgnored;
+                  haPush(\%cppKeys, $predicate, $srcfile);
+               }
+            }
+            print(STDERR ($ignored?'Ignoring':'Evaluating'), ' upcoming text.',
+                  "\n") if $debug > 1;
+         }
+         elsif (!$ignored)
+         {
+            if (m{^\s*\#+(?:define)
+                  \s+([A-Za-z_]\w*)
+                  (\(\s*[A-Za-z_]\w*(?:\s*,[A-Za-z_]\w*)*\s*\))?
+                  \s+(.*?)\s*$}x)
+            {
+               my ($preProcSym, $args, $definition)
+                   = ($1, $2, $3);
+               $localDefines{$preProcSym} = parseDefinition($args, $definition,
+                                                            $srcfile, $.);
+               print(STDERR 'Intern\'ed definition ',
+                     $preProcSym, (not defined($args))?():('(', $args, ')'),
+                     ' => ', $definition, "\n");
+               print(STDERR Data::Dumper->Dump([$localDefines{$preProcSym}],
+                                               ['definition parse']))
+                     if ($debug > 1);
+            }
+            elsif (m{^\s*#+(?:undef)\s+([A-Za-z_]\w*)\s*(..*)?$})
+            {
+               my ($preProcSym, $trail) = ($1, $2);
+               $localDefines{$preProcSym} = undef;
+               warn('Trailing garbage on undef line ',
+                    $., ' of ', $srcfile, ': ', $trail)
+                   if defined($trail);
+            }
+            elsif(m{^\s*module\s+([^\s!]+)}i)
+            {
+               my $moduleName = lc($1);
+               $moduleProvide{$moduleName}
+                   = transformFilename($optArgs, $srcfile);
+            }
+            elsif (/^\s*#*include\s+"(.+)?"/i)
+            {
+               pushUnique($prg_incs{$srcfile}, $1);
+            }
+            elsif (/^\s*#*include\s+<(.+)?>/i)
+            {
+               pushUnique($sys_incs{$srcfile}, $1);
+            }
+            elsif (/^\s*include\s+(["'])(.+)?\1/i)
+            {
+               pushUnique($sys_incs{$srcfile}, $2);
+            }
+            elsif (/^\s*use\s+([^\s,!]+)/i)
+            {
+               print(STDERR 'Found use association: ', $1, "\n")
+                   if ($debug);
+               pushUnique($moduleUse{$srcfile}, lc($1));
+            }
+         }
+      }
+      die('Unbalanced #if at line ', $predicateLevels[-1]{'line'},
+          ' of ', $srcfile, "\n")
+          if @predicateLevels > 2;
+   }
+#   print Data::Dumper->Dump([\%moduleUse, \%moduleProvide],
+#                            ['moduleUse', 'moduleProvide']);
+   #
+   # Print the dependencies of each file that has one or more include's or
+   # references one or more modules
+   #
+   if ($objDepOut)
+   {
+      foreach my $srcfile (@srcs)
+      {
+         my $objfile = transformFilename($optArgs, $srcfile);
+         {
+            print(STDERR $srcfile, ':', "\n",
+                  Data::Dumper->Dump([$sys_incs{$srcfile}, $prg_incs{$srcfile}],
+                                     ['system includes', 'program includes']))
+                if ($debug > 1);
+            my @locatedIncludes;
+            foreach my $incs ($sys_incs{$srcfile}, $prg_incs{$srcfile})
+            {
+               @$incs = grep { my $include = $_ ;
+                               !grep { $_ eq $include }
+                                   @ignoredSysIncludes }
+                   @$incs;
+            }
+            @locatedIncludes =
+                map { findRelFile($_, @incDirs) }
+                    @{$sys_incs{$srcfile}};
+            my ($srcvol, $srcdir, undef) = File::Spec->splitpath($srcfile);
+            my @dirparts = File::Spec->splitdir($srcdir);
+            my @srcSearch;
+            @srcSearch = File::Spec->curdir();
+            if (@dirparts)
+            {
+               $srcdir = File::Spec->catdir(@dirparts[0..$#dirparts-1]);
+               unshift(@srcSearch, File::Spec->catpath($srcvol, $srcdir,
+                                                 $dirparts[$#dirparts]));
+            }
+            push(@locatedIncludes,
+                 map { findRelFile($_, @srcSearch, @incDirs) }
+                 @{$prg_incs{$srcfile}});
+            print(STDERR $srcfile, ':', "\n",
+                  Data::Dumper->Dump([$sys_incs{$srcfile}, $prg_incs{$srcfile},
+                                      \@locatedIncludes],
+                                     ['system includes', 'program includes',
+                                      'located'])) if ($debug > 1);
+            if (grep { !defined($_) } @locatedIncludes) {
+               for(my $i = 0; $i < @{$sys_incs{$srcfile}}; ++$i) {
+                  warn $srcfile, ': include file ', $sys_incs{$srcfile}[$i],
+                      " not found\n" if (!defined($locatedIncludes[$i]));
+               }
+               for(my $i = 0; $i < @{$prg_incs{$srcfile}}; ++$i) {
+                  my $incloc = $locatedIncludes[$i + @{$sys_incs{$srcfile}}];
+                  warn $srcfile, ': include file ', $prg_incs{$srcfile}[$i],
+                      " not found\n"
+                   if (!defined($incloc));
+               }
+            }
+            $incs{$srcfile} = [ grep { defined($_) } @locatedIncludes ];
+         }
+         # filter self-referential module use
+         @{$moduleUse{$srcfile}} =
+             grep { !(exists($moduleProvide{$_}) and
+                      $objfile eq $moduleProvide{$_}) } @{$moduleUse{$srcfile}};
+         if (@{$incs{$srcfile}} + @{$moduleUse{$srcfile}}) {
+            {
+               my @notFound =
+                   grep { my $module = $_; !exists $moduleProvide{$_}
+                              and not grep { $module eq $_ } @ignoredModules }
+                       @{$moduleUse{$srcfile}};
+               hashMerge(%moduleProvide,
+                         %{{searchModuleFile(\@moduleDirs, @notFound)}});
+               @notFound =
+                   grep { !exists $moduleProvide{$_} } @notFound;
+               warn $srcfile, ': module(s) ', join(', ', @notFound),
+                   " not found\n" if @notFound;
+            }
+            my @dependencies =
+                map { $moduleProvide{$_} }
+                    (grep { exists $moduleProvide{$_} }
+                     (@{$moduleUse{$srcfile}}));
+            my @externalModuleCandidates =
+                grep { !exists $moduleProvide{$_} } @{$moduleUse{$srcfile}};
+
+            push @dependencies, @{$incs{$srcfile}};
+            if (@dependencies)
+            {
+               print $objfile, ':';
+               @dependencies = uniq(sort(@dependencies));
+               printLFEscapeLineWrap({ 'printed' => length($objfile) + 1},
+                                     @dependencies);
+               print "\n";
+            }
+         }
+      }
+   }
+   if (defined($dumpCppKeys))
+   {
+      my ($dcpFh, $key, $files);
+      open($dcpFh, '>', $dumpCppKeys) or die('Cannot open file for dump: ',
+                                             $dumpCppKeys);
+      while(($key, $files) = each(%cppKeys))
+      {
+         print($dcpFh join(' ', $key, @$files), "\n");
+      }
+      print STDERR Data::Dumper->Dump([\%cppKeys], ['cppKeys'])
+          if ($debug > 1);
+   }
+}
+
+sub searchModuleFile
+{
+   local $_;
+   my ($moduleDirs, @moduleRequests) = @_;
+   my %moduleProvide;
+   # try to find externally provided module files
+   foreach my $modCand (@moduleRequests)
+   {
+      my $modFileQuery;
+      if ('@FCMODCASE@' eq 'uc') {
+         $modFileQuery = uc($modCand);
+      }
+      elsif ('@FCMODCASE@' eq 'lc') {
+         $modFileQuery = lc($modCand);
+      }
+      else
+      {
+         $modFileQuery = $modCand;
+      }
+      $modFileQuery .= '.@FCMODEXT@';
+      my $modFile = findRelFile($modFileQuery, @$moduleDirs);
+      if (defined($modFile))
+      {
+         $moduleProvide{$modCand} = $modFile;
+      }
+   }
+   return %moduleProvide;
+}
+
+sub hashMerge(\%\%)
+{
+   my ($targetHash, $newMappings) = @_;
+   while (my ($key, $value) = each %$newMappings) {
+      $targetHash->{$key} = $value
+   }
+}
+
+
+sub transformFilename
+{
+   my @transformed;
+   my $stripDirname = 0;
+   my @nameSubst;
+   if (ref($_[0]) eq 'HASH')
+   {
+      my $optArgs = shift @_;
+      @nameSubst = @{$optArgs->{'nameSubst'}}
+          if (exists($optArgs->{'nameSubst'}));
+      $stripObjDirname = $optArgs->{'stripObjDirname'}
+          if (exists($optArgs->{'stripObjDirname'}));
+   }
+   foreach my $filename (@_)
+   {
+      my $fname = $filename;
+      foreach my $transformRule (@nameSubst)
+      {
+         my ($pattern, $replacement) = ($transformRule->[0],
+                                        $transformRule->[1]);
+         $fname =~ s/${pattern}/${replacement}/;
+      }
+      (undef, undef, $fname) = File::Spec->splitpath($fname)
+          if $stripObjDirname;
+      push @transformed, $fname
+   }
+   return wantarray ? @transformed : join('', @transformed);
+}
+
+sub findRelFile($@)
+{
+   local $_;
+   my ($file, @Paths) = @_;
+   return $file if File::Spec->file_name_is_absolute($file);
+   foreach my $path (@Paths)
+   {
+      my $qualPath = File::Spec->catfile($path, $file);
+      return $qualPath if (-e $qualPath);
+      print STDERR 'Requested include ', $file, ' not found in ',
+          $qualPath, "\n" if $debug > 2;
+   }
+   return undef;
+}
+
+sub printLFEscapeLineWrap {
+   local $_;
+   my $options = (ref($_[0]) eq 'HASH')?shift @_:{};
+   my $fd = exists($options->{'fd'})?$options->{'fd'}:\*STDOUT;
+   my $linewidth = exists($options->{'linewidth'})?$options->{'linewidth'}:78;
+   my $columns = $linewidth
+       - exists($options->{'printed'})?$options->{'printed'}:0;
+   my $lineindent = exists($options->{'lineindent'})?
+       $options->{'lineindent'}:"\t";
+   #
+   foreach my $word (@_) {
+      my $wordlength = length($word);
+      if ($columns >= $wordlength + 1 + 2) {
+         print $fd ' ', $word;
+         $columns -= $wordlength + 1;
+      } else {
+         #
+         # Continue onto a new line
+         #
+         print $fd " \\\n", $lineindent, $word;
+         $columns = $linewidth - length(expand($lineindent)) - $wordlength;
+      }
+   }
+}
+
+sub pushUnique
+{
+   local $_;
+   my ($listref, @elems) = @_;
+   foreach my $elem (@elems)
+   {
+      push(@$listref, $elem) if not grep { $_ eq $elem } @$listref;
+   }
+}
+
+sub haPush
+{
+   # insert value in list corresponding to key in hash, create new
+   # list if necessary
+   my ($href, $key, @values) = @_;
+   if (exists($href->{$key}))
+   {
+      die('Must be hash of arrays!') if (ref($href->{$key}) ne 'ARRAY');
+   }
+   else
+   {
+      $href->{$key} = [];
+   }
+   pushUnique($href->{$key}, @values);
+}
+
+sub expand
+{
+   local $_;
+   my @expanded = map
+      { my $textcopy = $_;
+        $textcopy =~ s/\t/        /; }
+          @_;
+   return wantarray ? @expanded : join('', @expanded);
+}
+
+BEGIN {
+
+   my %trigraphs = ('=' => '#', '/' => '\\', "'" => '^', '(' => '[',
+                    ')' => ']', '!' => '|', '<' => '{', '>' => '}', '-' => '~');
+   my $trigraphsyms = quotemeta(join('', keys %trigraphs));
+   my $trigraphre = qr{\?\?([$trigraphsyms])}xo;
+
+   sub transliterateTrigraphs
+   {
+      local $_;
+      my ($text) = @_;
+      while ($text =~ s{$trigraphre}{$trigraphs{$1}})
+      {
+      }
+      return $text;
+   }
+
+   sub validPreProcSym
+   {
+      return scalar ($_[0] =~ m{[a-zA-Z_]\w*});
+   }
+
+   my $operator_match = qr{(?:==
+                           |!=
+                           |[><]=
+                           |[-+/&^%|]=
+                           |(?:\|\||\&\&|>>|<<)=
+                           |(?:\|\||\&\&|>>|<<)
+                           |\(
+                           |\)
+                           |\#\#
+                           |[-,+/%&|^!=><])}x;
+
+   sub tokenize
+   {
+      local $_;
+      my $expression = $_[0];
+      my @tokens;
+      if ($expression =~ m{^(.*?)(?=(["']).*?[^\\]\2)}g)
+      {
+         my ($prefix, $quotemark) = ($1, $2);
+         my $prefixPos = pos($expression) + 1;
+         $expression =~ m{\G($quotemark.*[^\\]$quotemark)(?=.*)}g;
+         my ($stringOrCharConst, $stringOrCharConstEnd)
+             = ($2, pos($expression));
+         $expression =~ m{\G(.*)}g;
+         my ($suffix, $suffixEnd) = ($3, pos($expression));
+         my ($prefixTokenList, $prefixTokenPosMap) = tokenize($prefix);
+         my ($suffixTokenList, $suffixTokenPosMap) = tokenize($suffix);
+         @tokens = ([@$prefixTokenList, $stringOrCharConst, @$suffixTokenList],
+                    [@$prefixTokenPosMap, [$prefixPos, $stringOrCharConstEnd],
+                     map { [$_->[0] + $stringOrCharConstEnd + 1,
+                            $_->[1] + $stringOrCharConstEnd + 1] }
+                     @$suffixTokenPosMap]);
+         print(STDERR Data::Dumper->Dump([\@tokens], ['tokens']), "\n")
+             if ($debug > 1);
+      } elsif ($expression =~ m{"}) {
+         die('Unbalanced quote " in expression: ', $expression);
+      } elsif ($expression ne '') {
+         my (@tokenList, @tokenMappings);
+         my $lastPos = -1;
+         while ($expression =~ m{(.*?)
+                                 (?=\s*$operator_match
+                                 |\s+
+                                 |$)}xgc) {
+            if (defined($1) and $1 ne '')
+            {
+               my $tokenEndPos = pos($expression);
+               push(@tokenList, $1);
+               push(@tokenMappings, [$lastPos + 1, $tokenEndPos]);
+               $lastPos = $tokenEndPos;
+            }
+            $expression =~ m/\s*?($operator_match)|\s+|$/xgc;
+            if (defined($1) and $1 ne '') {
+               my $tokenEndPos = pos($expression);
+               push(@tokenList, $1);
+               push(@tokenMappings, [$lastPos + 1, $tokenEndPos]);
+               $lastPos = $tokenEndPos;
+            }
+         }
+         @tokens = (\@tokenList, \@tokenMappings);
+         print(STDERR 'Tokenized \'', $expression, '\' as ',
+               join("\n", @tokenList), "\n") if $debug > 1;
+      } else {
+         @tokens = ([], []);
+      }
+      return (@tokens);
+   }
+
+}
+
+sub parseDefinition
+{
+   my ($argString, $definition, $file, $line) = @_;
+   my (@tokenizedDef);
+   if (defined($argString))
+   {
+      $argString =~ s{^\s+}{};
+      $argString =~ s{\s+$}{};
+   }
+   else { $argString = ''; }
+   my @tokens = tokenize($definition);
+   if (@tokens)
+   {
+      die(defined($file)?($file, ':', $line):('cmd arg ', $line),
+          'error: \'##\' must not appear at either end or start of a macro',
+          ' expansion')
+          if ($tokens[0] eq '##' or $tokens[-1] eq '##');
+   }
+   return {
+           'parameters' => [split(/\s*,\s*/, $argString)],
+           'definition' => \@tokens
+          };
+}
+
+sub evaluatePreProcExpression
+{
+   local $_;
+   my ($expression, $defines, $cppKeyOut, $dontEvaluate) = @_;
+   my @ast = parsePreProcExpression($expression, $defines, $cppKeyOut);
+   print(STDERR 'DontEvaluate: \'', (!defined($dontEvaluate))?
+         'undef':$dontEvaluate, "'\n") if $debug > 2;
+   return (defined($dontEvaluate) && $dontEvaluate) ?
+       1 : cpp_true(cpp_evaluate(@ast));
+}
+
+sub parsePreProcExpression
+{
+   print(STDERR 'In ', whoami(), ', line ', __LINE__, "\n") if $debug > 1;
+   local $_;
+   my ($expression, $defines, $cppKeyOut) = @_;
+   my @tokenMapping = tokenize($expression);
+   my @tokens = @{$tokenMapping[0]};
+   @tokenMapping = @{$tokenMapping[1]};
+   my $didSubst = 1;
+   my $i;
+   for ($i = 0; $i < @tokens; ++$i)
+   {
+      print(STDERR 'In ', whoami(), ', line ', __LINE__, "\n") if $debug > 1;
+      my $token = $tokens[$i];
+      print(STDERR 'Looking at token \'', $token, "'\n") if $debug > 2;
+      if ($token eq 'defined')
+      {
+         # the predicate defined causes the next symbol to be
+         # swallowed and evaluates to 1 or 0 depending on wether the
+         # symbol is defined or not
+         my ($symreflen, $symoffset);
+         if ($tokens[$i + 1] eq '(')
+         {
+            $symreflen = 3;
+            $symoffset = 2;
+            die('Expected closing parenthesis, got ', $tokens[$i + 3])
+                if ($tokens[$i + 3] ne ')');
+         }
+         else
+         {
+            $symreflen = 1;
+            $symoffset = 1;
+         }
+         die('EOL in defined predicate') if ($i + $symreflen > @tokens);
+         die('Invalid preprocessor symbol ', $tokens[$i + $symoffset])
+             unless(isSymbol($tokens[$i + $symoffset]));
+         insertDefinitionOnDemand($defines, $tokens[$i + $symoffset])
+             if (!exists($defines->{$tokens[$i + $symoffset]}));
+         splice(@tokens, $i, 1 + $symreflen,
+                (defined($defines->{$tokens[$i + $symoffset]})?'1L':'0L'));
+         next;
+      }
+      elsif (validPreProcSym($token))
+      {
+         push(@$cppKeyOut, $token) if (defined($cppKeyOut));
+         insertDefinitionOnDemand($defines, $token);
+         if (defined($defines->{$token}))
+         {
+            my @definition = @{$defines->{$token}{'definition'}};
+            print(STDERR 'Replacing token \'', $token, '\' with ',
+                  Data::Dumper->Dump([$definition[0]], [qw(definition)]))
+                if $debug > 2;
+            my @parameters = @{$defines->{$token}{'parameters'}};
+            if (!@parameters)
+            {
+               splice(@tokens, $i, 1, @{$definition[0]});
+               splice(@tokenMapping, $i, 1, @{$definition[1]});
+               if ($i < @tokens) { redo; } else { last; }
+            }
+            elsif ($tokens[$i + 1] eq '(')
+            {
+               my @args;
+               my (@argTokens);
+               my $parencount = 1;
+               my $j = $i + 2;
+               while($j < @tokens and $parencount)
+               {
+                  if ($tokens[$j] eq ')')
+                  {
+                     last if !--$parencount;
+                  }
+                  elsif ($tokens[$j] eq '(')
+                  {
+                     ++$parencount;
+                  }
+                  elsif ($tokens[$j] eq ',' and $parencount == 1)
+                  {
+                     push(@args, [ @argTokens ]);
+                     @argTokens = ();
+                  }
+                  push(@argTokens, $tokens[$j]);
+                  ++$j;
+               }
+               die ('EOL in gathering macro arguments: ', @tokens[$i..$#tokens])
+                   if ($parencount);
+               die('Argument count mismatch: ', @parameters, ' expected, ',
+                   @args, ' given.', "\n")
+                   if @args != @parameters;
+               my %argDefs = ( 'tokens' => map { $parameters[$_] => $args[$_]
+                                              }
+                               (0..$#args),
+                               'tokenStream' => $expression,
+                               'tokenMapping' => \@tokenMapping
+                             );
+               my @expandedDefinition
+                   = expandMacro(\%argDefs, @tokens);
+               splice(@tokens, $i, $j - $i + 1, @expandedDefinition);
+               redo;
+            }
+         }
+      }
+   }
+   # A12.5 macro replacement of undefined symbols
+   @tokens = map { isSymbol($_)?'0L':$_ } @tokens;
+   {
+      print STDERR Data::Dumper->Dump([\@tokens, \@tokenMapping],
+                                      ['tokens', 'tokenMapping'])
+          if $debug > 1;
+      my %lex = makeGetsym(@tokens);
+      my @ast = conditional_expression(\%lex, 1);
+      if (defined($lex{'currentsym'}()))
+      {
+         print(STDERR join(', ', $lex{'currentsym'}(), $lex{'rest'}()),
+               "\n", Data::Dumper->Dump([\@ast], ['ast']), "\n")
+             if $debug > 1;
+         die('Parse of conditional incomplete: ', join($lex{'rest'}()));
+      }
+      print(STDERR Data::Dumper->Dump([\@ast], ['ast']))
+          if $debug > 1;
+      return @ast;
+   }
+}
+
+sub makeGetsym
+{
+   my (@tokens) = @_;
+   my $i = 0;
+   return ('currentsym' => sub { return $i<@tokens?$tokens[$i]:undef; },
+           'advancesym' => sub { return $i<@tokens?$#tokens - $i++:0; },
+           'rest' => sub { return @tokens[$i..$#tokens] },
+           'parse_state' => sub { return $i },
+           'set_parse_state' => sub { $i = $_[0] },
+           'consumed' => sub { my $state = $_[0]; return @tokens[$state..$i] });
+}
+
+sub expect
+{
+   my ($lex, $force, $expected) = @_;
+   my $currentsym = $lex->{'currentsym'}();
+   die('expect: unexpected symbol ', $currentsym,
+       ' vs. expectation ', $expected)
+       if ($currentsym ne $expected);
+   return $lex->{'advancesym'}();
+}
+
+sub expandMacro
+{
+   my ($argDefs, @tokenMapping) = @_;
+   print(STDERR 'In ', whoami(), ', line ', __LINE__, "\n") if $debug > 1;
+   my @tokens = @{$tokenMapping[0]};
+   @tokenMapping = @{$tokenMapping[1]};
+   my $i;
+   for ($i = 1; $i < @tokens - 1; ++$i)
+   {
+      if ($tokens[$i] eq '#'
+          and exists($argDefs->{$tokens[$i+1]}))
+      {
+         splice(@tokens, $i, 2, '"' . $argDefs->{$tokens[$i+1]} . '"');
+      }
+      elsif ($tokens[$i] eq '##')
+      {
+         splice(@tokens, $i - 1, 3, @tokens[$i-1,$i+1]);
+         redo;
+      }
+   }
+   return (@tokens, @tokenMapping);
+}
+
+BEGIN {
+
+   my @preprocCmd
+       = split /\s+/,
+           (defined($ENV{'FPP'})?
+            $ENV{'FPP'}
+            :'@FPP@');
+
+   sub set_preproc_cmd_flags
+   {
+      @preprocCmd =  ((split /\s+/,
+                      (defined($ENV{'FPP'})?
+                       $ENV{'FPP'}
+                       :'@FPP@')),
+          @_);
+   }
+
+   sub preprocResult
+   {
+      local $_;
+      my ($inputSym) = @_;
+      print(STDERR 'In ', whoami(), ', line ', __LINE__, "\n") if $debug > 1;
+      my ($tempFileFh, $tempFileName)
+          = File::Temp::tempfile('SUFFIX' => '.f90');
+      print($tempFileFh $inputSym, "\n")
+          or die('Write to temporary file ', $tempFileName, ' failed!');
+      close($tempFileFh)
+          or die('Close of temporary file ', $tempFileName, ' failed!');
+      my $preprocOutputFh;
+      print(STDERR 'Opening ', join(' ', @preprocCmd, $tempFileName, '|'), "\n")
+            if $debug > 1;
+      open($preprocOutputFh, join(' ', @preprocCmd, $tempFileName, '|'))
+          or die('Open of pipe to preprocessor failed!');
+      my $preprocOutput = '';
+      my $p = '';
+      while (<$preprocOutputFh>)
+      {
+         $p .= $_;
+         $preprocOutput .= $_ unless (m{^#});
+      }
+      chomp($preprocOutput);
+      close($preprocOutputFh)
+          or die('Close of pipe to preprocessor failed!');
+      print(STDERR $tempFileName, "\n", $p, "\n")
+          if $debug > 2;
+      system("cat $tempFileName >&2")
+          if $debug > 2;
+      unlink($tempFileName)
+          or die('Unlinking temporary file ', $tempFileName, ' failed!');
+      print(STDERR "symbol '", $inputSym, "' replaced with '",
+            $preprocOutput, "'\n") if $debug > 2;
+      return $preprocOutput eq $inputSym ? undef : $preprocOutput;
+   }
+
+   sub insertDefinitionOnDemand
+   {
+      my ($defines, $token) = @_;
+      print(STDERR 'In ', whoami(), ', line ', __LINE__, "\n") if $debug > 1;
+      if (exists($defines->{$token}))
+      {
+         return $defines->{$token};
+      }
+      else
+      {
+         my $definition = preprocResult($token);
+         if (defined($definition))
+         {
+            $defines{$token} = $defines->{$token}
+                    = parseDefinition(undef, $definition, '', '');
+         }
+         else
+         {
+            $defines{$token} = $defines->{$token} = undef;
+         }
+      }
+   }
+
+   sub parse_backoff
+   {
+      my ($lex, $save, $force, @msg) = @_;
+      $lex->{'set_parse_state'}($save);
+      if ($force)
+      {
+         die(@msg);
+      }
+      else
+      {
+         return ();
+      }
+   }
+
+   my %evaluations;
+
+   sub expression
+   {
+      local $_;
+      my ($lex, $force) = @_;
+      my $save = $lex->{'parse_state'}();
+      print(STDERR 'In ', whoami(), ', left over: ',
+            join(', ', $lex->{'rest'}()), "\n")
+          if $debug > 1;
+      my @expression = ('expression');
+      my @assignment_expression = assignment_expression($lex, $force);
+      if (@assignment_expression
+          and (!defined($_ = $lex->{'currentsym'}())
+               or $_ ne ','))
+      {
+         return @assignment_expression;
+      }
+      else
+      {
+         my @sub_expression = @assignment_expression
+             ? @assignment_expression : expression($lex, $force);
+         my $currentsym;
+         if (@sub_expression
+             and defined ($currentsym = $lex->{'currentsym'}())
+             and $currentsym eq ','
+             and $lex->{'advancesym'}())
+         {
+            print(STDERR 'In ', whoami(), ', line ', __LINE__, ', left over: ',
+                  join(', ', $lex->{'rest'}()), "\n") if $debug > 1;
+            if (@assignment_expression = assignment_expression($lex, $force))
+            {
+               return ('expression', \@sub_expression, \@assignment_expression);
+            }
+         }
+      }
+   }
+
+   my @assignment_operators = ('=', '*=', '/=', '%=', '+=', '-=',
+                               '<<=', '>>=', '&=', '^=', '|=');
+
+   sub assignment_expression
+   {
+      local $_;
+      my ($lex, $force) = @_;
+      my $save = $lex->{'parse_state'}();
+      print(STDERR 'In ', whoami(), ', left over: ',
+            join(', ', $lex->{'rest'}()), "\n")
+          if $debug > 1;
+      my @conditional_expression = conditional_expression($lex, $force);
+      if (@conditional_expression)
+      {
+         return @conditional_expression;
+      }
+      else
+      {
+         my @unary_expression = unary_expression($lex, $force);
+         my ($currentsym, @assignment_expression);
+         if (@unary_expression
+             and defined ($currentsym = $lex->{'getcurrentsym'}())
+             and (grep { $currentsym eq $_ } @assignment_operators)
+             and $lex->{'advancesym'}()
+             and (@assignment_expression = assignment_expression($lex,$force)))
+         {
+            print(STDERR 'In ', whoami(), ', line ', __LINE__, ', left over: ',
+                  join(', ', $lex->{'rest'}()), "\n") if $debug > 1;
+            return ('assignment_expression', $currentsym,
+                    \@unary_expression, \@assignment_expression);
+         }
+      }
+   }
+
+   $evaluations{'conditional_expression'}
+       = sub { return cpp_true(cpp_evaluate(@{$_[0]}))
+                   ? (cpp_evaluate(@{$_[1]}))
+                       : (cpp_evaluate(@{$_[2]})); };
+
+   sub conditional_expression
+   {
+      local $_;
+      my ($lex, $force) = @_;
+      my $save = $lex->{'parse_state'}();
+      print(STDERR 'In ', whoami(), ', left over: ',
+            join(', ', $lex->{'rest'}()), "\n")
+          if $debug > 1;
+      my @logical_or_expression
+          = logical_or_expression($lex, $force);
+      my $currentsym;
+      if (defined($currentsym = $lex->{'currentsym'}())
+          and $currentsym eq '?')
+      {
+         my @elseexpression;
+         my @ifexpression;
+         if ($lex->{'advancesym'}()
+             and (@ifexpression = expression($lex, $force))
+             and defined($currentsym = $lex->{'currentsym'}())
+             and $currentsym eq ':'
+             and $lex->{'advancesym'}()
+             and (@elseexpression = conditional_expression($lex, $force)))
+         {
+            return ('conditional_expression', @logical_or_expression,
+                    @ifexpression, @elseexpression);
+         }
+         else
+         {
+            return parse_backoff($lex, $save, $force,
+                                 'ternary operator \':\' not' .
+                                 ' followed by else expression!');
+         }
+      }
+      return @logical_or_expression;
+   }
+
+   $evaluations{'logical_or_expression'}
+       = sub { my $accum = 0;
+               foreach my $subexpression (@_) {
+                  if (cpp_true(cpp_evaluate(@$subexpression))) {
+                     $accum = 1;
+                     last;
+                  }
+               }
+               return ('constant', 'int', $accum);
+            };
+
+   sub logical_or_expression
+   {
+      local $_;
+      my ($lex, $force) = @_;
+      my $save = $lex->{'parse_state'}();
+      print(STDERR 'In ', whoami(), ', left over: ',
+            join(', ', $lex->{'rest'}()), "\n")
+          if $debug > 1;
+      my @logical_and_expression
+          = logical_and_expression($lex, 0);
+      if (@logical_and_expression
+          and (!defined($lex->{'currentsym'}())
+               or $lex->{'currentsym'}() ne '||'))
+      {
+         return @logical_and_expression;
+      }
+      elsif (@logical_and_expression)
+      {
+         my @logical_or_expression = ('logical_or_expression',
+                                      [ @logical_and_expression ]);
+         my $currentsym;
+         while (defined($currentsym = $lex->{'currentsym'}())
+                and $lex->{'currentsym'}() eq '||'
+                and $lex->{'advancesym'}())
+         {
+            print(STDERR 'In ', whoami(), ', left over: ',
+                  join(', ', $lex->{'rest'}()), "\n") if $debug > 1;
+            if (@logical_and_expression = logical_and_expression($lex, $force))
+            {
+               push(@logical_or_expression, [ @logical_and_expression ]);
+            }
+            else
+            {
+               return parse_backoff($lex, $save, $force,
+                                    'Invalid logical_or_expression ',
+                                    $lex->{'consumed'}($save));
+            }
+         }
+         return @logical_or_expression;
+      }
+      return parse_backoff($lex, $save, $force,
+                           'Invalid logical_or_expression ',
+                           $lex->{'consumed'}($save));
+   }
+
+   $evaluations{'logical_and_expression'}
+       = sub { my $accum = 1;
+               foreach my $subexpression (@_) {
+                  print(STDERR 'In ', whoami(), ', result: ',
+                        cpp_true(cpp_evaluate(@$subexpression)),
+                        "\n") if $debug > 1;
+                  if (!cpp_true(cpp_evaluate(@$subexpression))) {
+                     $accum = 0;
+                     last;
+                  }
+               }
+               return ('constant', 'int', $accum);
+            };
+
+   sub logical_and_expression
+   {
+      local $_;
+      my ($lex, $force) = @_;
+      my $save = $lex->{'parse_state'}();
+      print(STDERR 'In ', whoami(), ', left over: ',
+            join(', ', $lex->{'rest'}()), "\n")
+          if $debug > 1;
+      my @inclusive_or_expression
+          = inclusive_or_expression($lex, 0);
+      if (@inclusive_or_expression
+          and (!defined($lex->{'currentsym'}())
+               or $lex->{'currentsym'}() ne '&&'))
+      {
+         return @inclusive_or_expression;
+      }
+      elsif (@inclusive_or_expression)
+      {
+         my @logical_and_expression = ('logical_and_expression',
+                                       [ @inclusive_or_expression ]);
+         my $currentsym;
+         while (defined($currentsym = $lex->{'currentsym'}())
+                and $currentsym eq '&&'
+                and $lex->{'advancesym'}())
+         {
+            print(STDERR 'In ', whoami(), ', left over: ',
+                  join(', ', $lex->{'rest'}()), "\n") if $debug > 1;
+            if (@inclusive_or_expression
+                = inclusive_or_expression($lex, $force))
+            {
+               push(@logical_and_expression, [ @inclusive_or_expression ] );
+            }
+            else
+            {
+               return parse_backoff($lex, $save, $force,
+                                    'Invalid logical_and_expression ',
+                                    $lex->{'consumed'}($save));
+            }
+         }
+         return @logical_and_expression;
+      }
+      return parse_backoff($lex, $save, $force,
+                           'Invalid logical_and_expression ',
+                           $lex->{'consumed'}($save));
+   }
+
+   $evaluations{'inclusive_or_expression'}
+       = sub
+   {
+      my @accum = cpp_evaluate(@{$_[0]});
+      die('Invalid computation on non-constant: ', join(':', @accum))
+          if ($accum[0] ne 'constant');
+      foreach my $subexpression (@_[1..$#_]) {
+         my @operand = cpp_evaluate(@$subexpression);
+         my $promotion = cpp_arithmetic_conversion(\@accum, \@operand);
+         die('Invalid operation | (OR) performed on float type ', $promotion)
+             if (grep { $_ eq $promotion } ('float', 'double', 'long-double'));
+         die('Invalid computation on non-constant: ',
+             join(':', @operand))
+             if ($operand[0] ne 'constant');
+         $accum[1] = $promotion;
+         $accum[2] |= $operand[2];
+      }
+      return @accum;
+   };
+
+   sub inclusive_or_expression
+   {
+      local $_;
+      my ($lex, $force) = @_;
+      my $save = $lex->{'parse_state'}();
+      print(STDERR 'In ', whoami(), ', left over: ',
+            join(', ', $lex->{'rest'}()), "\n")
+          if $debug > 1;
+      my @exclusive_or_expression
+          = exclusive_or_expression($lex, $force);
+      if (@exclusive_or_expression
+          and (!defined($lex->{'currentsym'}())
+               or $lex->{'currentsym'}() ne '|'))
+      {
+         return @exclusive_or_expression;
+      }
+      elsif (@exclusive_or_expression)
+      {
+         my @inclusive_or_expression = ('inclusive_or_expression',
+                                        [ @exclusive_or_expression ] );
+         my $currentsym;
+         while (defined($currentsym = $lex->{'currentsym'}())
+                and $currentsym eq '|'
+                and $lex->{'advancesym'}())
+         {
+            print(STDERR 'In ', whoami(), ', left over: ',
+                  join(', ', $lex->{'rest'}()), "\n") if $debug > 1;
+            if (@exclusive_or_expression
+                = exclusive_or_expression($lex, $force))
+            {
+               push(@inclusive_or_expression, [ @exclusive_or_expression ] );
+            }
+            else
+            {
+               return parse_backoff($lex, $save, $force,
+                                    'Invalid inclusive_or_expression ',
+                                    $lex->{'consumed'}($save));
+            }
+         }
+         return @inclusive_or_expression;
+      }
+      return parse_backoff($lex, $save, $force,
+                           'Invalid inclusive_or_expression ',
+                           $lex->{'consumed'}($save));
+   }
+
+   $evaluations{'exclusive_or_expression'}
+       = sub
+   {
+      my @accum = cpp_evaluate(@{$_[0]});
+      die('Invalid computation on non-constant: ', join(':', @accum))
+          if ($accum[0] ne 'constant');
+      foreach my $subexpression (@_[1..$#_]) {
+         my @operand = cpp_evaluate(@$subexpression);
+         my $promotion = cpp_arithmetic_conversion(\@accum, \@operand);
+         die('Invalid operation ^ (XOR) performed on float type ', $promotion,
+             ': ', join(':', @accum), ' ^ ', join(':', @operand))
+             if (grep { $_ eq $promotion } ('float', 'double', 'long-double'));
+         die('Invalid computation on non-constant: ',
+             join(':', @operand))
+             if ($operand[0] ne 'constant');
+         $accum[1] = $promotion;
+         $accum[2] ^= $operand[2];
+      }
+      return @accum;
+   };
+
+   sub exclusive_or_expression
+   {
+      local $_;
+      my ($lex, $force) = @_;
+      my $save = $lex->{'parse_state'}();
+      print(STDERR 'In ', whoami(), ', left over: ',
+            join(', ', $lex->{'rest'}()), "\n")
+          if $debug > 1;
+      my @and_expression
+          = and_expression($lex, $force);
+      if (@and_expression
+          and (!defined($lex->{'currentsym'}())
+               or $lex->{'currentsym'}() ne '^'))
+      {
+         return @and_expression;
+      }
+      elsif (@and_expression)
+      {
+         my @exclusive_or_expression = ('exclusive_or_expression',
+                                        [ @and_expression ] );
+         my $currentsym;
+         while (defined($currentsym = $lex->{'currentsym'}())
+                and $currentsym eq '^'
+                and $lex->{'advancesym'}())
+         {
+            print(STDERR 'In ', whoami(), ', left over: ',
+                  join(', ', $lex->{'rest'}()), "\n") if $debug > 1;
+            if (@and_expression = and_expression($lex, $force))
+            {
+               push(@exclusive_or_expression, [ @and_expression ] );
+            }
+            else
+            {
+               return parse_backoff($lex, $save, $force,
+                                    'Invalid exclusive_or_expression ',
+                                    $lex->{'consumed'}($save));
+            }
+         }
+         return @exclusive_or_expression;
+      }
+      return parse_backoff($lex, $save, $force,
+                           'Invalid exclusive_or_expression ',
+                           $lex->{'consumed'}($save));
+   }
+
+   $evaluations{'and_expression'}
+       = sub
+   {
+      my @accum = cpp_evaluate(@{$_[0]});
+      die('Invalid computation on non-constant: ', join(':', @accum))
+          if ($accum[0] ne 'constant');
+      foreach my $subexpression (@{$_}[1..$#{$_}]) {
+         my @operand = cpp_evaluate(@$subexpression);
+         my $promotion = cpp_arithmetic_conversion(\@accum, \@operand);
+         die('Invalid operation & performed on float type ', $promotion,
+             ': ', join(':', @accum), ' ^ ', join(':', @operand))
+             if (grep { $_ eq $promotion } ('float', 'double', 'long-double'));
+         die('Invalid computation on non-constant: ',
+             join(':', @operand))
+             if ($operand[0] ne 'constant');
+         $accum[1] = $promotion;
+         $accum[2] &= $operand[2];
+      }
+      return @accum;
+   };
+
+   sub and_expression
+   {
+      local $_;
+      my ($lex, $force) = @_;
+      my $save = $lex->{'parse_state'}();
+      print(STDERR 'In ', whoami(), ', left over: ',
+            join(', ', $lex->{'rest'}()), "\n")
+          if $debug > 1;
+      my @equality_expression
+          = equality_expression($lex, $force);
+      if (@equality_expression
+          and (!defined($lex->{'currentsym'}())
+               or $lex->{'currentsym'}() ne '&'))
+      {
+         return @equality_expression;
+      }
+      elsif (@equality_expression)
+      {
+         my @and_expression = ('and_expression', [ @equality_expression ]);
+         my $currentsym;
+         while (defined($currentsym = $lex->{'currentsym'}())
+                and $currentsym eq '&'
+                and $lex->{'advancesym'}())
+         {
+            print(STDERR 'In ', whoami(), ', left over: ',
+                  join(', ', $lex->{'rest'}()), "\n") if $debug > 1;
+            if (@equality_expression = equality_expression($lex, $force))
+            {
+               push(@and_expression, [ @equality_expression ]);
+            }
+            else
+            {
+               return parse_backoff($lex, $save, $force,
+                                    'Invalid and_expression ',
+                                    $lex->{'consumed'}($save));
+            }
+         }
+         return @and_expression;
+      }
+      return parse_backoff($lex, $save, $force,
+                           'Invalid and_expression ',
+                           $lex->{'consumed'}($save));
+   }
+
+   $evaluations{'equality_expression'}
+       = sub
+   {
+      my @val = ([cpp_evaluate(@{$_[1]})], [cpp_evaluate(@{$_[2]})]);
+      my $result = $val[0][2] == $val[1][2];
+      if ($_[0] eq '!=')
+      {
+         $result = !$result;
+      }
+      return ('constant', 'int', $result);
+   };
+
+   sub equality_expression
+   {
+      local $_;
+      my ($lex, $force) = @_;
+      my $save = $lex->{'parse_state'}();
+      print(STDERR 'In ', whoami(), ', left over: ',
+            join(', ', $lex->{'rest'}()), "\n")
+          if $debug > 1;
+      my @relational_expression
+          = relational_expression($lex, $force);
+      if (@relational_expression
+          and (!defined($lex->{'currentsym'}())
+               or ($lex->{'currentsym'}() ne '=='
+                   and $lex->{'currentsym'}() ne '!=')))
+      {
+         return @relational_expression;
+      }
+      elsif (@relational_expression)
+      {
+         my @equality_expression;
+         my @equality_subexpression = @relational_expression;
+         my $op;
+         while (defined($op = $lex->{'currentsym'}())
+                and ($op eq '==' || $op eq '!=')
+                and $lex->{'advancesym'}())
+         {
+            print(STDERR 'In ', whoami(), ', left over: ',
+                  join(', ', $lex->{'rest'}()), "\n") if $debug > 1;
+            if (@relational_expression = relational_expression($lex, $force))
+            {
+               @equality_subexpression
+                   = @equality_expression
+                       = ('equality_expression', $op,
+                          [ @equality_subexpression ],
+                          [ @relational_expression ]);
+            }
+            else
+            {
+               return parse_backoff($lex, $save, $force,
+                                    'Invalid equality_expression ',
+                                    $lex->{'consumed'}($save));
+            }
+         }
+         return @equality_expression;
+      }
+      return parse_backoff($lex, $save, $force,
+                           'Invalid equality_expression ',
+                           $lex->{'consumed'}($save));
+   }
+
+   my @relationalOps = ('>', '>=', '<', '<=');
+
+   $evaluations{'relational_expression'}
+       = sub
+   {
+      my @val = ([cpp_evaluate(@{$_[1]})], [cpp_evaluate(@{$_[2]})]);
+      my $result;
+      if ($_[0] eq '>')
+      {
+         $result = $val[0][2] > $val[1][2];;
+      }
+      elsif ($_[0] eq '!=')
+      {
+         $result = $val[0][2] != $val[1][2];;
+      }
+      elsif ($_[0] eq '>=')
+      {
+         $result = $val[0][2] >= $val[1][2];;
+      }
+      elsif ($_[0] eq '<')
+      {
+         $result = $val[0][2] < $val[1][2];;
+      }
+      elsif ($_[0] eq '<=')
+      {
+         $result = $val[0][2] <= $val[1][2];;
+      }
+      return ('constant', 'int', $result);
+   };
+
+   sub relational_expression
+   {
+      local $_;
+      my ($lex, $force) = @_;
+      my $save = $lex->{'parse_state'}();
+      print(STDERR 'In ', whoami(), ', left over: ',
+            join(', ', $lex->{'rest'}()), "\n")
+          if $debug > 1;
+      my @shift_expression
+          = shift_expression($lex, $force);
+      if (@shift_expression
+          and (!defined($lex->{'currentsym'}())
+               or !grep { $lex->{'currentsym'}() eq $_} @relationalOps))
+      {
+         return @shift_expression;
+      }
+      elsif (@shift_expression)
+      {
+         my @relational_expression;
+         my $op;
+         my @relational_subexpression = @shift_expression;
+         while (defined($op = $lex->{'currentsym'}())
+                and (grep { $_ eq $op } @relationalOps)
+                and $lex->{'advancesym'}())
+         {
+            print(STDERR 'In ', whoami(), ', left over: ',
+                  join(', ', $lex->{'rest'}()), "\n") if $debug > 1;
+            if (@shift_expression = shift_expression($lex, $force))
+            {
+               @relational_subexpression =
+                   @relational_expression = ('relational_expression', $op,
+                                             [ @relational_subexpression ],
+                                             [ @shift_expression ]);
+            }
+            else
+            {
+               return parse_backoff($lex, $save, $force,
+                                    'Invalid relational_expression ',
+                                    $lex->{'consumed'}($save));
+            }
+         }
+         return @relational_expression;
+      }
+      return parse_backoff($lex, $save, $force,
+                           'Invalid relational_expression ',
+                           $lex->{'consumed'}($save));
+   }
+
+   $evaluations{'shift_expression'}
+       = sub
+   {
+      local $_;
+      my ($op, @val) = ($_[0], [cpp_evaluate(@{$_[1]})], [cpp_evaluate(@{$_[2]})]);
+      my $promotion = cpp_arithmetic_conversion($val[0], $val[1]);
+      die('Invalid operation ', $op, ' performed on float type ', $promotion)
+          if (grep { $_ eq $promotion } ('float', 'double', 'long-double'));
+      die('Undefined operation ', $op, ' performed on with negative shift ',
+          $val[1][2]) if ($val[1][2] < 0);
+      if ($op eq '<<')
+      {
+         return ('constant', $val[0][1], $val[0][2] << $val[1][2]);
+      }
+      else
+      {
+         return ('constant', $val[0][1], $val[0][2] >> $val[1][2]);
+      }
+   };
+
+   sub shift_expression
+   {
+      local $_;
+      my ($lex, $force) = @_;
+      my $save = $lex->{'parse_state'}();
+      print(STDERR 'In ', whoami(), ', left over: ',
+            join(', ', $lex->{'rest'}()), "\n")
+          if $debug > 1;
+      my @additive_expression
+          = additive_expression($lex, $force);
+      if (@additive_expression
+          and (!defined($_ = $lex->{'currentsym'}())
+               or ($_ ne '<<' and $_ ne '>>')))
+      {
+         return @additive_expression;
+      }
+      elsif (@additive_expression)
+      {
+         my @shift_expression;
+         my @shift_subexpression
+             = @additive_expression;
+         my $op;
+         while (defined($op = $lex->{'currentsym'}())
+                and ($op eq '<<' || $op eq '>>')
+                and $lex->{'advancesym'}())
+         {
+            print(STDERR 'In ', whoami(), ', left over: ',
+                  join(', ', $lex->{'rest'}()), "\n") if $debug > 1;
+            if (@additive_expression = additive_expression($lex, $force))
+            {
+               @shift_subexpression
+                   = @shift_expression
+                       = ('shift_expression', $op,
+                          [ @shift_subexpression ],
+                          [ @additive_expression ]);
+            }
+            else
+            {
+               return parse_backoff($lex, $save, $force,
+                                    'Invalid shift_expression ',
+                                    $lex->{'consumed'}($save));
+            }
+         }
+         return @shift_expression;
+      }
+      return parse_backoff($lex, $save, $force,
+                           'Invalid shift_expression ',
+                           $lex->{'consumed'}($save));
+   }
+
+   $evaluations{'additive_expression'}
+       = sub
+   {
+      local $_;
+      my ($op, @val) = ($_[0], [cpp_evaluate(@{$_[1]})],
+                        [cpp_evaluate(@{$_[2]})]);
+      my $promotion = cpp_arithmetic_conversion($val[0], $val[1]);
+      if ($op eq '+')
+      {
+         return ('constant', $promotion, $val[0][2] + $val[1][2]);
+      }
+      else
+      {
+         return ('constant', $promotion, $val[0][2] - $val[1][2]);
+      }
+   };
+
+   sub additive_expression
+   {
+      local $_;
+      my ($lex, $force) = @_;
+      my $save = $lex->{'parse_state'}();
+      print(STDERR 'In ', whoami(), ', left over: ',
+            join(', ', $lex->{'rest'}()), "\n")
+          if $debug > 1;
+      my @multiplicative_expression
+          = multiplicative_expression($lex, $force);
+      if (@multiplicative_expression
+          and (!defined($_ = $lex->{'currentsym'}())
+               or ($_ ne '-' and $_ ne '+')))
+      {
+         return @multiplicative_expression;
+      }
+      elsif (@multiplicative_expression)
+      {
+         my @additive_expression;
+         my @additive_subexpression = @multiplicative_expression;
+         my $op;
+         while (defined($op = $lex->{'currentsym'}())
+             and ($op eq '+' || $op eq '-')
+             and $lex->{'advancesym'}())
+         {
+            print(STDERR 'In ', whoami(), ', left over: ',
+                  join(', ', $lex->{'rest'}()), "\n") if $debug > 1;
+            if (@multiplicative_expression
+                = multiplicative_expression($lex, $force))
+            {
+               @additive_subexpression
+                   = @additive_expression
+                       = ('additive_expression', $op,
+                          [ @additive_subexpression ],
+                          [ @multiplicative_expression ]);
+            }
+            else
+            {
+               return parse_backoff($lex, $save, $force,
+                                    'Invalid additive_expression ',
+                                    $lex->{'consumed'}($save));
+            }
+         }
+         return @additive_expression;
+      }
+      return parse_backoff($lex, $save, $force,
+                           'Invalid additive_expression ',
+                           $lex->{'consumed'}($save));
+   }
+
+   my @multiplicativeOps = ('*', '/', '%');
+
+   $evaluations{'multiplicative_expression'}
+       = sub
+   {
+      local $_;
+      my ($op, @val) = ($_[0], [cpp_evaluate(@{$_[1]})],
+                        [cpp_evaluate(@{$_[2]})]);
+      my $promotion = cpp_arithmetic_conversion($val[0], $val[1]);
+      if ($op eq '*')
+      {
+         return ('constant', $promotion, $val[0][2] + $val[1][2]);
+      }
+      elsif ($op eq '/')
+      {
+         return ('constant', $promotion, $val[0][2] / $val[1][2]);
+      }
+      else
+      {
+         return ('constant', $promotion, $val[0][2] % $val[1][2]);
+      }
+   };
+
+   sub multiplicative_expression
+   {
+      local $_;
+      my ($lex, $force) = @_;
+      my $save = $lex->{'parse_state'}();
+      print(STDERR 'In ', whoami(), ', left over: ',
+            join(', ', $lex->{'rest'}()), "\n")
+          if $debug > 1;
+      my @cast_expression
+          = cast_expression($lex, $force);
+      if (@cast_expression
+          and (!defined($lex->{'currentsym'}())
+               or !grep { $_ eq $lex->{'currentsym'}() } @multiplicativeOps))
+      {
+         return @cast_expression;
+      }
+      elsif (@cast_expression)
+      {
+         my @multiplicative_expression;
+         my $op;
+         my @multiplicative_subexpression = @cast_expression;
+         if (defined($op = $lex->{'currentsym'}())
+             and (grep { $_ eq $op } @multiplicativeOps)
+             and $lex->{'advancesym'}())
+         {
+            print(STDERR 'In ', whoami(), ', left over: ',
+                  join(', ', $lex->{'rest'}()), "\n") if $debug > 1;
+            if (@cast_expression = cast_expression($lex, $force))
+            {
+               @multiplicative_subexpression
+                   = @multiplicative_expression
+                       = ('multiplicative_expression', $op,
+                          [ @multiplicative_subexpression ],
+                          [ @cast_expression ]);
+            }
+            else
+            {
+               return parse_backoff($lex, $save, $force,
+                                    'Invalid multiplicative_expression ',
+                                    $lex->{'consumed'}($save));
+            }
+         }
+         return @multiplicative_expression;
+      }
+      return parse_backoff($lex, $save, $force,
+                           'Invalid multiplicative_expression ',
+                           $lex->{'consumed'}($save));
+   }
+
+   $evaluations{'cast_expression'}
+       = sub
+   {
+      local $_;
+      my ($conversion, @val) = ($_[0], cpp_evaluate(@{$_[1]}));
+      return ('constant', $conversion, $val[2]);
+   };
+
+   sub cast_expression
+   {
+      local $_;
+      my ($lex, $force) = @_;
+      my $save = $lex->{'parse_state'}();
+      print(STDERR 'In ', whoami(), ', left over: ',
+            join(', ', $lex->{'rest'}()), "\n")
+          if $debug > 1;
+      my @unary_expression
+          = unary_expression($lex, $force);
+      if (@unary_expression)
+      {
+         return @unary_expression;
+      }
+      elsif ($lex->{'currentsym'}() eq '('
+             and $lex->{'advancesym'}())
+      {
+         my @cast_expression;
+         my @typename
+             = typename($lex, $force);
+         if (@typename
+             and $lex->{'currentsym'}() eq ')'
+             and $lex->{'advancesym'}())
+         {
+            print(STDERR 'In ', whoami(), ', left over: ',
+                  join(', ', $lex->{'rest'}()), "\n") if $debug > 1;
+            @unary_expression
+                = unary_expression($lex, $force);
+            if (@unary_expression)
+            {
+               @cast_expression = ('cast_expression',
+                                   \@typename, \@unary_expression);
+               return @cast_expression;
+            }
+         }
+      }
+      return parse_backoff($lex, $save, $force,
+                           'Invalid cast_expression ',
+                           $lex->{'consumed'}($save));
+   }
+
+   my @unaryOps = ('&', '*', '+', '-', '~', '!');
+
+   $evaluations{'unary_expression'}
+       = sub
+   {
+      local $_;
+      my ($op, @val) = ($_[0], cpp_evaluate(@{$_[1]}));
+      if ($op eq '-')
+      {
+         return ('constant', $val[1], -$val[2]);
+      }
+      elsif ($op eq '!')
+      {
+         return ('constant', $val[1], 0+!$val[2]);
+      }
+      elsif ($op eq '+')
+      {
+         return ('constant', $val[1], +$val[2]);
+      }
+      elsif ($op eq '~')
+      {
+         return ('constant', $val[1], ~$val[2]);
+      }
+      die('Unhandled unary expression: (', join(', ', @val), ")\n")
+   };
+
+   sub unary_expression
+   {
+      local $_;
+      my ($lex, $force) = @_;
+      my $save = $lex->{'parse_state'}();
+      print(STDERR 'In ', whoami(), ', left over: ',
+            join(', ', $lex->{'rest'}()), "\n")
+          if $debug > 1;
+      my @postfix_expression;
+      my $op;
+      my @unary_expression;
+      if (defined($op = $lex->{'currentsym'}())
+          and (grep { $_ eq $op } @unaryOps)
+          and $lex->{'advancesym'}())
+      {
+         print(STDERR 'In ', whoami(), ', line ', __LINE__, ', left over: ',
+               join(', ', $lex->{'rest'}()), "\n") if $debug > 1;
+         my @cast_expression
+             = cast_expression($lex, $force);
+         if (@cast_expression)
+         {
+            @unary_expression = ('unary_expression', $op,
+                                 \@cast_expression);
+            return @unary_expression;
+         }
+      }
+      elsif (@postfix_expression = postfix_expression($lex, $force))
+      {
+         return @postfix_expression;
+      }
+
+      return parse_backoff($lex, $save, $force,
+                           'Invalid unary_expression ',
+                           $lex->{'consumed'}($save));
+   }
+
+   my @postfixOps = ('[', '(', '.', '->', '++', '--');
+
+   sub postfix_expression
+   {
+      local $_;
+      my ($lex, $force) = @_;
+      my $save = $lex->{'parse_state'}();
+      print(STDERR 'In ', whoami(), ', left over: ',
+            join(', ', $lex->{'rest'}()), "\n")
+          if $debug > 1;
+      my @primary_expression
+          = primary_expression($lex, $force);
+      if (@primary_expression
+          and (!defined($lex->{'currentsym'}())
+               or !grep { $_ eq $lex->{'currentsym'}() } @postfixOps))
+      {
+         return @primary_expression;
+      }
+      else
+      {
+         my @postfix_expression;
+         my @postfix_subexpression
+             = @primary_expression
+                 ? @primary_expression : postfix_expression($lex, $force);
+         my $op;
+         if (defined($op = $lex->{'currentsym'}())
+             and (grep { $_ eq $op } @postfixOps)
+             and $lex->{'advancesym'}())
+         {
+            print(STDERR 'In ', whoami(), ', left over: ',
+                  join(', ', $lex->{'rest'}()), "\n") if $debug > 1;
+            my @cast_expression
+                = cast_expression($lex, $force);
+            if (@cast_expression)
+            {
+               @postfix_expression = ('postfix_expression', $op,
+                                    \@cast_expression);
+               return @postfix_expression;
+            }
+         }
+      }
+      return parse_backoff($lex, $save, $force,
+                           'Invalid postfix_expression ',
+                           $lex->{'consumed'}($save));
+   }
+
+   sub primary_expression
+   {
+      local $_;
+      my ($lex, $force) = @_;
+      my $save = $lex->{'parse_state'}();
+      print(STDERR 'In ', whoami(), ', left over: ',
+            join(', ', $lex->{'rest'}()), "\n")
+          if $debug > 1;
+      my (@identifier, @constant, @string);
+      if (@identifier = identifier($lex, $force))
+      {
+         return @identifier;
+      }
+      elsif (@constant = constant($lex, $force))
+      {
+         return @constant;
+      }
+      elsif (@string = string($lex, $force))
+      {
+         return @string;
+      }
+      else
+      {
+         my $currentsym;
+         if (defined($currentsym = $lex->{'currentsym'}())
+             and ($currentsym eq '(')
+             and $lex->{'advancesym'}())
+         {
+            print(STDERR 'In ', whoami(), ', left over: ',
+                  join(', ', $lex->{'rest'}()), "\n") if $debug > 1;
+            my @expression
+                = expression($lex, $force);
+            if (@expression
+                and defined($currentsym = $lex->{'currentsym'}())
+                and $currentsym eq ')')
+            {
+               $lex->{'advancesym'}();
+               return @expression;
+            }
+         }
+      }
+      return parse_backoff($lex, $save, $force,
+                           'Invalid primary_expression ',
+                           $lex->{'consumed'}($save));
+   }
+
+   sub identifier
+   {
+      local $_;
+      my ($lex, $force) = @_;
+      print(STDERR 'In ', whoami(), ', left over: ',
+            join(', ', $lex->{'rest'}()), "\n")
+          if $debug > 1;
+      my $currentsym;
+      my $save = $lex->{'parse_state'}();
+      if (isSymbol($currentsym = $lex->{'currentsym'}()))
+      {
+         $lex->{'advancesym'}();
+         return ('identifier', $currentsym);
+      }
+      return parse_backoff($lex, $save, $force,
+                           'Invalid primary_expression ',
+                           $lex->{'consumed'}($save));
+   }
+
+   $evaluations{'constant'}
+       = sub
+   {
+      return ('constant', @_);
+   };
+
+   sub constant
+   {
+      local $_;
+      my ($lex, $force) = @_;
+      my $save = $lex->{'parse_state'}();
+      print(STDERR 'In ', whoami(), ', left over: ',
+            join(', ', $lex->{'rest'}()), "\n")
+          if $debug > 1;
+      my $token = $lex->{'currentsym'}();
+      my @const_def;
+      if (@const_def = integer_constant($lex, 0))
+      {
+         return @const_def;
+      }
+      elsif (@const_def = float_constant($lex, 0))
+      {
+         return @const_def;
+      }
+      elsif (@const_def = character_constant($lex, 0))
+      {
+         return @const_def;
+      }
+      elsif (@const_def = enumeration_constant($lex, 0))
+      {
+         return @const_def;
+      }
+      else
+      {
+         return parse_backoff($lex, $save, $force,
+                              'Invalid primary_expression ',
+                              $lex->{'consumed'}($save));
+      }
+   }
+
+   sub integer_constant
+   {
+      my ($lex, $force) = @_;
+      my $save = $lex->{'parse_state'}();
+      print(STDERR 'In ', whoami(), ', left over: ',
+            join(', ', $lex->{'rest'}()), "\n")
+          if $debug > 1;
+      local $_ = $lex->{'currentsym'}();
+      if (m{^(\d+|0[0-7]+|0[xX][0-9a-fA-F]+)([ul]{1,3})?$}xi)
+      {
+         my ($digits, $integer_suffix) = ($1, $2);
+         my $inttype = 'int';
+         print(STDERR 'In ', whoami(), ', digits: ',
+               $digits, ", suffix: ",
+               defined($integer_suffix)?$integer_suffix:'none', "\n")
+             if $debug > 1;
+         if (defined($integer_suffix))
+         {
+            if ($integer_suffix =~ m{(u)?(l){0,2}(u)?}xi
+                and !(defined($1) && defined($3)))
+            {
+               print(STDERR 'In ', whoami(), ', line ', __LINE__,
+                     ', digits: ', $digits, ", suffix: ", $integer_suffix, "\n")
+                   if $debug > 1;
+               my ($unsigned_flag, $length_modifier)
+                   = (lc($1 || $3 || ''), lc($2 || ''));
+               $inttype = ($unsigned_flag eq 'u'?'unsigned-':'')
+                   . ($length_modifier eq 'll'?
+                      'long_long-':($length_modifier eq 'l'?'long-':''))
+                       . 'int';
+            }
+            else
+            {
+               return parse_backoff($lex, $save, $force,
+                                    'Invalid integer_constant ',
+                                    $lex->{'consumed'}($save));
+            }
+         }
+         $lex->{'advancesym'}();
+         print(STDERR 'In ', whoami(), ', line ', __LINE__,
+               ', left over: ', join(', ', $lex->{'rest'}()), "\n")
+                   if $debug > 1;
+         return ('constant', $inttype, 0+$digits);
+      }
+      return parse_backoff($lex, $save, $force,
+                           'Invalid integer_constant ',
+                           $lex->{'consumed'}($save));
+   }
+
+   sub float_constant
+   {
+      my ($lex, $force) = @_;
+      my $save = $lex->{'parse_state'}();
+      print(STDERR 'In ', whoami(), ', left over: ',
+            join(', ', $lex->{'rest'}()), "\n")
+          if $debug > 1;
+      local $_ = $lex->{'currentsym'}();
+      my $float_token = $_;
+      if (m{^(\d*\.\d+|\d+\.)(?:([e])(\d*))?([fl]?)$}xi
+          or m{^(\d+)([e])(\d*)([fl]?)$}xi)
+      {
+         my ($fractional_constant, $exponent_indicator,
+             $exponent, $float_suffix) = ($1, $2, $3, $4);
+         my $tokens_left = $lex->{'advancesym'}();
+         my ($exponent_token, $exponent_sign_token) = (undef, '');
+         $float_token =~ s{[fl]$}{}xi if defined($float_suffix);
+         if (defined($exponent_indicator) && !defined($exponent))
+         {
+            if (!defined($float_suffix)
+                and ((($exponent_token = $lex->{'currentsym'}()) eq '-'
+                      or $exponent_token eq '+')
+                     ? (($exponent_sign_token = $exponent_token)
+                        and $lex->{'advancesym'}()
+                        and (($exponent_token = $lex->{'currentsym'}())
+                             =~ m{\d+[fl]?}xi))
+                     : $exponent_token =~ m{\d+}x))
+            {
+               if ($exponent_token =~ m{([fl])$}xi)
+               {
+                  $float_suffix = $1;
+                  $exponent_token =~ s{[fl]$}{}xi;
+               }
+               $float_token .= $exponent_sign_token . $exponent_token;
+            }
+            else
+            {
+               return parse_backoff($lex, $save, $force,
+                                    'Invalid float_constant ',
+                                    $lex->{'consumed'}($save));
+            }
+         }
+         my $float_type = 'double';
+         if (defined($float_suffix))
+         {
+            $float_suffix = lc($float_suffix);
+            if ($float_suffix eq 'l')
+            {
+               $float_type = 'long-double';
+            }
+            elsif ($float_suffix eq 'f')
+            {
+               $float_type = 'float';
+            }
+            else
+            {
+               die('Unexpected error in float constant recognition.');
+            }
+         }
+         return ('constant', $float_type, 0.0+$float_token);
+      }
+      else
+      {
+         return parse_backoff($lex, $save, $force,
+                              'Invalid float_constant ',
+                              $lex->{'consumed'}($save));
+      }
+   }
+
+   sub character_constant
+   {
+      my ($lex, $force) = @_;
+      my $save = $lex->{'parse_state'}();
+      print(STDERR 'In ', whoami(), ', left over: ',
+            join(', ', $lex->{'rest'}()), "\n")
+          if $debug > 1;
+      local $_ = $lex->{'currentsym'}();
+      if (m{^'(.|\\[ntvbrfa\\?'"]|\\[0-7]{1,3}|\\x[0-9a-fA-F]+)'$}x)
+      {
+         return ('constant', 'char', $1);
+      }
+      else
+      {
+         return parse_backoff($lex, $save, $force,
+                              'Invalid character_constant ',
+                              $lex->{'consumed'}($save));
+      }
+   }
+
+   sub string
+   {
+      my ($lex, $force) = @_;
+      my $save = $lex->{'parse_state'}();
+      print(STDERR 'In ', whoami(), ', left over: ',
+            join(', ', $lex->{'rest'}()), "\n")
+          if $debug > 1;
+      local $_ = $lex->{'currentsym'}();
+      if (m{^"((?:.|\\[ntvbrfa\\?'"]|\\[0-7]{1,3}|\\x[0-9a-fA-F]+)+)"$}x)
+      {
+         return ('constant', 'string', $1);
+      }
+      else
+      {
+         return parse_backoff($lex, $save, $force,
+                              'Invalid string constant ',
+                              $lex->{'consumed'}($save));
+      }
+   }
+
+   sub enumeration_constant
+   {
+      return isSymbol($_[0]);
+   }
+
+   sub isSymbol
+   {
+      return $_[0] =~ m{^[a-zA-Z_]\w+$};
+   }
+
+   sub cpp_evaluate
+   {
+      local $_;
+      my @ast = @_;
+      my $toptype = $ast[0];
+      print(STDERR 'Evaluating ', Data::Dumper->Dump([\@ast], ['ast']))
+          if $debug > 1;
+      if (exists($evaluations{$toptype}))
+      {
+         return $evaluations{$toptype}(@ast[1..$#ast]);
+      }
+      else
+      {
+         die('Unknown expression type: ', $toptype);
+      }
+   }
+
+   sub cpp_true
+   {
+      my @value = @_;
+      print(STDERR 'Returning truth value of ',
+            Data::Dumper->Dump([\@value], ['value']))
+          if $debug > 1;
+      if ($value[0] ne 'constant')
+      {
+         die('Cannot evaluate non-constant expressions!');
+      }
+      if ($value[1] =~ m{(?:unsigned)?(?:long_long-|long-)?int})
+      {
+         return $value[2] != 0;
+      }
+      die('Unhandled truth expression: ', join(':', @_));
+   }
+
+   sub cpp_arithmetic_conversion
+   {
+      my @val = @_;
+      if ($val[0][1] eq 'long-double' or $val[1][1] eq 'long-double')
+      {
+         return 'long-double';
+      }
+      elsif ($val[0][1] eq 'double' or $val[1][1] eq 'double')
+      {
+         return 'double';
+      }
+      elsif ($val[0][1] eq 'float' or $val[1][1] eq 'float')
+      {
+         return 'float';
+      }
+      else
+      {
+         @val = ([integral_promotion(@{$val[0]})],
+                 [integral_promotion(@{$val[1]})]);
+         if ($val[0][1] eq 'unsigned-long_long-int'
+             or $val[1][1] eq 'unsigned-long_long-int')
+         {
+            return 'unsigned-long_long-int';
+         }
+         if (@C_LONG_LONG_IS_LARGER_THAN_LONG@)
+         {
+            if ($val[0][1] eq 'long_long-int'
+                or $val[1][1] eq 'long_long-int')
+            {
+               return 'unsigned-long_long-int';
+            }
+         }
+         else
+         {
+            # long long can't represent every value in unsigned long
+            if (($val[0][1] eq 'long_long-int'
+                 and $val[1][1] eq 'unsigned-long-int')
+                or ($val[1][1] eq 'long_long-int'
+                    and $val[0][1] eq 'unsigned-long-int'))
+            {
+               return 'unsigned-long_long-int';
+            }
+         }
+         if ($val[0][1] eq 'unsigned-long_long-int'
+             or $val[1][1] eq 'unsigned-long_long-int')
+         {
+            return 'unsigned-long_long-int';
+         }
+         if (@C_LONG_IS_LARGER_THAN_INT@)
+         {
+            if ($val[0][1] eq 'long-int'
+                or $val[1][1] eq 'long-int')
+            {
+               return 'long-int';
+            }
+         }
+         else
+         {
+            # long can't represent every value in unsigned
+            if (($val[0][1] eq 'long-int'
+                 and $val[1][1] eq 'unsigned-int')
+                or ($val[1][1] eq 'long-int'
+                    and $val[0][1] eq 'unsigned-int'))
+            {
+               return 'unsigned-long-int';
+            }
+         }
+         if ($val[0][1] eq 'long-int'
+             or $val[1][1] eq 'long-int')
+         {
+            return 'long-int';
+         }
+         elsif ($val[0][1] eq 'unsigned-int'
+                or $val[1][1] eq 'unsigned-int')
+         {
+            return 'unsigned-int';
+         }
+         else
+         {
+            return 'int';
+         }
+      }
+   }
+
+   sub integral_promotion
+   {
+      my @val = @_;
+      if ($val[1] eq 'char')
+      {
+         return ($val[0], 'int', unpack(@C_CHAR_IS_UNSIGNED@?'C':'c', $val[2]));
+      }
+      else
+      {
+         return @val;
+      }
+   }
+
+}
+
+
+sub whoami  { (caller(1))[3] }
+
+sub parseOptions
+{
+   local $_;
+   my ($help, $usage)=(0, 0);
+   my $optionParser = new Getopt::Long::Parser;
+   # This program should accept the full set of preprocessor flags,
+   # but might not implement all of them. Therefore abbreviation and
+   # ignoring of case are not allowed because either might promote
+   # unhandled options to options of this program. Also unhandled
+   # options are passed through.
+   configureOptionParser($optionParser, 'no_auto_abbrev', 'no_ignore_case');
+   # duplicate -- option terminator for brain-dead versions of
+   # Getopt::Long (which unfortunately includes the one distributed
+   # with Perl 5.6.1)
+   if (grep /^--$/, @ARGV)
+   {
+      my @seen = (0, 0);
+      @ARGV = ((grep { ($seen[0] or /^--$/)?
+                           ($seen[0]?0:!($seen[0]=1)):1 } @ARGV),
+               '--', '--',
+               (grep { ($seen[1] or /^--$/)?$seen[1]++:0 } @ARGV));
+   }
+   print(STDERR join(", ", @ARGV), "\n") if $debug > 2;
+   my $result
+       = $optionParser->getoptions('debug+' => \$debug,
+                                   'help|?!' => \$help,
+                                   'usage!' => \$usage,
+                                   'dump-cpp-keys=s' => \$dumpCppKeys,
+                                   'print-obj-deps!' => \$objDepOut,
+                                   'verbose+' => \$verbose,
+                                   'strip-obj-dirname!' =>
+                                   \$stripObjDirname,
+                                   'obj-suf=s' => \$objectSuffix,
+                                   'obj-transform-name=s' => \@nameSubst,
+                                   'ignore-sys-include=s' =>
+                                     \@ignoredSysIncludes,
+                                   'ignore-module=s' => \@ignoredModules,
+                                  );
+   if($help or $usage)
+   {
+      pod2usage( {
+                  '-msg' => "",
+                  '-exitval' => 0,
+                  '-verbose' => 1
+                 });
+   }
+   # filter unhandled options
+   print(STDERR join(", ", @ARGV), "\n") if $debug > 2;
+   if (grep(/^--$/, @ARGV) == 2)
+   {
+      my @FPPFLAGS;
+      my $seen = 0;
+      {
+         my @unhandledOptions = grep { ($seen or /^--$/)?
+                                           ($seen?0:!($seen=1)):1 } @ARGV[1..$#ARGV];
+         print(STDERR 'unhandled options: ', join(', ', @unhandledOptions),
+               "\n") if $debug > 2;
+         @moduleSearchPath = map { /^@FC_MOD_FLAG@(.+)$/?$1:() }
+             @unhandledOptions;
+         @unhandledOptions = grep { /^@FPP_INCOPT@(.+)$/?
+                                        (!push @includeDirs, $1):1 }
+             @unhandledOptions;
+         @unhandledOptions = grep { /^(?:-D|@FPP_DEFOPT@)(.+)(?:=(.*))?$/?
+                                        ($defines{$1}=$2 and 0):1 }
+             @unhandledOptions;
+         print(STDERR 'unhandled options: ', join(', ', @unhandledOptions),
+               "\n") if $debug > 2;
+      }
+      while (grep /^--$/, @ARGV)
+      {
+         $seen = 0;
+         @ARGV = grep { ($seen or /^--$/)?$seen++:do {push(@FPPFLAGS, $_) ; 0} } @ARGV;
+      }
+      print(STDERR 'FPPFLAGS: ', join(', ', @FPPFLAGS), "\n")
+          if $debug;
+      set_preproc_cmd_flags(@FPPFLAGS);
+   }
+   # no preproc options?
+   elsif (grep(/^--$/, @ARGV) == 1)
+   {
+      if (!$ARGV[0] eq '--')
+      {
+         # give up if option parsing mysteriously failed
+         die('internal error: double dash must be first in ARGV by now!');
+      }
+      shift @ARGV;
+   }
+   # replace defines with pre-parsed construct
+   my @names = keys %defines;
+   my $i;
+   for ($i = 0; $i < @names; ++$i)
+   {
+      my ($name, $definition, $macroArgs)
+          = ($names[$i], $defines{$names[$i]} || '');
+      if ($name =~ m{(.*?)=(.*)})
+      {
+         ($name, $definition) = ($1, $2);
+      }
+      if ($name =~ m{([^(]*)
+                     (\(\s*[A-Za-z_]\w*(?:\s*,[A-Za-z_]\w*)*\s*\))}x)
+      {
+         ($name, $macroArgs) = ($1, $2);
+      }
+      die('Malformed define ', $name, $macroArgs?('(', $macroArgs, ')'):'',
+          '=', $definition, "\n") if ($name !~ m{^[A-Za-z_]\w+$});
+      $defines{$name} = parseDefinition($macroArgs, $definition,undef,$name);
+   }
+   # make spawned processes (hopefully) emit debugging information
+   $ENV{'DEBUG'} = $debug if $debug;
+}
+
+# evil hack to work with older versions of Getopt::Long
+sub configureOptionParser
+{
+   my ($optionParser, @options) = (@_);
+   eval {
+      $optionParser->configure(@options);
+   };
+   if ($@)
+   {
+      my $save = Getopt::Long::Configure ($optionParser->{settings}, @options);
+      $optionParser->{settings} = Getopt::Long::Configure($save);
+   }
+}
+
+__END__
+
+=head1 NAME
+
+makef90depends - compute dependencies of FORTRAN 90 object files from source
+
+=head1 SYNOPSIS
+
+makef90depends [options] [--] [source file...]
+
+Parse each file and determine prerequisites. Prerequisites are: files
+included by either C preprocessor or FORTRAN compiler and modules
+USEd.
+
+If one of the modules used by some file F<A.f90> is provided by
+another file F<B.f90>, then B.o will become a dependency of
+A.o. Similarly, if F<A.f90> includes F<C.inc>, F<C.inc> will be
+emitted as a dependency of F<A.o>.
+
+=over
+
+=item * the same file, it's not considered a dependency
+
+=item * another source file F<B.f>, the object file corresponding to
+said source file F<B.o> is added to the dependency list of A.o
+
+=back
+
+Note: on some systems, F<.obj> might be used instead of F<.o>.
+
+=head1 OPTIONS
+
+=over 8
+
+=item B<-Dname>I<[=definition]>
+
+Define a C preprocessor macro with name name. FIXME: currently not
+implemented for ifdef's.
+
+=item B<@FC_MOD_FLAG@>F<DIR>
+
+Add F<DIR> to list of directories to search for include files.
+
+=item B<--obj-suf=>F<.suf>
+
+Write dependencies for objects with suffix F<.suf> (defaults to
+F<.o>).
+
+=item B<--strip-obj-dirname>
+
+Do not prepend path information to object files. By default,
+dependencies for F<a/path/file.o> are written with the directory name
+included.
+
+=item B<--dump-cpp-keys=>F<FILE>
+
+Print the list of files it occurs in for each non-builtin preprocessor
+symbol encountered.
+
+=item B<--obj-transform-name=PATTERN=REPLACEMENT>
+
+Transform every object filename with s/PATTERN/REPLACEMENT/. See
+perlre(5) for specific details of the regular expressions used.
+
+=item B<--ignore-sys-include=HEADER>
+
+Ignore inclusions of HEADER for dependency generation.
+
+=item B<--ignore-module=MODULE>
+
+Ignore MODULE in dependencies.
+
+=item B<--help>, B<--usage>
+
+Print usage information.
+
+=item B<--debug>
+
+Produces debugging output.
+
+=item B<--verbose>
+
+Print verbose progress information.
+
+=back
+
+=cut
+
+# Local Variables:
+# mode: cperl
+# cperl-indent-level: 3
+# End:

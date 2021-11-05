@@ -1,0 +1,1482 @@
+%\def\filedate{2007-08-22}\let\thedate\filedate % packages may change \filedate
+
+\documentclass[twoside]{article}
+\usepackage[obeyspaces]{url}
+\usepackage{natbib}
+\usepackage{chem}
+\usepackage{color}
+\usepackage{rotating} % loads graphicx
+%\usepackage{longtable}
+\usepackage{graphicx}
+%\usepackage{verbatim}
+
+\oddsidemargin-5mm
+\evensidemargin-15mm
+\topmargin-15mm
+\textheight240mm
+\textwidth180mm
+\raggedbottom
+\parindent0mm
+\parskip1.0ex plus0.5ex minus0.5ex
+\renewcommand{\arraystretch}{1}
+\renewcommand{\topfraction}{0.95}
+\renewcommand{\dbltopfraction}{0.95}
+\renewcommand{\bottomfraction}{0.95}
+\renewcommand{\floatpagefraction}{0.95}
+\renewcommand{\dblfloatpagefraction}{0.95}
+\renewcommand{\textfraction}{0.01}
+\setcounter{topnumber}{3}
+
+\newcommand{\egcite}[1]{\citep[e.g.][]{#1}}
+\newcommand{\etccite}[1]{\citep[and references therein]{#1}}
+\newcommand{\hhline}{\noalign{\vspace{1mm}}\hline\noalign{\vspace{1mm}}}
+\newcommand{\hhlines}{\noalign{\vspace{1mm}}\hline\hline\noalign{\vspace{1mm}}}
+\newcommand{\kpproot}{{\sc root}}
+\newcommand{\todo}[1]{{\uppercase{\bf ((#1))}}}
+
+\def\mypageheader{P. J\"ockel et al.: TRACER User Manual}
+\markboth{\mypageheader}{\mypageheader}
+\pagestyle{myheadings}
+
+\begin{document}
+
+\thispagestyle{empty}
+%\vspace*{-2cm}
+\begin{center}
+  {\Huge\bf MESSy TRACER User Manual}\\[9mm]
+  %{\includegraphics[width=0.7\textwidth]{tracer-logo}}\\[9mm]
+  {\huge\bf Patrick J\"ockel, Astrid Kerkweg,}\\[3mm]
+  {\huge\bf Joachim Buchholz, Holger Tost, Rolf Sander \& Andrea Pozzer}\\[9mm]
+  {\huge\it for the MESSy TRACER submodel}\\[3mm]
+  \Large
+  Air Chemistry Department\\
+  Max-Planck Institute of Chemistry\\
+  PO Box 3060, 55020 Mainz, Germany\\
+  \url{joeckel@mpch-mainz.mpg.de}
+
+\end{center}
+
+\vfill
+
+{\large This manual is part of the electronic supplement of our article
+``Technical note: Coupling of chemical processes with the Modular
+Earth Submodel System (MESSy) submodel TRACER''
+  in Atmos.\ Chem.\ Phys.\
+  (2008), available at: \url{http://www.atmos-chem-phys.net}}
+
+\begin{center}
+%  Date: \thedate
+  Date: \today
+\end{center}
+
+\newpage
+\tableofcontents
+\newpage
+
+\section{Introduction}
+%
+This documentation describes some more details of the MESSy submodel TRACER
+for the chemical coupling of processes in Earth System Models.
+%
+Sect.~\ref{sec:meta} explains the tracer {\it meta-information} structure 
+and how to expand it.
+%
+A reference for the interface routines of the submodel follows.
+%
+In most cases, the routines described in Sect.~\ref{sec:tracermain} are
+sufficient to apply TRACER.  An example is illustrated in
+Sect.~\ref{sec:exampleappl}.
+%
+The submodel core layer (SMCL) routines of the TRACER submodels
+TRACER\_FAMILY and TRACER\_PDEF are described in
+Sect.~\ref{sec:family} and Sect.~\ref{sec:pdef}, respectively.
+
+%
+In the following description of the Fortran95 code, two parameters from
+the module \\ {\tt messy\_main\_constants\_mem.f90} are used, one for the
+precision of real numbers:
+\begin{verbatim}
+   INTEGER, PARAMETER :: DP = SELECTED_REAL_KIND(12,307)
+\end{verbatim}
+and one for the length of strings:
+\begin{verbatim}
+   INTEGER, PARAMETER :: STRLEN_MEDIUM = 24
+\end{verbatim}
+
+%
+The documented code is also part of the MESSy distribution version 1.5.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{The meta-information structure}
+\label{sec:meta}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+The {\it meta-information} of the tracers in a tracer set are stored in
+a concatenated list of Fortran95 structures:
+\begin{verbatim}
+   TYPE t_trinfo_list
+      TYPE(t_trinfo)               :: info
+      TYPE(t_trinfo_list), POINTER :: next
+   END TYPE t_trinfo_list
+\end{verbatim}
+
+The {\it meta-information} of one tracer is split into two parts:
+%
+\begin{verbatim}
+   TYPE t_trinfo
+      TYPE(t_ident) :: ident       ! IDENTIFICATION
+      TYPE(t_meta)  :: meta        ! ADDITIONAL META-INFORMATION
+   END TYPE t_trinfo
+
+\end{verbatim}
+%
+The first part ({\tt t\_ident}) is for the identification  of the tracer
+and the second part ({\tt t\_meta}) to store additional
+{\it meta-information}.
+%
+The tracer identification contains:
+%
+\begin{itemize}
+ \item a unique {\it fullname} consisting of a {\it basename} and an additional
+       optional {\it subname},
+ \item the name of the submodel which has defined the tracer in the tracer set,
+ \item a unique index, which is the number of the tracer in the tracer set
+       that can also be used to address the corresponding {\it data},
+ \item the {\it medium} of the tracer; the following integer parameters are
+       pre-defined: AIR=1, AEROSOL=2, CLOUD=3, OCEAN=4, LAKE=5, RIVER=6,
+       LANDICE=7, SEAICE=8, VEGETATION=9,
+ \item the {\it quantity} describing the abundance of the tracer;
+       the following integer parameters are pre-defined:
+       AMOUNTFRACTION=1, NUMBERDENSITY=2, CONCENTRATION=3,
+ \item the {\it unit} of the tracer {\it data},
+ \item the {\it type} of the tracer; the following integer parameters are
+       pre-defined: SINGLE=0, FAMILY=1, ISOTOPE=2.
+\end{itemize}
+
+The additional {\it meta-information} contains one (logical) flag
+to store the initialisation state of the tracer {\it data} and
+three {\it meta-information} containers (Fortran95 arrays of rank one), 
+for integer, real and string information, respectively. 
+The meaning of a container content is solely defined by its position in the 
+respective array (i.e., the container number); 
+currently the following container numbers are pre-defined:
+
+%
+\begin{tabular*}{\textwidth}{@{\extracolsep\fill}|lrll|}
+\hline
+container number & value    & meaning & possible container content \\
+\hline
+{\tt I\_ADVECT}       & 1   & switch for advection & {\bf ON}, OFF\\
+{\tt I\_CONVECT}      & 2   & switch for convection & {\bf ON}, OFF\\
+{\tt I\_VDIFF}        & 3   & switch for vertical diffusion & {\bf ON}, OFF\\
+{\tt I\_WETDEP}       & 4   & switch for wet deposition & ON, {\bf OFF}\\
+{\tt I\_DRYDEP}       & 5   & switch for dry deposition & ON, {\bf OFF}\\
+{\tt I\_SEDI}         & 6   & switch for sedimentation & ON, {\bf OFF}\\
+{\tt I\_SCAV}         & 7   & switch for scavenging & ON, {\bf OFF}\\
+{\tt I\_MIX}          & 8   & switch for turbulent mixing & {\bf ON}, OFF\\
+{\tt I\_FORCE\_COL}   & 9   & switch for forcing in column mode & ON, {\bf OFF}\\
+{\tt I\_INTEGRATE}    &10   & switch for time integration & {\bf ON}, OFF\\
+{\tt I\_TIMEFILTER}   &11   & switch for time filter & {\bf ON}, OFF\\
+{\tt I\_FORCE\_INIT}  &12   & switch for re-initialisation after restart & ON, {\bf OFF}\\
+{\tt I\_AEROSOL\_METHOD} &13 & method of aerosol dynamical model & {\bf MODAL}, BIN\\
+{\tt I\_AEROSOL\_MODE}   &14 & number of aerosol mode or bin & (0)\\
+{\tt I\_AEROSOL\_SOL}    &15 & aerosol solubility flag & {\bf ON}, OFF\\
+\hline
+{\tt R\_MOLARMASS}       & 1 & molar mass of species & (0.0) g/mol\\
+{\tt R\_HENRY}           & 2 & henry's law coefficient & (0.0) mol/L/atm\\
+{\tt R\_DRYREAC\_SF}     & 3 & coefficient for dry reaction with surface & e.g., {\bf 0.0}, 0.1, 1.0\\
+{\tt R\_VINI}            & 4 & initial value for tracer {\it data}& (0.0)\\
+{\tt R\_AEROSOL\_DENSITY} & 5 & aerosol component density & (0.0)\\
+\hline
+{\tt S\_AEROSOL\_MODEL} & 1 & name of associated aerosol dynamical model & \\
+\hline
+\end{tabular*}
+%
+
+Text in bold-face or in parentheses shows the default values; 
+OFF=0, ON=1, MODAL=2, and BIN=3 are pre-defined integer parameters.
+The container number names begin with ``I\_'', ``R\_'' and ``S\_'' for
+integer, real and string containers, respectively.
+
+To add new containers, the following steps are required
+({\tt messy\_main\_tracer.f90}, X is either I, R or S):
+%
+\begin{itemize} 
+ \item add new container number parameter with MAX\_CASK\_X + 1
+ \item increase MAX\_CASK\_X by one
+ \item add descriptive string to NAMES\_CASK\_X
+ \item add default container content to DEFAULT\_CASK\_X
+\end{itemize}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{The file {\tt messy\_main\_tracer.f90}}
+\label{sec:tracermain}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+The subroutines and functions in this file constitute the main interface
+routines for the application of TRACER from within a model. They are divided
+into two groups: the first group (to be called from the basemodel interface
+layer (BMIL)) to provide the overall framework for {\it tracer sets}, and the
+second group (to be called from the submodel interface layer (SMIL)) of MESSy
+submodels to handle individual {\it tracers}.
+
+In the following description, the Fortran95 variable {\tt status}
+defines an INTENT(OUT) variable of type INTEGER, which
+returns the status information of the respective subroutine. The {\tt
+status} is $0$, if the routine was successful, and $>0$, if an error
+occurred. The value of {\tt status} can be transformed by the
+function {\tt tracer\_error\_str} into an error message.
+
+\subsection{Tracer set routines to be called from the BMIL}
+\label{sec:tracer_set}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsubsection{The subroutine {\tt new\_tracer\_set}}
+
+The subroutine {\tt new\_tracer\_set} defines a new tracer set
+and generates the {\it meta-information} framework for the set.
+
+\begin{tabular*}{\textwidth}{@{\extracolsep\fill}|lllp{6cm}|}
+\hline
+\multicolumn{2}{|l}
+{\tt SUBROUTINE new\_tracer\_set} &
+\multicolumn{2}{p{84mm}|}
+{\tt (status ,setname ,l\_enable)}\\
+\hline
+name & type & intent & description\\
+\hline
+%-----------------------------------------------------------------------------
+\multicolumn{4}{|l|}{\bf mandatory arguments:}\\
+status    & INTEGER          & OUT & \\
+setname   & CHARACTER(LEN=*) & IN  & name of the tracer set\\
+l\_enable & LOGICAL          & IN  & enable or disable tracer set\\
+\hline
+\end{tabular*}
+
+The name of a tracer set must be unique.
+
+With the switch {\tt l\_enable} a tracer set can be enabled 
+(.TRUE.) or disabled (.FALSE.) during the
+{\it initialisation phase} of the model simulation.  
+%
+Depending on the model setup, not all available (=defined) tracer sets might
+be always enabled.  The routines accessing tracers (Sect.~\ref{sec:tracer}) of
+disabled tracer sets will always return {\tt status=0}.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsubsection{The subroutine {\tt copy\_tracer\_set}}
+
+The subroutine {\tt copy\_tracer\_set} copies the {\it meta-information}
+of a complete tracer set (including the {\it meta-information} of its tracers)
+into a new tracer set.
+
+\begin{tabular*}{\textwidth}{@{\extracolsep\fill}|lllp{6cm}|}
+\hline
+\multicolumn{2}{|l}
+{\tt SUBROUTINE copy\_tracer\_set} &
+\multicolumn{2}{p{84mm}|}
+{\tt (status ,oldset ,newset)}\\
+\hline
+name & type & intent & description\\
+\hline
+%-----------------------------------------------------------------------------
+\multicolumn{4}{|l|}{\bf mandatory arguments:}\\
+status & INTEGER          & OUT & \\
+oldset & CHARACTER(LEN=*) & IN  & name of the tracer set to be copied\\
+newset & CHARACTER(LEN=*) & IN  & name of the new tracer set\\
+\hline
+\end{tabular*}
+
+This can be used to specify tracer sets, which are identical w.r.t.\ their
+tracer {\it meta-information}, however, different w.r.t.\ their 
+{\it representation}, e.g., tracer sets with different grid structures.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsubsection{The subroutine {\tt setup\_tracer\_set}}
+
+The subroutine {\tt setup\_tracer\_set} allocates memory for a tracer set.
+
+\begin{tabular*}{\textwidth}{@{\extracolsep\fill}|lllp{6cm}|}
+\hline
+\multicolumn{2}{|l}
+{\tt SUBROUTINE setup\_tracer\_set} &
+\multicolumn{2}{p{84mm}|}
+{\tt (status ,setname ,dim ,nt ,l\_tfstd ,l\_init)}\\
+\hline
+name & type & intent & description\\
+\hline
+%-----------------------------------------------------------------------------
+\multicolumn{4}{|l|}{\bf mandatory arguments:}\\
+status   & INTEGER          & OUT & \\
+setname  & CHARACTER(LEN=*) & IN  & name of the tracer set\\
+dim      & INTEGER, DIMENSION(3)  & IN  & {\it representation} dimension lengths\\
+nt       & INTEGER          & IN  & number of {\it data instances}\\
+l\_tfstd & LOGICAL          & IN  & .TRUE.\ for standard {\it instances}\\
+l\_init  & LOGICAL          & IN  & initialisation protector\\
+\hline
+\end{tabular*}
+
+Up to three dimensions ({\tt dim}) can be used to associate a
+{\it representation} (e.g., a 3-dimensional spatial grid) to a tracer set.
+If the {\it representation} is less than 3-dimensional, the remaining
+dimension lengths must be set to 1.
+
+The number of {\it data instances} is usually used for different stages of the
+time integration scheme (e.g., leap-frog with filter). In case
+{\tt nt} is 3 or larger, the switch {\tt l\_tfstd} (=.TRUE.) associates
+a special meaning to the first three instances, namely the tracer {\it data}
+at time step $t$, the tracer tendency, and the tracer {\it data} at time step
+$t-\Delta t$, respectively ($\Delta t$ is the model time step length).
+
+The switch {\tt l\_init} (=.FALSE.) can be used to protect the tracer 
+{\it data} of all tracers in this set from potential
+tracer initialisation procedures during the {\it initialisation phase} of the
+model (in the BMIL).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsubsection{The subroutine {\tt get\_tracer\_set}}
+
+The subroutine {\tt get\_tracer\_set} sets references to tracer sets.
+
+\begin{tabular*}{\textwidth}{@{\extracolsep\fill}|lllp{6cm}|}
+\hline
+\multicolumn{2}{|l}
+{\tt SUBROUTINE get\_tracer\_set} &
+\multicolumn{2}{p{84mm}|}
+{\tt (status [,setid] [,setname] [,trlist] [,ti] [,ntrac] [,xt] [,xtte]
+  [,xtm1] [,xmem] [,l\_tfstd] [,l\_init] [,l\_enable])}\\
+\hline
+name & type & intent & description\\
+\hline
+%-----------------------------------------------------------------------------
+\multicolumn{4}{|l|}{\bf mandatory arguments:}\\
+status    & INTEGER                     & OUT     & \\
+%------------------------------------------------------------------------------
+\multicolumn{4}{|l|}{\bf optional arguments:}\\
+setid$^{*)}$     & INTEGER              & IN      & id of tracer set\\
+setname$^{*)}$   & CHARACTER(LEN=*)     & IN$^{*)}$ & name of the tracer set\\
+trlist    & TYPE(t\_trinfo\_list)       & POINTER & {\it meta-information} list\\
+ti        & TYPE(t\_trinfo\_tp), DIMENSION(:) & POINTER & {\it meta-information} array\\
+ntrac     & INTEGER                     & OUT     & number of tracers in set\\
+xt        & REAL(DP), DIMENSION(:,:,:,:,:)    & POINTER & 1st {\it instance}\\
+xtte      & REAL(DP), DIMENSION(:,:,:,:,:)    & POINTER & 2nd {\it instance}\\
+xtm1      & REAL(DP), DIMENSION(:,:,:,:,:)    & POINTER & 3rd {\it instance}\\
+xmem      & REAL(DP), DIMENSION(:,:,:,:,:)    & POINTER & $>3$ or all {\it instances}\\
+l\_tfstd  & LOGICAL                     & OUT     & standard {\it instances} ?\\
+l\_init   & LOGICAL                     & OUT     & initialisation protector ?\\
+l\_enable & LOGICAL                     & OUT     & enabled or disabled ?\\
+\hline
+\end{tabular*}
+
+$^{*)}$Note: If {\tt setid} is present, {\tt setname} is optional and
+INTENT(OUT). Otherwise, {\tt setname} is mandatory and INTENT(IN).
+
+{\tt trlist} returns the tracer {\it meta-information} as a concatenated
+list of Fortran95 pointer structures, whereas {\tt ti} returns the same
+information as 1-dimensional array with the {\it tracer index} as array index.
+
+The total number of tracers defined in the set by all submodels
+(with the routine {\tt new\_tracer}) is {\tt ntrac}.
+
+{\tt xt}, {\tt xtte}, {\tt xtm1} and {\tt xmem} are
+pointers to the {\it data} memory. {\tt xt} always points to the
+first data {\it instance}.
+%
+In case {\tt l\_tfstd} is not set (=.FALSE.), or the number of
+{\it instances} is less than three, {\tt xtte} and {\tt xtm1}
+are nullified pointers, and {\tt xmem} points to all {\it instances} 
+$>1$.
+%
+In case {\tt l\_tfstd} is .TRUE.\ and the number of {\it instances} is
+three or larger, {\tt xt}, {\tt xtte} and {\tt xtm1}
+point to {\it instances} 1 to 3 respectively, 
+and {\tt xmem} to all {\it instances} $>3$
+(if available; otherwise the pointer is nullified).
+
+The initialisation protector and the activity status (enabled or disabled)
+of the tracer set
+can be retrieved with {\tt l\_init} and {\tt l\_enable}, respectively.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsubsection{The subroutine {\tt clean\_tracer\_set}}
+
+The subroutine {\tt clean\_tracer\_set} removes a tracer set from memory.
+
+\begin{tabular*}{\textwidth}{@{\extracolsep\fill}|lllp{6cm}|}
+\hline
+\multicolumn{2}{|l}
+{\tt SUBROUTINE clean\_tracer\_set} &
+\multicolumn{2}{p{84mm}|}
+{\tt (status ,setname)}\\
+\hline
+name & type & intent & description\\
+\hline
+%-----------------------------------------------------------------------------
+\multicolumn{4}{|l|}{\bf mandatory arguments:}\\
+status  & INTEGER          & OUT & \\
+setname & CHARACTER(LEN=*) & IN  & name of the tracer set\\
+\hline
+\end{tabular*}
+
+The {\it data} memory of the tracer set is deallocated and the
+{\it meta-information} of all tracers in the tracer set are deleted.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsubsection{The subroutine {\tt print\_tracer\_set}}
+
+The subroutine {\tt print\_tracer\_set} prints a summary of
+all tracer sets (tracer {\it meta-information} only).
+
+\begin{tabular*}{\textwidth}{@{\extracolsep\fill}|lllp{6cm}|}
+\hline
+\multicolumn{2}{|l}
+{\tt SUBROUTINE print\_tracer\_set} &
+\multicolumn{2}{p{84mm}|}
+{\tt ()}\\
+\hline
+\end{tabular*}
+
+This routine can be used to output the tracer meta-information of all
+tracer sets after the initialisation or for debugging.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsubsection{The subroutine {\tt print\_tracer\_set\_val}}
+
+The subroutine {\tt print\_tracer\_set\_val} prints the
+range of tracer {\it data} values (all {\it instances}) 
+of all tracers in all tracer sets.
+
+\begin{tabular*}{\textwidth}{@{\extracolsep\fill}|lllp{6cm}|}
+\hline
+\multicolumn{2}{|l}
+{\tt SUBROUTINE print\_tracer\_set\_val} &
+\multicolumn{2}{p{84mm}|}
+{\tt ()}\\
+\hline
+\end{tabular*}
+
+This routine can be used to output the tracer information of all
+tracer sets after the tracer sets have been set up, or for debugging.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsubsection{The subroutine {\tt main\_tracer\_read\_nml\_ctrl}}
+
+The subroutine {\tt main\_tracer\_read\_nml\_ctrl} reads the tracer
+CTRL namelist, checks it, and initialises global variables.
+
+\begin{tabular*}{\textwidth}{@{\extracolsep\fill}|lllp{6cm}|}
+\hline
+\multicolumn{2}{|l}
+{\tt SUBROUTINE main\_tracer\_read\_nml\_ctrl} &
+\multicolumn{2}{p{84mm}|}
+{\tt (status ,iou)}\\
+\hline
+name & type & intent & description\\
+\hline
+%-----------------------------------------------------------------------------
+\multicolumn{4}{|l|}{\bf mandatory arguments:}\\
+status  & INTEGER & OUT & \\
+iou     & INTEGER & IN  & Fortran95 input unit\\
+\hline
+\end{tabular*}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsection{Tracer routines to be called from the SMIL of MESSy submodels}
+\label{sec:tracer}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsubsection{The subroutine {\tt new\_tracer}}
+
+The subroutine {\tt new\_tracer} defines a new tracer in a set
+and optionally sets the tracer {\it meta-information}.
+
+\begin{tabular*}{\textwidth}{@{\extracolsep\fill}|lllp{6cm}|}
+\hline
+\multicolumn{2}{|l}
+{\tt SUBROUTINE new\_tracer} &
+\multicolumn{2}{p{84mm}|}
+{\tt (status ,setname ,basename ,submodel [,idx] [,subname]
+  [,longname] [,unit] [,medium] [,quantity] [,type] 
+  [,cask\_i] [,cask\_r], [,cask\_s])}\\
+\hline
+name & type & intent & description\\
+\hline
+%-----------------------------------------------------------------------------
+\multicolumn{4}{|l|}{\bf mandatory arguments:}\\
+status                & INTEGER          & OUT & \\
+setname               & CHARACTER(LEN=*) & IN  & name of the tracer set\\
+basename              & CHARACTER(LEN=*) & IN  & basename of the tracer\\
+submodel              & CHARACTER(LEN=*) & IN  & name of submodel which defines
+the tracer\\
+%------------------------------------------------------------------------------
+\multicolumn{4}{|l|}{\bf optional arguments:}\\
+idx                   & INTEGER          & OUT & index of tracer in tracer set\\
+subname               & CHARACTER(LEN=*) & IN  & subname of the tracer\\
+longname              & CHARACTER(LEN=*) & IN  & string for more information\\
+unit                  & CHARACTER(LEN=*) & IN  & unit of the tracer {\it data}\\
+medium                & INTEGER          & IN  & medium of the tracer\\
+quantity              & INTEGER          & IN  & quantity of the tracer\\
+type                  & INTEGER          & IN  & type of the tracer\\
+cask\_i               & INTEGER, DIMENSION(MAX\_CASK\_I) & IN & integer values\\
+cask\_r               & INTEGER, DIMENSION(MAX\_CASK\_R) & IN & real values \\
+cask\_s               & CHARACTER(LEN=STRLEN\_MEDIUM), & IN & string values\\
+                      & DIMENSION(MAX\_CASK\_S) & &\\
+\hline
+\end{tabular*}
+
+The minimum necessary information to define a new tracer in a tracer set is the
+{\tt basename} of the tracer and the name of the {\tt submodel}
+which defines the tracer.
+%
+The {\tt basename} must not contain any underscore (``\_'').
+%
+The {\tt basename} can optionally be supplemented by a
+{\tt subname}.
+%
+The tracer within a set is identified by its unique {\tt fullname}, which
+is the {\tt basename}, if the {\tt subname} is empty, or the
+{\tt basename} followed by an underscore (``\_'') followed by the
+{\tt subname}.
+%
+The {\tt unit} specifies the unit of the corresponding
+tracer {\it data}. 
+%
+The {\tt longname} can be used for an extended description of the species.
+%
+{\tt medium}, {\tt quantity} and {\tt type} of
+the tracer can be specified, if the default values
+(AIR, AMOUNTFRACTION, SINGLE) are not appropriate.
+%
+With the three containers {\tt cask\_i}, {\tt cask\_r}, and 
+{\tt cask\_s} the additional {\it meta-information} can be specified,
+e.g., with the following sequence:
+\begin{verbatim}
+  ...
+  USE messy_main_tracer, ONLY: new_tracer, MAX_CASK_I, DEFAULT_CASK_I, OFF &
+                             , MAX_CASK_R, DEFAULT_CASK_R, R_MOLARMASS &
+                             , I_ADVECTION
+  ...
+  INTEGER,  DIMENSION(MAX_CASK_I) :: MY_CASK_I
+  REAL(DP), DIMENSION(MAX_CASK_R) :: MY_CASK_R
+  ...
+  MY_CASK_I(:) = DEFAULT_CASK_I(:)
+  MY_CASK_R(:) = DEFAULT_CASK_R(:)
+  MY_CASK_I(I_ADVECTION) = OFF
+  MY_CASK_R(R_MOLARMASS) = 30.0_dp
+  ...
+  CALL new_tracer(status, setname, basename             &
+                 , cask_i=MY_CASK_I, cask_R=_MY_CASK_R)
+  ...
+\end{verbatim}
+
+The index {\tt idx} of the tracer in the set can optionally be
+retrieved for further application with the subroutine
+{\tt set\_tracer}, and / or for addressing the corresponding tracer
+{\it data} memory.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsubsection{The subroutine {\tt set\_tracer}}
+%
+The subroutine {\tt set\_tracer} specifies the meta-information of a
+tracer in a tracer set.
+
+\begin{tabular*}{\textwidth}{@{\extracolsep\fill}|lllp{6cm}|}
+\hline
+\multicolumn{2}{|l}
+{\tt SUBROUTINE set\_tracer} &
+\multicolumn{2}{p{84mm}|}
+{\tt (status ,setname ,idx, flag , i | r | s)}\\
+\hline
+name & type & intent & description\\
+\hline
+%-----------------------------------------------------------------------------
+\multicolumn{4}{|l|}{\bf mandatory arguments:}\\
+status   & INTEGER                & OUT     & \\
+setname  & CHARACTER(LEN=*)       & IN      & name of the tracer set\\
+idx      & INTEGER                & IN      & index of tracer in tracer set\\
+flag     & INTEGER                & IN      & container number\\
+i$^{*)}$   & INTEGER              & IN      & integer container content\\
+%------------------------------------------------------------------------------
+r$^{*)}$   & REAL(DP)             & IN      & real container content\\
+%------------------------------------------------------------------------------
+s$^{*)}$   & CHARACTER(LEN=STRLEN\_MEDIUM) & IN & string container content\\
+%------------------------------------------------------------------------------
+\hline
+\end{tabular*}
+
+$^{*)}$Note: This subroutine is threefoldly overloaded for integer, real and
+string values respectively.
+
+With each call to this subroutine one specific meta-information container
+can be filled. The corresponding tracer is identified by the name of the
+tracer set and the index of the tracer in the tracer set, e.g.:
+%
+\begin{verbatim}
+  ...
+  USE messy_main_tracer, ONLY: set_tracer, R_MOLARMASS
+  ...
+  CALL set_tracer(status, setname, idx, R_molarmass, 30.0_dp)
+  ...
+\end{verbatim}
+%
+The index can be retrieved from the call to the subroutine {\tt new\_tracer}.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsubsection{The subroutine {\tt get\_tracer}}
+
+The subroutine {\tt get\_tracer} retrieves information about a tracer
+in a tracer set.
+
+\begin{tabular*}{\textwidth}{@{\extracolsep\fill}|lllp{6cm}|}
+\hline
+\multicolumn{2}{|l}
+{\tt SUBROUTINE get\_tracer} &
+\multicolumn{2}{p{84mm}|}
+{\tt (status ,setname ,basename [,subname] [,idx] [,fullname]
+  [,longname] [,unit] [,submodel] [,medium] [,quantity] [,type]
+  [,trinfo] [,pxt] [,pxtm1] [,pxtte] [,pxmem])}\\
+\hline
+name & type & intent & description\\
+\hline
+%-----------------------------------------------------------------------------
+\multicolumn{4}{|l|}{\bf mandatory arguments:}\\
+status   & INTEGER                & OUT     & \\
+setname  & CHARACTER(LEN=*)       & IN      & name of the tracer set\\
+basename & CHARACTER(LEN=*)       & IN      & basename of the tracer\\
+%------------------------------------------------------------------------------
+\multicolumn{4}{|l|}{\bf optional arguments:}\\
+subname  & CHARACTER(LEN=*)       & IN      & subname of the tracer\\
+idx      & INTEGER                & OUT     & index of tracer in tracer set\\
+fullname & CHARACTER(LEN=*)       & OUT     & fullname of the tracer\\
+longname & CHARACTER(LEN=*)       & OUT     & string information about the tracer\\
+unit     & CHARACTER(LEN=*)       & OUT     & unit of the tracer {\it data}\\
+submodel & CHARACTER(LEN=*)       & OUT     & name of submodel which defined the tracer\\
+medium   & INTEGER                & OUT     & medium of the tracer\\
+quantity & INTEGER                & OUT     & quantity of the tracer\\
+type     & INTEGER                & OUT     & type of the tracer\\
+trinfo   & TYPE(t\_trinfo)        & OUT     & {\it meta-information} structure\\
+pxt      & REAL(DP), DIMENSION(:,:,:)   & POINTER & pointer to tracer memory ($t$)\\
+pxtm1    & REAL(DP), DIMENSION(:,:,:)   & POINTER & pointer to tracer memory ($t-\Delta t$)\\
+pxtte    & REAL(DP), DIMENSION(:,:,:)   & POINTER & pointer to tracer memory (tendency)\\
+pxmem    & REAL(DP), DIMENSION(:,:,:,:) & POINTER & pointer to additional memory instances\\
+\hline
+\end{tabular*}
+
+Knowing the {\tt basename} (and optional {\tt subname}) of the tracer,
+the {\it meta-information} of the tracer in the set can be retrieved and
+local pointers to the corresponding tracer {\it data} memory can be set.
+%
+The {\tt fullname} is the {\tt basename}, if the {\tt subname} is
+empty, or the {\tt basename} followed by an underscore (``\_'') and the
+{\tt subname}.
+%
+The structure {\tt trinfo} contains (a copy of) the 
+{\it meta-information} of the tracer (see Sect.~\ref{sec:meta}).
+The following example shows how to access it:
+%
+\begin{verbatim}
+ ...
+ USE messy_main_tracer, ONLY: get_tracer, t_trinfo, R_molarmass
+ ...
+ TYPE(t_trinfo) :: ti
+ ...
+ CALL get_tracer(status, setname, basename, trinfo=ti)
+ ...
+ WRITE(*,*) "The molar mass is :",ti%info%meta%cask_R(R_molarmass)
+ ...
+\end{verbatim}
+
+The pointers {\tt pxt}, {\tt pxtm1} and {\tt pxtte} point to
+the {\it instances} corresponding to the tracer {\it data} at model time
+step $t$, $t-\Delta t$, and to the tracer tendency, respectively, if
+the tracer set has been set up (subroutine {\tt setup\_tracer\_set})
+with three or more {\it instances} and {\tt l\_tfstd} = .TRUE..
+%
+In this case, {\tt pxmem} points to all remaining {\it instances},
+or causes {\tt status} $> 0$, if only three {\it instances} are defined.
+%
+If the tracer set has been setup in a different way, accessing
+{\tt pxtm1} and / or {\tt pxtte} will result in a {\tt status}
+$> 0$. 
+%
+Accessing {\tt pxmem}, if only one instance has been defined, will also
+result in {\tt status} $> 0$.
+
+It is highly recommended to test the {\tt status} of this routine after
+it has been called.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsubsection{The subroutine {\tt get\_tracer\_list}}
+
+The subroutine {\tt get\_tracer\_list} retrieves
+the tracer indices of all tracers with the same basename from a tracer set.
+
+\begin{tabular*}{\textwidth}{@{\extracolsep\fill}|lllp{6cm}|}
+\hline
+\multicolumn{2}{|l}
+{\tt SUBROUTINE get\_tracer\_list} &
+\multicolumn{2}{p{84mm}|}
+{\tt (status ,setname ,basename ,idxs [,subnames])}\\
+\hline
+name & type & intent & description\\
+\hline
+%-----------------------------------------------------------------------------
+\multicolumn{4}{|l|}{\bf mandatory arguments:}\\
+status   & INTEGER          & OUT     & \\
+setname  & CHARACTER(LEN=*) & IN      & name of the tracer set\\
+basename & CHARACTER(LEN=*) & IN      & basename of the tracer\\
+idxs     & INTEGER, DIMENSION(:)  & POINTER & tracer indices\\
+%------------------------------------------------------------------------------
+\multicolumn{4}{|l|}{\bf optional arguments:}\\
+subnames & CHARACTER(LEN=STRLEN\_MEDIUM), & POINTER & tracer subnames\\
+         & DIMENSION(:)                         &         & \\
+\hline
+\end{tabular*}
+
+Optionally, the {\tt subnames} of all tracers with the specified
+{\tt basename} can be retrieved.
+The two pointers will be allocated with the number of tracers found
+($\ge 0$).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsubsection{The subroutine {\tt tracer\_iniflag}}
+
+The subroutine {\tt tracer\_iniflag} sets the initialisation flag.
+
+\begin{tabular*}{\textwidth}{@{\extracolsep\fill}|lllp{6cm}|}
+\hline
+\multicolumn{2}{|l}
+{\tt SUBROUTINE tracer\_iniflag} &
+\multicolumn{2}{p{84mm}|}
+{\tt (status ,setname ,id ,linit)}\\
+\hline
+name & type & intent & description\\
+\hline
+%-----------------------------------------------------------------------------
+\multicolumn{4}{|l|}{\bf mandatory arguments:}\\
+status  & INTEGER          & OUT & \\
+setname & CHARACTER(LEN=*) & IN  & name of the tracer set\\
+id      & INTEGER          & IN  & index of tracer in tracer set\\
+linit   & LOGICAL          & IN  & initialisation state\\
+\hline
+\end{tabular*}
+
+{\tt linit}=.TRUE.\ means the tracer {\it data} is initialised.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsubsection{The function {\tt tracer\_error\_str}}
+
+The function {\tt tracer\_error\_str} returns status information.
+
+\begin{tabular*}{\textwidth}{@{\extracolsep\fill}|lllp{6cm}|}
+\hline
+\multicolumn{4}{|l|}
+{\tt CHARACTER(LEN=STRLEN\_VLONG) FUNCTION tracer\_error\_str (status)}\\
+\hline
+name & type & intent & description\\
+\hline
+%-----------------------------------------------------------------------------
+\multicolumn{4}{|l|}{\bf mandatory arguments:}\\
+status             & INTEGER                      & IN & \\
+\hline
+\end{tabular*}
+
+The error status is converted into a meaningful message.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsubsection{The function {\tt param2string}}
+
+The function {\tt param2string} converts a parameter to a string.
+
+\begin{tabular*}{\textwidth}{@{\extracolsep\fill}|lllp{6cm}|}
+\hline
+\multicolumn{4}{|l|}
+{\tt CHARACTER(LEN=STRLEN\_MEDIUM) FUNCTION param2string (i ,mode)}\\
+\hline
+name & type & intent & description\\
+\hline
+%-----------------------------------------------------------------------------
+\multicolumn{4}{|l|}{\bf mandatory arguments:}\\
+i            & INTEGER                       & IN & \\
+mode         & CHARACTER(LEN=*)              & IN & \\
+\hline
+\end{tabular*}
+
+With this information tracer {\it meta-information} can be converted to
+strings, e.g., to generate readable output or attributes.
+Four {\tt mode}s are available: 'switch', 'type', 'medium', and 'quantity'.
+An application sequence is for example:
+%
+\begin{verbatim}
+  ...
+  CALL get_tracer(status, setname, basename, trinfo=ti)
+  str = param2string(ti%meta%ident%medium, 'medium')
+  ! will return 'AIR', or 'AEROSOL', or ...
+  ...
+  CALL get_tracer(status, setname, basename, trinfo=ti)
+  str = param2string(ti%meta%cask_i(I_ADVECTION), 'switch')
+  ! will return 'ON', or 'OFF'
+  ...
+\end{verbatim}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsubsection{The subroutine {\tt full2base\_sub}}
+
+The subroutine {\tt full2base\_sub} converts a fullname to basename
+and subname.
+
+\begin{tabular*}{\textwidth}{@{\extracolsep\fill}|lllp{6cm}|}
+\hline
+\multicolumn{2}{|l}
+{\tt SUBROUTINE full2base\_sub} &
+\multicolumn{2}{p{84mm}|}
+{\tt (status ,fullname ,basename ,subname)}\\
+\hline
+name & type & intent & description\\
+\hline
+%-----------------------------------------------------------------------------
+\multicolumn{4}{|l|}{\bf mandatory arguments:}\\
+status   & INTEGER          & OUT & \\
+fullname & CHARACTER(LEN=*) & IN  & fullname of the tracer\\
+basename & CHARACTER(LEN=*) & OUT & basename of the tracer\\
+subname  & CHARACTER(LEN=*) & OUT & subname of the tracer\\
+\hline
+\end{tabular*}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{A simple example application}
+\label{sec:exampleappl}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+A typical sequence of calls during the three phases of a model simulation 
+is provided in {\tt tracer\_bml.f90}, an example basemodel (BML) and its
+base model interface layer (BMIL)
+{\tt messy\_main\_tracer\_bi.f90}.
+%
+For the implementation of TRACER into a specific model, it is recommended
+to modify and use {\tt messy\_main\_tracer\_bi.f90}, since it contains
+also correct calls to the TRACER submodels TRACER\_FAMILY and TRACER\_PDEF,
+and further provides a high-level interface for the tracer-family conversion.
+
+\paragraph{INITIALISATION PHASE}
+\begin{itemize}
+
+  \item {\tt bml\_initialize}: initialise base model
+
+  \item {\tt main\_tracer\_initialize}
+        \begin{itemize}
+         \item {\tt main\_tracer\_read\_nml\_ctrl}: 
+               read CTRL namelist and set switches
+         \item {\tt main\_tracer\_family\_initialize}:
+               \begin{itemize}
+                \item {\tt tracer\_family\_read\_nml\_ctrl}:
+                      read CTRL\_FAMILY namelist and set switches
+               \end{itemize}
+         \item {\tt main\_tracer\_pdef\_initialize}:
+               \begin{itemize}
+                \item {\tt tracer\_pdef\_read\_nml\_ctrl}:
+                      read CTRL\_PDEF namelist and set switches
+               \end{itemize}
+        \end{itemize}
+
+  \item initialise MESSy submodels
+
+  \item {\tt main\_tracer\_new\_tracer(1)}
+        \begin{itemize}
+          \item {\tt new\_tracer\_set}: define new tracer set(s)
+        \end{itemize}
+
+  \item add tracers by MESSy submodels with {\tt new\_tracer}
+
+  \item {\tt main\_tracer\_new\_tracer(2)}
+        \begin{itemize}
+          \item {\tt main\_tracer\_family\_new\_tracer}:
+                define tracer families
+                according to CTRL\_FAMILY namelist
+        \end{itemize}
+
+  \item {\tt main\_tracer\_new\_tracer(3)}
+        \begin{itemize}
+          \item {\tt print\_tracer\_set}: diagnostic output
+        \end{itemize}
+
+  \item {\tt main\_tracer\_init\_memory(1)}
+        \begin{itemize}
+          \item {\tt setup\_tracer\_set}:
+                fixate meta-information and allocate data
+                memory
+          \item {\tt get\_tracer\_set}:
+                set pointers to tracer set data memory
+        \end{itemize}
+
+  \item setup memory of MESSy submodels
+
+  \item {\tt main\_tracer\_init\_memory(2)}
+        \begin{itemize}
+          \item {\tt main\_tracer\_pdef\_init\_mem}:
+                additional memory for TRACER\_PDEF
+          \item {\tt main\_tracer\_family\_init\_mem}:
+                set meta information of
+                family-members to fraction
+        \end{itemize}
+
+  \item {\tt main\_tracer\_init\_coupling}
+        \begin{itemize}
+          \item {\tt main\_tracer\_family\_init\_cpl}:
+                reset meta information of
+                family-members
+          \item {\tt main\_tracer\_pdef\_init\_cpl}:
+                fixate settings of TRACER\_PDEF
+        \end{itemize}
+
+  \item coupling of MESSy submodels with {\tt get\_tracer}
+
+  \item {\tt main\_tracer\_init\_tracer(1)}:
+        check initialisation after restart
+
+  \item initialise tracers via MESSy submodels
+
+  \item {\tt main\_tracer\_init\_tracer(2)}:
+        check initialisation state; initialise with constant
+
+  \item {\tt main\_tracer\_init\_tracer(3)} 
+        \begin{itemize}
+          \item {\tt print\_tracer\_set\_val}: diagnostic output
+        \end{itemize}
+\end{itemize}
+
+\paragraph{TIME INTEGRATION PHASE}
+\begin{itemize}
+
+  \item {\tt main\_tracer\_global\_start(1)}
+        \begin{itemize}
+          \item {\tt main\_tracer\_pdef\_global\_start}: set trigger
+        \end{itemize}
+
+  \item global\_start of MESSy submodels
+
+  \item {\tt main\_tracer\_global\_start(2)}
+        \begin{itemize}
+          \item {\tt main\_tracer\_family\_global\_start}: 
+                \begin{itemize} 
+                 \item {\tt tracfamily\_2\_sum}:
+                       conversion of type-2 families into
+                       family mode (summation)
+                 \item {\tt tracfamily\_1\_t2f}:
+                       conversion of type-1 families into family mode
+                \end{itemize} 
+        \end{itemize}
+
+  \item processes in family mode; e.g., advection
+
+  \item {\tt main\_tracer\_afteradv}
+        \begin{itemize}
+          \item {\tt main\_tracer\_family\_afteradv}
+                \begin{itemize}
+                  \item {\tt tracfamily\_1\_f2t}:
+                        conversion of type-1 families into
+                        tracer mode
+                  \item {\tt tracfamily\_2\_rsc}:
+                        conversion of type-2 families into
+                        tracer mode (rescaling)
+                \end{itemize} 
+        \end{itemize}
+
+   \item {\tt main\_tracer\_fconv\_glb}: optional family conversion
+
+   \item {... START LOOP OVER OUTER RANK IN REPRESENTATION}
+
+   \item {\tt main\_tracer\_local\_start}:
+         set pointers (reduced in rank) to data memory
+
+   \item {\tt  main\_tracer\_fconv\_loc}: optional family conversion
+
+   \item {... END LOOP OVER OUTER RANK IN REPRESENTATION}
+
+   \item m{\tt ain\_tracer\_global\_end}
+        \begin{itemize}
+         \item {\tt tracpdef\_airmass}:
+               set tracer set (representation) specific
+               airmass for
+               global tracer mass integration
+         \item {\tt  main\_tracer\_pdef\_global\_end}:
+               global tracer mass integration
+        \end{itemize} 
+
+   \item output of results
+\end{itemize}
+
+\paragraph{FINALISING PHASE}
+\begin{itemize}
+
+   \item {\tt main\_tracer\_free\_memory}
+        \begin{itemize}
+          \item {\tt clean\_tracer\_set}
+          \item {\tt main\_tracer\_pdef\_free\_mem}
+          \item {\tt main\_tracer\_family\_free\_mem}
+        \end{itemize} 
+
+\end{itemize}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{The file {\tt messy\_main\_tracer\_family.f90}}
+\label{sec:family}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsection{The subroutine {\tt tracer\_family\_read\_nml\_ctrl}}
+
+The subroutine {\tt tracer\_family\_read\_nml\_ctrl} reads the
+CTRL\_FAMILY namelist.
+
+\begin{tabular*}{\textwidth}{@{\extracolsep\fill}|lllp{6cm}|}
+\hline
+\multicolumn{2}{|l}
+{\tt SUBROUTINE tracer\_family\_read\_nml\_ctrl} &
+\multicolumn{2}{p{84mm}|}
+{\tt (status ,iou)}\\
+\hline
+name & type & intent & description\\
+\hline
+%-----------------------------------------------------------------------------
+\multicolumn{4}{|l|}{\bf mandatory arguments:}\\
+status          & INTEGER              & OUT & \\
+iou             & INTEGER              & IN  & Fortran95 input unit\\
+\hline
+\end{tabular*}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsection{The subroutine {\tt tracfamily\_init}}
+
+The subroutine {\tt tracfamily\_init} processes the information
+read from the CTRL\_FAMILY namelist.
+
+\begin{tabular*}{\textwidth}{@{\extracolsep\fill}|lllp{6cm}|}
+\hline
+\multicolumn{2}{|l}
+{\tt SUBROUTINE tracfamily\_init} &
+\multicolumn{2}{p{84mm}|}
+{\tt (status)}\\
+\hline
+name & type & intent & description\\
+\hline
+%-----------------------------------------------------------------------------
+\multicolumn{4}{|l|}{\bf mandatory arguments:}\\
+status          & INTEGER              & OUT & \\
+\hline
+\end{tabular*}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsection{The subroutine {\tt tracfamily\_newtrac}}
+
+The subroutine {\tt tracfamily\_newtrac} defines new tracers
+(for the families) according to the CTRL\_FAMILY namelist.
+
+\begin{tabular*}{\textwidth}{@{\extracolsep\fill}|lllp{6cm}|}
+\hline
+\multicolumn{2}{|l}
+{\tt SUBROUTINE tracfamily\_newtrac} &
+\multicolumn{2}{p{84mm}|}
+{\tt (status ,ldiagout)}\\
+\hline
+name & type & intent & description\\
+\hline
+%-----------------------------------------------------------------------------
+\multicolumn{4}{|l|}{\bf mandatory arguments:}\\
+status          & INTEGER              & OUT & \\
+ldiagout        & LOGICAL              & IN  & diagnostic output ?\\
+\hline
+\end{tabular*}
+
+The first valid tracer in a list of family members determines the
+{\it meta-information} of the family tracer.
+%
+Tracers which are not defined, tracers which are already a member of another
+family (except for members of type-2 families without rescaling),
+empty families and families with the same name as already defined tracers
+are ignored.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsection{The subroutine {\tt tracfamily\_initmode}}
+
+The subroutine {\tt tracfamily\_initmode} initialises the internal mode
+as tracer mode.
+
+\begin{tabular*}{\textwidth}{@{\extracolsep\fill}|lllp{6cm}|}
+\hline
+\multicolumn{2}{|l}
+{\tt SUBROUTINE tracfamily\_initmode} &
+\multicolumn{2}{p{84mm}|}
+{\tt ()}\\
+\hline
+\end{tabular*}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsection{The subroutine {\tt tracfamily\_meta}}
+
+The subroutine {\tt tracfamily\_meta} converts the {\it meta-information}
+for type-1 families and their members between tracer mode and family mode
+in both directions.
+
+\begin{tabular*}{\textwidth}{@{\extracolsep\fill}|lllp{6cm}|}
+\hline
+\multicolumn{2}{|l}
+{\tt SUBROUTINE tracfamily\_meta} &
+\multicolumn{2}{p{84mm}|}
+{\tt (status ,flag ,callstr ,setname ,ldiagout)}\\
+\hline
+name & type & intent & description\\
+\hline
+%-----------------------------------------------------------------------------
+\multicolumn{4}{|l|}{\bf mandatory arguments:}\\
+status          & INTEGER              & OUT & \\
+flag            & INTEGER              & IN  & 1: conversion into tracer mode; 2: conversion into family mode\\
+callstr         & CHARACTER(LEN=*)     & IN  & name of calling routine\\
+setname         & CHARACTER(LEN=*)     & IN  & name of the tracer set\\
+ldiagout        & LOGICAL              & IN  & diagnostic output ?\\
+\hline
+\end{tabular*}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsection{The subroutine {\tt tracfamily\_1\_f2t}}
+
+The subroutine {\tt tracfamily\_1\_f2t} converts type-1 families
+into the tracer mode (Eqs.~(12)-(14)).
+
+\begin{tabular*}{\textwidth}{@{\extracolsep\fill}|lllp{6cm}|}
+\hline
+\multicolumn{2}{|l}
+{\tt SUBROUTINE tracfamily\_1\_f2t} &
+\multicolumn{2}{p{84mm}|}
+{\tt (status ,callstr ,p\_pe ,setname ,ztmst ,jjrow [,ksize] [,ltesubst])}\\
+\hline
+name & type & intent & description\\
+\hline
+%-----------------------------------------------------------------------------
+\multicolumn{4}{|l|}{\bf mandatory arguments:}\\
+status          & INTEGER              & OUT & \\
+callstr         & CHARACTER(LEN=*)     & IN  & name of calling routine\\
+p\_pe           & INTEGER              & IN  & $^{*)}$\\
+setname         & CHARACTER(LEN=*)     & IN  & name of the tracer set\\
+ztmst           & REAL(DP)             & IN  & model time step length ($\Delta t$)\\
+jjrow           & INTEGER              & IN  & $^{*)}$\\
+\multicolumn{4}{|l|}{\bf optional arguments:}\\
+ksize           & INTEGER              & IN  & size of 1st data rank\\
+\hline
+\end{tabular*}
+
+$^{*)}$Note: {\tt p\_pe} and {\tt jjrow} are used for restricting
+diagnostic output ({\tt l\_verbose}=.TRUE.\ in CTRL\_FAMILY namelist) to
+only one task ({\tt i\_diag\_pe} in CTRL\_FAMILY namelist) in a parallel
+environment and to only one row ({\tt i\_diag\_jrow} in CTRL\_FAMILY
+namelist) along the 3rd rank of the data representation.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsection{The subroutine {\tt tracfamily\_1\_t2f}}
+
+The subroutine {\tt tracfamily\_1\_t2f} converts type-1 families
+into the family mode (Eqs.~(3)-(5), (7)-(9) and (10)).
+
+\begin{tabular*}{\textwidth}{@{\extracolsep\fill}|lllp{6cm}|}
+\hline
+\multicolumn{2}{|l}
+{\tt SUBROUTINE tracfamily\_1\_t2f} &
+\multicolumn{2}{p{84mm}|}
+{\tt (status ,callstr ,p\_pe ,setname ,ztmst ,jjrow [,ksize] [,l\_frac])}\\
+\hline
+name & type & intent & description\\
+\hline
+%-----------------------------------------------------------------------------
+\multicolumn{4}{|l|}{\bf mandatory arguments:}\\
+status          & INTEGER              & OUT & \\
+callstr         & CHARACTER(LEN=*)     & IN  & name of calling routine\\
+p\_pe           & INTEGER              & IN  & $^{*)}$\\
+setname         & CHARACTER(LEN=*)     & IN  & name of the tracer set\\
+ztmst           & REAL(DP)             & IN  & model time step length ($\Delta t$)\\
+jjrow           & INTEGER              & IN  & $^{*)}$\\
+\multicolumn{4}{|l|}{\bf optional arguments:}\\
+ksize           & INTEGER              & IN  & size of 1st data rank\\
+l\_frac         & LOGICAL              & IN  & calculate fractions ?\\
+\hline
+\end{tabular*}
+
+$^{*)}$Note: {\tt p\_pe} and {\tt jjrow} are used for restricting
+diagnostic output ({\tt l\_verbose}=.TRUE.\ in CTRL\_FAMILY namelist) to
+only one task ({\tt i\_diag\_pe} in CTRL\_FAMILY namelist) in a parallel
+environment and to only one row ({\tt i\_diag\_jrow} in CTRL\_FAMILY
+namelist) along the 3rd rank of the data representation.
+
+The optional switch {\tt l\_frac}=.FALSE.\ (default: .TRUE.)
+is used to restrict the conversion only to the summation of the
+families (i.e., Eqs.~(3)-(5)), omitting the calculation of
+the fractions (Eqs.~(7)-(9)) and the storage (Eq.~(10)).
+This is used to update the family tracers just before the model output.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsection{The subroutine {\tt tracfamily\_2\_rsc}}
+
+The subroutine {\tt tracfamily\_2\_rsc} converts type-2 families
+into the tracer mode (rescaling of the tracers, Eqs.(15)-(17)).
+
+\begin{tabular*}{\textwidth}{@{\extracolsep\fill}|lllp{6cm}|}
+\hline
+\multicolumn{2}{|l}
+{\tt SUBROUTINE tracfamily\_2\_rsc} &
+\multicolumn{2}{p{84mm}|}
+{\tt (setname ,ztmst ,jjrow)}\\
+\hline
+name & type & intent & description\\
+\hline
+%-----------------------------------------------------------------------------
+\multicolumn{4}{|l|}{\bf mandatory arguments:}\\
+setname         & CHARACTER(LEN=*)     & IN  & name of the tracer set\\
+ztmst           & REAL(DP)             & IN  & model time step length ($\Delta t$)\\
+jjrow           & INTEGER              & IN  & row along 3rd rank of data\\
+\hline
+\end{tabular*}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsection{The subroutine {\tt tracfamily\_2\_sum}}
+
+The subroutine {\tt tracfamily\_2\_sum} converts type-2 families into
+the family mode (summation, Eqs.~(3)-(5)).
+
+\begin{tabular*}{\textwidth}{@{\extracolsep\fill}|lllp{6cm}|}
+\hline
+\multicolumn{2}{|l}
+{\tt SUBROUTINE tracfamily\_2\_sum} &
+\multicolumn{2}{p{84mm}|}
+{\tt (setname ,jjrow)}\\
+\hline
+name & type & intent & description\\
+\hline
+%-----------------------------------------------------------------------------
+\multicolumn{4}{|l|}{\bf mandatory arguments:}\\
+setname         & CHARACTER(LEN=*)     & IN  & name of the tracer set\\
+jjrow           & INTEGER              & IN  & row along 3rd rank of data\\
+\hline
+\end{tabular*}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsection{The subroutine {\tt tracfamily\_freemem}}
+
+The subroutine {\tt tracfamily\_freemem} deallocates the additional memory
+used to store information for tracer families.
+
+\begin{tabular*}{\textwidth}{@{\extracolsep\fill}|lllp{6cm}|}
+\hline
+\multicolumn{2}{|l}
+{\tt SUBROUTINE tracfamily\_freemem} &
+\multicolumn{2}{p{84mm}|}
+{\tt ()}\\
+\hline
+\end{tabular*}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{The file {\tt messy\_main\_tracer\_pdef.f90}}
+\label{sec:pdef}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsection{The subroutine {\tt tracer\_pdef\_read\_nml\_ctrl}}
+
+The subroutine {\tt tracer\_pdef\_read\_nml\_ctrl} reads the CTRL\_PDEF
+namelist.
+
+\begin{tabular*}{\textwidth}{@{\extracolsep\fill}|lllp{6cm}|}
+\hline
+\multicolumn{2}{|l}
+{\tt SUBROUTINE tracer\_pdef\_read\_nml\_ctrl} &
+\multicolumn{2}{p{84mm}|}
+{\tt (status ,iou)}\\
+\hline
+name & type & intent & description\\
+\hline
+%-----------------------------------------------------------------------------
+\multicolumn{4}{|l|}{\bf mandatory arguments:}\\
+status          & INTEGER              & OUT & \\
+iou             & INTEGER              & IN  & Fortran95 input unit\\
+\hline
+\end{tabular*}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsection{The subroutine {\tt tracpdef\_initmem}}
+
+The subroutine {\tt tracpdef\_initmem} allocates and
+initialises the required memory.
+
+\begin{tabular*}{\textwidth}{@{\extracolsep\fill}|lllp{6cm}|}
+\hline
+\multicolumn{2}{|l}
+{\tt SUBROUTINE tracpdef\_initmem} &
+\multicolumn{2}{p{84mm}|}
+{\tt (nprocs)}\\
+\hline
+name & type & intent & description\\
+\hline
+%-----------------------------------------------------------------------------
+\multicolumn{4}{|l|}{\bf mandatory arguments:}\\
+nprocs          & INTEGER              & IN  & number of processors in
+parallel environment\\
+\hline
+\end{tabular*}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsection{The subroutine {\tt tracpdef\_settings}}
+
+The subroutine {\tt tracpdef\_settings} processes the information
+read from the CTRL\_PDEF namelist.
+
+\begin{tabular*}{\textwidth}{@{\extracolsep\fill}|lllp{6cm}|}
+\hline
+\multicolumn{2}{|l}
+{\tt SUBROUTINE tracpdef\_settings} &
+\multicolumn{2}{p{84mm}|}
+{\tt (ldiagout)}\\
+\hline
+name & type & intent & description\\
+\hline
+%-----------------------------------------------------------------------------
+\multicolumn{4}{|l|}{\bf mandatory arguments:}\\
+ldiagout        & LOGICAL              & IN  & diagnostic output ?\\
+\hline
+\end{tabular*}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsection{The subroutine {\tt tracpdef\_airmass}}
+
+The subroutine {\tt tracpdef\_airmass} sets the airmass used for the
+tracer mass integration.
+
+\begin{tabular*}{\textwidth}{@{\extracolsep\fill}|lllp{6cm}|}
+\hline
+\multicolumn{2}{|l}
+{\tt SUBROUTINE tracpdef\_airmass} &
+\multicolumn{2}{p{84mm}|}
+{\tt (setname ,airmass)}\\
+\hline
+name & type & intent & description\\
+\hline
+%-----------------------------------------------------------------------------
+\multicolumn{4}{|l|}{\bf mandatory arguments:}\\
+setname         & CHARACTER(LEN=*)     & IN  & name of the tracer set\\
+airmass$^{*)}$  & REAL(DP), DIMENSION(:,:,:) & IN  & airmass in kg\\
+airmass$^{*)}$  & REAL(DP)             & IN  & airmass in kg\\
+\hline
+\end{tabular*}
+
+$^{*)}$Note: This subroutine is overloaded for setting the airmass in the
+corresponding tracer set {\it representation} (e.g., the grid) either variable
+along the {\it representation} dimensions, or constant in all points of the
+corresponding tracer set {\it representation}.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsection{The subroutine {\tt tracpdef\_integrate}}
+
+The subroutine {\tt tracpdef\_integrate} calculates the global tracer
+masses (Eqs.~(18) and (19)) and checks the tolerance criterium for the
+negative mass (Eq.~(20)).
+
+\begin{tabular*}{\textwidth}{@{\extracolsep\fill}|lllp{6cm}|}
+\hline
+\multicolumn{2}{|l}
+{\tt SUBROUTINE tracpdef\_integrate} &
+\multicolumn{2}{p{84mm}|}
+{\tt (status ,flag ,time\_step\_len ,p\_pe)}\\
+\hline
+name & type & intent & description\\
+\hline
+%-----------------------------------------------------------------------------
+\multicolumn{4}{|l|}{\bf mandatory arguments:}\\
+status          & INTEGER              & OUT & \\
+flag            & INTEGER              & IN  & switch (1 or 2)\\
+time\_step\_len & REAL(DP)             & IN  & time step length ($\Delta t$)\\
+p\_pe           & INTEGER              & IN  & number of process in parallel environment\\
+\hline
+\end{tabular*}
+
+This routine needs to be called twice.  Once with {\tt flag}=1 for the
+integration (summation) on each processor in the parallel environment.  
+%
+After this, the results of all processors need to be distributed to each
+other. 
+%
+Then this routine is called a second time (with {\tt flag}=2)
+for the integration (summation) over all processors and the checking
+of the tolerance criterion.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsection{The subroutine {\tt tracpdef\_freemem}}
+
+The subroutine {\tt tracpdef\_freemem} deallocates the memory used
+for TRACER\_PDEF.
+
+\begin{tabular*}{\textwidth}{@{\extracolsep\fill}|lllp{6cm}|}
+\hline
+\multicolumn{2}{|l}
+{\tt SUBROUTINE tracpdef\_freemem} &
+\multicolumn{2}{p{84mm}|}
+{\tt ()}\\
+\hline
+\end{tabular*}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsection{The subroutine {\tt tracpdef\_print}}
+
+The subroutine {\tt tracpdef\_print} outputs the global tracer masses
+of all tracer sets.
+
+\begin{tabular*}{\textwidth}{@{\extracolsep\fill}|lllp{6cm}|}
+\hline
+\multicolumn{2}{|l}
+{\tt SUBROUTINE tracpdef\_print} &
+\multicolumn{2}{p{84mm}|}
+{\tt (ldiagout)}\\
+\hline
+name & type & intent & description\\
+\hline
+%-----------------------------------------------------------------------------
+\multicolumn{4}{|l|}{\bf mandatory arguments:}\\
+ldiagout        & LOGICAL              & IN  & switch\\
+\hline
+\end{tabular*}
+
+The switch {\tt ldiagout} can be used to restrict the output to one
+processor in a parallel environment.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\end{document}

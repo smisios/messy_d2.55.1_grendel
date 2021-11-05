@@ -1,0 +1,54 @@
+! ==============================================================================
+!
+! PM:PI+Tans experiment [Gromov, MPI-C, 2015]
+!
+! ==============================================================================
+!
+! CH4_fx: CH4 emissions prepared for Tans exp.
+! ------------------------------------------------------------------------------
+! based on CH4_fx emissions in ESCiMo runs
+! - monthly data for 2000
+! - components:
+!   NA : natural = ocean+wetland+termites (considered as PI)
+!   AN : anthropogenic
+!   BB : biomass burning
+! lump : sum of the above
+!
+! - modifications
+!   norm : normalised to 1g/yr emission (to scale easily)
+!   ETNH : only ETNH emissions (north of 23.3N)
+!
+! - phase 3 : changed isotope ratios
+!
+&regrid
+!outfile  = 'ncrg_${ECHAM_HRES}_CH4_fx_2000-PM_TANS.nc',
+ infile   = '$INPUTDIR_MESSY/PALMOD/CH4_fx_2000-PM_TANS.nc',
+i_latm    = 'lat',
+i_latr    = -90.0,90.0,
+i_lonm    = 'lon',
+i_lonr    = -180.,180.,
+i_timem   = 'month',
+!* ! 250 Tg/yr ETNH natural src. ( dD=-280pm, d13C=-50pm, pMC=100 are controlled by offemis now )
+      var = 'CH4t=CH4_fx_NA_ETNH_norm,250e+12; CH4_fx_PI=CH4_fx_NA; '
+/
+!
+! CH4_surf: pseudo CH4 obs. for PM:PI+Tans exp.
+! ------------------------------------------------------------------------------
+! based on CH4 GHG tnudge data in ESCiMo runs (see CH4_surf_PM_pseudo.jnl)
+!
+! - components:
+!   PI : preindustrial
+!  LGM : last glacial max.
+!
+&regrid
+infile  = "$INPUTDIR_MESSY/PALMOD/CH4_surf_PM_pseudo.nc",
+i_latm  = 'lat',
+i_latr  = -90.0,90.0,
+i_lonm  = 'lon',
+i_lonr  = 0.,360.,
+i_timem = 'MONTHLY',
+!* ! CH4_surf_PI - pseudo "observed" PI CH4 @ surface, dD=-280pm, d13C=-50pm, pMC=100
+!*  var = 'CH4n=CH4_surf_PI; I1CH4n=CH4_surf_PI,999.551461502336906e-3; I2CH4n=CH4_surf_PI,0.448538497662999e-3; I12CH4n=CH4_surf_PI,98.943741914193694e-2; I13CH4n=CH4_surf_PI,1.056258085806299e-2; I14CH4n=CH4_surf_PI,1.203678873371332391e-12; '
+!* ! equal flux, changed isotope comp.: dD=-320pm, d13C=-54pm, pMC=50
+    var = 'CH4n=CH4_surf_PI; I1CH4n=CH4_surf_PI,999.576377668721988e-3; I2CH4n=CH4_surf_PI,0.423622331277999e-3; I12CH4n=CH4_surf_PI,98.948142536325505e-2; I13CH4n=CH4_surf_PI,1.051857463674499e-2; I14CH4n=CH4_surf_PI,6.018394366860284172e-13; '
+/

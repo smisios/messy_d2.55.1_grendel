@@ -1,0 +1,147 @@
+// -*- kpp -*- kpp mode for emacs
+
+// authors: F.Frank (DLR-IPA), S. Gromov (MPI-C)
+
+// complete list of reaction with flag if a isotopic branching
+// apart from the statistical one should be applied
+
+// CH4
+<G4100>  CH4      + O1D      = .75 CH3 + .75 OH + .25 HCHO + .4 H + .05 H2 {+ 638. kJmol} : {%UpStG} 1.75E-10{§1.15}; {&2626}
+=> as in Pieterse et al. 2009
+<G4101>  CH4      + OH       = CH3 + H2O          : {%StTrG} 1.85E-20{§1.2}*EXP(2.82*LOG(temp)-987./temp); {&1627}
+=> as in Pieterse et al. 2009
+<G4113>  CH4      + O3P {+O2}= .51 CH3 + .51 OH + .49 CH3O + .49 H {+ 638. kJmol} : {%UpStG} 6.03E-18{§}*temp**(2.17)*EXP(-3619./temp); {&2615, 3059, 3060}
+
+// CH3O2
+<G4103a> CH3O2    + HO2      = CH3OOH + O2        : {%StTrG} 3.8E-13*EXP(780./temp)/(1.+1./498.*EXP(1160./temp)); {&1759}
+=> no branching necessary
+<G4103b> CH3O2    + HO2      = HCHO + H2O + O2    : {%StTrG} 3.8E-13*EXP(780./temp)/(1.+498.*EXP(-1160./temp)); {&1759}
+=> does not exist in Pieterse et al. 2009
+<G4104a> CH3O2    + NO       = CH3O + NO2         : {%StTrG} 2.3E-12{§§0.05}*EXP(360./temp)*(1.-beta_CH3NO3); {&1759, 3177, 3164}
+=> no branching necessary
+<G4104b> CH3O2    + NO       = CH3NO3             : {%StTrG} 2.3E-12{§§0.05}*EXP(360./temp)*beta_CH3NO3; {&1759, 3177, 3164} // Methyl nitrate yield according to \citet{2130} but reduced by a factor of 10 according to the upper limit derived from measurements by \citet{2048}.
+=> no branching necessary
+<G4105>  CH3O2    + NO3      = CH3O + NO2 + O2    : {%TrG} 1.2E-12{§§0.3}; {&1759}
+=> no branching necessary
+<G4106a> CH3O2               = CH3O + .5 O2                : {%StTrG} 7.4E-13{§§0.15}*EXP(-520./temp)*RO2*2.; {&1759}
+=> no branching necessary
+<G4106b> CH3O2               = .5 HCHO + .5 CH3OH + .5 O2  : {%StTrG} (k_CH3O2-7.4E-13{§§0.15}*EXP(-520./temp))*RO2*2.; {&1759}
+=> stochastical
+<G4114>  CH3O2    + NO2      = CH3O2NO2           : {%StTrG} k_NO2_CH3O2; {&2626}
+=> no branching necessary
+<G4121>  CH3O2    + O3       = CH3O + 2 O2        : {%StTrG} 2.9E-16{§2.}*exp(-1000./temp); {&2626}
+=> no branching necessary
+<G4133>  CH3O2    + OH       = CH3O + HO2         : {%StTrG} 1.4E-10{§}; {&3042} // Lower limit of the rate constant. Products uncertain but \chem{CH_3OH} can be excluded because of a likely high energy barrier (L.\ Vereecken, pers. comm.). \chem{CH_2OO} production cannot be excluded.
+=> transfer?
+<G4144>  CH2OO    + CH3O2    = 2 LCARBON          : {%StTrG} 5.E-12{§}; {&3039} // Generic estimate for reaction with \chem{RO_2}.
+=> no branching necessary
+<G4156>  CH3O2    + O3P      = CH3O + O2          : {%StTrG} 4.3E-11{§1.46}; {&3061}
+=> no branching necessary
+
+// CH3OH 
+<G4102>  CH3OH    + OH {+.85 O2} = .85 HCHO + .85 HO2 + .15 CH3O + H2O   : {%TrG} 6.38E-18{§§0.08}*temp**2.*EXP(144./temp); {&1759}
+=> nmo: stochastical
+=> Pieterse: 0 CH3O 1 CH2OH = 0 CH3O 0.5 HCHO 0.25 H2O 0.25 HO2
+=> mim1: with branching ratios from Nielsson (88,2% und 11,8%)
+<G4143>  CH2OO    + CH3OH    = 2 LCARBON          : {%StTrG} 5.E-12{§}; {&3039} // Generic estimate for reaction with alcohols.
+
+// CH3O
+//<G4118>  CH3O     {+ O2}     = HO2 + HCHO         : {%StTrG} 1.3E-14{§}*exp(-663./temp)*c(ind_O2); {&3043}
+// split for parameterising the variable H isotope branching ( IB ratio equals ib_D_G4118 )
+<G4118a>  CH3O {+ O2} = HO2 + HCHO                : {%StTrG} (   if_D_G4118_HCHO)*k_G4118; {&3043}
+<G4118b>  CH3O {+ O2} = HO2 + HCHO + Dummy        : {%StTrG} (1.-if_D_G4118_HCHO)*k_G4118; {&3043}
+=> branching as in Pieterse et al. 2011
+<G4119a> CH3O     + NO2 {+ M}= CH3NO3             : {%StTrG} k_3rd_iupac(temp,cair,8.1E-29,4.5,2.1E-11,0.,0.44){§}; {&1759}
+=> no branching necessary
+<G4119b> CH3O     + NO2      = HCHO + HONO        : {%StTrG} 9.6E-12*EXP(-1150./temp){§§0.5}; {&1759}
+<G4120a> CH3O     + NO       = CH3ONO             : {%StTrG} k_3rd_iupac(temp,cair,2.6E-29,2.8,3.3E-11,0.6,REAL(EXP(-temp/900.),SP)); {&1759}
+=> no branching necessary
+<G4120b> CH3O     + NO       = HCHO + HNO         : {%StTrG} 2.3E-12{§§0.2}*(temp/300.)**0.7; {&1759}
+<G4154>  CH3O     + O3       = CH3O2 + O2         : {%StTrG} 2.53E-14{§}; {&3056} // Products assumed to be \chem{CH_3O_2 + O_2} (could also be \chem{HCHO + O_2 + OH}).
+=> no branching necessary
+<G4155>  CH3O     + O3P      = .75 CH3 + .75 O2 + .25 HCHO + .25 OH  : {%StTrG} 2.5E-11{§}; {&3037}
+
+
+// HCHO
+<G4108>  HCHO     + OH       = CO + H2O + HO2     : {%StTrG} 9.52E-18{§1.05}*EXP(2.03*LOG(temp)+636./temp); {&1634}
+=> stochastical
+<G4109>  HCHO     + NO3      = HNO3 + CO + HO2    : {%TrG} 3.4E-13{§1.3}*EXP(-1900./temp); {&2626}
+<G4123>  HCHO     + HO2      = HOCH2O2            : {%StTrG} 9.7E-15{§§0.3}*EXP(625./temp); {&1759}
+=> no branching necessary
+<G4142>  CH2OO    + HCHO     = 2 LCARBON          : {%StTrG} 1.7E-12{§}; {&3049} // High-pressure limit.
+<G4157>  HCHO     + O3P      = .7 OH + .7 CO + .3 H + .3 CO2 + HO2 : {%StTrG} 3.E-11*EXP(-1600./temp){§1.3}; {&2626}
+
+// CH3OOH
+<G4107>  CH3OOH   + OH       = .6 CH3O2 + .4 HCHO + .4 OH + H2O : {%StTrG} k_CH3OOH_OH; {&1207}
+=> as in Pieterse et al. 2009 
+including stochastic branching of CH2OOH -> HCHO + OH
+
+// CH3
+<G4151>  CH3      + O2 {+ M} = CH3O2              : {%StTrG} k_3rd_iupac(temp,cair,7.0E-31,3.,1.8E-12,-1.1,0.33){§}; {&1759}
+=> no branching necessary
+<G4152>  CH3      + O3       = .956 HCHO + .956 H + .044 CH3O + O2 : {%StTrG} 5.1E-12{§}*exp(-210./temp); {&3056, 3057}
+=> stochastical
+<G4153>  CH3      + O3P      = .83 HCHO + .83 H + .17 CO + .17 H2 + .17 H : {%StTrG} 1.3E-10{§}; {&1759}
+=> stochastical
+
+// other
+<G4110>  CO       + OH       = H + CO2 {+ 103. kJmol} : {%UpStTrG} (1.57E-13+cair*3.54E-33){§1.15}; {&1628}
+=> no branching necessary
+<G4111>  HCOOH    + OH {+O2} = CO2 + HO2 + H2O    : {%TrG} 2.94E-14*exp(786./temp)+9.85E-13*EXP(-1036./temp){§}; {&3038}
+<G4112>  CO       + O3P {+M} = CO2 {+ 516. kJmol} : {%UpStG} 6.60E-33*EXP(-1103./temp); {&2615}
+=> no branching necessary
+<G4115>  CH3O2NO2 {+ M}      = CH3O2 + NO2        : {%StTrG} k_NO2_CH3O2/(9.5E-29{§1.3}*EXP(11234./temp)); {&2626}
+=> no branching necessary
+<G4116>  CH3O2NO2 + OH       = HCHO + NO3 + H2O   : {%StTrG} 3.00E-14{§} ; // Same value as for PAN + OH.
+<G4117>  CH3NO3   + OH {+ O2}= H2O + HCHO + NO2   : {%StTrG} 4.0E-13{§}*EXP(-845./temp); {&1759}
+<G4122>  CH3ONO   + OH {+ O2}= H2O + HCHO + NO    : {%StTrG} 1.E-10{§}*exp(-1764./temp); {&3044}
+
+<G4124>  HOCH2O2             = HCHO + HO2         : {%StTrG} 2.4E12{§§0.3}*EXP(-7000./temp); {&1759}
+<G4125>  HOCH2O2  + HO2      = .5 HOCH2OOH + .5 HCOOH + .2 OH + .2 HO2 + .3 H2O + .8 O2 : {%StTrG} 5.6E-15{§§0.3}*EXP(2300./temp); {&1759}
+<G4126>  HOCH2O2  + NO {+ O2}= NO2 + HO2 + HCOOH  : {%StTrG} 0.7275*2.3E-12*EXP(360./temp); {&1759} // Same as for G4104 but scaled to match the recommeded value at 298K.
+<G4127>  HOCH2O2  + NO3      = NO2 + HO2 + HCOOH  : {%StTrG} 1.2E-12{§§0.3};  // Same as for CH3O2 + NO3 in G4105.
+<G4129a> HOCH2O2             = HCOOH + HO2                   : {%StTrG} (k_CH3O2*5.5E-12{§§0.3})**0.5*RO2*2.; {&1759}
+<G4129b> HOCH2O2             = .5 HCOOH + .5 HOCH2OH + .5 O2 : {%StTrG} (k_CH3O2*5.7E-14{§§0.3}*EXP(750./temp))**0.5*RO2*2.; {&1759}
+<G4130a> HOCH2OOH + OH       = HOCH2O2 + H2O      : {%StTrG} 0.6*k_CH3OOH_OH; {&3030} // SAR for H-abstraction by OH.
+<G4130b> HOCH2OOH + OH       = HCOOH + H2O + OH   : {%StTrG} k_rohro + k_s*f_sooh*f_soh; {&3030} // SAR for H-abstraction by OH.
+<G4132>  HOCH2OH  + OH {+ O2}= HO2 + HCOOH + H2O  : {%StTrG} k_rohro + 2.*k_s*f_soh*f_soh; {&3030} // SAR for H-abstraction by OH.
+
+<G4134>  CH2OO    {+ O2}     = CO + HO2 + OH      : {%StTrG} 1.124E+14{§}*EXP(-10000/temp); // Estimate based on the decomposition lifetime of 3 s \citep{3047} and a 20 kcal/mol energy barrier \citep{3040}.
+<G4135>  CH2OO    + H2O      = HOCH2OOH           : {%StTrG} k_CH2OO_NO2*3.6E-6; {&3048} // Rate constant for \chem{CH_2OO + NO_2} (G4138) multiplied by the factor from \citet{3048}.
+=> no branching necessary
+<G4136>  CH2OO    + H2OH2O   = HOCH2OOH + H2O     : {%StTrG} 5.2E-12; {&3173, 3174} // Average of two measurements.
+<G4137>  CH2OO    + NO       = HCHO + NO2         : {%StTrG} 6.E-14{§}; {&3041} // Upper limit.
+=> no branching necessary
+<G4138>  CH2OO    + NO2      = HCHO + NO3         : {%StTrG} k_CH2OO_NO2; {&3041, 3049} // Average of 7.E-12 and 1.5E-12.
+=> no branching necessary
+//<G4139> new reaction number G9408
+<G4140>  CH2OO    + CO       = HCHO + CO2         : {%StTrG} 3.6E-14{§}; {&3039}
+=> no branching necessary
+<G4141>  CH2OO    + HCOOH    = 2 HCOOH            : {%StTrG} 1.E-10{§}; {&3051} // \chem{HOOCH_2OCHO} forms and then decomposes to formic anhydride \citep{2071} which hydrolyses in the humid atmosphere \citep{3045}.
+=> no branching necessary
+<G4145>  CH2OO    + HO2      = LCARBON            : {%StTrG} 5.E-12{§}; {&3039}
+<G4146>  CH2OO    + O3       = HCHO + 2 O2        : {%StTrG} 1.E-12{§}; {&3053}
+=> no branching necessary
+<G4147>  CH2OO    + CH2OO    = 2 HCHO + O2        : {%StTrG} 6.E-11{§}; {&3054}
+=> no branching necessary
+<G4148>  HOCH2O2  + NO2      = HOCH2O2NO2         : {%StTrG} k_NO2_CH3O2; {&2626}
+=> no branching necessary
+<G4149>  HOCH2O2NO2 {+ M}    = HOCH2O2 + NO2      : {%StTrG} k_NO2_CH3O2/(9.5E-29{§1.3}*EXP(11234./temp)); {&2626, 3055} // \citet{3055} estimated a decomposition rate equal to that of \chem{CH_3O_2NO_2}.
+=> no branching necessary
+<G4150>  HOCH2O2NO2 + OH     = HCOOH + NO3 + H2O  : {%StTrG} 9.50E-13{§}*EXP(-650./temp)*f_soh; // Value for \chem{CH_3O_2NO_2} + OH, H-abstraction enhanced by the HO-group by f\_soh.
+
+//*<G4158>  CH2OOA              = .37 CH2OO + .47 CO + .47 H2O + .16 HO2 + .16 CO + .16 OH : {%TrG} KDEC; {&1759}
+<G4159>  HCN      + OH       = H2O + CN           : {%TrG} k_3rd(temp,cair,4.28E-33,1.0,REAL(4.25E-13*EXP(-1150./temp),SP),1.0,0.8); {&3191}
+=> no branching necessary
+<G4160a> HCN      + O1D      = O3P + HCN          : {%TrG} 1.08E-10*EXP(105./temp)*0.15*EXP(200/temp); {&3197}
+=> no branching necessary
+<G4160b> HCN      + O1D      = H + NCO            : {%TrG} 1.08E-10*EXP(105./temp)*0.68/2.; {&3197} // Half of the H-yield is attributed to fast secondary chemistry.
+=> no branching necessary
+<G4160c> HCN      + O1D      = OH + CN            : {%TrG} 1.08E-10*EXP(105./temp)*(1.-(0.68/2.+0.15*EXP(200/temp))); {&3197} // The NH + CO channel is also significant but neglected here.
+=> no branching necessary
+<G4161>  HCN      + O3P      = H + NCO            : {%TrG} 1.0E-11*EXP(-4000./temp); {&2626} // No studies below 450 K and only the major channel is considered.
+=> no branching necessary
+<G4162>  CN       + O2       = NCO + O3P          : {%TrG} 1.2E-11*EXP(210./temp)*0.75; {&3037}
+<G4163>  CN       + O2       = CO +  NO           : {%TrG} 1.2E-11*EXP(210./temp)*0.25; {&3037}
+<G4164>  NCO      + O2       = CO2 + NO           : {%TrG} 7.E-15; {&3198} // Upper limit. Dominant pathway under atmospheric conditions.
+

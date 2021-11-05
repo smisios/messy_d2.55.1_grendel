@@ -1,0 +1,682 @@
+// ----------------------------- aqueous.eqn ---------------------------------
+// Time-stamp: <2020-06-15 17:13:54 b302010>
+// ---------------------------------------------------------------------------
+
+// This program is free software; you can redistribute it and/or
+// modify it under the terms of the GNU General Public License
+// as published by the Free Software Foundation; either version 2
+// of the License, or (at your option) any later version.
+// 
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+// 
+// You should have received a copy of the GNU General Public License
+// along with this program; if not, get it from:
+// http://www.gnu.org/copyleft/gpl.html
+
+// ---------------------------------------------------------------------------
+
+// This file contains all aqueous-phase reactions of the MECCA1 chemistry
+// module. Use the script 'xmecca1' to select reactions and run kpp.
+// The syntax of reaction labels in *.eqn file is explained at:
+// www.mpch-mainz.mpg.de/~sander/echam/mecca1/mecca1.pdf
+
+// Authors:
+// - Rolf Sander (2002-2010)
+// - Astrid Kerkweg (2003-2004):
+//   - Mbl halogen reactions from MISTRA (von Glasow et al. 2002) added
+// - Holger Tost (2002-2010):
+//   - some acid/base equilibria for rain (Ara) added
+//   - TMI chemistry added (commented, untested)
+
+// ---------------------------------------------------------------------------
+
+{#A1nnn##}{------------------------ O -------------------------}
+
+// O only (#A10nn)
+{#A1000##}  O3_##     + O2m_##         = OH_## + OHm_## + Prod_13_##   : {%TrA##Sc}        xaer(##)*1.5E9 *cvfac(##);{@1.5E9}{&211}
+{#A1000##}  O3_##     + OH_##          = HO2_## + O2_## + Prod_14_##   : {%TrA##Sc}        xaer(##)*1.1E8 *cvfac(##);{@1.1E9}{&211}
+
+{#A2nnn##}{------------------------ H -------------------------}{%A##}{@\hline}
+
+// H + O (#A21nn)
+{#A2100##}  OH_##     + O2m_##         = OHm_##                        : {%TrA##Sc}        xaer(##)*1.E10 *cvfac(##); {@1.0E10}{&213}
+{#A2101##}  OH_##     + OH_##          = H2O2_##                       : {%TrA##Sc}        xaer(##)*5.5E9 *cvfac(##); {@5.5E9}{&144}
+{#A2102##}  HO2_##    + O2m_##         = H2O2_## + OHm_##              : {%TrA##Sc}        xaer(##)*k_arr(1.E8, -900.,temp) *cvfac(##); {@1.0E8}{$-900}{&210}
+{#A2103##}  HO2_##    + OH_##          = H2O_##                        : {%TrA##Sc}        xaer(##)*7.1E9 *cvfac(##); {@7.1E9}{&213}
+{#A2104##}  HO2_##    + HO2_##         = H2O2_##                       : {%TrA##Sc}        xaer(##)*k_arr(9.7E5,-2500.,temp) *cvfac(##); {@9.7E5}{$-2500}{&210}
+{#A2105##}  H2O2_##   + OH_##          = HO2_##                        : {%TrA##Sc}        xaer(##)*k_arr(2.7E7,-1684.,temp) *cvfac(##); {@2.7E7}{$-1684}{&217}
+
+{#A3nnn##}{------------------------ N -------------------------}{%A##}{@\hline}
+
+// N + O (#A31nn)
+{#A3100##}  NO2m_##   + O3_##          = NO3m_##                       : {%TrA##NSc}       xaer(##)*k_arr(5.E5,-6950.,temp) *cvfac(##); {@5.0E5}{$-6950}{&45}
+{#A3101##}  NO2_##    + NO2_##         = HNO3_## + HONO_##             : {%TrA##NSc}       xaer(##)*1.E8 *cvfac(##); {@1.0E8}{&59}
+{#A3102##}  NO4m_##                    = NO2m_##                       : {%TrA##NSc}       xaer(##)*8.E-1; {@8.0E1}{&1257} {1st order}
+
+// N + H (#A32nn)
+{#A3200##}  NO2_##    + HO2_##         = HNO4_##                       : {%TrA##NSc}       xaer(##)*1.8E9 *cvfac(##); {@1.8E9}{&1257}
+{#A3201##}  NO2m_##   + OH_##          = NO2_##  + OHm_##              : {%TrA##NSc}       xaer(##)*1.E10 *cvfac(##); {@1.0E10}{&1245}
+{#A3202##}  NO3_##    + OHm_##         = NO3m_## + OH_##               : {%TrA##NSc}       xaer(##)*k_arr(8.2E7,-2700.,temp) *cvfac(##); {@8.2E7}{$-2700}{&69}
+{#A3203##}  HONO_##   + OH_##          = NO2_##                        : {%TrA##NSc}       xaer(##)*1.E10 *cvfac(##); {@1.0E10}{&1249}
+{#A3204##}  HONO_##   + H2O2_##        = HNO3_##                       : {%TrA##NSc}       xaer(##)*k_arr(4.6E3,-6800.,temp)*C(KPP_Hp_##) *cvfac(##)*cvfac(##); {@4.6E3}{$-6800}{&45} {3rd order}
+
+{#A4nnn##}{------------------------ C -------------------------}{%A##}{@\hline}
+
+// 1C (#A41nn)
+{#A4100##}  CO3m_##   + O2m_##         = HCO3m_##  + OHm_##            : {%TrA##Sc}        xaer(##)*6.5E8 *cvfac(##); {@6.5E8}{&222}
+{#A4101##}  CO3m_##   + H2O2_##        = HCO3m_##  + HO2_##            : {%TrA##Sc}        xaer(##)*4.3E5 *cvfac(##); {@4.3E5}{&222}
+{#A4102##}  HCOOm_##  + CO3m_##        = 2 HCO3m_##  + HO2_##          : {%TrA##Sc}        xaer(##)*1.5E5 *cvfac(##); {@1.5E5}{&222}
+{#A4103##}  HCOOm_##  + OH_##          = OHm_##    + HO2_##   + CO2_## : {%TrA##Sc}        xaer(##)*k_arr(3.1E9,-1240.,temp) *cvfac(##); {@3.1E9}{$-1240}{&231}
+{#A4104##}  HCO3m_##  + OH_##          = CO3m_##                       : {%TrA##Sc}        xaer(##)*8.5E6 *cvfac(##); {@8.5E6}{&222}
+{#A4105##}  HCHO_##   + OH_##          = HCOOH_##  + HO2_##            : {%TrA##Sc}        xaer(##)*k_arr(7.7E8,-1020.,temp) *cvfac(##); {@7.7E8}{$-1020}{&231}
+{#A4106##}  HCOOH_##  + OH_##          = HO2_##    + CO2_##            : {%TrA##Sc}        xaer(##)*k_arr(1.1E8, -991.,temp) *cvfac(##); {@1.1E8}{$-991}{&231}
+{#A4107##}  CH3O2_##  + O2m_##         = CH3OOH_## + OHm_##            : {%TrA##Sc}        xaer(##)*5.E7 *cvfac(##); {@5.0E7}{&46}
+{#A4108##}  CH3O2_##  + HO2_##         = CH3OOH_##                     : {%TrA##Sc}        xaer(##)*4.3E5 *cvfac(##); {@4.3E5}{&46}
+{#A4109##}  CH3OH_##  + OH_##          = HCHO_##   + HO2_##            : {%TrA##Sc}        xaer(##)*9.7E8 *cvfac(##); {@9.7E8}{&144}
+{#A4110a##} CH3OOH_## + OH_##          = CH3O2_##                      : {%TrA##Sc}        xaer(##)*k_arr(2.7E7,-1715.,temp) *cvfac(##); {@2.7E7}{$-1715}{&46}
+{#A4110b##} CH3OOH_## + OH_##          = HCHO_##   + OH_##             : {%TrA##Sc}        xaer(##)*k_arr(1.1E7,-1715.,temp) *cvfac(##); {@1.1E7}{$-1715}{&46}
+
+// nC (#A42nn)
+// {#A4200a##}  HOCH2CHO_##   + OH_##        = GLYOX_##  + HO2_## - O2_##                   : {%TrA##Sc}        xaer(##)*k_arr(1.0E9,-1564.,temp) *cvfac(##); {@1.0E9}{$-1564}
+// {#A4200b##}  HOCH2CHO_##   + 2 OH_##      = HOCH2CO2H_##  + 2 HO2_## - 2 O2_##               : {%TrA##Sc}        xaer(##)*k_arr(5.0E8,-1564.,temp) *cvfac(##); {@5.0E8}{$-1564}
+// {#A4201a##}  HOCH2CHO_##   + NO3_##       = HOCH2CO2H_##  + HO2_## + HNO3_## - O2_##         : {%TrA##Sc}        xaer(##)*1.1E7 *cvfac(##); {@1.1E7}
+// {#A4201b##}  HOCH2CHO_##   + 2 NO3_##     = GLYOX_##  + 2 HNO3_## - O2_##                : {%TrA##Sc}        xaer(##)*5.5E6 *cvfac(##); {@5.5E6}
+// {#A4202a##}  GLYOX_##     + OH_##         = HOCH2CO2H_##  + HO2_## + H2O_## - O2_##          : {%TrA##Sc}        xaer(##)*k_arr(1.1E9,-1564.,temp) *cvfac(##); {@1.1E9}{$-1564}
+// {#A4202b##}  GLYOX_##     + OH_##         = 0.03 HOCH2CO2H_## + 0.97 OXL_## + H2O_## + Prod_04_## : {%TrA##Sc}        xaer(##)*3.1E9 *cvfac(##); {@3.1E9}
+// {#A4203##}   GLYOX_##     + NO3_##        = HOCH2CO2H_## + HO2_## + HNO3_## - O2_##          : {%TrA##Sc}        xaer(##)*6.3E7 *cvfac(##); {@6.3E7}
+
+// {#A4204##}   MGLYOX_##    + OH_##         = 0.92 CH3COCO2H_## + 0.08 HOCH2CO2H_## + HO2_## + H2O_## - O2_##          : {%TrA##Sc}        xaer(##)*k_arr(1.1E9,-1600.,temp) *cvfac(##); {@1.1E9}{$-1600}
+// {#A4205##}   MGLYOX_##    + NO3_##        = 0.92 CH3COCO2H_## + 0.08 HOCH2CO2H_## + HO2_## + HNO3_## - O2_##         : {%TrA##Sc}        xaer(##)*6.3E7 *cvfac(##); {@6.3E7}
+
+// {#A4210##}   CH3CO2H_## + OH_##         = 0.85 HOCH2CO2H_## + 0.15 HCHO_## - O2_##                         : {%TrA##Sc}          xaer(##)*k_arr(1.5E7,-1330.,temp) *cvfac(##); {@1.5E7}{$-1330}
+// {#A4211##}   CH3CO2H_## + NO3_##        = 0.85 HOCH2CO2H_## + 0.15 HCHO_## - O2_##                         : {%TrA##Sc}          xaer(##)*k_arr(1.9E9,-1800.,temp) *cvfac(##); {@1.9E9}{$-1800}
+// {#A4212##}   CH3COOm_## + OH_##        = 0.85 HOCH2CO2m_## + 0.15 HCHO_## - O2_##                        : {%TrA##Sc}          xaer(##)*k_arr(1.4E4,-3800.,temp) *cvfac(##); {@1.4E4}{$-3800}
+// {#A4213##}   CH3COOm_## + NO3_##       = 0.85 HOCH2CO2m_## + 0.15 HCHO_## - O2_##                        : {%TrA##Sc}          xaer(##)*k_arr(2.9E6,-3800.,temp) *cvfac(##); {@2.9E6}{$-3800}
+
+// {#A4220##}   CH3COCO2H_## + OH_##             = CH3CO2H_## + HO2_## + CO2_## - O2_##                       : {%TrA##Sc}          xaer(##)*k_arr(1.5E7,-1330.,temp) *cvfac(##); {@1.5E7}{$-1330}
+// {#A4221##}   CH3COCO2m_## + OH_##            = CH3COOm_## + HO2_## + CO2_## - O2_##                       : {%TrA##Sc}          xaer(##)*k_arr(1.5E7,-1330.,temp) *cvfac(##); {@1.5E7}{$-1330}
+// {#A4222##}   CH3COCO2H_## + NO3_##            = CH3CO2H_## + HO2_## + CO2_## + HNO3_## - O2_## - H2O_##    : {%TrA##Sc}          xaer(##)*k_arr(1.5E7,-1330.,temp) *cvfac(##); {@1.5E7}{$-1330}
+// {#A4223##}   CH3COCO2m_## + NO3_##           = CH3COOm_## + HO2_## + CO2_## + HNO3_## - O2_## - H2O_##    : {%TrA##Sc}          xaer(##)*k_arr(1.5E7,-1330.,temp) *cvfac(##); {@1.5E7}{$-1330}
+
+// {#A4230##}   HOCH2CO2H_## + OH_##       = OXL_## + HO2_## + H2O_## - O2_## +   Prod_05_##             : {%TrA##Sc}          xaer(##)*k_arr(3.6E8,-962., temp) *cvfac(##); {@3.6E8}{$-962}
+// {#A4231##}   HOCH2CO2m_## + OH_##       = OXLm_## + HO2_## + H2O_## - O2_## +   Prod_06_##            : {%TrA##Sc}          xaer(##)*k_arr(2.8E9,-4330.,temp) *cvfac(##); {@2.8E9}{$-4330}
+// {#A4232##}   HOCH2CO2H_## + NO3_##      = OXL_## + HO2_## + HNO3_## - O2_## +   Prod_07_##            : {%TrA##Sc}          xaer(##)*3.0E6 *cvfac(##); {@3.0E6}
+// {#A4233##}   HOCH2CO2m_## + NO3_##      = OXLm_## + HO2_## + HNO3_## - O2_## +   Prod_08_##           : {%TrA##Sc}          xaer(##)*1.1E8 *cvfac(##); {@1.1E8}
+
+// {#A4240##}   OXL_## + 2 OH_##           = 2 CO2_## + 2 H2O_##                                        : {%TrA##Sc}          xaer(##)*k_arr(1.4E6,-2766., temp) *cvfac(##); {@1.4E6}{$-2766}
+// {#A4241##}   OXLm_## +  OH_##           = 2 CO2_## + H2O_## + O2m_## - O2_##                         : {%TrA##Sc}          xaer(##)*k_arr(1.9E8,-2766., temp) *cvfac(##); {@1.9E8}{$-2766}
+// {#A4242##}   OXLmm_## +  OH_##          = 2 CO2_## + OHm_## + O2m_## - O2_##                         : {%TrA##Sc}          xaer(##)*k_arr(1.6E8,-4330., temp) *cvfac(##); {@1.6E8}{$-4330}
+// {#A4243##}   OXL_## + 2 NO3_##          = 2 CO2_## + 2 HNO3_##                                       : {%TrA##Sc}          xaer(##)*6.8E7 *cvfac(##); {@6.8E7}
+// {#A4244##}   OXLm_## + NO3_##           = 2 CO2_## + HNO3_## + O2m_## - O2_##                        : {%TrA##Sc}          xaer(##)*6.8E7 *cvfac(##); {@6.8E7}
+// {#A4245##}   OXLmm_## + NO3_##          = 2 CO2_## + NO3m_## + O2m_## - O2_##                        : {%TrA##Sc}          xaer(##)*2.2E8 *cvfac(##); {@2.2E8}
+
+// {#A4246##}   GLYOX_## + hv                = 0.2 OXL_## + 0.8 OLIG_##  +   Prod_09_##                  : {%TrA##Xa}          k_olig_glyx(C(KPP_H2O_l));
+
+{#A5nnn##}{------------------------ F -------------------------}{%A##}
+
+{#A6nnn##}{------------------------ Cl ------------------------}{%A##}{@\hline}
+
+// Cl only (#A60nn)
+{#A6000##}  Cl_##     + Cl_##          = Cl2_##                        : {%TrA##Cl}      xaer(##)*8.8E7 *cvfac(##); {@8.8E7}{&987}
+{#A6001##}  Cl2m_##   + Cl2m_##        = Cl2_##  + 2Clm_##             : {%TrA##Cl}      xaer(##)*1.8E9 *cvfac(##); {@1.8E9}{&1123}
+
+// Cl + O (#A61nn)
+{#A6100##}  Clm_##    + O3_##          = ClOm_##                       : {%TrA##Cl}      xaer(##)*3.E-3*cvfac(##); {@3.0E-3}{&648}
+{#A6101##}  Cl2_##    + O2m_##         = Cl2m_##                       : {%TrA##Cl}      xaer(##)*1.E9 *cvfac(##); {@1.0E9}{&1035}
+{#A6102##}  Cl2m_##   + O2m_##         = 2 Clm_##                      : {%TrA##Cl}      xaer(##)*1.E9 *cvfac(##); {@1.0E9}{&&1008}
+
+// Cl + H (#A62nn)
+{#A6200##}  Cl_##     + H2O_##         = Hp_##   + ClOHm_##            : {%TrA##Cl}      xaer(##)*1.3E3 *cvfac(##); {@1.3E3}{&125}
+{#A6201##}  Cl_##     + H2O2_##        = HO2_##  + Clm_##  + Hp_##     : {%TrA##Cl}      xaer(##)*k_arr(2.7E7,-1684.,temp)*cvfac(##); {@2.7E7}{$-1684}{&217}
+{#A6202##}  Clm_##    + OH_##          = ClOHm_##                      : {%TrA##Cl}      xaer(##)*4.3E9 *cvfac(##); {@4.3E9}{&125}
+{#A6203##}  Cl2_##    + HO2_##         = Cl2m_## + Hp_##               : {%TrA##Cl}      xaer(##)*1.E9 *cvfac(##); {@1.0E9}{&1035}
+{#A6204##}  Cl2_##                     = Clm_##  + HOCl_## + Hp_##     : {%TrA##ClMbl}   xaer(##)*k_arr(2.2E1,-8012.,temp); {@2.2E1}{$-8012}{&1079} {1st order}
+{#A6205##}  Cl2m_##   + HO2_##         = 2 Clm_## + Hp_##              : {%TrA##Cl}      xaer(##)*1.3E10 *cvfac(##); {@1.3E10}{&1008}
+{#A6206##}  HOCl_##   + O2m_##         = Cl_##   + OHm_##              : {%TrA##Cl}      xaer(##)*7.5E6 *cvfac(##); {@7.5E6}{&1034}
+{#A6207##}  HOCl_##   + HO2_##         = Cl_##                         : {%TrA##Cl}      xaer(##)*7.5E6 *cvfac(##); {@7.5E6}{&1034}
+{#A6208##}  HOCl_##   + Clm_## + Hp_## = Cl2_##                        : {%TrA##ClMbl}   xaer(##)*k_arr(2.2E4,-3508.,temp) *cvfac(##)*cvfac(##); {@2.2E4}{$-3508}{&1079} {3rd order}
+{#A6209##}  ClOHm_##                   = Clm_##  + OH_##               : {%TrA##Cl}      xaer(##)*6.1E9; {@6.1E9}{&125} {1st order}
+{#A6210##}  ClOHm_##  + Hp_##          = Cl_##                         : {%TrA##Cl}      xaer(##)*2.1E10 *cvfac(##); {@2.1E10}{&125}
+
+// Cl + N (#A63nn)
+{#A6300##}  Cl_##     + NO3m_##        = NO3_##  + Clm_##              : {%TrA##Cl}      xaer(##)*1.E8*cvfac(##); {@1.0E8}{&1239}
+{#A6301##}  Clm_##    + NO3_##         = NO3m_## + Cl_##               : {%TrA##Cl}      xaer(##)*3.4E8 *cvfac(##); {@3.4E8}{&&1239}
+{#A6302##}  Cl2m_##   + NO2m_##        = 2 Clm_## + NO2_##             : {%TrA##Cl}      xaer(##)*6.E7 *cvfac(##); {@6.0E7}{&1009}
+
+// Cl + C (#A64nn)
+{#A6400##}  Cl2m_##   + CH3OOH_##      = 2 Clm_## + Hp_## + CH3O2_##   : {%TrA##Cl} xaer(##)*5.E4*cvfac(##); {@5.0E4}{&1009}
+
+// Cl + F  (#A65nn)
+
+{#A7nnn##}{------------------------ Br ------------------------}{%A##}{@\hline}
+
+// Br only (#A70nn)
+{#A7000##}  Br2m_##  + Br2m_##         = 2 Brm_##  + Br2_##            : {%TrA##Br}      xaer(##)*1.9E9 *cvfac(##); {@1.9E9}{&222}
+
+// Br + O  (#A71nn)
+{#A7100##}  Brm_##   + O3_##           = BrOm_##                       : {%TrA##Br}      xaer(##)*k_arr(2.1E2,-4450.,temp) *cvfac(##); {@2.1E2}{$-4450}{&872}
+{#A7101##}  Br2_##   + O2m_##          = Br2m_##                       : {%TrA##Br}      xaer(##)*5.6E9 *cvfac(##); {@5.6E9}{&365}
+{#A7102##}  Br2m_##  + O2m_##          = 2 Brm_##                      : {%TrA##Br}      xaer(##)*1.7E8 *cvfac(##); {@1.7E8}{&366}
+
+// Br + H  (#A72nn)
+{#A7200##}  Brm_##   + OH_##           = BrOHm_##                      : {%TrA##Br}      xaer(##)*1.1E10 *cvfac(##); {@1.1E10}{&281}
+{#A7201##}  Br2_##   + HO2_##          = Br2m_## + Hp_##               : {%TrA##Br}      xaer(##)*1.1E8 *cvfac(##); {@1.1E8}{&365}
+{#A7202##}  Br2_##                     = Brm_##  + HOBr_## + Hp_##     : {%TrA##BrMbl}   xaer(##)*9.7E1; {@9.7E1}{&521} {1st order}
+{#A7203##}  Br2m_##  + HO2_##          = Br2_##  + H2O2_## + OHm_##    : {%TrA##Br}      xaer(##)*4.4E9 *cvfac(##); {@4.4E9}{&1639}
+{#A7204##}  Br2m_##  + H2O2_##         = 2 Brm_## + Hp_## + HO2_##     : {%TrA##Br}      xaer(##)*1.E5 *cvfac(##); {@1.0E5}{&1008}
+{#A7205##}  HOBr_##  + O2m_##          = Br_##   + OHm_##              : {%TrA##Br}      xaer(##)*3.5E9 *cvfac(##); {@3.5E9}{&762}
+{#A7206##}  HOBr_##  + HO2_##          = Br_##                         : {%TrA##Br}      xaer(##)*1.E9 *cvfac(##); {@1.0E9}{&1168}
+{#A7207##}  HOBr_##  + H2O2_##         = Brm_##  + Hp_##               : {%TrA##Br}      xaer(##)*1.2E6 *cvfac(##); {@1.2E6}{&1218}
+{#A7208##}  HOBr_##  + Brm_## + Hp_##  = Br2_##                        : {%TrA##BrMbl}   xaer(##)*1.6E10 *cvfac(##)*cvfac(##); {@1.6E10}{&521} {3rd order}
+{#A7209a##} BrOHm_##                   = Brm_##  + OH_##               : {%TrA##Br}      xaer(##)*3.3E7; {@3.3E7}{&281} {1st order}
+{#A7209b##} BrOHm_##                   = Br_##   + OHm_##              : {%TrA##Br}      xaer(##)*4.2E6; {@4.2E6}{&281} {1st order}
+{#A7210##}  BrOHm_## + Hp_##           = Br_##                         : {%TrA##Br}      xaer(##)*4.4E10 *cvfac(##); {@4.4E10}{&281}
+
+// Br + N  (#A73nn)
+{#A7300##}  Brm_##   + NO3_##          = Br_## + NO3m_##               : {%TrA##Br}      xaer(##)*4.E9 *cvfac(##); {@4.0E9}{&70}
+{#A7301##}  Br2m_##  + NO2m_##         = 2 Brm_## + NO2_##             : {%TrA##Br}      xaer(##)*k_arr(1.7E7,-1720.,temp) *cvfac(##); {@1.7E7}{$-1720}{&277}
+
+// Br + C  (#A74nn)
+{#A7400##}  Br2m_##  + CH3OOH_##       = 2 Brm_## + Hp_## + CH3O2_##   : {%TrA##Br}      xaer(##)*1.E5 *cvfac(##);  {@1.0E5}{&&1008}
+
+// Br + F  (#A75nn)
+
+// Br + Cl (#A76nn)
+{#A7600##}  Brm_##   + Cl2_##          = BrCl2m_##                     : {%TrA##ClBr}    xaer(##)*7.7E9 *cvfac(##); {@7.7E9}{&318}
+{#A7601##}  Brm_##   + ClOm_## + Hp_## = BrCl_## + OHm_##              : {%TrA##Br}      xaer(##)*3.7E10 *cvfac(##)*cvfac(##); {@3.7E10}{&316} {3rd order}
+{#A7602##}  Brm_##   + HOCl_## + Hp_## = BrCl_##                       : {%TrA##ClBrMbl} xaer(##)*1.3E6 *cvfac(##)*cvfac(##); {@1.3E6}{&316} {3rd order}
+{#A7603##}  HOBr_##  + Clm_##+ Hp_##   = BrCl_##                       : {%TrA##ClBrMbl} xaer(##)*2.3E10 *cvfac(##)*cvfac(##); {@2.3E10}{&1039} {3rd order}
+{#A7604##}  BrCl_##                    = Clm_##  + HOBr_## + Hp_##     : {%TrA##ClBrMbl} xaer(##)*3.E6; {@3.0E6}{&1039} {1st order}
+
+{#A8nnn##}{------------------------ I -------------------------}{%A##}{@\hline}
+
+// I + O  (#A81nn)
+{#A8100##}  Im_##    + O3_##           = HOI_##  +OHm_##               : {%TrA##IMbl}    xaer(##)*k_arr(4.2E9,-9311.,temp) *cvfac(##); {@4.2E9}{$-9311}{&844}
+{#A8101##}  IO_##    + IO_##           = HOI_##  + IO2m_## + Hp_##     : {%TrA##IMbl}    xaer(##)*1.5E9 *cvfac(##); {@1.5E9}{&579}
+
+// I + H  (#A82nn)
+{#A8200##}  IO2m_##  + H2O2_##         = IO3m_##                       : {%TrA##IMbl}    xaer(##)*6.E1 *cvfac(##); {@6.0E1}{&556}
+{#A8201##}  HOI_##   + IO2m_##         = IO3m_## + Im_##   + Hp_##     : {%TrA##I}       xaer(##)*6.E2 *cvfac(##); {@6.0E2}{&885}
+{#A8202##}  HOI_##   + Im_## + Hp_##   = I2_##                         : {%TrA##IMbl}    xaer(##)*4.4E12 *cvfac(##)*cvfac(##); {@4.4E12}{&170} {3rd order}
+
+// I + N  (#A83nn)
+
+// I + C  (#A84nn)
+
+// I + F  (#A85nn)
+
+// I + Cl (#A86nn)
+{#A8600##}  ICl_##                     = HOI_##  + Clm_##  + Hp_##     : {%TrA##ClIMbl}  xaer(##)*2.4E6; {@2.4E6}{&553} {1st order}
+{#A8601##}  Im_##    + HOCl_## + Hp_## = ICl_##                        : {%TrA##ClIMbl}  xaer(##)*3.5E11 *cvfac(##)*cvfac(##); {@3.5E11}{&555} {3rd order}
+{#A8602##}  IO2m_##  + HOCl_##         = IO3m_## + Clm_## + Hp_##      : {%TrA##ClI}     xaer(##)*1.5E3 *cvfac(##); {@1.5E3}{&884}
+{#A8603##}  HOI_##   + Clm_## + Hp_##  = ICl_##                        : {%TrA##ClIMbl}  xaer(##)*2.9E10 *cvfac(##)*cvfac(##); {@2.9E10}{&553} {3rd order}
+{#A8604##}  HOI_##   + Cl2_##          = IO2m_## + 2Clm_## + 3Hp_##    : {%TrA##ClI}     xaer(##)*1.E6 *cvfac(##); {@1.0E6}{&884}
+{#A8605##}  HOI_##   + HOCl_##         = IO2m_## + Clm_##  + 2 Hp_##   : {%TrA##ClI}     xaer(##)*5.E5 *cvfac(##); {@5.0E5}{&874}
+
+// I + Br (#A87nn)
+{#A8700##}  IBr_##                     = HOI_##  + Hp_##   + Brm_##    : {%TrA##BrIMbl}  xaer(##)*8.E5; {@8.0E5}{&554} {1st order}
+{#A8701##}  Im_##    + HOBr_##         = IBr_##  + OHm_##              : {%TrA##BrIMbl}  xaer(##)*5.E9 *cvfac(##); {@5.0E9}{&549}
+{#A8702##}  IO2m_##  + HOBr_##         = IO3m_## + Brm_## + Hp_##      : {%TrA##BrI}     xaer(##)*1.E6 *cvfac(##); {@1.0E6}{&885}
+{#A8703##}  HOI_##   + Brm_## + Hp_##  = IBr_##                        : {%TrA##BrIMbl}  xaer(##)*3.3E12 *cvfac(##)*cvfac(##); {@3.3E12}{&554} {3rd order}
+{#A8704##}  HOI_##   + HOBr_##         = IO2m_## + Brm_##  + 2 Hp_##   : {%TrA##BrI}     xaer(##)*1.E6 *cvfac(##); {@1.0E6}{&885}
+
+{#A9nnn##}{------------------------ S -------------------------}{%A##}{@\hline}
+
+// S + O  (#A91nn)
+{#A9100##}  SO3m_##  + O2_##           = SO5m_##                       : {%TrA##SSc}         xaer(##)*1.5E9 *cvfac(##); {@1.5E9}{&75}
+{#A9101##}  SO3mm_## + O3_##           = SO4mm_## + Prod_01_##          : {%TrA##SMblScScm} xaer(##)*k_arr(1.5E9,-5300.,temp) *cvfac(##); {@1.5E9}{$-5300}{&744}
+{#A9102##}  SO4m_##  + O2m_##          = SO4mm_##                      : {%TrA##SSc}         xaer(##)*3.5E9 *cvfac(##); {@3.5E9}{&1243}
+{#A9103##}  SO4m_##  + SO3mm_##        = SO3m_##  + SO4mm_##           : {%TrA##SSc}         xaer(##)*4.6E8 *cvfac(##); {@4.6E8}{&75}
+{#A9104##}  SO5m_##  + O2m_##          = HSO5m_## + OHm_##             : {%TrA##SSc}         xaer(##)*2.3E8 *cvfac(##); {@2.3E8}{&955}
+{#A9105##}  SO5m_##  + SO3mm_##        = .72 SO4m_## + .72 SO4mm_## + .28 SO3m_## + .28 HSO5m_## + .28 OHm_##  : {%TrA##S} xaer(##)*1.3E7 *cvfac(##); {@1.3E7}{&75, 111}
+{#A9106##}  SO5m_##  + SO5m_##         = O2_## {+ S2O8--}              : {%TrA##S}         xaer(##)*1.E8 *cvfac(##); {@1.0E8}{&222}
+
+// S + H  (#A92nn)
+{#A9200##}  SO3mm_## + OH_##           = SO3m_##  + OHm_##             : {%TrA##SSc}       xaer(##)*5.5E9 *cvfac(##); {@5.5E9}{&144}
+{#A9201##}  SO4m_##  + OH_##           = HSO5m_##                      : {%TrA##SSc}         xaer(##)*1.E9 *cvfac(##); {@1.0E9}{&1243}
+{#A9202##}  SO4m_##  + HO2_##          = SO4mm_## + Hp_##              : {%TrA##SSc}       xaer(##)*3.5E9 *cvfac(##); {@3.5E9}{&1243}
+{#A9203##}  SO4m_##  + H2O_##          = SO4mm_## + Hp_##    + OH_##   : {%TrA##SSc}         xaer(##)*k_arr(1.1E1,-1110.,temp) *cvfac(##); {@1.1E1}{$-1110}{&1244}
+{#A9204##}  SO4m_##  + H2O2_##         = SO4mm_## + Hp_##    + HO2_##  : {%TrA##SSc}    xaer(##)*1.2E7 *cvfac(##); {@1.2E7}{&86}
+{#A9205##}  HSO3m_## + O2m_##          = SO4mm_## + OH_##              : {%TrA##SSc}         xaer(##)*3.E3 *cvfac(##); {@3.0E3}{&&}
+{#A9206##}  HSO3m_## + O3_##           = SO4mm_## + Hp_## + Prod_02_##  : {%TrA##SMblScScm} xaer(##)*k_arr(3.7E5,-5500.,temp) *cvfac(##); {@3.7E5}{$-5500}{&744}
+{#A9207##}  HSO3m_## + OH_##           = SO3m_##                       : {%TrA##SSc}         xaer(##)*4.5E9 *cvfac(##); {@4.5E9}{&144}
+{#A9208##}  HSO3m_## + HO2_##          = SO4mm_## + OH_##    + Hp_##   : {%TrA##SSc}         xaer(##)*3.E3 *cvfac(##);  {@3.0E3}{&&}
+{#A9209##}  HSO3m_## + H2O2_##         = SO4mm_## + Hp_## + Prod_03_##  : {%TrA##SMblScScm} xaer(##)*k_SIV_H2O2(5.2E6,-3650.,C(KPP_Hp_##)*cvfac(##),temp) *cvfac(##); {@5.2E6}{$-3650}{&43}
+{#A9210##}  HSO3m_## + SO4m_##         = SO3m_##  + SO4mm_## + Hp_##   : {%TrA##SSc}         xaer(##)*8.E8 *cvfac(##); {@8.0E8}{&75}
+{#A9211##}  HSO3m_## + SO5m_##         = .75 SO4m_## + .75 SO4mm_## + .75 Hp_## + .25 SO3m_## + .25 HSO5m_## : {%TrA##S} xaer(##)*1.E5 *cvfac(##); {@1.0E5}{&75}
+{#A9212##}  HSO3m_## + HSO5m_##        = 2 SO4mm_## + 2 Hp_##          : {%TrA##SSc}         xaer(##)*7.1E6 *C(KPP_Hp_##)  *cvfac(##)*cvfac(##); {@7.1E6}{&85} {3rd order}
+
+// S + N  (#A93nn)
+{#A9300##}  SO3mm_## + NO2_##          = SO4mm_## + 2 HONO_## - NO2_## : {%TrA##SSc}       xaer(##)*2.E7 *cvfac(##); {@2.0E7}{&452}
+{#A9301##}  SO4m_##  + NO3m_##         = SO4mm_## + NO3_##             : {%TrA##SSc}       xaer(##)*5.E4 *cvfac(##); {@5.0E4}{&69}
+{#A9302##}  SO4mm_## + NO3_##          = NO3m_##  + SO4m_##            : {%TrA##SSc}       xaer(##)*1.E5 *cvfac(##); {@1.0E5}{&1633}
+{#A9303##}  HSO3m_## + NO2_##          = HSO4m_## + 2 HONO_## - NO2_## : {%TrA##SSc}       xaer(##)*2.E7 *cvfac(##); {@2.0E7}{&452}
+{#A9304##}  HSO3m_## + NO3_##          = SO3m_##  + NO3m_##  + Hp_##   : {%TrA##SSc}       xaer(##)*k_arr(1.4E9,-2000.,temp) *cvfac(##); {@1.4E9}{$-2000}{&69}
+{#A9305##}  HSO3m_## + HNO4_##         = HSO4m_## + NO3m_##  + Hp_##   : {%TrA##SSc}       xaer(##)*3.1E5 *cvfac(##); {@3.1E5}{&1257}
+
+// S + C  (#A94nn)
+{#A9400##}  SO3mm_## + HCHO_##         = CH2OHSO3m_## + OHm_##         : {%TrA##SSc}       xaer(##)*1.4E4 *cvfac(##); {@1.4E4}{&534}
+{#A9401##}  SO3mm_## + CH3OOH_##       = SO4mm_## + CH3OH_##           : {%TrA##SSc}       xaer(##)*k_arr(1.6E7,-3800.,temp)*C(KPP_Hp_##) *cvfac(##)*cvfac(##); {@1.6E7}{$-3800}{&175} {3rd order}
+{#A9402##}  HSO3m_## + HCHO_##         = CH2OHSO3m_##                  : {%TrA##SSc}       xaer(##)*4.3E-1 *cvfac(##); {@4.3E-1}{&534}
+{#A9403##}  HSO3m_## + CH3OOH_##       = SO4mm_## + Hp_##    + CH3OH_##: {%TrA##SSc}       xaer(##)*k_arr(1.6E7,-3800.,temp)*C(KPP_Hp_##) *cvfac(##)*cvfac(##); {@1.6E7}{$-3800}{&175} {3rd order}
+{#A9404##}  CH2OHSO3m_## + OHm_##      = SO3mm_## + HCHO_##            : {%TrA##SSc}       xaer(##)*3.6E3 *cvfac(##); {@3.6E3}{&935}
+
+// S + F (#A95nn)
+
+// S + Cl (#A96nn)
+{#A9600##}  SO3mm_## + Cl2m_##         = SO3m_##  + 2 Clm_##           : {%TrA##SCl}       xaer(##)*6.2E7  *cvfac(##); {@6.2E7}{&1009}
+{#A9601##}  SO3mm_## + HOCl_##         = Clm_##   + HSO4m_##           : {%TrA##SClMbl}  xaer(##)*7.6E8 *cvfac(##); {@7.6E8}{&700}
+{#A9602##}  SO4m_##  + Clm_##          = SO4mm_## + Cl_##              : {%TrA##SCl}     xaer(##)*2.5E8 *cvfac(##); {@2.5E8}{&1238}
+{#A9603##}  SO4mm_## + Cl_##           = SO4m_##  + Clm_##             : {%TrA##SCl}     xaer(##)*2.1E8 *cvfac(##); {@2.1E8}{&1238}
+{#A9604##}  HSO3m_## + Cl2m_##         = SO3m_##  + 2 Clm_## + Hp_##   : {%TrA##SCl}       xaer(##)*k_arr(4.7E8,-1082.,temp) *cvfac(##); {@4.7E8}{$-1082}{&277}
+{#A9605##}  HSO3m_## + HOCl_##         = Clm_##   + HSO4m_## + Hp_##   : {%TrA##SClMbl}  xaer(##)*7.6E8 *cvfac(##); {@7.6E8}{&&}
+{#A9606##}  HSO5m_## + Clm_##          = HOCl_##  + SO4mm_##           : {%TrA##SCl}     xaer(##)*k_arr(1.8E-3,-7352.,temp)*cvfac(##); {@1.8E-3}{$-7352}{&475}
+
+// S + Br (#A97nn)
+{#A9700##}  SO3mm_## + Br2m_##         = 2 Brm_## + SO3m_##            : {%TrA##SBr}     xaer(##)*k_arr(2.2E8,-649.,temp) *cvfac(##); {@2.2E8}{$-649}{&277}
+{#A9701##}  SO3mm_## + BrOm_##         = Brm_##   + SO4mm_##           : {%TrA##SBr}     xaer(##)*1.E8 *cvfac(##); {@1.0E8}{&549}
+{#A9702##}  SO3mm_## + HOBr_##         = Brm_##   + HSO4m_##           : {%TrA##SBrMbl}  xaer(##)*5.E9 *cvfac(##); {@5.0E9}{&549}
+{#A9703##}  SO4m_##  + Brm_##          = Br_##    + SO4mm_##           : {%TrA##SBr}     xaer(##)*2.1E9 *cvfac(##); {@2.1E9}{&1008}
+{#A9704##}  HSO3m_## + Br2m_##         = 2 Brm_## + Hp_## + SO3m_##    : {%TrA##SBr}     xaer(##)*k_arr(6.3E7,-782.,temp) *cvfac(##); {@6.3E7}{$-782}{&277}
+{#A9705##}  HSO3m_## + HOBr_##         = Brm_##   + HSO4m_## + Hp_##   : {%TrA##SBrMbl}  xaer(##)*5.E9 *cvfac(##); {@5.0E9}{&&}
+{#A9706##}  HSO5m_## + Brm_##          = HOBr_##  + SO4mm_##           : {%TrA##SBr}     xaer(##)*k_arr(1.E0,-5338.,temp)*cvfac(##); {@1.0E0}{$-5338}{&700}
+
+// S + I  (#A98nn)
+{#A9800##}  HSO3m_## + I2_##           = 2 Im_## + HSO4m_## + 2 Hp_##  : {%TrA##SI}      xaer(##)*1.E6 *cvfac(##); {@1.0E6}{&875}
+
+// ---------------------------------------------------------------------------
+
+
+// transition metal chemistry
+
+//{#Me01##} Fe2p_## + H2O2_##      = OH_## + OHm_## + Fe3p_##     : {%TrAraScM}     50.0  * cvfac(##);
+//{#Me02##} MnOH2p_## + H2O2_##    = MnO2p_## + Hp_## + H2O_##    : {%TrAraScM}     2.8e3 * cvfac(##);
+//{#Me03##} Mn4p_## + H2O2_##      = Mn2p_## + 2 Hp_## + O2_##    : {%TrAraScM}     1.e6  * cvfac(##);
+//{#Me04##} Cup_## + H2O2_##       = Cu2p_## + OH_## + OHm_##     : {%TrAraScM}     7.0e3 * cvfac(##);
+//{#Me05##} Mn3p_## + H2O2_##      = Mn2p_## + Hp_## + HO2_##     : {%TrAraScM}     7.3e4 * cvfac(##);
+
+//{#Me06##} O2m_## + Fe3p_##       = O2_## + Fe2p_##              : {%TrAraScM}     1.5e8 * cvfac(##);
+//{#Me07##} FeOH2p_## + HO2_##     = Fe2p_## + O2_## + H2O_##     : {%TrAraScM}     1.3e5 * cvfac(##);
+//{#Me08##} FeOH2p_## + O2m_##     = O2_## + Fe2p_## + OHm_##     : {%TrAraScM}     1.5e8 * cvfac(##);
+//{#Me09##} HOFeOHp_## + O2m_##    = O2_## + Fe2p_## + 2 OHm_##   : {%TrAraScM}     1.5e8 * cvfac(##);
+//{#Me10##} O2m_## + Fe2p_##       = H2O2_## + Fe3p_## - 2Hp_##   : {%TrAraScM}     1.0e7 * cvfac(##);
+//{#Me11##} HO2_## + Fe2p_##       = H2O2_## + Fe3p_## - Hp_##    : {%TrAraScM}     k_arr(1.2e6, 5050.E0, temp) * cvfac(##);
+//{#Me12##} OH_## + Fe2p_##        = FeOH2p                       : {%TrAraScM}     k_arr(4.3e8, 1100.E0, temp) * cvfac(##);
+//{#Me13##} MnO2p_## + HO2_##      = Mn2p_## + H2o2_## + O2_## - Hp_## : {%TrAraScM}1.0e7 * cvfac(##);
+//{#Me14##} OH_## + Mn2p_##        = OHm_## + Mn3p_##             : {%TrAraScM}     2.0e7 * cvfac(##);
+//{#Me15##} O2m_## + Cup_##        = H2O2_## + Cu2p_## - 2 Hp_##  : {%TrAraScM}     1.0e10 * cvfac(##); 
+//{#Me16##} HO2_## + Cup_##        = H2O2_## + Cu2p_## - Hp_##    : {%TrAraScM}     3.0e9 * cvfac(##);
+//{#Me17##} OH_## + Cup_##         = OHm_## + Cu2p_##             : {%TrAraScM}     3.0e9 * cvfac(##);
+//{#Me18##} HO2_## + Cu2p_##       = O2_## + Cup_## + Hp_##       : {%TrAraScM}     1.0e8 * cvfac(##);
+//{#Me19##} O2m_## + Cu2p_##       = O2_## + Cup_##               : {%TrAraScM}     8.0e9 * cvfac(##); 
+//{#Me20##} Fe3p_## + Cup_##       = Fe2p_## + Cu2p_##            : {%TrAraScM}     3.0e7 * cvfac(##);
+//{#Me21##} FeOH2p_## + Cup_##     = Fe2p_## + Cu2p_## + OHm_##   : {%TrAraScM}     3.0e7 * cvfac(##);
+//{#Me22##} HOFeOHp_## + Cup_##    = Fe2p_## + Cu2p_## + 2 OHm_## : {%TrAraScM}     3.0e7 * cvfac(##);
+//{#Me23##} Fe2p_## + Mn3p_##      = Fe3p_## + Mn2p_##            : {%TrAraScM}     1.6e4 * cvfac(##);
+
+//{#Me24##} MnO2p_## + MnO2p_##    = 2 Mn2p_## + H2O2_## - 2 Hp_## + O2_##     : {%TrAraScM}     6.0e6 * cvfac(##);
+//{#Me25##} Cup_## + O2_##         = Cu2p_## + O2m_##                          : {%TrAraScM}     4.6e5 * cvfac(##);
+//{#Me26##} Fe2p_## + O3_##        = FeO2p_## + O2_##                          : {%TrAraScM}     8.2e5 * cvfac(##);
+//{#Me27##} FeO2p_## + H2O2_##     = Fe3p_## + HO2_## + OHm_##                 : {%TrAraScM}     k_arr(9.5e3, 2766.e0, temp) * cvfac(##);
+//{#Me28##} FeO2p_## + H2O_##      = Fe3p_## + OH_## + OHm_##                  : {%TrAraScM}     k_arr(2.34e-4, 4089.e0, temp) * cvfac(##);
+//{#Me29##} FeO2p_## + HO2_##      = Fe3p_## + O2_## + OHm_##                  : {%TrAraScM}     2.0e6 * cvfac(##);
+//{#Me30##} FeO2p_## + OH_##       = Fe3p_## + H2O2_## - Hp_##                 : {%TrAraScM}     1.0e7 * cvfac(##);
+//{#Me31##} FeO2p_## + HONO_##     = Fe3p_## + NO2_## + OHm_##                 : {%TrAraScM}     k_arr(1.1e4, 4150.e0, temp) * cvfac(##);
+//{#Me32##} FeO2p_## + HSO3m_##    = Fe3p_## + SO3m_## + OH_##                 : {%TrAraScM}     2.5e5 * cvfac(##);
+//{#Me33##} FeO2p_## + Clm_##      = Fe3p_## + ClOHm_## - Hp_##                : {%TrAraScM}     100. * cvfac(##);
+//{#Me34##} FeO2p_## + Mn2p_##     = Fe3p_## + Mn3p_## + H2O_## - 2 Hp_##      : {%TrAraScM}     k_arr(1.0e4, 2562.e0, temp) * cvfac(##);
+//{#Me35##} FeO2p_## + HCOOH_##    = Fe3p_## + COOH_## + H2O_##                : {%TrAraScM}     k_arr(160., 2680.e0, temp) * cvfac(##);
+//{#Me36##} FeO2p_## + HCOOm_##    = Fe3p_## + COOH_## + OHm_##                : {%TrAraScM}     3.0e5 * cvfac(##);
+//{#Me37##} FeO2p_## + C2H5OH_##   = Fe3p_## + CH3CHOH_## + OHm_##             : {%TrAraScM}     2.5e3 * cvfac(##);
+//{#Me38##} FeO2p_## + CH2OHOH_##  = Fe3p_## + CHOHOH_## + OHm_##              : {%TrAraScM}     k_arr(400., 5352.e0, temp) * cvfac(##);
+//{#Me39##} FeO2p_## + NO2m_##     = Fe3p_## + NO2_## + OHm_##                 : {%TrAraScM}     1.0e5 * cvfac(##);
+
+//{#Me40##} FeO2p_## + Fe2p_##{+H2O_##} = 2 Fe3p_## + 2 OHm_##                 : {%TrAraScM}     k_arr(7.2e4, 842.e0, temp) * cvfac(##);
+//{#Me41##} FeO2p_## + Fe2p_##     = FeOH2Fe4p + 2 OHm_## - 2OH_## - 2 Hp_##   : {%TrAraScM}     k_arr(1.8e4, 5052.e0, temp) * cvfac(##);
+//{#Me42##} FeOH2Fe4p + Hp_##      = 2 Fe3p_## + H2O                           : {%TrAraScM}     k_arr(1.95, 5653.e0, temp) * cvfac(##);
+//{#Me43##} FeOH2Fe4p              = 2 Fe3p_## + 2 OHm_##                      : {%TrAraScM}     k_arr(0.49, 8780.e0, temp) * cvfac(##);
+//{#Me44##} MnOpp_## + Mn2p_##     = 2 Mn3p_## + H2O_## - 2 Hp_##              : {%TrAraScM}     1.0e5 * cvfac(##);
+//{#Me45##} Mn2p_## + O3_##        = MnOpp_## + O2_##                          : {%TrAraScM}     1.65e3 * cvfac(##);
+//{#Me46##} Cup_## + O3_##         = Cu2p_## + OH_## + O2_## - Hp_##           : {%TrAraScM}     3.0e7 * cvfac(##);
+
+//{#Me47##} Fe2p_## + NO3_##       = Fe3p_## + NO3m_##                         : {%TrAraScM}     8.0e6 * cvfac(##);
+//{#Me48##} Mn2p_## + NO3_##       = Mn3p_## + NO3m_##                         : {%TrAraScM}     1.1e6 * cvfac(##);
+
+//{#Me49##} FeOH2p_## + HSO3m_##   = Fe2p_## + SO3m_## + H2O_##                : {%TrAraScM}     30.e0 * cvfac(##);
+//{#Me50##} Fe2p_## + SO5m_##{+H2O_##} = FeOH2p_## + HSO5m_##                  : {%TrAraScM}     k_arr(2.65e7, 5809.e0, temp) * cvfac(##);
+//{#Me50##} Fe2p_## + HSO5m_##     = FeOH2p_## + SO4m_##                       : {%TrAraScM}     3.0e4 * cvfac(##);
+//{#Me51##} Mn2p_## + HSO5m_##     = Mn3p_## + SO4m_##                         : {%TrAraScM}     3.0e4 * cvfac(##);
+//{#Me52##} Mn2p_## + SO5m_##{+H2O_##} = Mn3p_## + HSO5m_## + OHm_##           : {%TrAraScM}     1.0e10 * cvfac(##);
+//{#Me53##} Fe2p_## + SO4m_##{+H2O_##} = FeOH2p_## + SO4mm_## + Hp_##          : {%TrAraScM}     k_arr(4.6e9, -2165.e0, temp) * cvfac(##);
+
+//{#Me54##} Fe2p_## + CO3m_##      = Fe3p_## + CO32m_##                        : {%TrAraScM}     2.0e7 * cvfac(##);
+//{#Me55##} Mn2p_## + CO3m_##      = Mn3p_## + CO32m_##                        : {%TrAraScM}     1.5e7 * cvfac(##);
+//{#Me56##} Cup_## + CO3m_##       = Cu2p_## + CO32m_##                        : {%TrAraScM}     2.0e7 * cvfac(##);
+
+
+// ---------------------------------------------------------------------------
+
+// Heterogenous reactions and Henry's law
+
+{#H1nnn##}{------------------------ O -------------------------}
+
+// O only (#H1000-#H10nn)
+{#H1000f##} O2      = O2_##      : {%TrA##Sc}           k_exf(##,KPP_O2); {&&}
+{#H1000b##} O2_##   = O2         : {%TrA##Sc}           k_exb(##,KPP_O2); {&&}
+{#H1001f##} O3      = O3_##      : {%TrA##MblScScm}     k_exf(##,KPP_O3); {&&}
+{#H1001b##} O3_##   = O3         : {%TrA##MblScScm}     k_exb(##,KPP_O3); {&&}
+
+{#H2nnn##}{------------------------ H -------------------------}{%A##}{@\hline}
+
+// H + O (#H2100-#H21nn)
+{#H2100f##} OH      = OH_##      : {%TrA##Sc}           k_exf(##,KPP_OH); {&&}
+{#H2100b##} OH_##   = OH         : {%TrA##Sc}           k_exb(##,KPP_OH); {&&}
+{#H2101f##} HO2     = HO2_##     : {%TrA##Sc}           k_exf(##,KPP_HO2); {&&}
+{#H2101b##} HO2_##  = HO2        : {%TrA##Sc}           k_exb(##,KPP_HO2); {&&}
+{#H2102f##} H2O2    = H2O2_##    : {%TrA##MblScScm}     k_exf(##,KPP_H2O2); {&&}
+{#H2102b##} H2O2_## = H2O2       : {%TrA##MblScScm}     k_exb(##,KPP_H2O2); {&&}
+
+{#H3nnn##}{------------------------ N -------------------------}{%A##}{@\hline}
+
+// N + O (#H3100-#H31nn)
+{#H3100f##} NO      = NO_##             : {%TrAraNSc}       k_exf(##,KPP_NO); {&&}
+{#H3100b##} NO_##   = NO                : {%TrAraNSc}       k_exb(##,KPP_NO); {&&}
+{#H3101f##} NO2     = NO2_##            : {%TrA##NSc}       k_exf(##,KPP_NO2); {&&}
+{#H3101b##} NO2_##  = NO2               : {%TrA##NSc}       k_exb(##,KPP_NO2); {&&}
+{#H3102f##} NO3     = NO3_##            : {%TrA##NSc}       k_exf(##,KPP_NO3); {&&}
+{#H3102b##} NO3_##  = NO3               : {%TrA##NSc}       k_exb(##,KPP_NO3); {&&}
+
+// N + H (#H3200-#H32nn)
+{#H3200f##} NH3     = NH3_##            : {%TrA##NMblScScm} k_exf(##,KPP_NH3); {&&}
+{#H3200b##} NH3_##  = NH3               : {%TrA##NMblScScm} k_exb(##,KPP_NH3); {&&}
+{#H3201##}  N2O5    = HNO3_## + HNO3_## : {%TrA##MblNScScm} k_exf_N2O5(##) * C(KPP_H2O_##); {&358, 536}
+{#H3202f##} HONO    = HONO_##           : {%TrA##NSc}       k_exf(##,KPP_HONO); {&&}
+{#H3202b##} HONO_## = HONO              : {%TrA##NSc}       k_exb(##,KPP_HONO); {&&}
+{#H3203f##} HNO3    = HNO3_##           : {%TrA##MblNScScm} k_exf(##,KPP_HNO3); {&&}
+{#H3203b##} HNO3_## = HNO3              : {%TrA##MblNScScm} k_exb(##,KPP_HNO3); {&&}
+{#H3204f##} HNO4    = HNO4_##           : {%TrA##NSc}       k_exf(##,KPP_HNO4); {&&}
+{#H3204b##} HNO4_## = HNO4              : {%TrA##NSc}       k_exb(##,KPP_HNO4); {&&}
+
+{#H4nnn##}{------------------------ C -------------------------}{%A##}{@\hline}
+
+// 1C (#H4100-#H41nn)
+{#H4100f##} CO2        = CO2_##    : {%TrA##MblScScm} k_exf(##,KPP_CO2); {&&}
+{#H4100b##} CO2_##     = CO2       : {%TrA##MblScScm} k_exb(##,KPP_CO2); {&&}
+{#H4101f##} HCHO       = HCHO_##   : {%TrA##ScScm}    k_exf(##,KPP_HCHO); {&&}
+{#H4101b##} HCHO_##    = HCHO      : {%TrA##ScScm}    k_exb(##,KPP_HCHO); {&&}
+{#H4102f##} CH3O2      = CH3O2_##  : {%TrA##Sc}       k_exf(##,KPP_CH3O2); {&&}
+{#H4102b##} CH3O2_##   = CH3O2     : {%TrA##Sc}       k_exb(##,KPP_CH3O2); {&&}
+{#H4103f##} HCOOH      = HCOOH_##  : {%TrA##ScScm}    k_exf(##,KPP_HCOOH); {&&}
+{#H4103b##} HCOOH_##   = HCOOH     : {%TrA##ScScm}    k_exb(##,KPP_HCOOH); {&&}
+{#H4104f##} CH3OOH     = CH3OOH_## : {%TrA##ScScm}    k_exf(##,KPP_CH3OOH); {&&}
+{#H4104b##} CH3OOH_##  = CH3OOH    : {%TrA##ScScm}    k_exb(##,KPP_CH3OOH); {&&}
+{#H4105f##} CH3OH      = CH3OH_##  : {%TrAraSc}       k_exf(##,KPP_CH3OH); {&&}
+{#H4105b##} CH3OH_##   = CH3OH     : {%TrAraSc}       k_exb(##,KPP_CH3OH); {&&}
+
+// 2C (#H4200-#H42nn)  
+{#H4200f##} CH3CO2H    = CH3CO2H_##     : {%TrAraCScScm}   k_exf(##,KPP_CH3CO2H); {&&}
+{#H4200b##} CH3CO2H_## = CH3CO2H        : {%TrAraCScScm}   k_exb(##,KPP_CH3CO2H); {&&}
+{#H4201f##} CH3CHO     = CH3CHO_##      : {%TrAraCSc}      k_exf(##,KPP_CH3CHO); {&&}
+{#H4201b##} CH3CHO_##  = CH3CHO         : {%TrAraCSc}      k_exb(##,KPP_CH3CHO); {&&}
+{#H4202f##} PAN        = PAN_##         : {%TrAraCSc}      k_exf(##,KPP_PAN); {&&}
+{#H4202b##} PAN_##     = PAN            : {%TrAraCSc}      k_exb(##,KPP_PAN); {&&}
+// {#H4203f##} GLYOX      = GLYOX_##       : {%TrAraCSc}      k_exf(##,KPP_GLYOX); {&&}
+// {#H4203b##} GLYOX_##   = GLYOX          : {%TrAraCSc}      k_exb(##,KPP_GLYOX); {&&}
+// {#H4204f##} HOCH2CO2H    = HOCH2CO2H_## : {%TrAraCSc}      k_exf(##,KPP_HOCH2CO2H); {&&}
+// {#H4204b##} HOCH2CO2H_## = HOCH2CO2H    : {%TrAraCSc}      k_exb(##,KPP_HOCH2CO2H); {&&}
+// {#H4204f##} OXL          = OXL_##       : {%TrAraCSc}      k_exf(##,KPP_OXL); {&&}
+// {#H4204b##} OXL_##       = OXL          : {%TrAraCSc}      k_exb(##,KPP_OXL); {&&}
+// {#H4205f##} HOCH2CHO     = HOCH2CHO_##  : {%TrAraCSc}      k_exf(##,KPP_HOCH2CHO); {&&}
+// {#H4205b##} HOCH2CHO_##  = HOCH2CHO     : {%TrAraCSc}      k_exb(##,KPP_HOCH2CHO); {&&}
+
+// // 3C (#H4300-#H43nn)
+// {#H4300f##} CH3COCH3    = CH3COCH3_## : {%TrAraCSc}      k_exf(##,KPP_CH3COCH3); {&&}
+// {#H4300f##} CH3COCH3_## = CH3COCH3    : {%TrAraCSc}      k_exb(##,KPP_CH3COCH3); {&&}
+// {#H4301f##} MGLYOX      = MGLYOX_##   : {%TrAraCSc}      k_exf(##,KPP_MGLYOX); {&&}
+// {#H4301b##} MGLYOX_##   = MGLYOX      : {%TrAraCSc}      k_exb(##,KPP_MGLYOX); {&&}
+// {#H4302f##} HOCH2COCHO  = CH3COCO2H_##      : {%TrAraCSc}      k_exf(##,KPP_HOCH2COCHO); {&&}
+// {#H4302b##} CH3COCO2H_##      = HOCH2COCHO  : {%TrAraCSc}      k_exb(##,KPP_HOCH2COCHO); {&&}
+
+{#H5nnn##}{------------------------ F -------------------------}{%A##}
+
+{#H6nnn##}{------------------------ Cl ------------------------}{%A##}{@\hline}
+
+// Cl only (#H6000-#H60nn)
+{#H6000f##} Cl2            = Cl2_##            : {%TrA##ClMblSc} k_exf(##,KPP_Cl2); {&&}
+{#H6000b##} Cl2_##         = Cl2               : {%TrA##ClMblSc} k_exb(##,KPP_Cl2); {&&}
+
+// Cl + H (#H6200-#H62nn)
+{#H6200f##} HCl            = HCl_##            : {%TrA##ClMblScScm} k_exf(##,KPP_HCl); {&&}
+{#H6200b##} HCl_##         = HCl               : {%TrA##ClMblScScm} k_exb(##,KPP_HCl); {&&}
+{#H6201f##} HOCl           = HOCl_##           : {%TrA##ClMblSc} k_exf(##,KPP_HOCl); {&&}
+{#H6201b##} HOCl_##        = HOCl              : {%TrA##ClMblSc} k_exb(##,KPP_HOCl); {&&}
+
+// Cl + N (#H6300-#H63nn)
+{#H6300##}  N2O5  + Clm_## = ClNO2   + NO3m_## : {%TrA##ClMblN}  k_exf_N2O5(##) * 5.E2; {&358, 536}
+{#H6301##}  ClNO3          = HOCl_## + HNO3_## : {%TrA##ClMblN}  k_exf_ClNO3(##) * C(KPP_H2O_##); {&&}
+{#H6302##}  ClNO3 + Clm_## = Cl2_##  + NO3m_## : {%TrA##ClMblN}  k_exf_ClNO3(##) * 5.E2; {&&}
+
+{#H7nnn##}{------------------------ Br ------------------------}{%A##}{@\hline}
+
+// Br only (#H7000-#H70nn)
+{#H7000f##} Br2            = Br2_##            : {%TrA##BrMblSc}    k_exf(##,KPP_Br2); {&&}
+{#H7000b##} Br2_##         = Br2               : {%TrA##BrMblSc}    k_exb(##,KPP_Br2); {&&}
+
+// Br + H (#H7200-#H72nn)
+{#H7200f##} HBr            = HBr_##            : {%TrA##BrMblScScm}    k_exf(##,KPP_HBr); {&&}
+{#H7200b##} HBr_##         = HBr               : {%TrA##BrMblScScm}    k_exb(##,KPP_HBr); {&&}
+{#H7201f##} HOBr           = HOBr_##           : {%TrA##BrMblSc}    k_exf(##,KPP_HOBr); {&&}
+{#H7201b##} HOBr_##        = HOBr              : {%TrA##BrMblSc}    k_exb(##,KPP_HOBr); {&&}
+
+// Br + N (#H7300-#H73nn)
+{#H7300##}  N2O5  + Brm_## = BrNO2   + NO3m_## : {%TrA##BrMblN}     k_exf_N2O5(##) * 3.E5; {&358, 536}
+{#H7301##}  BrNO3          = HOBr_## + HNO3_## : {%TrA##BrMblN}     k_exf_BrNO3(##) * C(KPP_H2O_##); {&&}
+{#H7302##}  BrNO3 + Brm_## = Br2_##  + NO3m_## : {%TrA##BrMblN}     k_exf_BrNO3(##) * 3.E5; {&&}
+
+// Br + Cl (#H7600-#H76nn)
+{#H7600f##} BrCl           = BrCl_##           : {%TrA##ClBrMblSc}  k_exf(##,KPP_BrCl); {&&}
+{#H7600b##} BrCl_##        = BrCl              : {%TrA##ClBrMblSc}  k_exb(##,KPP_BrCl); {&&}
+{#H7601##}  ClNO3 + Brm_## = BrCl_## + NO3m_## : {%TrA##ClBrMblN}   k_exf_ClNO3(##) * 3.E5; {&&}
+{#H7602##}  BrNO3 + Clm_## = BrCl_## + NO3m_## : {%TrA##ClBrMblN}   k_exf_BrNO3(##) * 5.E2; {&&}
+
+{#H8nnn##}{------------------------ I -------------------------}{%A##}{@\hline}
+
+// I only (#H8000-#H80nn)
+{#H8000f##} I2     = I2_##                    : {%TrA##ISc}      k_exf(##,KPP_I2); {&&}
+{#H8000b##} I2_##  = I2                       : {%TrA##ISc}      k_exb(##,KPP_I2); {&&}
+
+// I + O (#H8100-#H81nn)
+{#H8100f##} IO     = IO_##                    : {%TrA##IMblSc}   k_exf(##,KPP_IO); {&&}
+{#H8100b##} IO_##  = IO                       : {%TrA##IMblSc}   k_exb(##,KPP_IO); {&&}
+{#H8101##}  OIO    = HOI_## + HO2_##          : {%TrA##I}        k_exf(##,KPP_OIO); {&&}
+{#H8102##}  I2O2   = HOI_## + Hp_## + IO2m_## : {%TrA##I}        k_exf(##,KPP_I2O2); {&&}
+
+// I + H (#H8200-#H82nn)
+{#H8200f##} HOI    = HOI_##                   : {%TrA##IMblSc}   k_exf(##,KPP_HOI); {&&}
+{#H8200b##} HOI_## = HOI                      : {%TrA##IMblSc}   k_exb(##,KPP_HOI); {&&}
+{#H8201##}  HI     = Hp_## + Im_##            : {%TrA##IMblSc}   k_exf(##,KPP_HI); {@$k_<\rm mt>(\chem<HI>)\cdot lwc$}{&&}
+{#H8202##}  HIO3   = IO3m_## + Hp_##          : {%TrA##ISc}      k_exf(##,KPP_HIO3);{@$k_<\rm mt>(\chem<HIO_3>)\cdot lwc$}{&&}
+
+// I + N (#H8300-#H83nn)
+{#H8300##}  INO2   = HOI_## + HONO_##         : {%TrA##I}        k_exf(##,KPP_INO2); {&&}
+{#H8301##}  INO3   = HOI_## + HNO3_##         : {%TrA##IMbl}     k_exf(##,KPP_INO3); {&&}
+
+// I + Cl (#H8600-#H86nn)
+{#H8600f##} ICl    = ICl_##                   : {%TrA##ClIMblSc} k_exf(##,KPP_ICl); {&&}
+{#H8600b##} ICl_## = ICl                      : {%TrA##ClIMblSc} k_exb(##,KPP_ICl); {&&}
+
+// I + Br (#H8700-#H87nn)
+{#H8700f##} IBr    = IBr_##                   : {%TrA##BrIMblSc} k_exf(##,KPP_IBr); {&&}
+{#H8700b##} IBr_## = IBr                      : {%TrA##BrIMblSc} k_exb(##,KPP_IBr); {&&}
+
+{#H9nnn##}{------------------------ S -------------------------}{%A##}{@\hline}
+
+// S + O (#H9100-#H91nn)
+{#H9100f##} SO2     = SO2_##             : {%TrA##SMblScScm} k_exf(##,KPP_SO2); {&&}
+{#H9100b##} SO2_##  = SO2                : {%TrA##SMblScScm} k_exb(##,KPP_SO2); {&&}
+
+// S + H (#H9200-#H92nn)
+{#H9200##}  H2SO4   = H2SO4_##           : {%TrA##SMblScScm} xnom7sulf*k_exf(##,KPP_H2SO4); {&&}
+
+// S + C (#H9400-#H94nn)
+{#H9400f##} DMSO    = DMSO_##            : {%TrA##SSc}       k_exf(##,KPP_DMSO); {&&}
+{#H9400b##} DMSO_## = DMSO               : {%TrA##SSc}       k_exb(##,KPP_DMSO); {&&}
+{#H9401##}  CH3SO3H = CH3SO3m_## + Hp_## : {%TrA##SMblSc}    k_exf(##,KPP_CH3SO3H); {&&}
+
+// ---------------------------------------------------------------------------
+
+// equilibria in ## aerosols
+// information for the LaTeX table is included with the forward reactions
+
+{#EQ1nnn##}{------------------------ O -------------------------}
+
+// O (#EQ10-#EQ19)
+
+{#EQ2nnn##}{------------------------ H -------------------------}
+
+// H (#EQ20-#EQ29)
+{#EQ20f##} HO2_##          = O2m_## + Hp_##         : {%TrA##Sc}         xaer(##)*1.6E-1*f_equil_HO2; {@1.6E-5}{&205}
+{#EQ20b##} O2m_## + Hp_##  = HO2_##                 : {%TrA##Sc}         xaer(##)*1.E4*cvfac(##)*f_equil_HO2;
+{#EQ21f##} H2O_##          = Hp_##  + OHm_##        : {%TrA##MblScScm}   xaer(##)*f_equil_H2O*k_arr(1.8E-8,-6716.,temp); {@1.0E-16}{$-6716}{&87}
+{#EQ21b##} Hp_##  + OHm_## = H2O_##                 : {%TrA##MblScScm}   xaer(##)*f_equil_H2O*1.E8*cvfac(##);
+
+{#EQ3nnn##}{------------------------ N -------------------------}{%A##}{@\hline}
+
+// N (#EQ30-#EQ39)
+{#EQ30f##} NH4p_##           = Hp_##   + NH3_##     : {%TrA##MblNScScm}  xaer(##)*f_equil_NH3*k_arr(5.87647E-7,-2391.,temp); {@5.88E-10}{$-2391}{&87}
+{#EQ30b##} NH3_##  + Hp_##   = NH4p_##              : {%TrA##MblNScScm}  xaer(##)*f_equil_NH3*1.E3*cvfac(##);
+{#EQ31f##} HONO_##           = Hp_##   + NO2m_##    : {%TrA##NSc}        xaer(##)*k_arr(5.1E1,-1260.,temp)*f_equil_HONO; {@5.1E-4}{$-1260}{&449}
+{#EQ31b##} Hp_##   + NO2m_## = HONO_##              : {%TrA##NSc}        xaer(##)*1.E5*cvfac(##)*f_equil_HONO;
+{#EQ32f##} HNO3_##           = Hp_##   + NO3m_##    : {%TrA##MblNScScm}  xaer(##)*f_equil_HNO3*k_arr(1.54E-2,8700.,temp); {@15}{$8700}{&450}
+{#EQ32b##} Hp_##   + NO3m_## = HNO3_##              : {%TrA##MblNScScm}  xaer(##)*f_equil_HNO3*1.E-3*cvfac(##);
+{#EQ33f##} HNO4_##           = NO4m_## + Hp_##      : {%TrA##NSc}        xaer(##)*2.E-1*f_equil_HNO4; {@1.E-5}{&1257}
+{#EQ33b##} NO4m_## + Hp_##   = HNO4_##              : {%TrA##NSc}        xaer(##)*2.E4*cvfac(##)*f_equil_HNO4;
+
+{#EQ4nnn##}{------------------------ C -------------------------}{%A##}{@\hline}
+
+// C (#EQ40-#EQ49)
+{#EQ40f##} CO2_##           = Hp_## + HCO3m_##      : {%TrA##MblScScm}   xaer(##)*f_equil_CO2*k_arr(4.3E-4,-913.,temp); {@4.3E-7}{$-913}{&87}
+{#EQ40b##} Hp_## + HCO3m_## = CO2_##                : {%TrA##MblScScm}   xaer(##)*f_equil_CO2*1.E3*cvfac(##);
+{#EQ41f##} HCOOH_##         = Hp_## + HCOOm_##      : {%TrA##ScScm}      xaer(##)*f_equil_HCOOH* 1.8E-4; {@1.8E-4}{&153}
+{#EQ41b##} Hp_## + HCOOm_## = HCOOH_##              : {%TrA##ScScm}      xaer(##)*f_equil_HCOOH* 1.E0*cvfac(##);
+
+{#EQ42f##} CH3CO2H_##         = Hp_## + CH3COOm_##  : {%TrAraCScScm}      xaer(##)*f_equil_CH3CO2H*k_arr(8.75e+5,-46.,temp); {@1.75E-5}{$-46}{&}
+{#EQ42b##} Hp_## + CH3COOm_## = CH3CO2H_##          : {%TrAraCScScm}      xaer(##)*f_equil_CH3CO2H*5.0E10*cvfac(##);
+
+// {#EQ43f##} CH3COCO2H_##           = Hp_## + CH3COCO2m_##  : {%TrAraCScScm}      xaer(##)*k_arr(1.6E8,0.,temp); {@3.2E-3}{$0}{&}
+// {#EQ43b##} Hp_## + CH3COCO2m_##  = CH3COCO2H_##           : {%TrAraCScScm}      xaer(##)*5.0E10*cvfac(##);
+
+// {#EQ44f##} HOCH2CO2H_##           = Hp_## + HOCH2CO2m_##  : {%TrAraCScScm}      xaer(##)*k_arr(1.735e+7,267.,temp); {@3.47E-4}{$267}{&}
+// {#EQ44b##} Hp_## + HOCH2CO2m_##   = HOCH2CO2H_##          : {%TrAraCScScm}      xaer(##)*5.0E10*cvfac(##);
+
+// {#EQ45f##} OXL_##           = Hp_## + OXLm_##  : {%TrAraCScScm}      xaer(##)*k_arr(2.8e+8,453.,temp); {@5.6E-3}{$453}{&}
+// {#EQ45b##} Hp_## + OXLm_##  = OXL_##           : {%TrAraCScScm}      xaer(##)*5.0E10*cvfac(##);
+
+// {#EQ46f##} OXLm_##          = Hp_## + OXLmm_## : {%TrAraCScScm}      xaer(##)*k_arr(2.71e+6,805.,temp); {@5.425E-5}{$805}{&}
+// {#EQ46b##} Hp_## + OXLmm_## = OXLm_##          : {%TrAraCScScm}      xaer(##)*5.0E10*cvfac(##);
+{#EQ5nnn##}{------------------------ F -------------------------}{%A##}
+
+{#EQ6nnn##}{------------------------ Cl ------------------------}{%A##}{@\hline}
+
+// Cl (#EQ60-#EQ69)
+{#EQ60f##} Cl2m_##         = Cl_##   + Clm_##       : {%TrA##Cl}       xaer(##)*5.2E1*f_equil_Cl2m; {@5.2E-6}{&125}
+{#EQ60b##} Cl_## + Clm_##  = Cl2m_##                : {%TrA##Cl}       xaer(##)*1.E7*cvfac(##)*f_equil_Cl2m;
+{#EQ61f##} HCl_##          = Hp_##   + Clm_##       : {%TrA##ClMblScScm}  xaer(##)*f_equil_HCl*k_arr(1.7E5,6896.,temp); {@1.7E6}{$6896}{&167}
+{#EQ61b##} Hp_## + Clm_##  = HCl_##                 : {%TrA##ClMblScScm}  xaer(##)*f_equil_HCl*1.E-1*cvfac(##);
+{#EQ62f##} HOCl_##         = Hp_##   + ClOm_##      : {%TrA##ClSc}     xaer(##)*3.2E-2*f_equil_HOCl; {@3.2E-8}{&194}
+{#EQ62b##} Hp_## + ClOm_## = HOCl_##                : {%TrA##ClSc}     xaer(##)*1.E6*cvfac(##)*f_equil_HOCl;
+
+{#EQ7nnn##}{------------------------ Br ------------------------}{%A##}{@\hline}
+
+// Br (#EQ70-#EQ79)
+{#EQ70f##} Br2m_##            = Br_##     + Brm_##  : {%TrA##Br}        xaer(##)*9.1E0*f_equil_Br2m; {@9.1E-6}{&279}
+{#EQ70b##} Br_##   + Brm_##   = Br2m_##             : {%TrA##Br}        xaer(##)*1.E6*cvfac(##)*f_equil_Br2m;
+{#EQ71f##} HBr_##             = Hp_##     + Brm_##  : {%TrA##BrMblScScm}   xaer(##)*1.E9*f_equil_HBr; {@1.0E9}{&194}
+{#EQ71b##} Hp_##   + Brm_##   = HBr_##              : {%TrA##BrMblScScm}   xaer(##)*1.E0*cvfac(##)*f_equil_HBr;
+{#EQ72f##} HOBr_##            = Hp_##     + BrOm_## : {%TrA##BrSc}      xaer(##)*k_arr(2.3E7,-3091.E0,temp)*f_equil_HOBr; {@2.3E-9}{$-3091}{&626}
+{#EQ72b##} Hp_##   + BrOm_##  = HOBr_##             : {%TrA##BrSc}      xaer(##)* 1.E16*cvfac(##)*f_equil_HOBr;
+{#EQ73f##} BrCl_## + Clm_##   = BrCl2m_##           : {%TrA##ClBrMbl}   xaer(##)*f_equil_BrCl2*k_arr(5.E8,1143.E0,temp)*cvfac(##); {@3.8}{$1143}{&318}
+{#EQ73b##} BrCl2m_##          = BrCl_##   + Clm_##  : {%TrA##ClBrMbl}   xaer(##)*1.3E8*f_equil_BrCl2;
+{#EQ74f##} BrCl_## + Brm_##   = Br2Clm_##           : {%TrA##ClBrMbl}   xaer(##)*5.E10*cvfac(##)*f_equil_Br2Cl; {@1.8E4}{&318}
+{#EQ74b##} Br2Clm_##          = BrCl_##   + Brm_##  : {%TrA##ClBrMbl}   xaer(##)*2.8E6*f_equil_Br2Cl; 
+{#EQ75f##} Br2_##  + Clm_##   = Br2Clm_##           : {%TrA##ClBrMbl}   xaer(##)*5.E7*cvfac(##)*f_equil_Br2Clm; {@1.3}{&318}
+{#EQ75b##} Br2Clm_##          = Br2_##    + Clm_##  : {%TrA##ClBrMbl}   xaer(##)*3.85E7*f_equil_Br2Clm;  
+
+{#EQ8nnn##}{------------------------ I -------------------------}{%A##}{@\hline}
+
+// I (#EQ80-#EQ89)
+{#EQ80f##} ICl_##    + Clm_## = ICl2m_##            : {%TrA##ClIMblSc}   xaer(##)*1.E-3*cvfac(##)*f_equil_ICl; {@7.7E1}{&553}
+{#EQ80b##} ICl2m_##           = ICl_##    + Clm_##  : {%TrA##ClIMblSc}   xaer(##)*1.3E-5*f_equil_ICl;
+{#EQ81f##} IBr_##    + Brm_## = IBr2m_##            : {%TrA##BrIMblSc}   xaer(##)*1.E-1*cvfac(##)*f_equil_IBr; {@2.9E2}{&549}
+{#EQ81b##} IBr2m_##           = IBr_##    + Brm_##  : {%TrA##BrIMblSc}   xaer(##)*3.5E-4*f_equil_IBr;
+{#EQ82f##} ICl_##    + Brm_## = IBr_##    + Clm_##  : {%TrA##ClBrIMblSc} xaer(##)*1.E10*cvfac(##)*f_equil_IClBr; {@3.3E2}{&&}
+{#EQ82b##} IBr_##    + Clm_## = ICl_##    + Brm_##  : {%TrA##ClBrIMblSc} xaer(##)*3.03E7*cvfac(##)*f_equil_IClBr;
+
+{#EQ9nnn##}{------------------------ S -------------------------}{%A##}{@\hline}
+
+// S (#EQ90-#EQ99)
+{#EQ90f##} SO2_##              = Hp_##    + HSO3m_##: {%TrA##SMblScScm}     xaer(##)*f_equil_SO2  *k_arr(1.7E1,2090.E0,temp); {@1.7E-2}{$2090}{&87}
+{#EQ90b##} Hp_##    + HSO3m_## = SO2_##             : {%TrA##SMblScScm}     xaer(##)*f_equil_SO2  *1.E3*cvfac(##);
+{#EQ91f##} HSO3m_##            = Hp_##    + SO3mm_##: {%TrA##SMblScScm}     xaer(##)*f_equil_HSO3m*k_arr(6.E-2,1120.E0,temp); {@6.0E-8}{$1120}{&87}
+{#EQ91b##} Hp_##    + SO3mm_## = HSO3m_##           : {%TrA##SMblScScm}     xaer(##)*f_equil_HSO3m*1.E6*cvfac(##);
+{#EQ92f##} HSO4m_##            = Hp_##    + SO4mm_##: {%TrA##SMblScScm}     xaer(##)*f_equil_HSO4m*k_arr(1.02E-7,2720.E0,temp); {@1.2E-2}{$2720}{&935}
+{#EQ92b##} Hp_##    + SO4mm_## = HSO4m_##           : {%TrA##SMblScScm}     xaer(##)*f_equil_HSO4m*1.E-5 *cvfac(##);
+{#EQ93f##} H2SO4_##            = Hp_##    + HSO4m_##: {%TrA##SMblScScm}     xaer(##)*1.E6*f_equil_H2SO4; {@1.0E3}{&935}
+{#EQ93b##} Hp_##    + HSO4m_## = H2SO4_##           : {%TrA##SMblScScm}     xaer(##)*1.E3*cvfac(##)*f_equil_H2SO4;
+
+// ---------------------------------------------------------------------------
+
+// photolysis in liquid phase 
+
+{#PH2100##} H2O2_## + hv             = 2 OH_##  + Prod_10_##                 : {%TrAraScJ}         JX(ip_H2O2) * 2.33; {&&}
+{#PH2101##} O3_##   + hv             = H2O2_## + O2_##  + Prod_11_##         : {%TrAraScJ}         JX(ip_O3) * 2.33; {&&}
+{#PH2102##} NO3m_## + hv             = NO2_## + OH_## + OHm_## + Prod_12_##  : {%TrAraScJ}         JX(ip_HNO3) * 2.33; {&&}
+
+{#H11nn##}{------------------------ Hg ------------------------}{%A##}{@\hline}
+//{#H1101##} Hg         = RGM_## : {%TrAraHgSc} k_exf_Hg(##)  * C(KPP_H2O_##); {&&}
+{#H1101f##} Hg        = Hg_## : {%TrAraHgSc} k_exf(##,KPP_Hg); {&&}
+{#H1101b##} Hg_##     = Hg    : {%TrAraHgSc} k_exb(##,KPP_Hg); {&&}
+{#H1102##} HgO        = RGM_## : {%TrAraHgSc} k_exf_RGM(##) * C(KPP_H2O_##); {&&}
+{#H1103##} HgCl       = RGM_## : {%TrAraHgSc} k_exf_RGM(##) * C(KPP_H2O_##); {&&}
+{#H1104##} HgCl2      = RGM_## : {%TrAraHgSc} k_exf_RGM(##) * C(KPP_H2O_##); {&&}
+{#H1105##} HgBr       = RGM_## : {%TrAraHgSc} k_exf_RGM(##) * C(KPP_H2O_##); {&&}
+{#H1106##} HgBr2      = RGM_## : {%TrAraHgSc} k_exf_RGM(##) * C(KPP_H2O_##); {&&}
+{#H1107##} ClHgBr     = RGM_## : {%TrAraHgSc} k_exf_RGM(##) * C(KPP_H2O_##); {&&}
+{#H1108##} BrHgOBr    = RGM_## : {%TrAraHgSc} k_exf_RGM(##) * C(KPP_H2O_##); {&&}
+{#H1109##} ClHgOBr    = RGM_## : {%TrAraHgSc} k_exf_RGM(##) * C(KPP_H2O_##); {&&}
+// ---------------------------------------------------------------------------
+
+{ mz_ht_20130510+}
+// uptake for passive tracers for CCMI
+
+{ mz_ht_20130510-}
+// {#H9400f##} SO2t     = SO2t_##             : {%TrA##SMblScScm} k_exf(##,KPP_SO2t); {&&}
+// {#H9400b##} SO2t_##  = SO2t                : {%TrA##SMblScScm} k_exb(##,KPP_SO2t); {&&}
+// {#H9450f##} NH50W    = NH50W_##            : {%TrA##SMblScScm} k_exf(##,KPP_NH50W); {&&}
+// {#H9450b##} NH50W_## = NH50W               : {%TrA##SMblScScm} k_exb(##,KPP_NH50W); {&&}
+
+// dummy reactions added by AK
+
+// {d10}   {#D1##} D1O_## = PROD1_##       : {%TrA##} 0.{ xaer(##)*1./86400.};  {dummy first order}
+// {d11} {#D2##}D2O_## + D2O_## = PROD2_## : {%A} xaer(##)*1./86400.*cvfac(##);  {dummy second order}
+
+// {#HD1f##} DGtAig     = DGtAi_##                  : {%TrA##}  k_exf(##,KPP_DGtAig)*lwc(##);  {d2i}
+// {#HD1b##} DGtAi_## = DGtAig                      : {%TrA##}  k_exb(##,KPP_DGtAig)*yhenry(KPP_DGtAig);  {d3i}
+// {#HD2f##} DGtAsg     = DGtAs_##                  : {%TrA##}  k_exf(##,KPP_DGtAsg)*lwc(##);  {d2s}
+// {#HD2b##} DGtAs_##  = DGtAsg                     : {%TrA##}  k_exb(##,KPP_DGtAsg)*yhenry(KPP_DGtAsg);  {d3s}
+
+// SO2 and SO4 condensation on third mode to prevent too much Sulfate being in the fourth mode
+// {H akQQQQQ}  SO2 = DAa3                           : {%TrA##S}   xaer_m3dum*k_exf(3,KPP_SO2)*lwc(3);
+// {H akQQQQQ}  SO4 = DAa3                           : {%TrA##S}   xaer_m3dum*k_exf(3,KPP_SO4)*lwc(3);
+// {eq akQQQQQ}  DAa3 =  DAma3 + DAHpa3               : {%TrA##S}   xaer_m3dum*ykef(3,zksb_H2SO4a);
+
+//{d6}    DA_## = DAHp_## + DAm_##                   : {%A} xaer(##)*k_arr(1.8E-9,-6716.E0,temp);
+//{d7}    DAHp_## + DAm_## = DA_##                   : {%A} xaer(##)*1.E7 *cvfac(##);
+
+{#D05##}   Nap_##     =  D1O_## : {%TrA##Mbl}   0.;  {dc1}
+
+// ---------------------------------------------------------------------------
+

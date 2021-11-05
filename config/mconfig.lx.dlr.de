@@ -1,0 +1,191 @@
+# -*- Makefile -*- Time-stamp: <2019-05-24 18:17:32 joec_pa>
+###############################################################################
+##### PLATFORM SPECIFIC SETTINGS (LINUX64) ####################################
+###############################################################################
+ARCH       = LINUX64
+
+###########################################################################
+### DEFAULTS
+###########################################################################
+#### DEFAULT COMPILE MODE
+if test -z "$RUNMODE" ; then
+   RUNMODE=PRODUCTION
+fi
+
+#### SET DEFAULT PROFILING MODE
+if test -z "$PROFILEMODE" ; then
+   PROFILEMODE=NONE
+fi
+
+##### TOOLS
+#AR       = ar
+#ARFLAGS  = cvr
+#NMFLAGS  = 
+
+##### F95 EXTENSIONS
+DEFOPT   = -D
+MODOPT   = -I
+
+  #########################################################################
+  ### DLR PCs / Notebooks
+  #########################################################################
+
+     TMPF90=`mpif90 -show | awk '{print $1}'`
+     case $TMPF90 in
+          g95*)
+            COMPILER=G95
+            ;;
+          gfortran*)
+            COMPILER=GFORTRAN
+            ;;
+          *)
+            ERRSTR='Error: no openmpi module loaded!'
+            ;;
+     esac
+
+     case $COMPILER in
+
+      GFORTRAN)
+         ### ### openmpi/1.8.4/gfortran/4.8.1
+         CXX      = g++
+         CC       = mpicc
+         CFLAGS   = -O -Df2cFortran `/export/home/joec_pa/Programs/netcdf/4.6.3/openmpi/3.1.3/gfortran/7.3.1/bin/nf-config --cflags`
+         F90      = `which \mpif90`
+         F90VERS  = `$F90 --version | awk '{if (NR == 1) print}'`
+         F90VERSNO = `$F90 --version | awk '{if (NR == 1) print $5}'`
+         ##### F95 EXTENSIONS
+         DEFOPT   = -D
+         MODOPT   = -I
+         ##### F95 COMPILER FLAG TO OBTAIN DOUBLE PRECISION
+         F90R8    = -fdefault-real-8
+         ##### F77 OPTIONS
+         FFLAGS   = -fno-second-underscore -ffree-line-length-none -fno-range-check
+         ##### OpenMP options
+         F90OMP    = -fopenmp
+         F90OMPLIB = -lgomp
+         ##### MPI C++ compiler, flags and libs (for GUESS)
+         MPICXX      = mpicxx -std=c++1y
+         LIBCXX      = -lstdc++
+#-lmpi_cxx
+         ###
+         MPIROOT    =
+         MPI_LIB    = 
+         #PNETCDFROOT = $HOME/Programs/pnetcdf/1.6.1/gfortran/4.8.1
+         PNETCDFROOT = 
+
+          case $F90VERSNO in
+           4.8.1)
+                 NETCDFROOT = /export/home/joec_pa/Programs/netcdf/3.6.3/gfortran/$F90VERSNO
+                 SPEC_NETCDF_INC =
+                 SPEC_NETCDF_LIB = 
+                 ;;
+           7.3.1|7.4.0|7.4.1)
+                 NETCDFROOT =
+                 SPEC_NETCDF_INC = `/export/home/joec_pa/Programs/netcdf/4.6.3/openmpi/3.1.3/gfortran/7.3.1/bin/nf-config --fflags | sed 's|-I||g'`
+                 SPEC_NETCDF_LIB = `/export/home/joec_pa/Programs/netcdf/4.6.3/openmpi/3.1.3/gfortran/7.3.1/bin/nf-config --flibs`
+                 ;;
+         esac
+
+         BLASROOT   =
+         BLAS_LIB   =
+         LAPACKROOT =
+         LAPACK_LIB =
+         #SPEC_LABLA_LIB =
+         SPEC_LIB   =
+
+         case $RUNMODE in
+            DEBUG)
+               ### for debugging:
+               F90FLAGS = -cpp -D__linux__ -fno-second-underscore -ffree-line-length-none -fno-range-check -fbacktrace -fbounds-check -g -O0 -Wall -fdump-core
+               # -pedantic
+               # -DNOENDIANCONVERT
+               # -std=f95
+               MPICXXFLAGS = -O0 -DNDEBUG
+               ;;
+            DEBUGOPT)
+               ### for debugging:
+               F90FLAGS = -cpp -D__linux__ -fno-second-underscore -ffree-line-length-none -fno-range-check -O3 -fbacktrace -fbounds-check -g -Wall -fdump-core
+               MPICXXFLAGS = -O2 -DNDEBUG -Wuninitialized -fno-common
+               ;;
+            PRODUCTION)
+               ### fast, optimized model run:
+               F90FLAGS = -cpp -D__linux__ -fno-second-underscore -ffree-line-length-none -fno-range-check -O3
+               MPICXXFLAGS = -O2 -DNDEBUG -Wuninitialized -fno-common
+               ;;
+            *)
+               ERRSTR='Error: wrong run-time mode selected! To solve ./configure [options] RUNMODE=DEBUG|PRODUCTION'
+               ;;
+         esac
+         ;;
+
+      G95)
+         ### ### g95/0.93 openmpi/1.8.4/g95/0.93
+         CXX      = g++
+         CC       = mpicc
+         CFLAGS   = -O -Df2cFortran
+         F90      = `which \mpif90`
+         F90VERS  = `$F90 --version | awk '{if (NR == 1) print}'`
+         ##### F95 EXTENSIONS
+         DEFOPT   = -D
+         MODOPT   = -I
+         ##### F95 COMPILER FLAG TO OBTAIN DOUBLE PRECISION
+         F90R8    = -r8
+         ##### F77 OPTIONS
+         FFLAGS   = -fno-second-underscore -ffree-line-length-huge -fno-backslash 
+         ##### MPI C++ compiler, flags and libs (for GUESS)
+         MPICXX      = mpicxx
+         LIBCXX      = /lib64/libgcc_s.so.1 /usr/lib64/libstdc++.so.6 -lmpi_cxx
+         ###
+         MPIROOT    =
+         MPI_LIB    = 
+         #PNETCDFROOT = $HOME/Programs/pnetcdf/1.6.1/g95/0.93
+         PNETCDFROOT = 
+         NETCDFROOT = /export/home/joec_pa/Programs/netcdf/3.6.3/g95/0.93
+         SPEC_NETCDF_INC =
+         SPEC_NETCDF_LIB =
+         BLASROOT   =
+         BLAS_LIB   =
+         LAPACKROOT =
+         LAPACK_LIB =
+         #SPEC_LABLA_LIB =
+         SPEC_LIB   =
+
+         case $RUNMODE in
+            DEBUG)
+               ### for debugging:
+               F90FLAGS = -cpp -fno-second-underscore -ffree-line-length-huge -fno-backslash  -ftrace=full -fbounds-check -g -O0
+               # -DNOENDIANCONVERT
+               # -std=f95 -std=f2003
+               MPICXXFLAGS = -O0 -DNDEBUG
+               ;;
+            DEBUGOPT)
+               ### for debugging:
+               F90FLAGS = -cpp -fno-second-underscore -ffree-line-length-huge -fno-backslash  -ftrace=full -fbounds-check -g -O3
+               # -DNOENDIANCONVERT
+               # -std=f95 -std=f2003
+               MPICXXFLAGS = -O2 -DNDEBUG -Wuninitialized -fno-common
+               ;;
+
+            PRODUCTION)
+               ### fast, optimized model run:
+               F90FLAGS = -cpp -O3 -fno-second-underscore -ffree-line-length-huge -fno-backslash
+               # -std=f95 -std=f2003
+               MPICXXFLAGS = -O2 -DNDEBUG -Wuninitialized -fno-common
+               ;;
+            *)
+               ERRSTR='Error: wrong run-time mode selected! To solve ./configure [options] RUNMODE=DEBUG|PRODUCTION'
+               ;;
+         esac
+         ;;
+
+      *)
+         ERRSTR='Error: no or wrong compiler suite selected! To solve ./configure [options] COMPILER=G95|GFORTRAN'
+         ;;
+
+     esac
+
+     FCKLIBS    = 
+
+###########################################################################
+###########################################################################
+###########################################################################

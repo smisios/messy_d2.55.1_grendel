@@ -1,0 +1,66 @@
+#! /bin/sh
+set -e
+. "@abs_builddir@/../setup-common.inc"
+
+SETUP_SRC="${POOL}/setup/omip_365_era15"
+
+# assert that ie, je and tp are set
+assert_vars_are_set DEST GRID ie je tp
+
+@MKDIR_P@ forcing_omip
+cd forcing_omip
+
+/bin/rm -f prune_date_warning
+mkfifo prune_date_warning
+grep -v '^Warning (splitTimevalue) : Reset wrong date/time to' \
+  <prune_date_warning >&2 &
+(
+  $CMD_PREFIX "$CDO" -f ext -p 4b copy \
+    "${SETUP_SRC}/2m_dewpoint_temp_arctic_corr.nc" \
+    "2m_dewpoint_temperature.ext" ;
+  $CMD_PREFIX "$CDO" -f ext -p 4b copy "${SETUP_SRC}/east_west_stress.nc" \
+    "east_west_stress.ext" ;
+  $CMD_PREFIX "$CDO" -f ext -p 4b copy "${SETUP_SRC}/north_south_stress.nc" \
+    "north_south_stress.ext" ;
+  $CMD_PREFIX "$CDO" -f ext -p 4b copy "${SETUP_SRC}/scalar_wind.nc" \
+    "scalar_wind.ext" ;
+  $CMD_PREFIX "$CDO" -f ext -p 4b copy "${SETUP_SRC}/total_precipitation.nc" \
+    "total_precipitation.ext" ;
+  $CMD_PREFIX "$CDO" -f ext -p 4b copy "${SETUP_SRC}/2m_temp_arctic_corr.nc" \
+    "2m_temperature.ext" ;
+  $CMD_PREFIX "$CDO" -f ext -p 4b copy \
+    "${SETUP_SRC}/mean_sea_level_pressure.nc" \
+    "mean_sea_level_pressure.ext" ;
+  $CMD_PREFIX "$CDO" -f ext -p 4b copy "${SETUP_SRC}/total_cloud_cover.nc" \
+    "total_cloud_cover.ext" ;
+  $CMD_PREFIX "$CDO" -f ext -p 4b copy \
+    "${SETUP_SRC}/total_solar_radiation.nc" \
+    "total_solar_radiation.ext" ;
+  $CMD_PREFIX "$CDO" -f ext -p 4b copy "${SETUP_SRC}/land_sea_mask.ECMWF.nc" \
+    "land_sea_mask.ECMWF.ext4" ) 2>prune_date_warning
+/bin/rm -f prune_date_warning
+
+##create  p-e  instead of p ; dont forget to remove max in line 237
+##$CMD_PREFIX "$CDO" -f ext -p 4b add "${SETUP_SRC}/total_precipitation.nc" "${SETUP_SRC}/evaporation.nc total_precipitation.ext"
+
+$CMD_PREFIX "$CDO" -f ext -p 8b copy "${DEST}/${GRID}_anta" anta.ext
+
+$CMD_PREFIX "@abs_builddir@/forcing_omip" <<EOF
+&gridparams
+me=${ie}
+ne=${je}
+bounds_exch_tp = .${tp}. /
+EOF
+
+/bin/rm -f *.ext4 anta.ext
+
+for forcing in GICLOUD GIPREC GISWRAD GITDEW GITEM GIU10 \
+   GIWIX GIWIY GIPRESS
+do
+  $CMD_PREFIX "$CDO" -f ext -p 8b copy "${forcing}.ext" \
+    "${DEST}/${GRID}_${forcing}_OMIP365"
+  /bin/rm -f "${forcing}.ext"
+done
+
+/bin/rm -f *.ext
+cd ..

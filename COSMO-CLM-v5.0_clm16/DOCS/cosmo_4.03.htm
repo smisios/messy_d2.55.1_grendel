@@ -1,0 +1,277 @@
+<!DOCTYPE html 
+     PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+     "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xml:lang="en" lang="en">
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="GENERATOR" content="Mozilla/4.7C-SGI [en] (X11; I; IRIX64 6.5 IP27) [Netscape]">
+   <title>New COSMO-Model Version 4.3</title>
+<style type="text/css">
+  body { font-family:       Arial;
+         font-size:         12pt;
+         background-repeat: no-repeat; 
+         margin:            1em; }
+
+  tt   { font-size:         12pt;}
+
+  li   { margin-top:         5pt;
+         margin-bottom:      5pt }
+
+  th   { border:           1px solid black;
+         padding:          3pt;
+         vertical-align:   top;
+         background-color: lightblue;}
+
+  td   { border:           1px solid black;
+         padding:          3pt;
+         vertical-align:   top;}
+
+  td.hilit       { border:           1px solid black;
+                   padding:          1pt;
+                   vertical-align:   top;
+                   background-color: lightblue;}
+
+  td.clean       { padding:          0pt;
+                   border-style:     none;
+                   vertical-align:   top;}
+
+  td.notes       { padding:          3pt;
+                   border-style:     none;
+                   vertical-align:   top;}
+
+  table.note     { border-width:     0pt;
+                   border-style:     none;
+                   margin-left:      5pt;
+                   margin-top:       1pt;
+                   margin-bottom:    1pt;
+                   cell-padding:     5pt;
+                   vertical-align:   top;
+                   text-align:       left;}
+  
+  table.atte     { border-width:     0pt;
+                   border-style:     none;
+                   margin-left:      5pt;
+                   margin-top:       1pt;
+                   margin-bottom:    1pt;
+                   cell-padding:     5pt;
+                   vertical-align:   top;
+                   text-align:       left;
+                   background-color: red;}
+  
+  table.namelist { border-width:  2pt;
+                   border-style:  groove;
+                   border-color:  black;
+                   width:         90%;
+                   text-align:    left;
+                   margin-top:    1pt;
+                   margin-bottom: 1pt;
+                   padding:       3pt;
+                   align:         center;}
+  
+  tr.headings    { text-align:       left;
+                   vertical-align:   top;
+                   border-width:     1pt;
+                   border-style:     groove;
+                   border-color:     grey;
+                   padding:          2pt;
+                   font-weight:      bold;}
+
+</style>
+
+</head>
+  <body text="#000000" bgcolor="#FFFFFF" link="#0000EE" vlink="#551A8B" alink="#FF0000">
+
+<center>
+<h1>
+<a NAME="begin">Documentation of the Changes in COSMO-Model 4.3</a></h1></center>
+
+<p>
+In this version, the computation of some diagnostic fields has been changed
+in the turbulence. Also, some technical adaptations have been done.
+</p>
+
+<h4><a NAME="content">Contents:</a></h4>
+
+<ol>
+<li><a href="#changes">Documentation of the Changes</a></li>
+  <ul>
+    <li><a href="#TUR">Changes in the computation of the 2m temperature</a></li>
+    <li><a href="#SYN">Changes in the computation of synthetic satellite images</a></li>
+    <li><a href="#TEC">Technical adaptations and bug fixes</a></li>
+    <li><a href="#GRB">New fields and grib numbers</a></li>
+  </ul>
+<li><a href="#namelis">Summary of new and obsolete Namelist Variables</a></li>
+<li><a href="#results">Changes of the Results</a></li>
+</ol>
+<p>
+<hr>
+
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="changes">1. Documentation of the Changes</a></h3>
+
+<!---------------------------------------------------------------------------->
+
+<h4><a NAME="TUR">Changes in the computation of the 2m temperature
+                  <i>(by Matthias Raschendorfer)</i></a></h4>
+
+<p> 
+The interpolation to the diagnostic levels has been changed. In particular, no more
+exponential canopy profile is assumed, but a diagnostic Prandtl layer interpolation
+is used even for scalars, using an adopted canopy layer resistance (and standard
+SYNOP lawn).
+</p>
+
+    <p><table class="note">
+       <tr><td class="notes">Note:</td>
+       <td class="notes">
+       Because the 2m temperature is used in the soil model, these changes
+       do influence not only the results of the field T_2M, but also the whole 
+       forecast.
+       </td></tr>
+    </table></p>
+
+<p align="right"><a href="#content">Back to Contents</a>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+
+<h4><a NAME="SYN">Changes in the computation of synthetic satellite images
+                  <i>(by Ulrich Sch&auml;ttler)</i></a></h4>
+
+<p>
+On February 18th, the COSMO_EU got a <i>hard limit violation</i> of the surface
+pressure for the RTTOV library: the model pressure was 1100.14 hPa!!
+But this was at the Death Sea, which is not too unrealistic, because there were
+rather cold temperatures by that time.
+Now, the surface pressure given to the RTTOV-library is limited by 1100 hPa 
+(which is the hard limit).
+</p>
+
+<p align="right"><a href="#content">Back to Contents</a>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+
+<h4><a NAME="TEC">Technical adaptations and bug fixes</a></h4>
+
+<ul>
+ <li>Calculation of the 3D diagnostic field <tt>edr</tt> for the eddy dissipotion rate.
+     This field has been introduced in <tt>data_fields</tt>, <tt>organize_data</tt>, 
+     <tt>src_allocation</tt>, <tt>src_setup_vartab</tt>, <tt>src_turbulence</tt>, 
+     <tt>src_turbdiff</tt></li>
+
+ <li>Changed the treatment of parameter field <tt>dd(:,:,:)</tt> to achieve better
+     vectorization in the subroutine <tt>stab_funct</tt></li>
+
+ <li><tt>src_radiation.f90</tt>:
+     There still were 2 arguments wrongly swapped in the call to SR <tt>fesft</tt></li>
+
+ <li><tt>time_utilities.f90</tt>:
+     In restart runs, <tt>YUTIMING</tt> now starts output at <tt>hstart</tt>, 
+     not at hour 0</li>
+
+ <li><tt>src_input.f90</tt>:
+     Corrected reading of boundary data for <tt>ytunit_bd='d'</tt></li>
+
+ <li><tt>src_output.f90</tt>:
+     Avoided GRIB warnings in case of long simulation runs</li>
+
+ <li><tt>lmorg.F90</tt>:
+     Adapted interface of SR <tt>init_timings</tt></li>
+
+ <li><tt>organize_diagnosis.f90</tt>:
+     Corrected computation of <tt>nstepsgp</tt></li>
+
+ <li><tt>src_gridpoints.f90</tt>; <tt>src_meanvalues.f90</tt>:
+     Changed 'LM' into 'COSMO' for ASCII output</li>
+</ul>
+
+
+<p align="right"><a href="#content">Back to Contents</a>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+
+<h4><a NAME="GRB">New fields and grib numbers</a></h4>
+
+<p>Some new fields have been introduced to the COSMO-Model (for later use)
+and some fields now got official GRIB numbers.
+</p>
+
+<p>
+<center>
+<table border="1" cellspacing="3" class="namelist">
+ <tbody>
+   <tr>
+     <th width="15%">Name</th>
+     <th width="10%">Element Number</th>
+     <th width="10%">Table Number</th>
+     <th>Comment</th>
+   </tr>
+   <tr><td><tt>EDR</tt></td><td>151</td><td>201</td><td>Eddy dissipation rate</td> </tr>
+   <tr><td><tt>TINC_LH</tt></td><td>32</td> <td>202</td> <td>needed for restart files</td></tr>
+   <tr><td><tt>HORIZON</tt></td>   <td> 96</td> <td>202</td> 
+                     <td>fields for topographical corrections</td></tr>
+   <tr><td><tt>SWDIR_COR</tt></td> <td> 97</td> <td>202</td> <td></td></tr>
+   <tr><td><tt>SLO_ANG</tt></td>   <td> 98</td> <td>202</td> <td></td></tr>
+   <tr><td><tt>SLO_ASP</tt></td>   <td> 99</td> <td>202</td> <td></td></tr>
+   <tr><td><tt>SKYVIEW</tt></td>   <td>100</td> <td>202</td> <td></td></tr>
+   <tr><td><tt>ASWDIR_S</tt></td>  <td> 22</td> <td>201</td> <td></td></tr>
+   <tr><td><tt>ASWDIFD_S</tt></td> <td> 23</td> <td>201</td> <td></td></tr>
+   <tr><td><tt>ASWDIFU_S</tt></td> <td> 24</td> <td>201</td> <td></td></tr>
+   <tr><td><tt>ALWD_S</tt></td>    <td> 25</td> <td>201</td> <td></td></tr>
+   <tr><td><tt>ALWU_S</tt></td>    <td> 26</td> <td>201</td> <td></td></tr>
+   <tr><td><tt>PRH_GSP</tt></td>   <td>134</td> <td>201</td> 
+                      <td>new moisture variables</td></tr>
+   <tr><td><tt>HAIL_GSP</tt></td>  <td>135</td> <td>201</td> <td></td></tr>
+   <tr><td><tt>QH</tt></td>        <td> 98</td> <td>201</td> <td></td></tr>
+   <tr><td><tt>QNC</tt></td>       <td>221</td> <td>201</td> <td></td></tr>
+   <tr><td><tt>QNR</tt></td>       <td>222</td> <td>201</td> <td></td></tr>
+   <tr><td><tt>QNI</tt></td>       <td>223</td> <td>201</td> <td></td></tr>
+   <tr><td><tt>QNS</tt></td>       <td>224</td> <td>201</td> <td></td></tr>
+   <tr><td><tt>QNG</tt></td>       <td>225</td> <td>201</td> <td></td></tr>
+   <tr><td><tt>QNH</tt></td>       <td>226</td> <td>201</td> <td></td></tr>
+ </tbody>
+</table>
+</center>
+</p>
+
+<p align="right"><a href="#content">Back to Contents</a>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+
+<hr>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="namelis">2. Summary of new Namelist Variables</a></h3>
+
+<p>There were no changes regarding Namelist variables:</p>
+
+<p align="right"><a href="#content">Back to Contents</a>
+<spacer type=vertical size=10>
+<hr>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="results">3. Changes of Results</a></h3>
+
+<p>
+The changes in the computation of the 2m temperature also influence the
+whole forecast, because it is used as input to the soil model.
+</p>
+
+<p align="right"><a href="#content">Back to Contents</a>
+
+<!---------------------------------------------------------------------------->
+
+</body>
+</html>

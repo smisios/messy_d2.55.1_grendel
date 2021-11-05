@@ -1,0 +1,33 @@
+#! /bin/sh
+test x${DEBUG+set} != xset || set -x
+
+GRID=${GRID-TP10}
+date=${date-$(date +%Y%m%d)}
+POOL=${POOL-@POOL_ROOT@/MPIOM}
+#POOL='/scratch/local1/users/m211054'
+DEST=${DEST-`pwd`/$GRID}
+CDO=${CDO-@CDO@}
+GMT_BINDIR=${GMT_BINDIR-@GMT_BINDIR@}
+test -z "$GMT_BINDIR" || GMT_BINDIR="$GMT_BINDIR/"
+
+if [ x${DEBUG+set} = xset ]; then
+  # CMD_PREFIX is meant to contain a wrapper for the binaries, it
+  # might be used to e.g. call on valgrind on platforms that support it
+  CMD_PREFIX=${CMD_PREFIX-time}
+  export CMD_PREFIX
+fi
+
+. "@abs_srcdir@/setup-script-funcs.sh.inc"
+
+# unless a full configuration was specified via environment, load grid
+# setup parameters from set of pre-configured grids
+if [ x${ie+set} != xset ]; then
+  . "@abs_srcdir@/grid-configs.sh.inc"
+fi
+
+SETUP_WORK_DIR=${SETUP_WORK_DIR-`pwd`/work}
+
+export date DEST POOL GRID CDO SETUP_WORK_DIR
+
+@MKDIR_P@ "$DEST" "${SETUP_WORK_DIR}"
+cd "$SETUP_WORK_DIR"

@@ -1,0 +1,398 @@
+<!DOCTYPE html 
+     PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+     "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xml:lang="en" lang="en">
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="GENERATOR" content="Mozilla/4.7C-SGI [en] (X11; I; IRIX64 6.5 IP27) [Netscape]">
+   <title>Changes in the COSMO-Model 4.17</title>
+<style type="text/css">
+  body { font-family:       Arial;
+         font-size:         12pt;
+         background-repeat: no-repeat; 
+         margin:            1em; }
+
+  tt   { font-size:         12pt;}
+
+  li   { margin-top:         5pt;
+         margin-bottom:      5pt }
+
+  th   { border:           1px solid black;
+         padding:          3pt;
+         vertical-align:   top;
+         background-color: lightblue;}
+
+  td   { border:           1px solid black;
+         padding:          3pt;
+         vertical-align:   top;}
+
+  td.middl   { border:           1px solid black;
+               padding:          3pt;
+               vertical-align:   middle;}
+
+  td.hilit       { border:           1px solid black;
+                   padding:          1pt;
+                   vertical-align:   top;
+                   background-color: lightblue;}
+
+  td.clean       { padding:          0pt;
+                   border-style:     none;
+                   vertical-align:   top;}
+
+  td.notes       { padding:          3pt;
+                   border-style:     none;
+                   vertical-align:   top;}
+
+  td.nomid       { padding:          3pt;
+                   border-style:     none;
+                   vertical-align:   middle;}
+
+  table.note     { border-width:     0pt;
+                   border-style:     none;
+                   margin-left:      5pt;
+                   margin-top:       1pt;
+                   margin-bottom:    1pt;
+                   cell-padding:     5pt;
+                   vertical-align:   top;
+                   text-align:       left;}
+  
+  table.atte     { border-width:     0pt;
+                   border-style:     none;
+                   margin-left:      5pt;
+                   margin-top:       1pt;
+                   margin-bottom:    1pt;
+                   cell-padding:     5pt;
+                   vertical-align:   top;
+                   text-align:       left;
+                   background-color: red;}
+  
+  table.namelist { border-width:  2pt;
+                   border-style:  groove;
+                   border-color:  black;
+                   width:         90%;
+                   text-align:    left;
+                   margin-top:    1pt;
+                   margin-bottom: 1pt;
+                   padding:       3pt;
+                   align:         center;}
+  
+  tr.headings    { text-align:       left;
+                   vertical-align:   top;
+                   border-width:     1pt;
+                   border-style:     groove;
+                   border-color:     grey;
+                   padding:          2pt;
+                   font-weight:      bold;}
+
+</style>
+
+</head>
+  <body text="#000000" bgcolor="#FFFFFF" link="#0000EE" vlink="#551A8B" alink="#FF0000">
+
+<center>
+<h1>
+<a NAME="begin">Documentation of the Changes in the COSMO-Model <br /> Version 4.17</a></h1></center>
+
+<p>
+The main changes in Version 4.17 have been for running idealized cases. Therefore the module
+<tt>src_artifdata.f90</tt> has changed completely. There is a namelist group <tt>/ARTIFCTL/</tt>
+to specify a range of artificial setups. There were also some changes in other routines, which 
+are documented below.
+</p>
+
+<h4><a NAME="content">Contents:</a></h4>
+
+<ol>
+<li><a href="#chanart">Changes for Running Idealized Test Cases</a></li>
+<li><a href="#chanper">Periodic Boundary Conditions</a></li>
+<li><a href="#chantec">Summary of Other Changes</a></li>
+<li><a href="#namelis">Summary of Namelist Variables Changes</a></li>
+<li><a href="#results">Changes of Results</a></li>
+</ol>
+<p>
+<hr>
+
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="chanart">1. Changes for Running Idealized Test Cases</a><br />
+   (by Ulrich Blahak)</h3>
+
+<!---------------------------------------------------------------------------->
+
+<p>
+In this version the rationale for performing idealized cases has been modified.
+Instead of having to <i>clone</i> a <tt>src_artifdata.f90</tt> file
+for each different case and to modify it <i>by hand</i>,
+there is now one <tt>src_artifdata.f90</tt>, which includes
+all ingredients for idealized simulations in a modular
+fashion and which allows to configure the simulations
+by namelist parameters.
+</p>
+
+<p>
+For example, the user may choose between different types of artificial orography 
+(arbitrary number of Gaussian or bellshaped hills, or reading from ASCII file),
+and different types of initial T- and relative humidity profiles
+(polytrope atmosphere layers, constant Brunt-Vaisala-frequency layers, 
+Weisman-Klemp-type profiles, or again reading from an ASCII-file).
+The modular fashion is designed to enable the user to add his/her own ingredient 
+at a specific location within the code, if it is not already available.
+Restart runs are now also possible for idealized simulations.
+</p>
+
+<p>
+There have also been improvements in the hydrostatic pressure initialization, 
+with regards to the determination of the surface pressure, to the treatment of moisture,
+and to the consistency with the choice of the dynamical core.
+</p>
+
+<p>
+Note that older versions of <tt>src_artifdata.f90</tt> will probably not work any
+more. In that case contact Ulrich Blahak. It is likely that your particular 
+idealized case might now be configurable via the new namelist parameters, 
+or it might be possbile to add your particular idealized case to the already 
+implemented cases.
+</p>
+
+<p>
+A detailed documentation is under way from Ulrich Blahak.
+In the meantime, users can consult an exemplary runscript
+<tt>run_ideal</tt>, which contains all new namelist parameters
+in a documented and cookbook-like fashion 
+(see below, <a href="#namelis">Changes in the namelists</a>).
+</p>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+
+<p align="right"><a href="#content">Back to Contents</a>
+
+<hr>
+
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="chanper">2. Periodic Boundary Conditions</a><br />
+   (by Ulrich Blahak, also based on work at ETH Z&uuml;rich)</h3>
+
+<!---------------------------------------------------------------------------->
+
+<p>
+Periodic boundary conditions have now been implemented separate for
+the x- and the y-direction. 2 new namelist parameters <tt>lperi_x</tt> and
+<tt>lperi_y</tt> do now replace the old parameter <tt>lperi</tt>.
+Also the model variable <tt>my_peri_neigh</tt> has been removed.
+The variable <tt>my_cart_neigh</tt> is now set depending on <tt>lperi_x</tt> 
+and <tt>lperi_y</tt>.
+</p>
+
+<p>
+All necessary boundary exchange for periodic conditions is now handled in 
+the routine <tt>exchg_boundaries</tt>. The interface to this routine has
+been changed to pass the values of <tt>lperi_x</tt>, <tt>lperi_y</tt>,
+<tt>l2dim</tt> and <tt>num_compute</tt>. This makes it necessary to call
+this routine also in case of single processor runs. An additional
+advantage of this is, that there are no more code branches outside
+<tt>exchg_boundaries</tt> for <tt>lperi_x</tt>, <tt>lperi_y</tt> or <tt>l2dim</tt>.
+</p>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+
+<p align="right"><a href="#content">Back to Contents</a>
+
+<hr>
+
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="chantec">3. Summary of Other Changes</a></h3>
+
+<!---------------------------------------------------------------------------->
+
+<ul>
+ <li>Bug fixes in case of alternative turbulence schemes:<br />
+  <ol>
+   <li>Corrected some wrong loop index boundaries in <tt>src_slow_tendencies_rk.f90</tt> 
+       which lead to invalid floating operations in previous versions 
+       when <tt>l3dturb=.true.</tt></li>
+   <li>Added some missing boundary exchanges for <tt>tkhm</tt>, <tt>tkhh</tt>, 
+       <tt>tke</tt>, <tt>tketens</tt> in <tt>organize_physics.f90</tt>.</li>
+  </ol></li>
+ <li><p>
+     Implemented the option of linear interpolation to constant p- and z-levels
+     in addition to the traditional cubic tension splines. This scheme uses the 
+     subroutine <tt>lininterp2D_xinter1D_vec</tt>. A new namelist
+     parameter <tt>itype_vertint</tt> has been introduced (1=cubic spline, 2=linear);
+     (see below, <a href="#namelis">Changes in the namelists</a>).
+     </p>
+
+     <p>
+     For the interpolation of pressure <tt>P</tt> to z-levels, the surface pressure
+     <tt>PS</tt> is now used as lower boundary for the vertical interpolation instead
+     of the pressure at the lowest main level (for both types of vertical interpolation).
+     This changes the results of interpolated pressure near the surface.
+     </p>
+
+     <p>
+     The lower boundary conditions for <tt>U</tt>, <tt>V</tt>, <tt>W</tt>, and <tt>T</tt>
+     for *linear* z_int()-interpolation now depend on the setting of <tt>lnosurffluxes_m/h</tt> 
+     (free-slip boundary condition or not)
+     </p></li>
+ <li><tt>data_io.f90</tt><br />
+     Increased maximal number of height level variables to 400.</li>
+ <li>Eliminated the namelist parameter <tt>lfreeslip_sfc</tt> from the namelist
+     group <tt>/PHYCTL/</tt> (free-slip boundary
+     conditions and/or no-surface-heat/moisture-flux conditions may now be imposed 
+     by new switches <tt>lnosurffluxes_m/h</tt> in namelist <tt>/ARTIFCTL/</tt>).</li>
+ <li><tt>near_surface.f90</tt><br />
+     Adapted the start indices for the computation of local arrays which are 
+     used to compute the maximal wind gusts (now <tt>istartpar</tt>, <tt>jstartpar</tt>
+     instead of <tt>istart</tt>, <tt>jstart</tt>). Before, the full western and 
+     southern boundary lines were just set as the first column / row of the 
+     interior domain. This changes the results of <tt>VMAX_10M</tt> in the boundary
+     zone.</li>
+ <li><tt>organize_physics.f90</tt><br />
+     Introduced new value for <tt>itype_turb</tt>: =100: to specify the fixed diffusion coefficients
+     <tt>tkvhfix</tt>, <tt>tkhhfix</tt>, <tt>tkvmfix</tt>, <tt>tkhmfix</tt> in namelist <tt>ARTIFCTL</tt>
+     (mainly intended for idealized runs, but may also be used for real cases).</li>
+ <li><tt>src_advection_rk.f90</tt><br />
+     Fixed subroutine <tt>limit_contravar_vert_veloc</tt> (deleted unnecessary loops,
+     and correctly implemented 1-proc run).</li>
+ <li><tt>src_allocation.f90</tt><br />
+     Fixed allocation of <tt>rcld</tt> and <tt>edr</tt> in case of <tt>itype_tran=2</tt>;<br />
+     Fixed allocation of <tt>tke</tt> and <tt>tketens</tt> for the case <tt>lphys=.false.</tt> and
+     at the same time <tt>iype_turb</tt> between 5 and 8 as an intermediate solution.
+     This is a pathological case, but if <tt>tke</tt> and <tt>tketens</tt> are not allocated, 
+     the model wants to diffuse and transport them, because <tt>lphys=.false.</tt> is not 
+     implemented correctly into the RK-core.<br />
+     Fixed initialization of dzeta_dphi and dzeta_dlam (cut-and-paste error).</li>
+ <li><tt>src_leapfrog.f90</tt>, <tt>src_runge_kutta.f90</tt><br />
+     Added possibility to output maximal <tt>V_h</tt> and minimal / maximal vertical
+     velocity to stdout for diagnostic purposes, if <tt>(ldebug_dyn .AND. idbg_level > 3)</tt></li>
+ <li><tt>src_output.f90</tt><br />
+     Implemented linear interpolation as alternative to
+   cubic tension splines in SRs z_int() and pint() -- this uses
+   the new interpolation routine lininterp2D_xinter1D_vec()
+   from utilities.f90 and may be activated by the new namelist
+   parameter *itype_vertint* in namelist group gribout (1=cubic spline, 2=linear);
+ - Surface values of U, V, W, and T
+   for *linear* z_int()-interpolation now depend on lnosurffluxes_m/h (free-slip b.c or not)
+   FOR NOW: THIS IS NOT DONE FOR P-LEVELS OUTPUT AND Z-LEVELS CUBIC
+   SPLINES TO PRESERVE "OLD" BEHAVIOUR AND TO AVOID PROBLEMS
+   WITH OVERSHOOTS IN CUBIC SPLINE INTERPOLATION.
+ - Surface value of pressure for z_int()-interpolation is now
+   taken to be the surface pressure ps instead of p on the
+   lowest main levels. This changes slightly the results
+   of z-interpolated pressure near the surface.
+ <li><tt>src_turbulence.f90</tt>, <tt>itype_turb=7/8</tt><br />
+    Changed constant <tt>zcs</tt> in the LES turbulence scheme
+    from 0.25 to 0.15 and set the horizontal diffusion coefficient equal to 3.0 times
+    the vertical diffusion coefficients.  For other <tt>itype_turb</tt>, this ratio is 
+    chosen to be 1.0.</li>
+</ul>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+
+<p align="right"><a href="#content">Back to Contents</a>
+
+<hr>
+
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="namelis">4. Summary of Namelist Variables Changes</a></h3>
+
+<p>There were the following changes for the Namelist variables:</p>
+
+<center>
+<table border="1" cellspacing="3" class="namelist">
+ <tbody>
+   <tr>
+     <th>Group</th>
+     <th>Name</th>
+     <th>Meaning</th>
+     <th align="center", width="5%">Default</th>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td class="hilit" rowspan="3"><tt>/RUNCTL/</tt></td>
+     <td><tt>lperi</tt></td>
+     <td class="middl" rowspan="1">eliminated</td>
+     <td class="middl" align="center" rowspan="1"><tt>-</tt></td>
+   </tr>
+   <tr>
+     <td><tt>lperi_x</tt></td>
+     <td class="middl" rowspan="1">enforce periodic boundary conditions in x-direction<br />
+                This can only be chosen together with <tt>lartif_data=.TRUE.</tt></td>
+     <td class="middl" align="center" rowspan="1"><tt>.FALSE.</tt></td>
+   </tr>
+   <tr>
+     <td><tt>lperi_y</tt></td>
+     <td class="middl" rowspan="1">enforce periodic boundary conditions in y-direction<br />
+                This can only be chosen together with <tt>lartif_data=.TRUE.</tt></td>
+     <td class="middl" align="center" rowspan="1"><tt>.FALSE.</tt></td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td class="hilit" rowspan="1"><tt>/GRIBOUT/</tt></td>
+     <td><tt>itype_vertint</tt></td>
+     <td class="middl" rowspan="1">to specify the type of vertical interpolation 
+                to p- and z-levels
+       <ol><li>cubic tension splines (previous method)</li>
+	   <li>linear interpolation</li></ol></td>
+     <td class="middl" align="center"><tt>1</tt></td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td class="hilit" rowspan="1"><tt>/PHYCTL/</tt></td>
+     <td><tt>lfreeslip_sfc</tt></td>
+     <td class="middl" rowspan="1">eliminated; can now be imposed by namelist 
+         parameters <tt>lnosurffluxes_m=.true.</tt> (for momentum) and/or 
+                    <tt>lnosurffluxes_h=.true.</tt> (for heat).</td>
+     <td class="middl" align="center"><tt>-</tt></td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td class="hilit" rowspan="1"><tt>/ARTIFCTL/</tt></td>
+     <td>&nbsp;</td>
+     <td class="middl" rowspan="1">Documentation is work in progress.</td>
+     <td class="middl" align="center">&nbsp;</td>
+   </tr>
+<!---------------------------------------------------------------------------->
+ </tbody>
+</table>
+</center>
+
+<p align="right"><a href="#content">Back to Contents</a>
+<spacer type=vertical size=10>
+<hr>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="results">5. Changes of Results</a></h3>
+
+<p>
+There are (nearly) no changes in the operational results.
+</p> 
+
+<p>
+The only slight difference is in the pressure interpolated to constant z-levels
+near the surface, which stems from the use of surface pressure instead of 
+the lowest main level of atmospheric pressure as lower boundary condition.
+(see above).
+</p> 
+
+<p align="right"><a href="#content">Back to Contents</a>
+
+</body>
+</html>

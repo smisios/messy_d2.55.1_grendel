@@ -1,0 +1,119 @@
+#! /bin/sh
+
+#$ -S /bin/sh
+#$ -N runoff
+#$ -j y
+#$ -cwd
+#$ -q squall
+#$ -pe linux64 1
+
+set -e
+. "@abs_builddir@/../setup-common.inc"
+
+SETUP_SRC=${SETUP_SRC-${POOL}/setup/omip_365_era15}
+
+# assert that DEST ie je ke are set
+assert_vars_are_set DEST ie je ke GRID tp
+
+@MKDIR_P@ runoff_omip
+cd runoff_omip
+
+# find anta file
+
+# "${CDO}" -f ext -p 4b copy "${SETUP_SRC}/runoff.nc" runoff.ext4
+/bin/rm -f prune_date_warning
+mkfifo prune_date_warning
+grep -v '^Warning (splitTimevalue) : Reset wrong date/time to' \
+  <prune_date_warning >&2 &
+(
+  $CMD_PREFIX "${CDO}" -f ext -p 8b copy -setdate,0000-00-01,1day \
+    "${SETUP_SRC}/runoff.nc" \
+    runoff.ext
+) 2>prune_date_warning
+/bin/rm -f prune_date_warning
+
+# "${CDO}" -f ext -p 4b copy \
+#   "${SETUP_SRC}/land_sea_mask.ECMWF.nc" \
+#   land_sea_mask.ECMWF.ext
+$CMD_PREFIX "${CDO}" -f ext -p 4b copy \
+  "${SETUP_SRC}/land_sea_mask.ECMWF.nc" \
+  land_sea_mask.ECMWF.ext4
+# "${CDO}" -f ext -p 4b copy "../../mk_anta/$GRID/${GRID}_anta" anta.ext4
+#"${CDO}" -f ext -p 8b copy "${DEST}/${GRID}_anta" anta.ext
+/bin/rm -f anta.ext
+@LN_S@ "${DEST}/${GRID}_anta" anta.ext
+# "${CDO}" -f ext -p 4b copy "../../mk_BEK/$GRID/RIBEK.ext" RIBEK.ext
+${CMD_PREFIX} "${CDO}" -f ext -p 8b setgrid,r${ie}x${je} \
+  -selcode,1 "../mk_BEK/RIBEK.ext" RIBEK.ext
+
+# /bin/rm -f prune_date_warning
+# mkfifo prune_date_warning
+# grep -v '^Warning (splitTimevalue) : Reset wrong date/time to' \
+#   <prune_date_warning >/dev/null &
+# globalsum_target=`cdo output -fldsum -mul \
+#   -gridarea -setdate,0000-00-01,1day "${SETUP_SRC}/runoff.nc" \
+#   -setdate,0000-00-01,1day "${SETUP_SRC}/runoff.nc" \
+#   2>prune_date_warning`
+# /bin/rm -f prune_date_warning
+
+# if [ $tp = true ]; then
+#   js=3
+# else
+#   js=1
+# fi
+
+# ie1=`expr $ie - 1`
+# ie2=`expr $ie - 2`
+
+
+# /bin/rm -f prune_date_warning
+# mkfifo prune_date_warning
+# grep -v '^Warning (splitTimevalue) : Reset wrong date/time to' \
+#   <prune_date_warning >&2 &
+# (
+#   "${CDO}" -f nc writegrid -selindexbox,1,$ie2,$js,$je \
+#     -random,"${DEST}/${GRID}s.nc" ${GRID}s3.nc
+# ) 2>prune_date_warning
+# /bin/rm -f prune_date_warning
+
+# "${CDO}" "remapcon,${GRID}s3.nc" \
+#   "${SETUP_SRC}/runoff.nc" "runoff_${GRID}.nc"
+
+
+# "${CDO}" -f ext setmisstoc,0 -selindexbox,2,$ie1,$js,$je \
+#   -setgrid,r${ie}x${je} -div \
+#   RIBEK.ext RIBEK.ext lsm.ext
+
+# "${CDO}" -f nc setmisstoc,0 -selindexbox,2,$ie1,$js,$je \
+#   -setgrid,r${ie}x${je} -div \
+#   RIBEK.ext RIBEK.ext lsm.nc
+
+# "${CDO}" -f nc mul lsm.ext \
+#   "runoff_${GRID}.nc" runoff_${GRID}_masked.nc
+
+# globalsum_lsm=`"${CDO}" output -fldsum -mul lsm.ext \
+#   -mul -gridarea "runoff_${GRID}.nc" \
+#   "runoff_${GRID}.nc"`
+
+# globalsum_nolsm=`"${CDO}" output -fldsum \
+#   -mul -gridarea "runoff_${GRID}.nc" \
+#   "runoff_${GRID}.nc"`
+
+# echo $globalsum_lsm $globalsum_target $globalsum_nolsm
+
+${CMD_PREFIX} "@abs_builddir@/runoff_omip" > test.asc <<EOF
+&gridparams
+ie=${ie}
+je=${je}
+ke=${ke}
+tp_grid=.${tp}.
+verbose=${DEBUG+1}${DEBUG-0} /
+EOF
+
+#"${CDO}" -f ext -p 8b copy fort.12 ${GRID}_GIRIV_OMIP365
+mv giriv_omip365 "${DEST}/${GRID}_GIRIV_OMIP365"
+
+cd ..
+
+
+

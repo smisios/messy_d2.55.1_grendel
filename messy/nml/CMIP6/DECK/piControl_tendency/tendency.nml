@@ -1,0 +1,60 @@
+! -*- f90 -*-
+
+&CPL
+!
+l_full_diag = T  ! set TRUE to define individual channel objects for
+                 ! each process and each prognostic variable or tracer
+!
+l_closure = T    ! set TRUE to define internal channel objects
+                 ! for closure analysis
+                 ! (I_HANDLE_SUM and I_HANDLE_DIFF)
+!
+l_clos_diag = F  ! set TRUE to get additional diagnostic log-file
+                 ! output (about the closure); 
+                 ! this option is useful to integrate new processes
+                 ! into the tendency-submodel
+!
+! USER DEFINED TENDENCY ANALYSES:
+! SYNTAX:
+! TDIAG(.) = 'variable name or tracer name', 
+!            'semicolon separated list of (sums of) processes'
+! EXAMPLE: TDIAG(1) = 'X', 'p1;p2+p3;...;pn',
+! 
+! Variables are: t, q, xl, xi, u, v, all GP-tracers
+! Processes are: 
+!  - ECHAM5:          vdiff, surf, advect, ssodrag, dyn, (gwspect)
+!  - MESSy-submodels: cloud, , convect, rad4all, fubrad, gwave,
+!                     cvtrans, dradon, ...
+!
+! WARNING: By default the time filter switch (l_tf) in cloud.nml is set to 
+!         .FALSE.. This inhibits the closure inTENDENCY. To achieve a
+!         closure, you need to set l_tf=T in cloud.nml.!
+!
+! ----------------------------------------------------------
+!!$TDIAG(1)  = 't'  ,'vdiff; cloud + rad4all + convect; surf',
+!!$TDIAG(2)  = 'q'  ,'vdiff + cloud + convect', 
+!!$TDIAG(3)  = 'xl' ,'',
+!TDIAG(4)  = 'xi' ,'vdiff; cloud + rad4all + convect; surf', 
+!TDIAG(5)  = 'u'  ,'vdiff; cloud + rad4all + convect; surf',
+!TDIAG(6)  = 'v'  ,'vdiff; cloud + rad4all + convect + surf', 
+! ----------------------------------------------------------
+!TDIAG(7)  = 'H'  ,'vdiff; cloud + rad4all + convect; surf',
+!TDIAG(8)  = 'NH' ,'vdiff; cloud + rad4all + convect; surf',
+!TDIAG(9)  = 'SH' ,'vdiff; cloud + rad4all + convect; surf',
+!TDIAG(10) = 'ST' ,'vdiff; cloud + rad4all + convect; surf',
+!TDIAG(11) = 'TR' ,'vdiff; cloud + rad4all + convect; surf',
+!TDIAG(12) = 'V1' ,'',
+!TDIAG(13) = 'V2' ,'vdiff; cloud + rad4all + convect; surf',
+! ----------------------------------------------------------
+TDIAG(11) = 'O3','mecca; advect; convect; cvtrans; e5vdiff; scav_cv; scav_ev; scav_ls',
+TDIAG(12) = 'NO','mecca; advect; convect; cvtrans; e5vdiff; scav_cv; scav_ev; scav_ls',
+TDIAG(13) = 'N2O5','mecca; advect; convect; cvtrans; e5vdiff; scav_cv; scav_ev; scav_ls; offemis; onemis; tnudge; trexp',
+
+!
+!TDIAG(14) = 'N_ks','mecca; gmxe; advect; convect; cvtrans; ddep; e5vdiff; scav_cv; scav_ev; scav_ls; offemis; onemis; tnudge; trexp',
+!TDIAG(15) = 'N_km','mecca; gmxe; advect; convect; cvtrans; ddep; e5vdiff; scav_cv; scav_ev; scav_ls; offemis; onemis; tnudge; trexp',
+!TDIAG(16) = 'N_as','mecca; gmxe; advect; convect; cvtrans; ddep; e5vdiff; scav_cv; scav_ev; scav_ls; offemis; onemis; tnudge; trexp',
+!TDIAG(17) = 'N_am','mecca; gmxe; advect; convect; cvtrans; ddep; e5vdiff; scav_cv; scav_ev; scav_ls; offemis; onemis; tnudge; trexp',
+!TDIAG(18) = 'N_cs','mecca; gmxe; advect; convect; cvtrans; ddep; e5vdiff; scav_cv; scav_ev; scav_ls; offemis; onemis; tnudge; trexp',
+!TDIAG(19) = 'N_cm','mecca; gmxe; advect; convect; cvtrans; ddep; e5vdiff; scav_cv; scav_ev; scav_ls; offemis; onemis; tnudge; trexp',
+/

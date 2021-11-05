@@ -1,0 +1,69 @@
+#!/usr/bin/csh
+# Script to download NCEP forcing data directly from the NCPE anonymous ftp server.
+#
+# This program is useful when you have to download new data or when the archive is down.
+#
+# Input data ( XXXX denotes the year, e.g. 1948 ):  
+#
+#    ncep reanalysis data:   
+#                                       land.sfc.gauss.nc (land.nc)
+#                                       uflx.sfc.gauss.XXXX.nc
+#                                       vflx.sfc.gauss.XXXX.nc
+#                                       air.2m.gauss.XXXX.nc
+#                                       prate.sfc.gauss.XXXX.nc
+#                                       tcdc.eatm.gauss.XXXX.nc
+#                                       dswrf.sfc.gauss.XXXX.nc
+#                                       skt.sfc.gauss.XXXX.nc
+#                                       pres.sfc.gauss.XXXX.nc
+#                                       shum.2m.gauss.XXXX.nc
+#                                       uwnd.10m.gauss.XXXX.nc
+#                                       vwnd.10m.gauss.XXXX.nc
+#
+# User needs to:
+#
+# 1) Set first and last years (variables first_year and last_year).
+# 2) Define the storage directory (local_data_dir).
+# 3) Define his/her e-mail adress (your_email).
+# 4) Run this script with ./download_ncep.sh
+#
+# Made by Ismael Nunez-Riboni, 09.07.02, Bremen.
+
+set echo
+set verbose
+
+set your_email=Ismael.Nunez-Riboni@zmaw.de
+set first_year=1948
+set last_year=2009
+
+#set local_data_dir=/work/mh0033/m300034/forcing_ncep  # blizzard
+set local_data_dir=/u/m300034/forcing_ncep # garching
+#local_data_dir=/home/ismael/intern/data/forcing_ncep # wolkenfuesse
+
+@ year=$first_year
+
+mkdir $local_data_dir
+cd $local_data_dir
+
+while ( $year < $last_year )
+   echo "Downloading year " $year
+
+   #get a local copy of the ncep data from the ncep ftp:
+   ftp -in ftp.cdc.noaa.gov <<EOF
+      user anonymous $your_email
+      passive
+      bin
+      cd /pub/Datasets/ncep.reanalysis/surface_gauss/ # total cloud cover (tcdc) is in /Datasets/ncep.reanalysis/other_gauss/
+      get land.sfc.gauss.nc 
+
+      mget *.gauss.${year}.nc
+      exit
+EOF
+
+   @ year = $year + 1
+
+end # while
+
+echo Listo...!
+
+# Notas: el archivo land.sfc.gauss.nc es bajado una y otra vez por que el loop while no
+# esta bien colocado... Sin embargo, no me a trevo a hacer cambios ahora que empezo a funcionar... :-(

@@ -1,0 +1,122 @@
+->>- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ {>CASE:REM}
+
+! ----------------------------------------------------------------------------
+! This file contains necessary consts and expressions to be included into
+! equation file of the MECCA chemistry module tagged by imtag
+! to process kinetic isotope effects
+!
+! [Gromov, MPICH, 2007-2018]
+! ----------------------------------------------------------------------------
+
+-<<- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ {<CASE:REM}
+#INLINE F90_GLOBAL
+  !
+  ! ----- declaration part -----
+  !
+  !
+  ! O3 formation rate (should be identical to the regular mechanism)
+    real(dp) :: cio_kozf
+  !
+  ! O3P<->O2 exchange rates (direct and rel. to O3 formation)
+    real(dp) :: cio_kiex, cio_kiex_r_kozf, &
+                cio_kiex_T, cio_kiex_S, cio_kiex_LT   ! rates zeroed outside tropo/stratosphere, doubled in lower tropopshere
+  !
+  ! clumped O2 D36 and D35 T-dep. equilibrium values fit
+    real(dp) :: cio_D36_eq_fit, cio_D35_eq_fit
+    real(dp) :: cio_D36_eq_fit_m4K, cio_D36_eq_fit_p4K,     & ! sensitivities of D36 to temperature
+                cio_D36_eq_fit_m4K_T, cio_D36_eq_fit_m4K_S, & ! - and in troposphere/stratosphere
+                cio_trop_switch, cio_lowtrop_switch           ! (lower) troposphere switches
+  !
+#ENDINLINE {above lines go into MODULE messy_mecca_kpp_Global}
+
+#INLINE F90_RCONST
+  !
+  ! ----- calculation part -----
+  !
+  ! O3 formation rate (should be identical to the regular mechanism)
+  ! <G1001>  O2   + O3P {+M} = O3  : {%UpStTrG} 6.E-34{§1.1}*((temp/300.)**(-2.4))*cair ; {&2626}
+  ! cio_kozf = tag_G1001
+    cio_kozf = 6.0e-34*((temp/300.)**(-2.4))*cair  ! should be with cair
+  !
+  ! O3P<->O2 exchange rates
+  ! rates from [1997.IJCK29.Wiegell,etal]
+  ! direct
+    cio_kiex = 2.66e-12*((temp/300.)**(-0.88))
+  ! relative to O3 formation
+    cio_kiex_r_kozf = 4.67e+21*((temp/300.)**(1.74)) * (cio_kozf/cair)
+  !
+  ! for boosting at SMIL
+    cio_kiex = cio_kiex*C(ind_CIOIEXBOOST)
+    cio_kiex_r_kozf = cio_kiex_r_kozf*C(ind_CIOIEXBOOST)
+  !
+  ! clumped O2 equilibrium D36 and D35 values [2004.GCA68.Wang,etal] fit
+  ! see master in 2004.GCA68.Wang,etal-Fig.5a.xlsx
+    cio_D36_eq_fit = 1e-3*(25.65*exp(-temp/44.69)+ 9.62*exp(-temp/159.64))
+    cio_D35_eq_fit = 1e-3*( 5.47*exp(-temp/154.4)+14.75*exp(-temp/40.00))
+  !
+    cio_D36_eq_fit_m4K = 1e-3*(25.65*exp(-(-4.+temp)/44.69)+ 9.62*exp(-(-4.+temp)/159.64))
+    cio_D36_eq_fit_p4K = 1e-3*(25.65*exp(-(+4.+temp)/44.69)+ 9.62*exp(-(+4.+temp)/159.64))
+  !
+  ! apx. detection of stratosphere:
+  ! - pressure < 500 hPa (excludes boundary-layer high-O3 events)
+  ! + O3 >= 150 ppbv (empirically aligned with tropopause level index in spin-up simulations)
+  ! or press < 10 hPa (includes mesospheric layers with low O3 MRs)
+    if ( ( (C(ind_O3) .gt. 150e-9*cair) .and. ((press) .lt. 500e2_dp) ) .or. ((press) .lt. 10e2_dp) ) then
+      cio_trop_switch = 0._dp      ! in stratosphere
+    else
+      cio_trop_switch = 1._dp      ! in troposphere
+    endif
+    cio_kiex_T = (   cio_trop_switch)*cio_kiex
+    cio_kiex_S = (1.-cio_trop_switch)*cio_kiex
+    cio_D36_eq_fit_m4K_T = 1e-3*(25.65*exp(-(-4.*(0.+cio_trop_switch)+temp)/44.69) + &
+                                  9.62*exp(-(-4.*(0.+cio_trop_switch)+temp)/159.64))
+    cio_D36_eq_fit_m4K_S = 1e-3*(25.65*exp(-(-4.*(1.-cio_trop_switch)+temp)/44.69) + &
+                                  9.62*exp(-(-4.*(1.-cio_trop_switch)+temp)/159.64))
+  ! doubled rate in lower troposphere (pressure >= 750hPa)
+    if ( (press) .ge. 750e2_dp ) then
+      cio_lowtrop_switch = 1._dp      ! in lower troposphere
+    else
+      cio_lowtrop_switch = 0._dp      ! elsewhere
+    endif
+    cio_kiex_LT = (1._dp+cio_lowtrop_switch)*cio_kiex
+#ifdef CIO_IEXINIT
+    if (C(ind_CIOIEXINIT).gt.0) then
+     ! non-zero ind_CIO_IEXINIT indicates that we should re-initialise
+      C(ind_D36O2)      = C(ind_O2)*cio_D36_eq_fit!!(temp)
+      C(ind_D36rO2)     = C(ind_O2)*cio_D36_eq_fit!!(temp)
+      C(ind_D36c)       = C(ind_O2)*cio_D36_eq_fit!!(temp)
+      C(ind_D36t)       = C(ind_O2)*cio_D36_eq_fit!!(temp)
+      C(ind_D36s)       = C(ind_O2)*cio_D36_eq_fit!!(temp)
+      C(ind_D36c)       = C(ind_O2)*cio_D36_eq_fit!!(temp)
+      C(ind_D35O2)      = C(ind_O2)*cio_D35_eq_fit!!(temp)
+      C(ind_D35rO2)     = C(ind_O2)*cio_D35_eq_fit!!(temp)
+      C(ind_D36p4KO2)   = C(ind_O2)*cio_D36_eq_fit_pK4!!(temp+4.)
+      C(ind_D36m4KO2)   = C(ind_O2)*cio_D36_eq_fit_m4K!!(temp-4.)
+      C(ind_D36m4KtO2)  = C(ind_O2)*cio_D36_eq_fit_m4Kt!!(temp-4.)
+      C(ind_D36f10pO2)  = C(ind_O2)*cio_D36_eq_fit!!(temp)
+      C(ind_D36s10pO2)  = C(ind_O2)*cio_D36_eq_fit!!(temp)
+      C(ind_D36s10ptO2) = C(ind_O2)*cio_D36_eq_fit!!(temp)
+      C(ind_pxO2)       = C(ind_O2)*(press/1e6)
+      C(ind_txO2)       = C(ind_O2)*(temp/1e3)
+    endif
+#endif
+#ifdef DISABLEMEFORDEBUG
+  print *,'----- CIO EQ. FIT VALUES (per mille) -----'
+  print *,' temp: ',temp
+  print *,'  D36: ',cio_D36_eq_fit!!(temp)
+  print *,'  D35: ',cio_D35_eq_fit!!(temp)
+#endif
+#ENDINLINE
+
+!!#INLINE F90_RATES
+!!  ! clumped O2 equilibrium D36 and D35 values [2004.GCA68.Wang,etal] fit
+!!  ! see master in 2004.GCA68.Wang,etal-Fig.5a.xlsx
+!!  !
+!!  elemental real(dp) function cio_D36_eq_fit(eqt)
+!!    cio_D36_eq_fit = 1e-3_dp*(25.65_dp*exp(-eqt/44.69_dp)+ 9.62_dp*exp(-eqt/159.64_dp))
+!!  end function cio_D36_eq_fit
+!!  elemental real(dp) function cio_D35_eq_fit(eqt)
+!!    cio_D35_eq_fit = 1e-3_dp*( 5.47_dp*exp(-eqt/154.4_dp)+14.75_dp*exp(-eqt/40.00_dp ))
+!!  end function cio_D35_eq_fit
+!!  !
+!!#ENDINLINE

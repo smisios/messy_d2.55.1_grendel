@@ -1,0 +1,426 @@
+# 1 "../modules/mo_echam_yaxt.f90"
+!>
+!! @par Copyright
+!! This code is subject to the MPI-M-Software - License - Agreement in it's most recent form.
+!! Please see URL http://www.mpimet.mpg.de/en/science/models/model-distribution.html and the
+!! file COPYING in the root of the source tree for this code.
+!! Where software is supplied by third parties, it is indicated in the headers of the routines.
+!!
+!! @brief Module to provide YAXT support.
+!!
+!! @remarks
+!!   This module contains routines for description of domain
+!!   decomposition for parallel output with CDI-PIO and global data
+!!   transpositions using YAXT.
+!!
+!! @author Jörg Behrens, DKRZ, Hamburg (2013-06-20): Initial version
+!!         Irina Fast,   DKRZ, Hamburg (2013-07-18): Revised version
+!!
+!! (jb, 2015): modified version - adapted to messy_d2.52c/echam5.3.02
+
+!#ifndef DEBUG
+!#define DEBUG
+!#endif
+
+!#define HAVE_YAXT_0_4_5
+
+MODULE mo_echam_yaxt
+  USE mo_kind,          ONLY: dp
+  USE mo_control,       ONLY: lyaxt_transposition, ltimer
+  USE mo_exception,     ONLY: message, message_text, finish
+# 50
+
+
+  IMPLICIT NONE
+
+  PRIVATE
+
+  PUBLIC :: yaxt_initialize, yaxt_finalize, setup_yaxt_decomposition, &
+            generate_yaxt_redist, add_yaxt_gp_nlevs, yaxt_init_gp_coords
+
+  PUBLIC :: yaxt_tr_gp_to_ffsl, yaxt_tr_ffsl_to_gp, &
+       &    yaxt_tr_gp_to_fs, yaxt_tr_fs_to_gp, &
+       &    yaxt_tr_fs_to_ls, yaxt_tr_ls_to_fs, &
+       &    yaxt_tr_ls_to_sp, yaxt_tr_sp_to_ls
+  PUBLIC :: yaxt_tr_gp_to_ffsl_2d, yaxt_tr_gp_to_ffsl_3d, yaxt_tr_ffsl_to_gp_3d, &
+       &    yaxt_tr_gp_to_ffsl_3d_repeated, yaxt_ffsl_ghost_update_3d_repeated
+
+  PUBLIC :: yaxt_simple_gather_gp_3d
+  PUBLIC :: yaxt_simple_cross_gather_gp_3d
+  PUBLIC :: yaxt_simple_gather_gp_2d
+  PUBLIC :: yaxt_simple_cross_gather_gp_2d
+
+  PUBLIC :: yaxt_simple_scatter_gp_2d
+  PUBLIC :: yaxt_simple_scatter_gp_3d
+
+  PUBLIC :: yaxt_ffsl_ghost_update_2d, yaxt_ffsl_ghost_update_3d, yaxt_ffsl_ghost_update_4d
+  PUBLIC :: yaxt_max_tracer_aggregate_size
+
+# 81
+
+
+! check memory layout expectations of ECHAM data
+
+
+
+! methods for generation of index lists
+  INTEGER, PARAMETER :: idx_descr_vector  = 1
+  INTEGER, PARAMETER :: idx_descr_stripes = 2
+  INTEGER, PARAMETER :: idx_descr_section = 3
+
+# 191
+
+
+! global dimensions
+  INTEGER :: nlon, nlat, nlev
+
+! gp-deco info:
+  INTEGER :: nproca, nprocb, nproma, npromz, ngpblks
+  INTEGER :: glons(2), glone(2), glats(2), glate(2)
+
+! ffsl-deco info:
+  INTEGER :: ffsl_nlat, ffsl_nlev
+  INTEGER :: ffsl_gp_lat1, ffsl_gp_lat2 ! ffsl lat-borders in gp-oriented coords
+
+! fs-deco info:
+  INTEGER :: flats(2), flate(2), nflat, flevs, fleve, nflev, nflevp1
+
+! tracer info:
+  INTEGER, PARAMETER :: yaxt_max_tracer_aggregate_size = 32
+  INTEGER :: pcnst, trdim_size, active_trnum
+  INTEGER, ALLOCATABLE :: active_trpos(:) ! position of active tracer within trlist
+
+! mtracer_fb_block_X_size, with X=max,tail: these are tracer aggregation sizes used as
+! temp. workaround until yaxt releases more flexible redist_repeat constructors.
+  INTEGER, PARAMETER :: ffsl_4d_max_block_size = 4
+  INTEGER :: ffsl_4d_block_size
+
+# 297
+
+
+! nproca x nprocb domain:
+  INTEGER :: ab_comm, ab_rank, ab_size
+
+  LOGICAL, SAVE :: decos_are_finalized = .FALSE.
+  LOGICAL, SAVE, ALLOCATABLE :: gp_nlevs(:)
+
+! gather:
+  LOGICAL, SAVE :: is_gather_target = .FALSE.
+  LOGICAL, SAVE :: is_cross_gather_target = .FALSE.
+  LOGICAL, SAVE :: require_cross_gather = .FALSE.
+
+! timer
+  INTEGER, SAVE :: it_gp2ffsl = 0
+  INTEGER, SAVE :: it_ffsl2gp = 0
+
+CONTAINS
+
+  SUBROUTINE yaxt_initialize(comm)
+    INTEGER, INTENT(IN) :: comm     ! mpi communicator
+
+  IF (lyaxt_transposition) THEN
+    WRITE (message_text, *) 'For array transpositions with YAXT '// &
+       &'specification of -DHAVE_YAXT is required. Please, recompile '// &
+       &'and link with YAXT libary OR set lyaxt_transposition=.FALSE. '// &
+       &'in namelist RUNCTL.'
+    CALL finish('yaxt_initialize', message_text)
+  ENDIF
+# 330
+
+  END SUBROUTINE yaxt_initialize
+
+!-------------------------------------------------------------------------------
+
+  SUBROUTINE yaxt_finalize()
+# 338
+
+  END SUBROUTINE yaxt_finalize
+
+!-------------------------------------------------------------------------------
+  SUBROUTINE yaxt_init_gp_coords
+# 365
+
+  END SUBROUTINE yaxt_init_gp_coords
+
+  SUBROUTINE add_yaxt_gp_nlevs(levels)
+    INTEGER, INTENT(in) :: levels(:)
+# 410
+
+
+
+  END SUBROUTINE add_yaxt_gp_nlevs
+
+  SUBROUTINE setup_yaxt_decomposition()
+# 495
+
+  END SUBROUTINE setup_yaxt_decomposition
+
+  SUBROUTINE generate_yaxt_redist(model_comm)
+    INTEGER, INTENT(IN) :: model_comm  ! communicator of application without I/O servers
+# 721
+
+  END SUBROUTINE generate_yaxt_redist
+
+  SUBROUTINE yaxt_ffsl_ghost_update_2d(ffsl2d, nghost)
+    REAL(dp), INTENT(inout) :: ffsl2d(:,:)
+    INTEGER, INTENT(in) :: nghost
+# 747
+
+  END SUBROUTINE yaxt_ffsl_ghost_update_2d
+
+  SUBROUTINE yaxt_ffsl_ghost_update_3d(ffsl3d, nghost)
+    REAL(dp), INTENT(inout) :: ffsl3d(:,:,:)
+    INTEGER, INTENT(in) :: nghost
+# 774
+
+  END SUBROUTINE yaxt_ffsl_ghost_update_3d
+
+  SUBROUTINE yaxt_ffsl_ghost_update_3d_repeated(m_ffsl3d, nghost)
+    REAL(dp), INTENT(inout) :: m_ffsl3d(:,:,:,:)
+    INTEGER, INTENT(in) :: nghost
+# 823
+
+  END SUBROUTINE yaxt_ffsl_ghost_update_3d_repeated
+
+
+  SUBROUTINE yaxt_ffsl_ghost_update_4d(ffsl4d, nghost)
+    REAL(dp), INTENT(inout) :: ffsl4d(:,:,:,:)
+    INTEGER, INTENT(in) :: nghost
+# 851
+
+  END SUBROUTINE yaxt_ffsl_ghost_update_4d
+
+# 872
+
+
+  SUBROUTINE yaxt_simple_gather_gp_2d(global_gp, local_gp)
+
+    REAL(dp), POINTER, INTENT(inout) :: global_gp(:,:)
+# 879
+
+    REAL(dp), TARGET, INTENT(in) :: local_gp(:,:)
+
+# 904
+
+  END SUBROUTINE yaxt_simple_gather_gp_2d
+
+  SUBROUTINE yaxt_simple_scatter_gp_2d(global_gp, local_gp)
+
+    REAL(dp), POINTER, INTENT(in) :: global_gp(:,:)
+# 912
+
+    REAL(dp), TARGET, INTENT(out) :: local_gp(:,:)
+# 940
+
+  END SUBROUTINE yaxt_simple_scatter_gp_2d
+
+  SUBROUTINE yaxt_simple_gather_gp_3d(global_gp, local_gp)
+
+    REAL(dp), POINTER, INTENT(inout) :: global_gp(:,:,:)
+# 948
+
+    REAL(dp), TARGET, INTENT(in) :: local_gp(:,:,:)
+# 997
+
+  END SUBROUTINE yaxt_simple_gather_gp_3d
+
+  SUBROUTINE yaxt_simple_scatter_gp_3d(global_gp, local_gp)
+
+    REAL(dp), POINTER, INTENT(in) :: global_gp(:,:,:)
+# 1005
+
+    REAL(dp), TARGET, INTENT(out) :: local_gp(:,:,:)
+# 1058
+
+  END SUBROUTINE yaxt_simple_scatter_gp_3d
+
+  SUBROUTINE yaxt_simple_cross_gather_gp_2d(global_gp, local_gp)
+
+    REAL(dp), POINTER, INTENT(inout) :: global_gp(:,:)
+# 1066
+
+    REAL(dp), TARGET, INTENT(in) :: local_gp(:,:)
+    INTEGER :: i,j
+# 1091
+
+  END SUBROUTINE yaxt_simple_cross_gather_gp_2d
+
+  SUBROUTINE yaxt_simple_cross_gather_gp_3d(global_gp, local_gp)
+
+    REAL(dp), POINTER, INTENT(inout) :: global_gp(:,:,:)
+# 1099
+
+    REAL(dp), TARGET, INTENT(in) :: local_gp(:,:,:)
+# 1149
+
+  END SUBROUTINE yaxt_simple_cross_gather_gp_3d
+
+  SUBROUTINE yaxt_tr_gp_to_ffsl_2d(gp2d1, ffsl2d1)
+    REAL(dp), TARGET, INTENT(in)  :: gp2d1(:,:)     ! decomposed with 2d standard gridpoint deco.
+    REAL(dp), TARGET, INTENT(out) :: ffsl2d1(:,:)   ! decomposed with 2d ffsl gridpoint deco.
+# 1163
+
+  END SUBROUTINE yaxt_tr_gp_to_ffsl_2d
+
+  SUBROUTINE yaxt_tr_gp_to_ffsl_3d(gp3d, ffsl3d)
+    REAL(dp), TARGET, INTENT(in)  :: gp3d(:,:,:)   ! decomposed with 3d standard gridpoint deco.
+    REAL(dp), TARGET, INTENT(out) :: ffsl3d(:,:,:) ! decomposed with 3d ffsl deco.
+# 1177
+
+  END SUBROUTINE yaxt_tr_gp_to_ffsl_3d
+
+  SUBROUTINE yaxt_tr_gp_to_ffsl_3d_repeated(m_gp3d, m_ffsl3d)
+    REAL(dp), TARGET, INTENT(in)  :: m_gp3d(:,:,:,:)   ! decomposed with 3d standard gridpoint deco.
+    REAL(dp), TARGET, INTENT(out) :: m_ffsl3d(:,:,:,:) ! decomposed with 3d ffsl deco.
+# 1217
+
+  END SUBROUTINE yaxt_tr_gp_to_ffsl_3d_repeated
+
+# 1258
+
+
+  SUBROUTINE yaxt_tr_gp_to_ffsl(gp3d1, gp3d2, gp3d3, gp3d4, gp3d5, gp2d1, gp2d2, &
+       &                        ffsl3d1, ffsl3d2, ffsl3d3, ffsl3d4, ffsl3d5, ffsl2d1, ffsl2d2)
+    REAL(dp), INTENT(in)  :: gp3d1(:,:,:)   ! decomposed with 3d standard gridpoint deco.
+    REAL(dp), INTENT(in)  :: gp3d2(:,:,:)   ! ""
+    REAL(dp), INTENT(in)  :: gp3d3(:,:,:)   ! ""
+    REAL(dp), INTENT(in)  :: gp3d4(:,:,:)   ! ""
+    REAL(dp), INTENT(in)  :: gp3d5(:,:,:)   ! ""
+    REAL(dp), INTENT(in)  :: gp2d1(:,:)     ! decomposed with 2d standard gridpoint deco.
+    REAL(dp), INTENT(in)  :: gp2d2(:,:)     ! ""
+    REAL(dp), INTENT(out) :: ffsl3d1(:,:,:) ! decomposed with 3d ffsl deco.
+    REAL(dp), INTENT(out) :: ffsl3d2(:,:,:) ! ""
+    REAL(dp), INTENT(out) :: ffsl3d3(:,:,:) ! ""
+    REAL(dp), INTENT(out) :: ffsl3d4(:,:,:) ! ""
+    REAL(dp), INTENT(out) :: ffsl3d5(:,:,:) ! ""
+    REAL(dp), INTENT(out) :: ffsl2d1(:,:)   ! decomposed with 2d ffsl gridpoint deco.
+    REAL(dp), INTENT(out) :: ffsl2d2(:,:)   ! ""
+# 1313
+
+  END SUBROUTINE yaxt_tr_gp_to_ffsl
+
+  SUBROUTINE yaxt_tr_ffsl_to_gp_3d(gp3d, ffsl3d)
+    REAL(dp), TARGET, INTENT(out) :: gp3d(:,:,:)     ! decomposed with 3d standard gridpoint deco.
+    REAL(dp), TARGET, INTENT(in)  :: ffsl3d(:,:,:)   ! decomposed with 3d ffsl deco.
+
+# 1337
+
+  END SUBROUTINE yaxt_tr_ffsl_to_gp_3d
+
+# 1367
+
+
+  SUBROUTINE yaxt_tr_ffsl_to_gp(gp4d, gp2d, gp3d, ffsl4d, ffsl2d, ffsl3d)
+    REAL(dp), TARGET, INTENT(out) :: gp4d(:,:,:,:)   ! decomposed with 4d standard (gridpoint&tracer) deco (tpcore::fb_gp).
+    REAL(dp), TARGET, INTENT(out) :: gp2d(:,:)       ! decomposed with 2d standard gridpoint deco.
+    REAL(dp), TARGET, INTENT(out) :: gp3d(:,:,:)     ! decomposed with 3d standard gridpoint deco.
+    REAL(dp), TARGET, INTENT(in)  :: ffsl4d(:,:,:,:) ! decomposed with 4d ffsl deco (tpcore::fb).
+    REAL(dp), TARGET, INTENT(in)  :: ffsl2d(:,:)     ! decomposed with 2d ffsl deco.
+    REAL(dp), TARGET, INTENT(in)  :: ffsl3d(:,:,:)   ! decomposed with 3d ffsl deco.
+# 1414
+
+  END SUBROUTINE yaxt_tr_ffsl_to_gp
+
+# 1496
+
+
+  SUBROUTINE yaxt_tr_gp_to_fs(gp1, gp2, gp3, gp4, gp5, gp6, gp7, &
+       &                      sf3, zm1, zm2, zm3, fs, fs0)
+!
+!   grid point space  -> Fourier space
+!
+    REAL(dp), TARGET, INTENT(in)    :: gp1(:,:,:)   ! gridpoint space 3d
+    REAL(dp), TARGET, INTENT(in)    :: gp2(:,:,:)   !
+    REAL(dp), TARGET, INTENT(in)    :: gp3(:,:,:)   !
+    REAL(dp), TARGET, INTENT(in)    :: gp4(:,:,:)   !
+    REAL(dp), TARGET, INTENT(in)    :: gp5(:,:,:)   !
+    REAL(dp), TARGET, INTENT(in)    :: gp6(:,:,:)   !
+    REAL(dp), TARGET, INTENT(in)    :: gp7(:,:,:)   !
+    REAL(dp), TARGET, INTENT(in)    :: sf3(:,:)     ! gridpoint space 2d
+    REAL(dp), TARGET, INTENT(in)    :: zm1(:,:)     ! zonal mean
+    REAL(dp), TARGET, INTENT(in)    :: zm2(:,:)     ! zonal mean
+    REAL(dp), TARGET, INTENT(in)    :: zm3(:,:)     ! zonal mean
+    REAL(dp), TARGET, INTENT(inout) :: fs (:,:,:,:) ! Fourier space
+    REAL(dp), TARGET, INTENT(inout) :: fs0(:,:,:)   ! zonal mean, Four.
+# 1555
+
+  END SUBROUTINE yaxt_tr_gp_to_fs
+
+# 1657
+
+
+  SUBROUTINE yaxt_tr_fs_to_gp(gp1, gp2, gp3, gp4, gp5, gp6, gp7, gp8, gp9, &
+       &                      sf1, sf2, sf3, zm1, zm2, zm3, &
+       &                      fs, fs0)
+!
+!   grid point space  -> Fourier space
+!
+    REAL(dp), TARGET, INTENT(inout)  :: gp1    (:,:,:)   ! gridpoint space 3d
+    REAL(dp), TARGET, INTENT(inout)  :: gp2    (:,:,:)   !
+    REAL(dp), TARGET, INTENT(inout)  :: gp3    (:,:,:)   !
+    REAL(dp), TARGET, INTENT(inout)  :: gp4    (:,:,:)   !
+    REAL(dp), TARGET, INTENT(inout)  :: gp5    (:,:,:)   !
+    REAL(dp), TARGET, INTENT(inout)  :: gp6    (:,:,:)   !
+    REAL(dp), TARGET, INTENT(inout)  :: gp7    (:,:,:)   !
+    REAL(dp), TARGET, INTENT(inout)  :: gp8    (:,:,:)   !
+    REAL(dp), TARGET, INTENT(inout)  :: gp9    (:,:,:)   !
+    REAL(dp), TARGET, INTENT(inout)  :: sf1    (:,:)     ! gridpoint space 2d
+    REAL(dp), TARGET, INTENT(inout)  :: sf2    (:,:)     !
+    REAL(dp), TARGET, INTENT(inout)  :: sf3    (:,:)     !
+    REAL(dp), TARGET, INTENT(inout)  :: zm1    (:,:)     ! zonal mean
+    REAL(dp), TARGET, INTENT(inout)  :: zm2    (:,:)     ! zonal mean
+    REAL(dp), TARGET, INTENT(inout)  :: zm3    (:,:)     ! zonal mean
+    REAL(dp), TARGET, INTENT(in)     :: fs     (:,:,:,:) ! Fourier space
+    REAL(dp), TARGET, INTENT(in)     :: fs0    (:,:,:)   ! zonal mean, Four.
+# 1726
+
+  END SUBROUTINE yaxt_tr_fs_to_gp
+
+  SUBROUTINE yaxt_tr_fs_to_ls(fs, ls, fs0, ls0)
+    REAL(dp), TARGET, INTENT(in)  :: fs(:,:,:,:)
+    REAL(dp), TARGET, INTENT(out) :: ls(:,:,:,:)
+    REAL(dp), TARGET, INTENT(in)  :: fs0(:,:,:)
+    REAL(dp), TARGET, INTENT(out) :: ls0(:,:,:)
+# 1764
+
+  END SUBROUTINE yaxt_tr_fs_to_ls
+
+  SUBROUTINE yaxt_tr_ls_to_fs(fs, ls, fs0, ls0)
+    REAL(dp), TARGET, INTENT(out)  :: fs(:,:,:,:)
+    REAL(dp), TARGET, INTENT(in)   :: ls(:,:,:,:)
+    REAL(dp), TARGET, INTENT(out)  :: fs0(:,:,:)
+    REAL(dp), TARGET, INTENT(in)   :: ls0(:,:,:)
+# 1828
+
+  END SUBROUTINE yaxt_tr_ls_to_fs
+
+  SUBROUTINE yaxt_tr_ls_to_sp(ls1, sp1, ls2, sp2, ls3, sp3, ls0, sp0)
+    REAL(dp), TARGET, INTENT(in)    :: ls1(:,:,:) ! Legendre space
+    REAL(dp), TARGET, INTENT(inout) :: sp1(:,:,:) ! spectral space
+    REAL(dp), TARGET, INTENT(in)    :: ls2(:,:,:) ! Legendre space
+    REAL(dp), TARGET, INTENT(inout) :: sp2(:,:,:) ! spectral space
+    REAL(dp), TARGET, INTENT(in)    :: ls3(:,:,:) ! Legendre space
+    REAL(dp), TARGET, INTENT(inout) :: sp3(:,:,:) ! spectral space
+    REAL(dp), TARGET, INTENT(in)    :: ls0(:,:)   ! Legendre (m=0 only)
+    REAL(dp), TARGET, INTENT(inout) :: sp0(:,:)   ! spectral (m=0 only)
+# 1890
+
+  END SUBROUTINE yaxt_tr_ls_to_sp
+
+  SUBROUTINE yaxt_tr_sp_to_ls(ls1, sp1, ls2, sp2, ls3, sp3, ls0, sp0)
+    REAL(dp), TARGET, INTENT(inout) :: ls1(:,:,:) ! Legendre space
+    REAL(dp), TARGET, INTENT(in)    :: sp1(:,:,:) ! spectral space
+    REAL(dp), TARGET, INTENT(inout) :: ls2(:,:,:) ! Legendre space
+    REAL(dp), TARGET, INTENT(in)    :: sp2(:,:,:) ! spectral space
+    REAL(dp), TARGET, INTENT(inout) :: ls3(:,:,:) ! Legendre space
+    REAL(dp), TARGET, INTENT(in)    :: sp3(:,:,:) ! spectral space
+    REAL(dp), TARGET, INTENT(inout) :: ls0(:,:)   ! Legendre (m=0 only)
+    REAL(dp), TARGET, INTENT(in)    :: sp0(:,:)   ! spectral (m=0 only)
+# 1951
+
+  END SUBROUTINE yaxt_tr_sp_to_ls
+
+# 3943
+
+
+END MODULE mo_echam_yaxt

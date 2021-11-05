@@ -1,0 +1,105 @@
+! -*- f90 -*-
+
+! Created by M. Righi (DLR), 2016
+
+! #############################################################################
+! MODE ASSIGNMENT AND MASS-TO-NUMBER CONVERSION OF AEROSOL EMISSIONS FOR MADE3
+! #############################################################################
+! SHIPPING SECTOR (SHIP)
+! #############################################################################
+! Based on the REF04 emissions setup described in Kaiser et al. (GMD, 2018).
+! Mass emission fluxes in input must have units of kg/m3/s or kg/m2/s.
+!
+! Mass and number emission are assigned to the MADE3 Aitken (k) and
+! accumulation (a) modes (no assignment to the coarse mode for this sector)
+! For each mode, emissions are further split into the three mixing states:
+! insoluble (i), mixed (m) and soluble (s), according to the table below.
+!
+! Number emissions are estimated from mass emissions based on an assumed
+! log-normal size distribution, requiring two parameters to be specified:
+! median diameter D (in meters) and standard deviation sigma (dimensionsless).
+! The conversion factor is calculated by:
+!
+!     M2N_i_j = sum (6/pi * M_j / rho_j / exp(4.5 ln^2(sigma_i)) / D_i^3
+!
+! where i = (akn, acc) is the aerosol mode and and j = (SO4, BC, POM); M is the
+! mass emission flux and rho is the aerosol specific density (1840, 1500, 1400
+! kg/m3 for SO4, BC and POM, respectively).
+!
+! #############################################################################
+!
+! MASS SPLITTING FACTORS MF
+!   Aitken:       MF_akn = 0.1
+!   Accumulation: MF_acc = 0.9
+!
+!
+! MODE ASSIGNMENT
+!            +--------------------------++--------------------------+
+!            |       AITKEN  MODE       ||    ACCUMULATION  MODE    |
+! +----------+-- ki --+-- km --+-- ks --++-- ai --+-- am --+-- as --+
+! | MODE_SO4 |  ----  | 1.0*MF |  ----  ||  ----  | 1.0*MF |  ----  |
+! | MODE_BC  | 0.8*MF | 0.2*MF |  ----  || 0.8*MF | 0.2*MF |  ----  |
+! | MODE_POM | 0.5*MF | 0.5*MF |  ----  || 0.5*MF | 0.5*MF |  ----  |
+! +----------+--------+--------+--------++--------+--------+--------+
+!
+!
+! MASS-TO-NUMBER CONVERSION FACTOR
+!   Size parameters Aitken:       D =  70 nm; sigma = 1.45
+!   Size parameters accumulation: D = 260 mm; sigma = 1.25
+!     M2N_akn_SO4 = 1.625834e+18
+!     M2N_akn_BC  = 1.994357e+18
+!     M2N_akn_POM = 2.136811e+18
+!     M2N_acc_SO4 = 4.720106e+16
+!     M2N_acc_BC  = 5.789996e+16
+!     M2N_acc_POM = 6.203567e+16
+!
+!
+! UNIT CONVERSION
+!   UNIT_SO2 (64.070 g/mol):   9.399315e+24
+!   UNIT_SO4 (96.060 g/mol):   6.269146e+24
+!   UNIT_BC  (12.011 g/mol):   5.013855e+25 
+!   UNIT_POM (180.000 g/mol):  3.345634e+24
+!   UNIT_NUM (--):             6.022141e+23 (= Avogadro)
+!
+!
+! ADDITIONAL FACTORS
+!   SO4 calculated as 2.5% of SO2: FAC_SO4 = 0.025 * MW(SO4)/MW(SO2) = 0.037482
+!   SO2 consequently downscaled by (100 - 2.5%): FAC_SO2 = 1 - 0.025 = 0.975
+!   POM calculated as 1.4 of OC: FAC_POM = 1.4
+!
+! #############################################################################
+!
+! OVERALL CONVERSION FACTORS
+!   SO2      = FAC_SO2 * UNIT_SO2                          = 9.164332e+24
+!   BC_ki    = MODE_BC * UNIT_BC                           = 4.011084e+24
+!   POM_ki   = FAC_POM * MODE_POM * UNIT_POM               = 2.341944e+23
+!   N_BC_ki  = MODE_BC * M2N_akn_BC * UNIT_NUM             = 9.608239e+40
+!   N_POM_ki = FAC_POM * MODE_POM * M2N_akn_POM * UNIT_NUM = 9.007724e+40
+!   SO4_km   = FAC_SO4 * MODE_SO4 * UNITS_SO4              = 2.349801e+22
+!   BC_km    = MODE_BC * UNITS_BC                          = 1.002771e+24
+!   POM_km   = FAC_POM * MODE_POM * UNITS_POM              = 2.341944e+23
+!   N_SO4_km = FAC_SO4 * MODE_SO4 * M2N_akn_SO4 * UNIT_NUM = 3.669863e+39
+!   N_BC_km  = MODE_BC * M2N_akn_BC * UNITS_NUM            = 2.402060e+40
+!   N_POM_km = FAC_POM * MODE_POM * M2N_akn_POM * UNIT_NUM = 9.007724e+40
+!   BC_ai    = MODE_BC * UNIT_BC                           = 3.609976e+25
+!   POM_ai   = FAC_POM * MODE_POM * UNIT_POM               = 2.107749e+24
+!   N_BC_ai  = MODE_BC * M2N_acc_BC * UNIT_NUM             = 2.510508e+40
+!   N_POM_ai = FAC_POM * MODE_POM * M2N_acc_POM * UNIT_NUM = 2.353601e+40
+!   SO4_am   = FAC_SO4 * MODE_SO4 * UNITS_SO4              = 2.114821e+23
+!   BC_am    = MODE_BC * UNITS_BC                          = 9.024939e+24
+!   POM_am   = FAC_POM * MODE_POM * UNITS_POM              = 2.107749e+24
+!   N_SO4_am = MODE_BC * M2N_akn_BC * UNITS_NUM            = 9.588881e+38
+!   N_BC_am  = MODE_BC * M2N_acc_BC * UNITS_NUM            = 6.276271e+39
+!   N_POM_am = FAC_POM * MODE_POM * M2N_acc_POM * UNIT_NUM = 2.353601e+40
+! 
+! #############################################################################
+
+&regrid
+infile  = "$INPUTDIR_MESSY/offemis/IPCC/DLR1.0/IPCC_DLR1.0_AR5-hist_ship_AERO_185001-185012.nc",
+i_latm  = 'lat',
+i_latr  = -90.0,90.0,
+i_lonm  = 'lon',
+i_lonr  = 0.0,360.0,
+i_timem = 'time',
+var     = 'SO2=SO2_flux,9.164332e+24;BC_ki=BC_flux,4.011084e+24;POM_ki=OC_flux,2.341944e+23;N_BC_ki=BC_flux,9.608239e+40;N_POM_ki=OC_flux,9.007724e+40;SO4_km=SO2_flux,2.349801e+22;BC_km=BC_flux,1.002771e+24;POM_km=OC_flux,2.341944e+23;N_SO4_km=SO2_flux,3.669863e+39;N_BC_km=BC_flux,2.402060e+40;N_POM_km=OC_flux,9.007724e+40;BC_ai=BC_flux,3.609976e+25;POM_ai=OC_flux,2.107749e+24;N_BC_ai=BC_flux,2.510508e+40;N_POM_ai=OC_flux,2.353601e+40;SO4_am=SO2_flux,2.114821e+23;BC_am=BC_flux,9.024939e+24;POM_am=OC_flux,2.107749e+24;N_SO4_am=SO2_flux,9.588881e+38;N_BC_am=BC_flux,6.276271e+39;N_POM_am=OC_flux,2.353601e+40;',
+/

@@ -1,0 +1,270 @@
+! -*- f90 -*-
+
+&CPL
+L_GP       = T  ! EMISSIONS FOR GRIDPOINT TRACERS
+!L_LG       = F  ! EMISSIONS FOR LAGRANGIAN TRACERS (default: F)
+!l_lg_tend  = F  ! LAGRANGIAN TRACER TENDENCY AS CHANNEL OBJECT ? (default: F)
+! ### SYNTAX:
+!     (SPECIFIERS MUST BE UPPERCASE !)
+! ###         GP=    Gridpoint  Emission Method (0,1,2) (SURFACE ONLY)
+!                    0: no emission; only channel object (DEFAULT)
+!                    1: 2D (SURFACE EM.) -> lowest layer
+!                       3D (VOLUME  EM.) -> emission ON
+!                       Nx2D (MULTI LEVEL EM.) -> internally converted to 3D
+!                    SURFACE EMISSIONS ONLY:
+!                    2: lower boundary condition for flux
+!
+! ###         LG=    Lagrangian Emission Method (0,1,2,3,4)
+!                    0: no emission; only channel object (DEFAULT)
+!                    1: 2D (SURFACE EM.)       -> into CELLs in lowest layer
+!                       3D (VOLUME  EM.)       -> emission ON
+!                       Nx2D (MULTI LEVEL EM.) -> internally converted to 3D
+!                    SURFACE EMISSIONS ONLY:
+!                    2: into lowest CELLs within boundary layer
+!                    3: into all CELLs in boundary layer (vertical gradient)
+!                    4: into all CELLs in boundary layer (no vertical gradient)
+!
+!NOTEs:  (1) Surface emission fluxes (2D) must be in  molecules m-2 s-1.
+!        (2) Volume emissions (3D)        must be in  molecules m-3 s-1.
+!        (3) Multi level emissions (Nx2D) must be in  molecules m-2 s-1.
+!        (4) For volume emissions (3D), the corresponding channel object 
+!            must be in the GP_3D_MID representation
+!        (5) The trigger for multi level emissions (Nx2D) is the presence
+!            of the channel object attribute heights
+!
+! EMISSION: TRACER NAME, TRACER SUBNAME, CHANNEL NAME, CHANNEL OBJECT, 
+!           EMISSION METHOD
+!
+! (LOWER BOUNDARY CONDITIONS SEE tnudge.nml)
+!
+!
+! =============================
+! == BIOMASS BURNING (CMIP6) ==
+! =============================
+!
+! Gas species
+EMIS_IN(20) = 'NO',     'import_grid', 'BB_gas_NO',        'GP=1'
+EMIS_IN(21) = 'CO',     'import_grid', 'BB_gas_CO',        'GP=1'
+EMIS_IN(22) = 'NH3',    'import_grid', 'BB_gas_NH3',       'GP=1'
+EMIS_IN(23) = 'SO2',    'import_grid', 'BB_gas_SO2',       'GP=1'
+EMIS_IN(24) = 'CH3OH',  'import_grid', 'BB_nmhc_CH3OH',    'GP=1'
+EMIS_IN(25) = 'HCHO',   'import_grid', 'BB_nmhc_HCHO',     'GP=1'
+EMIS_IN(26) = 'HCOOH',  'import_grid', 'BB_nmhc_HCOOH',    'GP=1'
+!
+! Aerosol species
+EMIS_IN(30) = 'BC_ai',  'import_grid', 'BB_aero_BC_ai',    'GP=1'
+EMIS_IN(31) = 'POM_ai', 'import_grid', 'BB_aero_POM_ai',   'GP=1'
+EMIS_IN(32) = 'N_ai',   'import_grid', 'BB_aero_N_BC_ai',  'GP=1'
+EMIS_IN(33) = 'N_ai',   'import_grid', 'BB_aero_N_POM_ai', 'GP=1'
+!
+EMIS_IN(34) = 'SO4_am', 'import_grid', 'BB_gas_SO4_am',    'GP=1'
+EMIS_IN(35) = 'BC_am',  'import_grid', 'BB_aero_BC_am',    'GP=1'
+EMIS_IN(36) = 'POM_am', 'import_grid', 'BB_aero_POM_am',   'GP=1'
+EMIS_IN(37) = 'N_am',   'import_grid', 'BB_gas_N_SO4_am',  'GP=1'
+EMIS_IN(38) = 'N_am',   'import_grid', 'BB_aero_N_BC_am',  'GP=1'
+EMIS_IN(39) = 'N_am',   'import_grid', 'BB_aero_N_POM_am', 'GP=1'
+!
+!
+! ========================================
+! == AGRICULTURAL WASTE BURNING (CMIP6) ==
+! ========================================
+!
+! Gas species
+EMIS_IN(40) = 'NO',    'import_grid', 'AWB_gas_NO',         'GP=1'
+EMIS_IN(41) = 'CO',    'import_grid', 'AWB_gas_CO',         'GP=1'
+EMIS_IN(42) = 'NH3',   'import_grid', 'AWB_gas_NH3',        'GP=1'
+EMIS_IN(43) = 'SO2',   'import_grid', 'AWB_gas_SO2',        'GP=1'
+EMIS_IN(44) = 'CH3OH', 'import_grid', 'AWB_nmhc_CH3OH',     'GP=1'
+EMIS_IN(45) = 'HCHO',  'import_grid', 'AWB_nmhc_HCHO',      'GP=1'
+EMIS_IN(46) = 'HCOOH', 'import_grid', 'AWB_nmhc_HCOOH',     'GP=1'
+!
+! Aerosol species
+EMIS_IN(50) = 'BC_ai',  'import_grid', 'AWB_aero_BC_ai',    'GP=1'
+EMIS_IN(51) = 'POM_ai', 'import_grid', 'AWB_aero_POM_ai',   'GP=1'
+EMIS_IN(52) = 'N_ai',   'import_grid', 'AWB_aero_N_BC_ai',  'GP=1'
+EMIS_IN(53) = 'N_ai',   'import_grid', 'AWB_aero_N_POM_ai', 'GP=1'
+!
+EMIS_IN(54) = 'SO4_am', 'import_grid', 'AWB_gas_SO4_am',    'GP=1'
+EMIS_IN(55) = 'BC_am',  'import_grid', 'AWB_aero_BC_am',    'GP=1'
+EMIS_IN(56) = 'POM_am', 'import_grid', 'AWB_aero_POM_am',   'GP=1'
+EMIS_IN(57) = 'N_am',   'import_grid', 'AWB_gas_N_SO4_am',  'GP=1'
+EMIS_IN(58) = 'N_am',   'import_grid', 'AWB_aero_N_BC_am',  'GP=1'
+EMIS_IN(59) = 'N_am',   'import_grid', 'AWB_aero_N_POM_am', 'GP=1'
+!
+!
+! =======================================
+! == ANTHROPOGENIC NON-TRAFFIC (CMIP6) ==
+! =======================================
+!
+! Gas species
+EMIS_IN(60) = 'NO',     'import_grid', 'LAND-ROAD-AWB_gas_NO',        'GP=1'
+EMIS_IN(61) = 'CO',     'import_grid', 'LAND-ROAD-AWB_gas_CO',        'GP=1'
+EMIS_IN(62) = 'NH3',    'import_grid', 'LAND-ROAD-AWB_gas_NH3',       'GP=1'
+EMIS_IN(63) = 'SO2',    'import_grid', 'LAND-ROAD-AWB_gas_SO2',       'GP=1'
+EMIS_IN(64) = 'CH3OH',  'import_grid', 'LAND-ROAD-AWB_nmhc_CH3OH',    'GP=1'
+EMIS_IN(65) = 'HCHO',   'import_grid', 'LAND-ROAD-AWB_nmhc_HCHO',     'GP=1'
+!
+! Aerosol species
+EMIS_IN(71) = 'BC_ai',  'import_grid', 'LAND-ROAD-AWB_aero_BC_ai',    'GP=1'
+EMIS_IN(72) = 'POM_ai', 'import_grid', 'LAND-ROAD-AWB_aero_POM_ai',   'GP=1'
+EMIS_IN(73) = 'N_ai',   'import_grid', 'LAND-ROAD-AWB_aero_N_BC_ai',  'GP=1'
+EMIS_IN(74) = 'N_ai',   'import_grid', 'LAND-ROAD-AWB_aero_N_POM_ai', 'GP=1'
+!
+EMIS_IN(75) = 'BC_am',  'import_grid', 'LAND-ROAD-AWB_aero_BC_am',    'GP=1'
+EMIS_IN(76) = 'POM_am', 'import_grid', 'LAND-ROAD-AWB_aero_POM_am',   'GP=1'
+EMIS_IN(77) = 'N_am',   'import_grid', 'LAND-ROAD-AWB_aero_N_BC_am',  'GP=1'
+EMIS_IN(78) = 'N_am',   'import_grid', 'LAND-ROAD-AWB_aero_N_POM_am', 'GP=1'
+!
+!
+! ============================
+! == LAND TRANSPORT (CMIP6) ==
+! ============================
+!
+! Gas species
+EMIS_IN(80) = 'NO',      'import_grid', 'ROAD_gas_NO',        'GP=1'
+EMIS_IN(81) = 'CO',      'import_grid', 'ROAD_gas_CO',        'GP=1'
+EMIS_IN(82) = 'NH3',     'import_grid', 'ROAD_gas_NH3',       'GP=1'
+EMIS_IN(83) = 'SO2',     'import_grid', 'ROAD_gas_SO2',       'GP=1'
+EMIS_IN(84) = 'CH3OH',   'import_grid', 'ROAD_nmhc_CH3OH',    'GP=1'
+EMIS_IN(85) = 'HCHO',    'import_grid', 'ROAD_nmhc_HCHO',     'GP=1'
+!
+! Aerosol species
+EMIS_IN(90) = 'BC_ki',   'import_grid', 'ROAD_aero_BC_ki',    'GP=1'
+EMIS_IN(91) = 'POM_ki',  'import_grid', 'ROAD_aero_POM_ki',   'GP=1'
+EMIS_IN(92) = 'N_ki',    'import_grid', 'ROAD_aero_N_BC_ki',  'GP=1'
+EMIS_IN(93) = 'N_ki',    'import_grid', 'ROAD_aero_N_POM_ki', 'GP=1'
+!
+EMIS_IN(94) = 'BC_km',   'import_grid', 'ROAD_aero_BC_km',    'GP=1'
+EMIS_IN(95) = 'POM_km',  'import_grid', 'ROAD_aero_POM_km',   'GP=1'
+EMIS_IN(96) = 'N_km',    'import_grid', 'ROAD_aero_N_BC_km',  'GP=1'
+EMIS_IN(97) = 'N_km',    'import_grid', 'ROAD_aero_N_POM_km', 'GP=1'
+!
+EMIS_IN(98) = 'SO4_ks',  'import_grid', 'ROAD_gas_SO4_ks',    'GP=1'
+EMIS_IN(99) = 'N_ks',    'import_grid', 'ROAD_gas_N_SO4_ks',  'GP=1'
+!
+EMIS_IN(100) = 'BC_ai',  'import_grid', 'ROAD_aero_BC_ai',    'GP=1'
+EMIS_IN(101) = 'POM_ai', 'import_grid', 'ROAD_aero_POM_ai',   'GP=1'
+EMIS_IN(102) = 'N_ai',   'import_grid', 'ROAD_aero_N_BC_ai',  'GP=1'
+EMIS_IN(103) = 'N_ai',   'import_grid', 'ROAD_aero_N_POM_ai', 'GP=1'
+!
+EMIS_IN(104) = 'BC_am',  'import_grid', 'ROAD_aero_BC_am',    'GP=1'
+EMIS_IN(105) = 'POM_am', 'import_grid', 'ROAD_aero_POM_am',   'GP=1'
+EMIS_IN(106) = 'N_am',   'import_grid', 'ROAD_aero_N_BC_am',  'GP=1'
+EMIS_IN(107) = 'N_am',   'import_grid', 'ROAD_aero_N_POM_am', 'GP=1'
+!
+!
+! ======================
+! == SHIPPING (CMIP6) ==
+! ======================
+!
+! Gas species
+EMIS_IN(110) = 'NO',     'import_grid', 'SHIP_gas_NO',        'GP=1'
+EMIS_IN(111) = 'CO',     'import_grid', 'SHIP_gas_CO',        'GP=1'
+EMIS_IN(112) = 'SO2',    'import_grid', 'SHIP_gas_SO2',       'GP=1'
+EMIS_IN(113) = 'CH3OH',  'import_grid', 'SHIP_nmhc_CH3OH',    'GP=1'
+EMIS_IN(114) = 'HCHO',   'import_grid', 'SHIP_nmhc_HCHO',     'GP=1'
+!
+! Aerosol species
+EMIS_IN(120) = 'BC_ki',  'import_grid', 'SHIP_aero_BC_ki',    'GP=1'
+EMIS_IN(121) = 'POM_ki', 'import_grid', 'SHIP_aero_POM_ki',   'GP=1'
+EMIS_IN(122) = 'N_ki',   'import_grid', 'SHIP_aero_N_BC_ki',  'GP=1'
+EMIS_IN(123) = 'N_ki',   'import_grid', 'SHIP_aero_N_POM_ki', 'GP=1'
+!
+EMIS_IN(124) = 'SO4_km', 'import_grid', 'SHIP_gas_SO4_km',    'GP=1'
+EMIS_IN(125) = 'BC_km',  'import_grid', 'SHIP_aero_BC_km',    'GP=1'
+EMIS_IN(126) = 'POM_km', 'import_grid', 'SHIP_aero_POM_km',   'GP=1'
+EMIS_IN(127) = 'N_km',   'import_grid', 'SHIP_gas_N_SO4_km',  'GP=1'
+EMIS_IN(128) = 'N_km',   'import_grid', 'SHIP_aero_N_BC_km',  'GP=1'
+EMIS_IN(129) = 'N_km',   'import_grid', 'SHIP_aero_N_POM_km', 'GP=1'
+!
+EMIS_IN(130) = 'BC_ai',  'import_grid', 'SHIP_aero_BC_ai',    'GP=1'
+EMIS_IN(131) = 'POM_ai', 'import_grid', 'SHIP_aero_POM_ai',   'GP=1'
+EMIS_IN(132) = 'N_ai',   'import_grid', 'SHIP_aero_N_BC_ai',  'GP=1'
+EMIS_IN(133) = 'N_ai',   'import_grid', 'SHIP_aero_N_POM_ai', 'GP=1'
+!
+EMIS_IN(134) = 'SO4_am', 'import_grid', 'SHIP_gas_SO4_am',    'GP=1'
+EMIS_IN(135) = 'BC_am',  'import_grid', 'SHIP_aero_BC_am',    'GP=1'
+EMIS_IN(136) = 'POM_am', 'import_grid', 'SHIP_aero_POM_am',   'GP=1'
+EMIS_IN(137) = 'N_am',   'import_grid', 'SHIP_gas_N_SO4_am',  'GP=1'
+EMIS_IN(138) = 'N_am',   'import_grid', 'SHIP_aero_N_BC_am',  'GP=1'
+EMIS_IN(139) = 'N_am',   'import_grid', 'SHIP_aero_N_POM_am', 'GP=1'
+!
+!
+! ======================
+! == AVIATION (CMIP6) ==
+! ======================
+!
+! Gas species
+EMIS_IN(150) = 'NO',     'import_grid', 'AIR_gas_NO',         'GP=1'
+EMIS_IN(151) = 'CO',     'import_grid', 'AIR_gas_CO',         'GP=1'
+EMIS_IN(152) = 'NH3',    'import_grid', 'AIR_gas_NH3',        'GP=1'
+EMIS_IN(153) = 'SO2',    'import_grid', 'AIR_gas_SO2',        'GP=1'
+EMIS_IN(154) = 'CH3OH',  'import_grid', 'AIR_gas_CH3OH',      'GP=1'
+EMIS_IN(155) = 'HCHO',   'import_grid', 'AIR_gas_HCHO',       'GP=1'
+!
+! Aerosol species
+EMIS_IN(160) = 'BC_ki',  'import_grid', 'AIR_aero_BC_ki',     'GP=1'
+EMIS_IN(161) = 'POM_ki', 'import_grid', 'AIR_aero_POM_ki',    'GP=1'
+EMIS_IN(162) = 'N_ki',   'import_grid', 'AIR_aero_N_BC_ki',   'GP=1'
+EMIS_IN(163) = 'N_ki',   'import_grid', 'AIR_aero_N_POM_ki',  'GP=1'
+!
+EMIS_IN(164) = 'BC_km',  'import_grid', 'AIR_aero_BC_km',     'GP=1'
+EMIS_IN(165) = 'POM_km', 'import_grid', 'AIR_aero_POM_km',    'GP=1'
+EMIS_IN(166) = 'N_km',   'import_grid', 'AIR_aero_N_BC_km',   'GP=1'
+EMIS_IN(167) = 'N_km',   'import_grid', 'AIR_aero_N_POM_km',  'GP=1'
+!
+EMIS_IN(168) = 'SO4_ks', 'import_grid', 'AIR_gas_SO4_ks',     'GP=1'
+EMIS_IN(169) = 'N_ks',   'import_grid', 'AIR_gas_N_SO4_ks',   'GP=1'
+!
+EMIS_IN(170) = 'BC_ai',  'import_grid', 'AIR_aero_BC_ai',     'GP=1'
+EMIS_IN(171) = 'POM_ai', 'import_grid', 'AIR_aero_POM_ai',    'GP=1'
+EMIS_IN(172) = 'N_ai',   'import_grid', 'AIR_aero_N_BC_ai',   'GP=1'
+EMIS_IN(173) = 'N_ai',   'import_grid', 'AIR_aero_N_POM_ai',  'GP=1'
+!
+EMIS_IN(174) = 'SO4_am', 'import_grid', 'AIR_gas_SO4_am',     'GP=1'
+EMIS_IN(175) = 'BC_am',  'import_grid', 'AIR_aero_BC_am',     'GP=1'
+EMIS_IN(176) = 'POM_am', 'import_grid', 'AIR_aero_POM_am',    'GP=1'
+EMIS_IN(177) = 'N_am',   'import_grid', 'AIR_gas_N_SO4_am',   'GP=1'
+EMIS_IN(178) = 'N_am',   'import_grid', 'AIR_aero_N_BC_am',   'GP=1'
+EMIS_IN(179) = 'N_am',   'import_grid', 'AIR_aero_N_POM_am',  'GP=1'
+!
+!
+! =========================
+! == VOLCANOES (AEROCOM) ==
+! =========================
+!
+! Gas species
+EMIS_IN(180) = 'SO2',    'import_grid', 'VOLC_SO2',    'GP=1'
+!
+! Aerosol species
+EMIS_IN(190) = 'SO4_ks', 'import_grid', 'VOLC_SO4_ks', 'GP=1'
+EMIS_IN(191) = 'SO4_as', 'import_grid', 'VOLC_SO4_as', 'GP=1'
+EMIS_IN(192) = 'N_ks',   'import_grid', 'VOLC_N_ks',   'GP=1'
+EMIS_IN(193) = 'N_as',   'import_grid', 'VOLC_N_as',   'GP=1'
+!
+!
+! ======================================
+! == TERRESTRIAL DMS (Spiro + Kettle) ==
+! ======================================
+!
+EMIS_IN(200) = 'DMS', 'import_grid', 'BIO_TERR_DMS','GP=2'
+!
+!
+! ============================
+! == MINERAL DUST (AEROCOM) ==
+! ============================
+!
+!!$EMIS_IN(210) = 'DU_ai', 'import_grid', 'DUST_DU_ai','GP=2'
+!!$EMIS_IN(211) = 'DU_ci', 'import_grid', 'DUST_DU_ci','GP=2'
+!!$EMIS_IN(212) = 'N_ai' , 'import_grid', 'DUST_N_ai', 'GP=2'
+!!$EMIS_IN(213) = 'N_ci' , 'import_grid', 'DUST_N_ci', 'GP=2'
+!
+!
+! =====================
+! == BIOGENIC (GEIA) ==
+! =====================
+!
+EMIS_IN(220) = 'CH3OH', 'import_grid', 'BIO_CH3OH', 'GP=1'
+EMIS_IN(221) = 'CO',    'import_grid', 'BIO_CO',    'GP=1'
+EMIS_IN(222) = 'HCOOH', 'import_grid', 'BIO_HCOOH', 'GP=1'
+/

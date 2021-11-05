@@ -1,0 +1,135 @@
+# -*- Makefile -*- Time-stamp: <2019-02-11 14:46:45 joec_pa>
+###############################################################################
+##### PLATFORM SPECIFIC SETTINGS (LINUX64) ####################################
+###############################################################################
+ARCH       = LINUX64
+
+###########################################################################
+### DEFAULTS
+###########################################################################
+#### DEFAULT COMPILE MODE
+if test -z "$RUNMODE" ; then
+   RUNMODE=PRODUCTION
+fi
+
+#### SET DEFAULT PROFILING MODE
+if test -z "$PROFILEMODE" ; then
+   PROFILEMODE=NONE
+fi
+
+##### TOOLS
+#AR       = ar
+#ARFLAGS  = cvr
+#NMFLAGS  = 
+
+##### F95 EXTENSIONS
+DEFOPT   = -D
+MODOPT   = -I
+
+
+  #########################################################################
+  ### SuperMUC and SuperMUC-fat at LRZ
+  #########################################################################
+
+     case $LRZ_SYSTEM_SEGMENT in
+        Fat_Node|Thin_Node)
+            F90ADDOPT = -axAVX -xSSE4.2
+            ;;
+        Medium_Node)
+            F90ADDOPT = -xCORE-AVX2
+            ;;
+        *)
+            ERRSTR='Error: LRZ_SYSTEM_SEGMENT could not be determined.'
+            ;;
+     esac
+
+     ##### SPECIAL SETTINGS FOR PROFILING
+     case $PROFILEMODE in
+        NONE*)
+           # default: no profiling (nothing to do)
+           PREF90 =
+           ;;
+        SCALASCA*)
+           # corresponding module must be loaded
+           PREF90 = scalasca -instrument
+           ;;
+        VAMPIR*)
+           # corresponding module must be loaded
+           PREF90 = vtf90 -vt:mpi -vt:f90
+           ;;
+        *)
+           ERRSTR='Error: unknown profiling mode selected! To solve ./configure [options] PROFILEMODE=SCALASCA|VAMPIR'
+           ;;
+     esac
+
+     COMPILER=INTEL
+     ## For some strange reason (file system synchronisation)
+     ## the corresponding tests in configure fail; thus these two
+     ## variables need to be set explicitely:
+     FORT_INTEGER_LEN=4
+     FORT_REAL_LEN=4
+     #
+     #CXX    =
+     CC     = mpicc
+     CFLAGS = -O $F90ADDOPT -fp-model strict -Df2cFortran -I${NETCDF_BASE}/include -L${NETCDF_BASE}/lib $NETCDF_LIB $NETCDF_F90_LIB
+     F90    = $PREF90 mpif90
+     F90VERS  = `$F90 --version | awk '{if (NR == 1) print}'`
+     ##### F95 EXTENSIONS
+     DEFOPT   = -D
+     MODOPT   = -I
+     ##### F95 COMPILER FLAG TO OBTAIN DOUBLE PRECISION
+     F90R8    = -autodouble
+     ##### F77 OPTIONS
+     FFLAGS = -fpp -O2 -fp-model strict
+     ##### OpenMP options
+     F90OMP    = -qopenmp -heap-arrays
+     F90OMPLIB = -qopenmp -heap-arrays
+     ##### MPI C++ compiler, flags and libs (for GUESS)
+     MPICXX  = mpiCC
+     LIBCXX  = -lstdc++
+     ###
+     case $RUNMODE in
+        DEBUG)
+           F90FLAGS = -ftrapuv -fpp -g -debug all -check all -traceback -O0 $F90ADDOPT -fp-model strict -align all -fno-alias -save-temps
+# -lpthread
+           ;;
+        PRODUCTION)
+           F90FLAGS = -fpp -g -O2 $F90ADDOPT -fp-model strict -align all -fno-alias -save-temps -g -traceback
+# -lpthread
+# additional debugging with with: -g -traceback
+           ;;
+        DEBUGOPT)
+           F90FLAGS = -ftrapuv -fpp -g -debug all -check all -traceback -O2 $F90ADDOPT -fp-model strict -align all -fno-alias -save-temps
+# -lpthread
+           ;;
+        *)
+           ERRSTR='Error: wrong run-time mode selected! To solve ./configure [options] RUNMODE=DEBUG|DEBUGOPT|PRODUCTION'
+           ;;
+       esac
+
+       MPIROOT    = 
+       INCLUDE    =
+       ## netCDF-3:
+       #NETCDFROOT = $NETCDF_BASE
+       ## netCDF-4:
+       SPEC_NETCDF_INC = ${NETCDF_BASE}/include
+       SPEC_NETCDF_LIB = -L${NETCDF_BASE}/lib $NETCDF_LIB $NETCDF_F90_LIB
+       #
+       ## parallel netCDF:
+       PNETCDFROOT = $PNETCDF_BASE
+       #
+       ### NOTE: Avoid usage of Intel MKL library on SuperMUC;
+       ###       it causes irreproducible results (in mo_nmi.f90, i.e.,
+       ###       if nudging is switched on)!
+       #SPEC_LABLA_LIB = $MKL_LIB
+       BLASROOT   = 
+       BLAS_LIB   =
+       LAPACKROOT =
+       LAPACK_LIB =
+       SPEC_LIB   =
+       #FCKLIBS    = /gpfs/work/h1112/lu28dap/soft/forcheck/v14/lib/netcdf90 /gpfs/work/h1112/lu28dap/soft/forcheck/v14/lib/mpi
+       FCKLIBS    = /gpfs/work/pr94ri/lu28dap2/soft/forcheck/v14.5.15/lib/netcdf90 /gpfs/work/pr94ri/lu28dap2/soft/forcheck/v14.5.15/lib/mpi
+
+###########################################################################
+###########################################################################
+###########################################################################

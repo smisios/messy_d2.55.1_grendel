@@ -1,0 +1,104 @@
+! -*- f90 -*-
+! The submodel M7 does work on its own with the default namelist setting.
+! But be careful ! What you need to get sensible results for sulfate aerosol
+! are gas phase H2SO4/DMS emissions and the respective gas phase sulphur 
+! chemistry (e.g. MECCA, if MECCA is switch on, set lcpl_gasphase = T)
+! To get particulate emissions (sea-salt, OC/BC, DUST) switch on the respective! source in ONLEM *AND* the respective logical (l_ss, l_carbon, l_dust) in
+! this namelist.
+! Do not forget to switch on the submodels DRYDEP, SEDI and SCAV to get 
+! realistic aerosol distributions.
+&CTRL
+  LM7        = T ! Modal aerosol scheme M7
+  LMASS_DIAG = F ! Mass balance check in m7_interface
+  LCDNC      = F ! Interactive calculation of the Cloud Droplet Number Concentration
+  LICNC      = F ! Interactive calculation of the Ice Crystal   Number Concentration
+  LSCOAG     = T ! Coagulation
+  LSCOND     = T ! Condensation of H2SO4
+  LSNUCL     = T ! Nucleation
+  NNUCL      = 1 ! Choice of the nucleation scheme: 1 Vehkamaeki (2002), 2  Kulmala (1998)
+/
+
+&CPL
+!chemmodule        = 'mecca1' ! name of chemistry module to couple to ('mecca1')
+chemmodule        = 'mecca' ! name of chemistry module to couple to ('mecca')
+lcpl_gasphase     = T   ! cpl gas phase chemistry i.e.  H2SO4
+! 1.     define tracer used from chemistry module
+! 1.1    gas-phase tracer
+! 1.1.1  H2SO4
+H2SO4_gas   = 'H2SO4', ''  ! tracername, subname
+! 1.1.2  coupling to MECCA-AERO H2SO4_as (accumulation mode)
+!H2SO4_as   = 'H2SO4', 'as'  ! tracername, subname
+! 1.1.3  coupling to MECCA-AERO H2SO4_cs (coarse mode)
+!H2SO4_cs   = 'H2SO4', 'cs'  ! tracername, subname
+! switch off tracer generation
+l_notrac_SO4 = F
+l_notrac_OCBC = F
+l_notrac_SS = F
+l_notrac_DU = F
+
+! 2.0 calculation of online emissions
+!     default is .true. (assuming coupling to onemis)
+!     if using EMDEP for emission calculation switch to .false.
+l_calc_emis = T
+! 2.0.1   add emission to tendency (default is .false. i.e. 
+!         emission is put into pxtems) 
+l_tendency = F
+
+! 2.1 calculate sea salt emissions
+l_ss = T   ! regard seasalt emission 
+! 2.1.1 name of emission channel
+SSemis_channel = 'onemis'
+! 2.1.2 names of channel objects seasalt
+! 2.1.2.1 accumulation mode mass
+SS_mass_as = 'mss_as_lsce'
+!SS_mass_as = 'mss_as_monahan'
+!SS_mass_as = 'mss_as_aerocom'
+!SS_mass_as = 'emis_ss_as'
+! 2.1.2.2 accumulation mode number
+SS_num_as = 'nss_as_lsce'
+!SS_num_as = 'nss_as_monahan'
+!SS_num_as = 'nss_as_aerocom'
+! 2.1.2.3 coarse mode mass
+SS_mass_cs = 'mss_cs_lsce'
+!SS_mass_cs = 'mss_cs_monahan'
+!SS_mass_cs = 'mss_cs_aerocom'
+! 2.1.2.4 coarse mode number
+SS_num_cs = 'nss_cs_lsce'
+!SS_num_cs = 'nss_cs_monahan'
+!SS_num_cs = 'nss_cs_aerocom'
+
+! 2.2 calculate carbon emissions
+l_carbon = T   ! regard carbon emission 
+! 2.2.1 name of emission channel
+Cemis_channel = 'onemis'
+! 2.2.2 names of organic carbon channel objects
+emis_OC_sol   = 'OC_sum_sol'    ! organic carbon mass soluble 
+emis_OC_insol = 'OC_sum_insol'  ! organic carbon mass insoluble 
+! 2.2.3 names of black carbon channel objects
+emis_BC_insol = 'BC_sum_insol'  ! black carbon mass insoluble 
+! 2.2.4 names of number carbon channel objects
+emis_N_sol    = 'Num_sol'
+emis_N_insol  = 'Num_insol'
+
+! 2.3 calculate dust emissions
+! 2.3.1 name of emission channel
+Duemis_channel = 'onemis'
+! 2.3.2 names of ai and ci dust emission channel objects
+!emis_dust_ai   = ' '
+!emis_dust_ci   = 'du_emflux_B_ci'
+emis_dust_ai   = 'du_emflux_T_ai'
+emis_dust_ci   = 'du_emflux_T_ci'   
+
+! 2.4 calculate sulfate emissions from antropogenic SO2
+!l_so4 = T   ! regard sulfate emission 
+! 2.4.1 name of emission channel
+SO4emis_channel = 'onemis'
+! 2.4.2 names of dust emission channel
+emis_so2_low    = 'SO2_ant_low'   
+emis_so2_high   = 'SO2_ant_high'   
+
+! 3.0 calculate aerosol column masses
+l_colmass = T
+l_aod = T
+/
+

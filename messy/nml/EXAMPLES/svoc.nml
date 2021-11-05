@@ -1,0 +1,220 @@
+! -*- f90 -*-
+
+! ###+++ NOTE: This is required for import.nml:
+!  
+! ############################################################################
+! PAH (Polycyclic aromatic hydrocarbons)
+! to import additional inputs:
+! 1) application-emissions
+! 2) organic matter content and dry bulk density in soil
+! 3) mixed layer depth for fake ocean
+! ############################################################################
+!
+!RG_TRIG(73) = 1,'months' ,'first',0,'emiss',1,1,12 ,$START_MONTH,'NML=./import/pah/PKU-PAHs-2008_mon.nml'
+!RG_TRIG(74) = 1,'years' ,'first',0,'soil' ,1,1,1 ,$START_MONTH,'NML=./import/pah/SOIL-OM-RHO_T63.new.nml'
+!RG_TRIG(75) = 1,'months','first',0,'oce'  ,1,1,12,$START_MONTH,'NML=./import/pah/mld_DReqDTm02_c1m_reg2.0.new.nml'
+!
+! ###---
+
+! *************************************************************************
+! control namelist
+! *************************************************************************
+
+&CTRL
+
+L_GP        = T ! SVOCs as grid-point tracers (default = T)
+L_LG        = F ! SVOCs as lagrangian tracers (default = F)
+l_svocpart  = T ! switch for gas-particle partitioning (default = T)
+                ! if set to .false., l_mode_partition will be ignored
+l_svocvola  = T ! switch for surface volatilization (default = T)
+                ! caution: if set to .false., turn off airsea submodel
+l_glacier   = T ! switch for (with or no) glacier compartment (default = F)
+l_landsnow  = T ! switch for (with or no) snow compartment (default = F)
+l_pahderiv  = T ! switch for nitro-derivative of pahs
+
+/
+
+! *************************************************************************
+! coupling namelist
+! *************************************************************************
+
+&CPL
+
+l_mode_partition = T ! switch for modal partitioning (default = F)
+                     ! if set to .false., use bulk partitioning and
+                     ! ignore REMIS_MOD
+                     
+param_part  = 4 ! scheme for gas-particle partitioning:
+                ! 1 -> Lohmann-Lammel (2004)
+                ! 2 -> Finizio (1997)
+                ! 3 -> Junge-Pankow (1987)
+                ! 4 -> PP-LFERs (ref.: Abraham, 1993; Goss 2005; the scheme
+                !     applied here is adopted from Pourya et al., 2016)
+
+param_soilv = 2 ! scheme for volatilization from soil (if l_svocvola = T):
+                ! 1 -> Smit (1997)
+                ! 2 -> Jury (1983)
+
+param_bapo3 = 2 ! scheme for on-particle bap oxidation by ozone:
+                ! 1 -> Poeschl (2001)
+                ! 2 -> Kwamena (2004)
+                ! 3 -> ROI(T) (xxxx)
+                ! 4 -> Kahan (2006)
+
+aermod_str  = 'gmxe' ! 'm7' or 'gmxe'
+
+! import sea spray  (AS mode) aerosol fluxes (channel, object) 
+! flux unit must be in kg m-2 s-1
+imp_ss_as_flux = 'onemis','mss_as_lsce'
+
+! import input data (channel, object)
+imp_om_soil  = 'import_rgt','soil_foms'
+imp_rho_soil = 'import_rgt','soil_rhos'
+imp_mld_oce  = 'import_rgt','oce_ocn_mld'
+
+! *************************************************************************
+!
+! NOTES:
+! --> MAX 100 tracers
+!
+! SVOC_NAME(#) = tracer name, max 10 chars (should be the same with those
+!               set in mecca)
+! EMISS_IN(#) = import emission (channel name, channel object)
+! MOLMASS(#)  = molar mass of tracer [g mol-1]
+! MOLVOL(#)   = molar volume at boiling point [cm3 mol-1]
+! RKSOIL(#)   = biotic and abiotic decay rate in soil [s-1]
+! RKOCEAN(#)  = biotic and abiotic decay rate in ocean [s-1]
+! RWSOL(#)    = water solubility [mg l-1] at 298 K
+! RVAPP(#)    = saturated vapor pressure [Pa] at 298 K
+! RHSOL(#)    = heat of solution [J mol-1] at 298 K
+! RHVAP(#)    = heat of vaporisation [J mol-1] at 298 K
+! RHABC(#)    = enthalpy of adsorption on BC [J mol-1]
+! RHSUB(#)    = heat of sublimation (condensation of sub-cooled liq)
+!               at 298 K [J mol-1]
+! RLOGKOW(#)  = octanol-water partition coefficient
+! RKOAM(#)    = slope of temp-dependent gas-particle partition coeff [K]
+! RKOAB(#)    = intercept of temp-dependent gas-particle partition coeff
+! KAHENRY(#)  = henry parameter A [M atm-1]
+! KBHENRY(#)  = henry parameter B [K]
+! RLOSS(#)    = mass fraction loss directly to atmosphere
+! RSPRAY(#)   = mass fraction applied (sprayed) to vegetation surface
+! RDENS(#)    = aerosol density [kg m-3] at 293 K
+! REMISP(#)   = fraction of (bulk) particles in emissions
+! REMIS_MOD(#,NMODE) = fraction of mode-specific svoc in emissions
+!                      (actual emission fraction: REMIS_MOD*REMISP)
+!        where NMODE = 7 (follows m7 and gmxe), i.e.,
+!                      'ns', 'ks', 'as', 'cs', 'ki', 'ai', 'ci'
+!                      ns: nucleation soluble
+!                      ks: aitken soluble
+!                      as: accumulation soluble
+!                      cs: coarse soluble
+!                      ki: aitken insoluble
+!                      ai: accumulation insoluble
+!                      ci: coarse insoluble
+! RPPLFER(#,6) = RBIGE, RBIGS, RBIGA, RBIGB, RBIGV, RBIGL (if param_part = 4)
+!      RBIGE   = excess molar refraction
+!      RBIGS   = polarizability
+!      RBIGA   = solute H-bond acidity
+!      RBIGB   = solute H-bond basicity
+!      RBIGV   = McGowan molar volume
+!      RBIGL   = log of hexadecane-air partition coeff.
+!
+! *************************************************************************
+
+!!! phenanthrene
+SVOC_NAME(1) = 'PHE'
+EMISS_IN(1) = 'import_rgt', 'emiss_PHE'
+MOLMASS(1)  = 178.2
+MOLVOL(1)   = 199.2
+RKSOIL(1)   = 5.17E-07
+RKOCEAN(1)  = 5.4E-08
+RWSOL(1)    = 1.1
+RVAPP(1)    = 7.0E-02
+RHSOL(1)    = 3.481E+04
+RHVAP(1)    = 7.83E+04
+RHSUB(1)    = 9.21E+04
+RLOGKOW(1)  = 4.47
+RKOAM(1)    = 3293.
+RKOAB(1)    = -3.37
+KAHENRY(1)  = 2.4E+01
+KBHENRY(1)  = 6000.
+RLOSS(1)    = 1.0
+RSPRAY(1)   = 0.0
+RDENS(1)    = 1174.
+REMISP(1)   = 0.0
+REMIS_MOD(1, :) = 0., 0., 0., 0., 0., 0., 0.
+RPPLFER(1, :)   = 1.92, 1.28, 0., 0.29, 1.45, 7.71
+
+!!! pyrene
+SVOC_NAME(2) = 'PYR'
+EMISS_IN(2) = 'import_rgt', 'emiss_PYR'
+MOLMASS(2)  = 202.3
+MOLVOL(2)   = 213.8
+RKSOIL(2)   = 3.125E-08
+RKOCEAN(2)  = 2.8E-09
+RWSOL(2)    = 0.132
+RVAPP(2)    = 6.0E-04
+RHSOL(2)    = 3.544E+04
+RHVAP(2)    = 8.94E+04
+RHSUB(2)    = 1.003E+05
+RLOGKOW(2)  = 5.01
+RKOAM(2)    = 3985.
+RKOAB(2)    = -4.56
+KAHENRY(2)  = 5.9E+01
+KBHENRY(2)  = 5500.
+RLOSS(2)    = 1.0
+RSPRAY(2)   = 0.0
+RDENS(2)    = 1271.
+REMISP(2)   = 0.0
+REMIS_MOD(2, :) = 0., 0., 0., 0., 0., 0., 0. 
+RPPLFER(2, :)   = 2.81, 1.71, 0., 0.28, 1.59, 8.83
+
+!!! fluoranthene
+SVOC_NAME(3) = 'FLT'
+EMISS_IN(3) = 'import_rgt', 'emiss_FLT'
+MOLMASS(3)  = 202.3
+MOLVOL(3)   = 217.3
+RKSOIL(3)   = 2.08E-08
+RKOCEAN(3)  = 4.2E-09
+RWSOL(3)    = 0.26
+RVAPP(3)    = 1.24E-03
+RHSOL(3)    = 3.983E+04
+RHVAP(3)    = 8.71E+04
+RHSUB(3)    = 1.012E+05
+RLOGKOW(3)  = 4.97
+RKOAM(3)    = 3904
+RKOAB(3)    = -4.34
+KAHENRY(3)  = 5.2E+01
+KBHENRY(3)  = 4900.
+RLOSS(3)    = 1.0
+RSPRAY(3)   = 0.0
+RDENS(3)    = 1252.
+REMISP(3)   = 0.0
+REMIS_MOD(3, :) = 0., 0., 0., 0., 0., 0., 0.
+RPPLFER(3, :)   = 2.38, 1.55, 0., 0.24, 1.59, 8.83
+
+!!! benzo(a)pyrene
+SVOC_NAME(4) = 'BaP'
+EMISS_IN(4) = 'import_rgt', 'emiss_BaP'
+MOLMASS(4)  = 252.3
+MOLVOL(4)   = 262.9
+RKSOIL(4)   = 2.55E-08
+RKOCEAN(4)  = 1.3E-09
+RWSOL(4)    = 0.0038
+RVAPP(4)    = 1.22E-05
+RHSOL(4)    = 5.06E+04
+RHVAP(4)    = 1.167E+05
+RHSUB(4)    = 1.205E+05
+RLOGKOW(4)  = 6.05
+RKOAM(4)    = 5382.
+RKOAB(4)    = -6.50
+KAHENRY(4)  = 2.2E+03
+KBHENRY(4)  = 4700.
+RLOSS(4)    = 1.0
+RSPRAY(4)   = 0.0
+RDENS(4)    = 1351.
+REMISP(4)   = 0.95
+REMIS_MOD(4, :) = 0., 0., 0., 0., 1., 0., 0.
+RPPLFER(4, :)   = 3.02, 1.85, 0., 0.42, 1.954, 11.540
+
+/

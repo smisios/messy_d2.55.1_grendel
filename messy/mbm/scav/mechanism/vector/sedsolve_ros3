@@ -1,0 +1,480 @@
+#!/bin/sh
+#
+###################################################
+# script that modifies kpp to allow vectorization #
+###################################################
+. ../decomp/locate_f90.sh
+echo $F90
+#
+OUTSC=smcl
+if [ ! -d $OUTSC ] ; then
+  mkdir -p $OUTSC
+fi
+#
+#############################################################################
+# change module messy_scav_l_kpp_s_mem
+#############################################################################
+#
+cp -f ../messy_scav_l_kpp_s_mem.f90 .
+cp -f messy_scav_l_kpp_s_mem.f90 tmp_file
+sed '/MODULE messy_scav_l_kpp_s_mem/,/END MODULE messy_scav_l_kpp_s_mem/{
+/IMPLICIT NONE/i\
+\
+
+s/MODULE messy_scav_l_kpp_s_mem/MODULE messy_scav_l_kpp_s_mem/g
+}
+' tmp_file > tmp_sprsdata
+cp -f tmp_sprsdata ./$OUTSC/messy_scav_l_vec_kpp_s_mem.f90
+#
+cp -f messy_scav_l_kpp_s_mem.f90 tmp_file
+sed '{
+/END MODULE messy_scav_l_kpp_s_mem/d
+s/MODULE messy_scav_l_kpp_s_mem/PROGRAM decomp/g
+}
+' tmp_file > tmp_decomp_top
+#
+##############################################################################
+# change module messy_scav_l_kpp_g_mem
+##############################################################################
+#
+cp -f ../messy_scav_l_kpp_g_mem.f90 .
+cp -f messy_scav_l_kpp_g_mem.f90 tmp_file
+#
+sed '/MODULE messy_scav_l_kpp_g_mem/,/END MODULE messy_scav_l_kpp_g_mem/{
+/SAVE/a\
+\
+\
+! this variable is used for the vector-length\
+      INTEGER :: nvect\
+      INTEGER, ALLOCATABLE, DIMENSION(:) :: IDONE
+/! C_DEFAULT - Default concentration for all species/d
+/REAL(dp), DIMENSION(NSPEC) :: C_DEFAULT/d
+/REAL(dp), DIMENSION(NSPEC) :: C/d
+/C - Concentration for all species/a\
+      REAL(dp), TARGET, ALLOCATABLE, DIMENSION(:,:) :: C
+s/INTEGER :: INFO(5)/INTEGER, ALLOCATABLE, DIMENSION(:,:) :: INFO/g
+s/REAL(dp), DIMENSION(NVAR) :: VAR/REAL(dp), POINTER, DIMENSION(:,:) :: VAR/g
+s/REAL(dp), DIMENSION(NRAD) :: RAD/REAL(dp), POINTER, DIMENSION(:,:) :: RAD/g
+s/REAL(dp), DIMENSION(NFIX) :: FIX/REAL(dp), POINTER, DIMENSION(:,:) :: FIX/g
+s/REAL(dp), DIMENSION(NFIX) :: F/REAL(dp), POINTER, DIMENSION(:,:) :: F/g
+/EQUIVALENCE( C(1+NVARST),VAR(1) )/,/EQUIVALENCE( C(1+NFIXST),F(1) )/d
+s/REAL(dp), DIMENSION(NREACT) :: RCONST/REAL(dp), ALLOCATABLE, DIMENSION(:,:) :: RCONST/g
+s/MODULE messy_scav_l_kpp_g_mem/MODULE messy_scav_l_kpp_g_mem/g
+}
+' tmp_file > tmp_gdata
+cp -f tmp_gdata ./$OUTSC/messy_scav_l_vec_kpp_g_mem.f90
+#
+##############################################################################
+# change module messy_scav_l_kpp.f90
+##############################################################################
+#
+cp -f ../messy_scav_l_kpp.f90 .
+cp -f messy_scav_l_kpp.f90 tmp_file
+#
+##############################################################################
+# change call of mem modules
+##############################################################################
+#
+sed ' /MODULE messy_scav_l_kpp/,/END MODULE messy_scav_l_kpp/{
+s/messy_scav_l_kpp_g_mem/messy_scav_l_kpp_g_mem/g
+s/messy_scav_l_kpp_s_mem/messy_scav_l_kpp_s_mem/g
+}
+' tmp_file > tmp_mem
+cp -f tmp_mem tmp_file
+#
+##############################################################################
+# change subroutine JACVAR_SP
+##############################################################################
+#
+sed ' /SUBROUTINE JACVAR_SP/,/END SUBROUTINE JACVAR_SP/{
+s/SUBROUTINE JACVAR_SP ( V, R, JVS )/SUBROUTINE JACVAR_SP ( iwork, iwstop, V, R, JVS )/g
+/REAL(dp), DIMENSION(LU_NONZERO_V+1) :: JVS/a\
+! iwstop - number of boxes with unfinished calculations\
+! iwork  - integer array containing indices of unfinished boxes\
+      INTEGER  :: iwstop,iwork(nvect)
+s/B(/B(i,/g
+s/b(/B(i,/g
+s/V(/V(i,/g
+s/v(/V(i,/g
+s/JVS(/JVS(i,/g
+s/jvs(/JVS(i,/g
+s/RCONST(/RCONST(i,/g
+s/rconst(/RCONST(i,/g
+s/F(/F(i,/g
+s/f(/F(i,/g
+/REAL(dp), DIMENSION(NTMPB) :: B/a\
+! loop counter\
+      INTEGER :: i,jl\
+\
+!CDIR NODEP\
+    DO jl=1,iwstop\
+      i=iwork(jl)
+/END SUBROUTINE JACVAR_SP/i\
+\
+    END DO ! loop over nvect boxes\
+
+/REAL(dp), DIMENSION(LU_NONZERO_V+1) :: JVS/s/REAL(dp), DIMENSION(LU_NONZERO_V+1) :: JVS/REAL(dp), DIMENSION(nvect,LU_NONZERO_V+1) :: JVS/
+/REAL(dp), DIMENSION(NVAR) :: V/s/REAL(dp), DIMENSION(NVAR) :: V/REAL(dp), DIMENSION(nvect,NVAR) :: V/
+/REAL(dp), DIMENSION(NRAD) :: R/s/REAL(dp), DIMENSION(NRAD) :: R/REAL(dp), DIMENSION(nvect,NRAD) :: R/
+/REAL(dp), DIMENSION(NTMPB) :: B/s/REAL(dp), DIMENSION(NTMPB) :: B/REAL(dp), DIMENSION(nvect,NTMPB) :: B/
+}
+' tmp_file > tmp_jacvar_sp
+cp -f tmp_jacvar_sp tmp_file
+#
+##############################################################################
+# change subroutine F_VAR
+##############################################################################
+#
+sed ' /SUBROUTINE F_VAR/,/END SUBROUTINE F_VAR/{
+s/F_VAR ( V, R, A_VAR )/F_VAR ( iwork, iwstop, V, R, A_VAR )/g
+/REAL(dp), DIMENSION(NVAR) :: A_VAR/a\
+! iwstop - number of boxes with unfinished calculations\
+! iwork  - integer array containing indices of unfinished boxes\
+      INTEGER  :: iwstop,iwork(nvect)
+s/A(/A(i,/g
+s/A_VAR(/A_VAR(i,/g
+s/V(/V(i,/g
+s/F(/F(i,/g
+s/RCONST(/RCONST(i,/g
+/      REAL(dp), DIMENSION(NREACT) :: A/a\
+! local loop counter\
+      INTEGER :: i,jl\
+
+/Computation of equation rates/a\
+\
+!CDIR NODEP\
+    DO jl=1,iwstop\
+      i=iwork(jl)
+/END SUBROUTINE F_VAR/i\
+\
+    END DO ! loop over boxes\
+
+/REAL(dp), DIMENSION(NVAR) :: V/s/REAL(dp), DIMENSION(NVAR) :: V/REAL(dp), DIMENSION(nvect,NVAR) :: V/
+/REAL(dp), DIMENSION(NRAD) :: R/s/REAL(dp), DIMENSION(NRAD) :: R/REAL(dp), DIMENSION(nvect,NRAD) :: R/
+/REAL(dp), DIMENSION(NVAR) :: A_VAR/s/REAL(dp), DIMENSION(NVAR) :: A_VAR/REAL(dp), DIMENSION(nvect,NVAR) :: A_VAR/
+/REAL(dp), DIMENSION(NREACT) :: A/s/REAL(dp), DIMENSION(NREACT) :: A/REAL(dp), DIMENSION(nvect,NREACT) :: A/
+}
+' tmp_file > tmp_f_var
+cp -f tmp_f_var tmp_file
+#
+##############################################################################
+# change subroutine SOLVE
+##############################################################################
+#
+sed '/SUBROUTINE SOLVE/,/END SUBROUTINE SOLVE/{
+s/SUBROUTINE SOLVE ( JVS, X )/SUBROUTINE SOLVE ( iwork, iwstop, JVS, X )/g
+/REAL(dp), DIMENSION(NVAR) :: X/a\
+! iwstop - number of boxes with unfinished calculations\
+! iwork  - integer array containing indices of unfinished boxes\
+      INTEGER  :: iwstop,iwork(nvect)
+s/X(/X(i,/g
+s/JVS(/JVS(i,/g
+/REAL(dp), DIMENSION(NVAR) :: X/a\
+! local loop counter\
+      INTEGER :: i,jl\
+\
+!CDIR NODEP\
+    DO jl=1,iwstop\
+      i=iwork(jl)
+/END SUBROUTINE SOLVE/i\
+\
+    END DO ! loop over boxes\
+
+/REAL(dp), DIMENSION(LU_NONZERO_V+1) :: JVS/s/REAL(dp), DIMENSION(LU_NONZERO_V+1) :: JVS/REAL(dp), DIMENSION(nvect,LU_NONZERO_V+1) :: JVS/
+/REAL(dp), DIMENSION(NVAR) :: X/s/REAL(dp), DIMENSION(NVAR) :: X/REAL(dp), DIMENSION(nvect,NVAR) :: X/
+}
+' tmp_file > tmp_solve
+cp -f tmp_solve tmp_file
+#
+##############################################################################
+# change subroutine UPDATE_RCONST
+##############################################################################
+#
+sed '/SUBROUTINE UPDATE_RCONST/,/END SUBROUTINE UPDATE_RCONST/{
+s/RCONST(/RCONST(i,/g
+s/temp/vtemp(i)/g
+s/cv_l/vcv_l(i)/g
+s/C(KPP/C(i,KPP/g
+s/k_exf(KPP/vk_exf(i,KPP/g
+s/k_exb(KPP/vk_exb(i,KPP/g
+s/k_exf_N2O5/vk_exf_N2O5(i)/g 
+s/k_exf_ClNO3/vk_exf_ClNO3(i)/g 
+s/k_exf_BrNO3/vk_exf_BrNO3(i)/g 
+s/k_exf_Hg/vk_exf_Hg(i)/g 
+s/k_exf_RGM/vk_exf_RGM(i)/g 
+s/JX(/JX_vec(i,/g
+/USE messy_scav_mem/a\
+\
+INTEGER :: i\
+\
+    DO i=1,nvect\
+
+/END SUBROUTINE UPDATE_RCONST/i\
+\
+    END DO ! loop over kproma\
+
+}
+' tmp_file > tmp_update_rconst
+cp -f tmp_update_rconst tmp_file
+#
+##############################################################################
+# remove unneeded time-dependence in jac_sp
+##############################################################################
+#
+sed '/SUBROUTINE JAC_SP/,/END SUBROUTINE JAC_SP/{
+s/SUBROUTINE JAC_SP(N, T, Y, J)/SUBROUTINE JAC_SP(iwork,iwstop,Y, J)/g
+s/REAL(dp)   Y(NVAR), J(LU_NONZERO_V+1)/REAL(dp)   Y(nvect,NVAR), J(nvect,LU_NONZERO_V+1)/g
+/INTEGER N/a\
+        INTEGER  iwstop,iwork(nvect)
+s/CALL JACVAR_SP( Y, RAD, J )/CALL JACVAR_SP( iwork, iwstop, Y, RAD, J )/g
+/INTEGER N/d
+/REAL(dp)   Told, T/d
+/Told = TIME/d
+/TIME = T/d
+/CALL UPDATE_SUN/d
+/CALL UPDATE_PHOTO/d
+/TIME = Told/d
+}
+' tmp_file > tmp_jac_sp
+cp -f tmp_jac_sp tmp_file
+#
+##############################################################################
+# remove unneeded time-dependence in fun
+##############################################################################
+#
+sed '/SUBROUTINE FUN/,/END SUBROUTINE FUN/{
+s/SUBROUTINE FUN(N, T, Y, P)/SUBROUTINE FUN(iwork, iwstop, Y, P)/g
+/REAL(dp)   Y(NVAR), P(NVAR)/a\
+! iwstop - number of boxes with unfinished calculations\
+! iwork  - integer array containing indices of unfinished boxes\
+        INTEGER  :: iwstop,iwork(nvect)
+s/REAL(dp)   Y(NVAR), P(NVAR)/REAL(dp)   Y(nvect,NVAR), P(nvect,NVAR)/g
+/INTEGER N/d
+/REAL(dp)   T, Told/d
+/Told = TIME/d
+/TIME = T/d
+/CALL UPDATE_SUN/d
+/CALL UPDATE_PHOTO/d
+/TIME = Told/d
+s/CALL F_VAR( Y, RAD, P )/CALL F_VAR( iwork, iwstop, Y, RAD, P )/g
+}
+' tmp_file > tmp_fun
+cp -f tmp_fun tmp_file
+#
+##############################################################################
+# remove subroutine update_sun
+#############################################################################
+#
+sed '/UPDATE_SUN - update SUN light using TIME/,/End of UPDATE_SUN function/d' tmp_file > tmp_update_sun
+cp -f tmp_update_sun tmp_file
+#
+##############################################################################
+# remove subroutine update_photo
+##############################################################################
+#
+sed '/UPDATE_PHOTO - function to update photolitical rate constants/,/End of UPDATE_PHOTO function/d' tmp_file > tmp_update_photo
+cp -f tmp_update_photo tmp_file
+#
+##############################################################################
+# remove subroutine jacvar_sp_vec
+##############################################################################
+#
+sed '/JACVAR_SP_VEC - function for sparse multiplication: sparse Jacobian times vector/,/End of JACVAR_SP_VEC function/d' tmp_file > tmp_jacvar_sp_vec
+cp -f tmp_jacvar_sp_vec tmp_file
+#
+##############################################################################
+# change subroutine decomp
+##############################################################################
+#
+sed '/subroutine DECOMP(N,V,IER)/,/end subroutine decomp/{
+s/subroutine DECOMP(N,V,IER)/subroutine DECOMP(iwork, iwstop, V)/g
+/REAL(dp) V(LU_NONZERO_V+1), W(NSPEC)/a\
+! iwstop - number of boxes with unfinished calculations\
+! iwork  - integer array containing indices of unfinished boxes\
+        INTEGER  :: iwstop,iwork(nvect)
+s/REAL(dp) V(LU_NONZERO_V+1), W(NSPEC)/REAL(dp) V(nvect,LU_NONZERO_V+1), W(nvect,NSPEC)/g
+s/integer k, kk, j, jj/integer i,jl/g
+/end subroutine decomp/a\
+      END SUBROUTINE decomp
+/IER = 0/,/end subroutine decomp/d
+}
+' tmp_file > tmp_decomp
+cp -f tmp_decomp tmp_file
+#
+##############################################################################
+# cut into 3 files
+##############################################################################
+#
+sed '/END SUBROUTINE decomp/,/! end of messy_scav_l_kpp.f90/d' tmp_file > tmp_p1
+#
+cp -f tmp_decomp tmp_file
+#
+sed '/this file was created automatically by xscav, do not edit/,/REAL(dp) a/d' tmp_file > tmp_p2
+mv tmp_p2 tmp_file
+sed '/SUBROUTINE ROS3/,/! end of messy_scav_l_kpp.f90/d' tmp_file > tmp_p2
+#
+cp -f tmp_decomp tmp_file
+sed '/this file was created automatically by xscav, do not edit/,/END SUBROUTINE ROS3/d' tmp_file > tmp_p3
+#
+##############################################################################
+# remove all indirect adressing
+##############################################################################
+#
+#
+# fortran program
+#
+cat > tmp_decomp_mid << eof
+
+      integer k, kk, j, jj
+
+      open(unit=10,file='tmp_decomp_opt1.out')
+      open(unit=11,file='tmp_decomp_opt2.out')
+      open(unit=12,file='tmp_decomp_opt3.out')
+
+!
+!manipulate subroutine ros3
+!
+      DO j=1,NVAR
+        write(10,'(4x,a7,i6,a11,i6,a13)') &
+        'JAC(jl,',lu_diag_v(j),') = JAC(jl,',lu_diag_v(j),') - gHinv(jl)'
+      ENDDO
+!
+      DO j=1,NVAR
+        write(11,'(4x,a5,i6,a12,i6,a1)') &
+        'y(jl,',j,') = ynew(jl,',j,')'
+      ENDDO
+!
+!manipulate subroutine decomp
+!
+      write(12,'(a11)')'!CDIR NODEP'
+      write(12,*)'   DO jl=1,iwstop'
+      write(12,*)'     i=iwork(jl)'
+      do k=1,NVAR
+
+        do kk = LU_CROW_V(k), LU_CROW_V(k+1)-1
+              write(12,'(6x,a4,i6,a8,i6,a1)') &
+              'W(i,',LU_ICOL_V(kk),') = V(i,',kk,')'
+!              W( LU_ICOL_V(kk) ) = V(kk)
+        end do
+        do kk = LU_CROW_V(k), LU_DIAG_V(k)-1
+            j = LU_ICOL_V(kk)
+            write(12,'(6x,a9,i6,a8,i6,a1)') &
+            'a = -W(i,',j,') / V(i,',LU_DIAG_V(j),')'
+!            a = -W(j) / V( LU_DIAG_V(j) )
+            write(12,'(6x,a4,i6,a6)') &
+            'W(i,',j,') = -a'
+!            W(j) = -a
+            do jj = LU_DIAG_V(j)+1, LU_CROW_V(j+1)-1
+               write(12,'(6x,a4,i6,a8,i6,a10,i6,a1)') &
+               'W(i,', LU_ICOL_V(jj),') = W(i,', LU_ICOL_V(jj),') + a*V(i,',jj,')'
+!               W( LU_ICOL_V(jj) ) = W( LU_ICOL_V(jj) ) + a*V(jj)
+            end do
+        end do
+        if( LU_DIAG_V(k)-1 .GE. LU_CROW_V(k) ) THEN
+          do kk = LU_CROW_V(k), LU_CROW_V(k+1)-1
+             write(12,'(6x,a4,i6,a8,i6,a1)') &
+             'V(i,',kk,') = W(i,',LU_ICOL_V(kk),')'
+!             V(kk) = W( LU_ICOL_V(kk) )
+          end do
+        endif
+      end do
+      write(12,*)'   ENDDO'
+
+stop
+end
+
+eof
+cat tmp_decomp_top tmp_decomp_mid > tmp_decomp.f90
+$F90 tmp_decomp.f90
+./a.out
+rm -f a.out
+cat tmp_p1 tmp_decomp_opt3.out tmp_p2 messy_scav_l_kpp_ros3_veca.f90 tmp_decomp_opt1.out messy_scav_l_kpp_ros3_vecb.f90 tmp_decomp_opt2.out messy_scav_l_kpp_ros3_vecc.f90 tmp_p3 > tmp_semifinal
+cp -f tmp_semifinal tmp_file
+#
+##############################################################################
+# cleanup subroutine initval
+##############################################################################
+#
+sed '/SUBROUTINE INITVAL/,/END SUBROUTINE INITVAL/{
+/INTEGER :: i/,/! Set dummy default value for RCONST to avoid that the/d
+/! non temperature-dependent elements remain undefined/i\
+! Set dummy default value for RCONST to avoid that the
+/RCONST(:)=-999/d 
+}
+' tmp_file > tmp_initval
+cp -f tmp_initval tmp_file
+#
+#############################################################################
+# change subroutine integrate
+#############################################################################
+#
+sed '/SUBROUTINE INTEGRATE/,/END SUBROUTINE INTEGRATE/{
+s/STEPSTART,VAR,ATOL,RTOL, &/STEPSTART,VAR,ATOL,RTOL)/g
+s/INFO(/INFO(1:nvect,/g
+s/Info)//g
+s/MODULE messy_scav_l_kpp/MODULE messy_scav_l_kpp/g
+}
+' tmp_file > tmp_integrate
+#
+##############################################################################
+# change module name
+##############################################################################
+#
+cp -f tmp_integrate tmp_file
+sed '/MODULE messy_scav_l_kpp/,/END MODULE messy_scav_l_kpp/{
+s/MODULE messy_scav_l_kpp/MODULE messy_scav_l_kpp/g
+}
+' tmp_file > tmp_modulename
+#
+cp -f tmp_modulename ./$OUTSC/messy_scav_l_vec_kpp.f90
+#
+##############################################################################
+# make new links
+##############################################################################
+
+pwd
+cd ..
+mv ./vector/$OUTSC/messy_scav_l_vec_kpp.f90 messy_scav_l_kpp.f90
+mv ./vector/$OUTSC/messy_scav_l_vec_kpp_g_mem.f90 messy_scav_l_kpp_g_mem.f90
+mv ./vector/$OUTSC/messy_scav_l_vec_kpp_s_mem.f90 messy_scav_l_kpp_s_mem.f90
+
+
+cd vector
+#
+rm -f tmp_decomp
+rm -f tmp_decomp_top
+rm -f tmp_f_var
+rm -f tmp_fun
+rm -f tmp_gdata
+rm -f tmp_initval
+rm -f tmp_integrate
+rm -f tmp_jac_sp
+rm -f tmp_jacvar_sp
+rm -f tmp_jacvar_sp_vec
+rm -f tmp_mem
+rm -f tmp_p1
+rm -f tmp_p2
+rm -f tmp_p3
+rm -f tmp_semifinal
+rm -f tmp_solve
+rm -f tmp_sprsdata
+rm -f tmp_update_photo
+rm -f tmp_update_rconst
+rm -f tmp_update_sun
+rm -f tmp_file
+rm -f messy_scav_l_kpp.f90
+rm -f messy_scav_l_kpp_g_mem.f90
+rm -f messy_scav_l_kpp_s_mem.f90
+rm -f tmp_decomp_mid
+rm -f tmp_decomp_opt1.out
+rm -f tmp_decomp_opt2.out
+rm -f tmp_decomp_opt3.out
+rm -f tmp_decomp.f90
+rm -f tmp_modulename
+
+cd ..
+
+##############################################################################
+# done
+##############################################################################
+exit

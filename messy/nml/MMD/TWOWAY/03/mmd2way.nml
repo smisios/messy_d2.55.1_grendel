@@ -1,0 +1,318 @@
+! -*- f90 -*-
+&CPL_PARENT
+/
+
+&CPL_PAR_CHILD
+INSTANCE='003'
+RCF = 1000,
+RCF_IN = 1000,
+
+!PFIELD(1)  = 'tracer_gp','QV', '','', 'tracer_gp','QV', 'GP_3D_MID',1,1, 1.
+!PFIELD(2)  = 'tracer_gp','QC', '','', 'tracer_gp','QC', 'GP_3D_MID',1,1, 1.
+!PFIELD(3)  = 'tracer_gp','QI', '','', 'tracer_gp','QI', 'GP_3D_MID',1,1, 1.
+PFIELD(4)  = 'COSMO_ORI','T', ' ',' ', 'COSMO_ORI','T','GP_3D_MID',1,1, 1.
+!!$PFIELD(5)  = 'COSMO_ORI','U', ' ',' ', 'COSMO_ORI','U','GP_3D_MID',1,1, 1.
+!!$PFIELD(6)  = 'COSMO_ORI','V', ' ',' ', 'COSMO_ORI','V','GP_3D_MID',1,1, 1.
+!!$PFIELD(7)  = 'COSMO_ORI','W', ' ',' ', 'COSMO_ORI','W','GP_3D_INT',1,1, 0.01
+!!$PFIELD(8)  = 'COSMO_ORI','PP',' ',' ','COSMO_ORI','PP','GP_3D_MID',1,1,1.
+!!$PFIELD(1)  = 'COSMO_ORI','PS',' ',' ','COSMO_ORI','PS','GP_2D_HORIZONTAL',1,1,0.
+
+PFIELD(11)  = 'mmd2way_parent','philonI3',' ',' ','grid_def', 'philon_2d','GP_2D_HORIZONTAL',1,1,0.
+PFIELD(12)  = 'mmd2way_parent','philatI3',' ',' ','grid_def', 'philat_2d','GP_2D_HORIZONTAL',1,1,0.
+/ 
+
+
+&CTRL
+/
+
+&CPL_CHILD
+!!$l_forcevars = .TRUE.,
+!!$forcevars = "T_SO;W_SO;T_S;W_I;QV_S;W_SNOW;T_SNOW",
+!!$forcefile = "/work/bb0667/DATA/COSMO/soil_ini/lffd2001010100.nc"
+!!$l_I2Cori_output = .TRUE.
+! do not use steps
+WRITEI2C_IOEVENT  = 1,'months','exact',0
+CPL_IOEVENT=4,'minutes','first',0
+READEXT_IOEVENT  = 1,'years','first',0
+/
+
+&CPL_CHILD_ECHAM
+!
+! NOTES:
+! - SYNTAX: server_channel, server_object, client_channel, client_object,
+!           interpolation method ('Q','L','M'), boundary field flag
+! - INTERPOLATION METHOD: (Character 1-3 as in IPC in INT2COSMO)
+!   - only valid for additional arrays
+!   1. Character: 'Q'  quadratic;  'L': linear and 'M' match interpolation 
+!   2. Character: 'T' or 'F': Switch for monotonicity 
+!   3. Character: 'T' or 'F': Switch  positive definiteness
+!   4. Character: 'V'       : Switch ON vertical integration
+! - INITIALISATION FLAG:
+!   - T: initial field will be calculated
+!   - F: no initial field will be calculated
+! - BOUNDARY FIELD FLAG:
+!   - T: boundary field will be calculated
+!   - F: boundary field is not provided
+! - INPUT FIELD FLAG:
+!   - T: field will be newly set during each coupling
+!   - F: field will stay the same
+! - REPRESENTATION STRING
+!   - is empty for INITIAL and/or BOUNDARY FIELDs
+!   - for creation of CHANNEL ELEMENT the representation must be known
+!     (Note: the representation must be defined in some other MESSy submodel
+!            if it is not a DEFAULT (made by CHANNEL anyway) representation) 
+! - TRACER:
+!   - FOR INITIALISATION TRACER MUST BE COUPLED FOR EACH TIME SLICE
+!     INDEPENDENTLY.
+! Note: A FIELD can either be INPUT FIELD or be INITIAL and/or BOUNDARY field.
+!       These FLAGs are EXCLUSIVE
+!
+!***************************************************************************
+!*** MANDATORY FIELDS
+!***************************************************************************
+!***************************************************************************
+FIELD(1)     = 'g3b','aps', 'COSMO_ORI', 'PS', '', F, F, F , ''     ! FIX: F,F
+!***************************************************************************
+FIELD(2)     = 'ec2cosmo','Um1', 'COSMO_ORI','U', '', T, T, F, ''    ! FIX: T,T
+!***************************************************************************
+FIELD(3)     = 'g3b','slf', 'COSMO_ORI','FR_LAND', '', T, F, F, ''  ! FIX: T,F
+!***************************************************************************
+FIELD(4)     = 'g1a','tm1', 'COSMO_ORI','T', '', T, T, F, ''       ! FIX: T,T
+!***************************************************************************
+FIELD(5)     = 'g1a','qm1', 'tracer_gp','QV', '', T, T, F, ''       ! FIX: T,T
+!***************************************************************************
+FIELD(6)     = 'g1a','xlm1', 'tracer_gp','QC', '', T, T, F, ''      ! FIX: T,T
+!***************************************************************************
+FIELD(7)     = 'g1a','xim1', 'tracer_gp','QI', '', T, T, F, ''      ! FIX: T,T
+!***************************************************************************
+FIELD(8)     = 'ec2cosmo','T_S', 'COSMO_ORI','T_S', '', T, F, F, '' ! FIX: T,T
+!***************************************************************************
+FIELD(9)     = 'ec2cosmo','Vm1', 'COSMO_ORI','V', '', T, T, F, ''    ! FIX: T,T
+!***************************************************************************
+FIELD(10)     = 'Test','Test_Ar', 'mmd2way_child','Test_Ar', '', F, F, F, '' ! FIX: F,F
+!***************************************************************************
+FIELD(11)     = 'g3b','geosp', '#XXX','FIS', '', F, F, F, ''         ! FIX: F,F
+!***************************************************************************
+!FIELD(12)     = 'ec2cosmo','W_I', 'COSMO_ORI','W_I', '', F, F, F, ''
+FIELD(12)     = 'g3b','wl', 'COSMO_ORI','W_I', '', T, F, F, ''      ! FIX: T,F
+!***************************************************************************
+!FIELD(13)     = 'ec2cosmo','W_SNOW', 'COSMO_ORI','W_SNOW', '', F, F, F, ''
+FIELD(13)     = 'g3b','sni', 'COSMO_ORI','W_SNOW', '', T, T, F, ''  ! FIX: T,T
+!***************************************************************************
+!***************************************************************************
+!FIELD(14)     = 'ec2cosmo','W_SNOW', 'COSMO_ORI','W_SNOW', '', F, F, F, ''
+FIELD(14)     = 'g3b','tsi', 'COSMO_ORI','T_SNOW', '', T, T, F, ''   ! FIX: T,T
+!***************************************************************************
+!FIELD(15)     = 'ec2cosmo','T_SO', 'COSMO_ORI','T_SO', '', T, F, F, ''
+!FIELD(15)     = 'ec2cosmo','T_SO_test', 'COSMO_ORI','T_SO', '', T, F, F, '' !FIX:T,F
+!***************************************************************************
+!***************************************************************************
+FIELD(16)     = 'ec2cosmo','W_SO_REL', 'COSMO_ORI','W_SO', '', T, F, F, ''
+!FIELD(16)     = 'ec2cosmo','W_SO_RFC_test','COSMO_ORI','W_SO','',T, F, F, '' !FIX:T,F
+!***************************************************************************
+!*** OPTIONAL FIELDS
+!***************************************************************************
+!!$!qqFIELD(19)     = 'tracer_gp','xxx', 'tracer_gp','*', 'QFTV', T, T, F, 'GP_3D_MID'
+!!$!FIELD(20)     = 'tracer_gp','MZ*', 'tracer_gp','', 'QFTV', T, T, F, 'GP_3D_MID'
+!!$!FIELD(21)     = 'geoloc', 'philon', 'mmd2way_child','philon_2d', 'MFFF', F,F,T,'GP_2D_HORIZONTAL'
+!!$!FIELD(22)     = 'geoloc', 'philat', 'mmd2way_child','philat_2d', 'MFFF', F,F,T,'GP_2D_HORIZONTAL'
+!!$FIELD(23)     = 'import_grid','H2SO4_clim_H2SO4_init', 'mmd2way_child','H2SO4_clim_H2SO4_init', 'QFTV', F, F, T, 'GP_3D_MID'
+!!$!
+!!$!***************************************************************************
+!!$!***************************************************************************
+!!$! ONEMIS
+!!$!***************************************************************************
+!!$!***************************************************************************
+!!$FIELD(31)     = 'import_grid','emis_DMS_sea_seawater_DMS','mmd2way_child','emis_DMS_sea_seawater_DMS','MFFF',F,F,T,'#UNKNOWN'
+!!$FIELD(36)     = 'import_grid','lai_lai',                  'mmd2way_child','lai_lai','MFFF',F,F,T,'#UNKNOWN'
+!!$FIELD(45)     = 'import_grid','noemclass1_noemclass1',    'mmd2way_child','noemclass1_noemclass1','MFFF',F,F,T,'#UNKNOWN'
+!!$FIELD(46)     = 'import_grid','noemclass2_noemclass2',    'mmd2way_child','noemclass2_noemclass2','MFFF',F,F,T,'#UNKNOWN'
+!!$FIELD(47)     = 'import_grid','emis_NO_cult',             'mmd2way_child','emis_NO_cult','MFFF',F,F,T,'#UNKNOWN'
+!!$FIELD(48)     = 'import_grid','emis_NO_fert',             'mmd2way_child','emis_NO_fert','MFFF',F,F,T,'#UNKNOWN'
+!!$FIELD(49)     = 'import_grid','OC_ag_emis_oc_ag',         'mmd2way_child','OC_ag_emis_oc_ag','MFFF',F,F,T,'#UNKNOWN'
+!!$FIELD(50)     = 'import_grid','OC_ant_emis_oc_ant',       'mmd2way_child','OC_ant_emis_oc_ant','MFFF',F,F,T,'#UNKNOWN'
+!!$FIELD(51)     = 'import_grid','OC_bge_emis_oc_bge',       'mmd2way_child','OC_bge_emis_oc_bge','MFFF',F,F,T,'#UNKNOWN'
+!!$FIELD(52)     = 'import_grid','OC_wf_emis_oc_wf',         'mmd2way_child','OC_wf_emis_oc_wf','MFFF',F,F,T,'#UNKNOWN'
+!!$FIELD(53)     = 'import_grid','BC_ag_emis_bc_ag',         'mmd2way_child','BC_ag_emis_bc_ag','MFFF',F,F,T,'#UNKNOWN'
+!!$FIELD(54)     = 'import_grid','BC_ant_emis_bc_ant',       'mmd2way_child','BC_ant_emis_bc_ant','MFFF',F,F,T,'#UNKNOWN'
+!!$FIELD(55)     = 'import_grid','BC_wf_emis_bc_wf',         'mmd2way_child','BC_wf_emis_bc_wf','MFFF',F,F,T,'#UNKNOWN'
+!!$!
+!!$!***************************************************************************
+!!$!***************************************************************************
+!!$! OFFEMIS
+!!$!***************************************************************************
+!!$!***************************************************************************
+!!$FIELD(68)  =  'import_grid','TN_GHG_CH4',        'mmd2way_child','TN_GHG_CH4', 'LFFF',F,F,T,'#UNKNOWN'
+!!$FIELD(69)  =  'import_grid','TN_H2_H2',          'mmd2way_child','TN_H2_H2',   'LFFF',F,F,T,'#UNKNOWN'
+!!$! ------------------------
+!!$! GFED 3.1 biomass burning
+!!$! ------------------------
+!!$FIELD(70)  =  'import_grid','GFED3_NO',          'mmd2way_child','GFED3_NO',   'LFFF',F,F,T,'#UNKNOWN'
+!!$FIELD(71)  =  'import_grid','GFED3_SO2',         'mmd2way_child','GFED3_SO2',  'LFFF',F,F,T,'#UNKNOWN'
+!!$FIELD(72)  =  'import_grid','GFED3_H2',          'mmd2way_child','GFED3_H2',   'LFFF',F,F,T,'#UNKNOWN'
+!!$FIELD(73)  =  'import_grid','GFED3_CH4',         'mmd2way_child','GFED3_CH4',  'LFFF',F,F,T,'#UNKNOWN'
+!!$!
+!!$FIELD(74)  =  'import_grid','GFED3_NMHC_CH3OH',  'mmd2way_child','GFED3_NMHC_CH3OH',  'LFFF',F,F,T,'#UNKNOWN'
+!!$FIELD(75)  =  'import_grid','GFED3_NMHC_HCHO',   'mmd2way_child','GFED3_NMHC_HCHO',   'LFFF',F,F,T,'#UNKNOWN'
+!!$!
+!!$! ---------------------------------------------------------
+!!$! IPCC_AR5 ANTHROPOGENIC (2000), - excluding biomass burning and traffic)
+!!$!                                - agricultural waste burning extra
+!!$! ---------------------------------------------------------
+!!$! FOSSIL FUEL (NO TRAFFIC)
+!!$FIELD(80) = 'import_grid','IPCCAR5_ANTHNT_NO',   'mmd2way_child','IPCCAR5_ANTHNT_NO',    'LFFF',F,F,T,'#UNKNOWN'
+!!$FIELD(81) = 'import_grid','IPCCAR5_ANTHNT_SO2',  'mmd2way_child','IPCCAR5_ANTHNT_SO2',   'LFFF',F,F,T,'#UNKNOWN'
+!!$FIELD(82) = 'import_grid','IPCCAR5_ANTHNT_CH3OH','mmd2way_child','IPCCAR5_ANTHNT_CH3OH', 'LFFF',F,F,T,'#UNKNOWN'
+!!$FIELD(83) = 'import_grid','IPCCAR5_ANTHNT_HCHO', 'mmd2way_child','IPCCAR5_ANTHNT_HCHO',  'LFFF',F,F,T,'#UNKNOWN'
+!!$!
+!!$! AGRICULTUTAL WASTE BURNING (not included in GFED biomass burning)
+!!$FIELD(84) = 'import_grid','IPCCAR5_AWB_NO',      'mmd2way_child','IPCCAR5_AWB_NO',    'LFFF',F,F,T,'#UNKNOWN'
+!!$FIELD(85) = 'import_grid','IPCCAR5_AWB_SO2',     'mmd2way_child','IPCCAR5_AWB_SO2',   'LFFF',F,F,T,'#UNKNOWN'
+!!$FIELD(86) = 'import_grid','IPCCAR5_AWB_CH3OH',   'mmd2way_child','IPCCAR5_AWB_CH3OH', 'LFFF',F,F,T,'#UNKNOWN'
+!!$FIELD(87) = 'import_grid','IPCCAR5_AWB_HCHO',    'mmd2way_child','IPCCAR5_AWB_HCHO',  'LFFF',F,F,T,'#UNKNOWN'
+!!$!
+!!$! --------------------------------
+!!$! BIOGEN (not via ONLEM or AIRSEA)
+!!$!   C2H4;C2H6;C3H6;C3H8;CH3CO2H;CH3COCH3;CH3OH;CO;HCOOH;NC4H10;
+!!$! --------------------------------
+!!$!
+!!$FIELD(88) = 'import_grid','biogen_CH3OH',        'mmd2way_child','biogen_CH3OH',   'LFFF',F,F,T,'#UNKNOWN'
+!!$!
+!!$! ---------------
+!!$! TRAFFIC EMISSIONS
+!!$! ---------------
+!!$!
+!!$! AIRCRAFT (NOx); QUANTIFY; 3-D emission
+!!$!
+!!$FIELD(89) = 'import_grid','airc_NOx_NO',         'mmd2way_child','airc_NOx_NO',   'LFFF',F,F,T,'#UNKNOWN'
+!!$!
+!!$! SHIP
+!!$!
+!!$FIELD(96) = 'import_grid','IPCCAR5_SHIP_NO',     'mmd2way_child','IPCCAR5_SHIP_NO',    'LFFF',F,F,T,'#UNKNOWN'
+!!$FIELD(98) = 'import_grid','IPCCAR5_SHIP_SO2',    'mmd2way_child','IPCCAR5_SHIP_SO2',   'LFFF',F,F,T,'#UNKNOWN'
+!!$FIELD(105)= 'import_grid','IPCCAR5_SHIP_CH3OH',  'mmd2way_child','IPCCAR5_SHIP_CH3OH', 'LFFF',F,F,T,'#UNKNOWN'
+!!$FIELD(106)= 'import_grid','IPCCAR5_SHIP_HCHO',   'mmd2way_child','IPCCAR5_SHIP_HCHO',  'LFFF',F,F,T,'#UNKNOWN'
+!!$!
+!!$! ROAD (LAND)
+!!$!
+!!$FIELD(110)= 'import_grid','QFY_LAND_NO',         'mmd2way_child','QFY_LAND_NO',    'LFFF',F,F,T,'#UNKNOWN'
+!!$FIELD(112)= 'import_grid','QFY_LAND_SO2',        'mmd2way_child','QFY_LAND_SO2',   'LFFF',F,F,T,'#UNKNOWN'
+!!$FIELD(121)= 'import_grid','QFY_LAND_CH3OH',      'mmd2way_child','QFY_LAND_CH3OH', 'LFFF',F,F,T,'#UNKNOWN'
+!!$FIELD(122)= 'import_grid','QFY_LAND_HCHO',       'mmd2way_child','QFY_LAND_HCHO',  'LFFF',F,F,T,'#UNKNOWN'
+!!$!
+!!$! ---------------
+!!$! OTHER EMISSIONS
+!!$! ---------------
+!!$!
+!!$! VOLCANIC SO2
+!!$!
+!!$FIELD(150)= 'import_grid','VOLCANIC_SO2_SO2',    'mmd2way_child','VOLCANIC_SO2_SO2',   'LFFF',F,F,T,'#UNKNOWN'
+!!$!
+!!$! TERRESTRIAL DMS
+!!$!
+!!$FIELD(155)= 'import_grid','TERR_DMS_DMS',        'mmd2way_child','TERR_DMS_DMS',   'LFFF',F,F,T,'#UNKNOWN'
+!!$!
+!!$!***************************************************************************
+!!$!***************************************************************************
+!!$! DRYDEP
+!!$!***************************************************************************
+!!$!***************************************************************************
+!!$FIELD(170) = 'import_grid','soilpH_soilpH',  'mmd2way_child','soilpH_soilpH',  'MFFF',F,F,T,'#UNKNOWN'
+!!$FIELD(171) = 'import_grid','surf_para_lai',  'mmd2way_child','surf_para_lai',  'MFFF',F,F,T,'#UNKNOWN'
+!!$FIELD(173) = 'import_grid','surf_para_drag', 'mmd2way_child','surf_para_drag', 'MFFF',F,F,T,'#UNKNOWN'
+!!$FIELD(172) = 'import_grid','surf_para_hc',   'mmd2way_child','surf_para_hc',   'MFFF',F,F,T,'#UNKNOWN'
+!!$!
+/
+&CPL_CHILD_COSMO
+!
+! NOTES:
+! - SYNTAX: server_channel, server_object, client_channel, client_object,
+!           interpolation method ('Q','L','M'), boundary field flag
+! - INTERPOLATION METHOD: (Character 1-3 as in IPC in INT2COSMO)
+!   - only valid for additional arrays
+!   1. Character: 'Q'  quadratic;  'L': linear and 'M' match interpolation 
+!   2. Character: 'T' or 'F': Switch for monotonicity 
+!   3. Character: 'T' or 'F': Switch  positive definiteness
+!   4. Character: 'V'       : Switch ON vertical integration
+! - INITIALISATION FLAG:
+!   - T: initial field will be calculated
+!   - F: no initial field will be calculated
+! - BOUNDARY FIELD FLAG:
+!   - T: boundary field will be calculated
+!   - F: boundary field is not provided
+! - TRACER:
+!   - FOR INITIALISATION TRACER MUST BE COUPLED FOR EACH TIME SLICE
+!     INDEPENDENTLY.
+!
+!***************************************************************************
+!*** MANDATORY FIELDS
+!***************************************************************************
+FIELD(1)     = 'COSMO','ps','COSMO_ORI','PS','', F, F, F,''
+!***************************************************************************
+FIELD(2)     = 'COSMO','tsurf','COSMO_ORI','T_S','', T, T, F,''
+!***************************************************************************
+FIELD(3)     = 'COSMO_ORI','FR_LAND','COSMO_ORI','FR_LAND','', T, F, F,''
+!***************************************************************************
+FIELD(4)     = 'COSMO','tm1','COSMO_ORI','T','', T, T, F,''
+!***************************************************************************
+FIELD(5)     = 'tracer_gp','QV', 'tracer_gp','QV', '', T, T, F, ''       ! FIX: T,T
+!***************************************************************************
+FIELD(6)     = 'tracer_gp','QC', 'tracer_gp','QC', '', T, T, F, ''      ! FIX: T,T
+!***************************************************************************
+FIELD(7)     = 'tracer_gp','QI', 'tracer_gp','QI', '', T, T, F, ''      ! FIX: T,T
+!***************************************************************************
+!FIELD(8)     =  'COSMO','qs','COSMO_ORI','QS','', T, T, F,''
+!**************************************************************************
+!FIELD(9)     = 'COSMO','qg','COSMO_ORI','QG',  '', T, T, F,''
+!***************************************************************************
+FIELD(10)     = 'COSMO','um1','COSMO_ORI','U',  '', T, T, F,''
+!***************************************************************************
+FIELD(11)     =  'COSMO','vm1','COSMO_ORI','V','', T, T, F,''
+!***************************************************************************
+! boundary data only required if .NOT. lw_freeslip
+FIELD(12)     = 'COSMO','wm1','COSMO_ORI','W',  '', T, F, F, ''
+!***************************************************************************
+FIELD(13)    = 'COSMO','t_so','COSMO_ORI','T_SO','', T, F, F,''
+!***************************************************************************
+FIELD(14)     = 'COSMO','w_so','COSMO_ORI','W_SO',  '', T, F, F,''
+!***************************************************************************
+FIELD(15)     = 'COSMO','t_snow','COSMO_ORI','T_SNOW','', T, T, F,''
+!***************************************************************************
+FIELD(16)     = 'COSMO','w_snow','COSMO_ORI','W_SNOW','', T, T, F,''
+!***************************************************************************
+FIELD(17)     = 'COSMO','w_i','COSMO_ORI','W_I','', T, F, F,''
+!***************************************************************************
+FIELD(18)     = 'COSMO','qv_s','COSMO_ORI','QV_S','', T, T, F,''
+!***************************************************************************
+FIELD(19)     = 'COSMO_ORI','FRESHSNW','COSMO_ORI','FRESHSNW','', T, F, F,''
+!***************************************************************************
+FIELD(20)     = 'COSMO_ORI','HSURF','COSMO_ORI','HSURF','', T, F, F,''
+!***************************************************************************
+FIELD(21)     = 'COSMO','ppm1','COSMO_ORI','PP','', T, T, F,''
+!***************************************************************************
+FIELD(22)     = 'Test','Test_Ar','mmd2way_child','Test_Ar','', F, F, F,''! FIX: F,F
+!***************************************************************************
+FIELD(26)     = 'COSMO_ORI','SOILTYP','COSMO_ORI','SOILTYP','', T, F, F,''
+!***************************************************************************
+! only needed if lprog_rho_snow = T .or. lana_rho_snow
+!FIELD(23)     = 'COSMO_ORI','RHO_SNOW','COSMO_ORI','RHO_SNOW','', T, F, F,''
+!***************************************************************************
+! only needed for .NOT. lmulti_layer_in
+!FIELD(24)     = 'COSMO_ORI','W_CL','COSMO_ORI','W_CL','', T, F, F,''
+!***************************************************************************
+! only needed for  .NOT. lmulti_layer_in
+!FIELD(25)     = 'COSMO_ORI','T_CL','COSMO_ORI','T_CL','', T, F, F,''
+!***************************************************************************
+!***************************************************************************
+!*** OPTIONAL FIELDS
+!***************************************************************************
+!***************************************************************************
+! ###########################################
+! TRACER
+! ###########################################
+!qFIELD(29)     = 'tracer_gp_m1','xxx', 'tracer_gp','*', 'QFTV', T, T, F, 'GP_3D_MID'
+!***************************************************************************
+FIELD(31)     = 'grid_def', 'philon_2d', 'mmd2way_child','philon_2d', 'MFFF', F,F,T,'GP_2D_HORIZONTAL'
+FIELD(32)     = 'grid_def', 'philat_2d', 'mmd2way_child','philat_2d', 'MFFF', F,F,T,'GP_2D_HORIZONTAL'
+FIELD(33)     = 'grid_def','decomp_gp_pe', 'mmd2way_child','decomp_gp_pe','MFFF',F, F, T, 'GP_2D_HORIZONTAL' !FIX:T,F
+/

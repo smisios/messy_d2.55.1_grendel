@@ -1,0 +1,405 @@
+#export
+
+SHELL = /bin/sh
+
+# ---------------------------------------------------------------
+
+###srcdir = @srcdir@
+###top_srcdir = @top_srcdir@
+### VPATH = @srcdir@
+prefix = @prefix@
+exec_prefix = @exec_prefix@
+
+bindir = @bindir@
+sbindir = @sbindir@
+libexecdir = @libexecdir@
+datadir = @datadir@
+sysconfdir = @sysconfdir@
+libdir = @libdir@
+includedir = @includedir@
+oldincludedir = @oldincludedir@
+infodir = @infodir@
+mandir = @mandir@
+datarootdir = @datarootdir@
+
+sharedstatedir = @sharedstatedir@
+localstatedir = @localstatedir@
+
+program_transform_name = @program_transform_name@
+
+# ---------------------------------------------------------------
+# ARCHITECTURE
+ARCH     = @ARCH@
+ENDIAN   = @ENDIAN@
+
+# TOOLS
+AR       = @AR@
+ARFLAGS  = @ARFLAGS@
+NMFLAGS  = @NMFLAGS@
+AS       = @AS@
+
+# COMPILER AND FLAGS
+COMPILER = @COMPILER@
+F90      = @F90@
+F90FLAGS = @F90FLAGS@
+DEFOPT   = @DEFOPT@
+MODOPT   = @MODOPT@
+EXTMODCASE = @EXTMODCASE@
+F90DEFS0 = @MPI@ @MESSY@ @ENDIAN@ _@ARCH@ @PNETCDF_DEF@ @PRISM@ NOCDI @HAMOCC@ 
+F90DEFS  = $(addprefix $(DEFOPT), $(F90DEFS0)) 
+
+
+# present in the original version of MPIOM Makefile.in
+CPPDEFS0 = SOR \
+        CLOCK \
+        QLOBERL BULK_KARA \
+        EISREST REDWMICE \
+        DIAG zzKONVDIAG \
+        zzAMLDDIAG \
+        zzONESIDED 
+CPPFLAGS = $(addprefix $(DEFOPT), $(CPPDEFS0))
+
+# TARGETS
+MPIOM_LIB     = @MPIOM_LIB@
+MPIOM_INCLUDE = @MPIOM_INCLUDE@
+
+#CDIROOT        = @CDIROOT@
+#CDI_LIB        = @CDI_LIB@
+#CDI_INCLUDE    = @CDI_INCLUDE@
+
+PRISMROOT      = @PRISMROOT@
+PRISM_LIB      = @PRISM_LIB@
+PRISM_INCLUDE  = @PRISM_INCLUDE@			
+
+# MESSY ?
+MESSY    = @MESSY@
+
+# FORCHECK
+FCKLIBS  = @FCKLIBS@
+# ---------------------------------------------------------------
+
+# ---------------------------------------------------------------
+ifeq ($(strip $(MESSY)), MESSY)
+SRCDIRS  = src src_hamocc # ../messy/mpiom/bmil ../messy/mpiom/smil
+LIBSRCS  = ../messy/smcl
+else
+SRCDIRS  = src src_hamocc
+LIBSRCS  = 
+endif
+
+INCLUDES = $(addprefix $(MODOPT)../, $(SRCDIRS)) \
+	   $(addprefix $(MODOPT)../, $(LIBSRCS)) \
+           $(MPIOM_INCLUDE)
+# ---------------------------------------------------------------
+
+# ---------------------------------------------------------------
+LIBS     = $(MPIOM_LIB) $(PRISM_LIB) $(CDI_LIB) $(SUPPORT) 
+F90NOR8  = $(INCLUDES) $(F90FLAGS) $(F90DEFS) $(CPPFLAGS)
+F90ALL   = $(F90NOR8)
+
+ifeq ($(strip $(LD)), )
+LD = $(F90)
+endif
+ifeq ($(strip $(LDFLAGS)), )
+LDFLAGS = $(F90NOR8)
+endif
+
+# ---------------------------------------------------------------
+
+
+# ----------------------------------------------------------------------
+ ifeq (,$(filter __$(ARCH),$(notdir $(CURDIR))))
+# FROM HERE UP TO 'else' RULES AND TARGETS ARE VALID IN THE
+# BASE DIRECTORY OF THIS DISTRIBUTION
+# ----------------------------------------------------------------------
+.SUFFIXES:
+
+OBJDIR := __$(ARCH)
+
+MAKETARGET = --no-print-directory -C $(OBJDIR) \
+             -f $(CURDIR)/Makefile SRCDIR=$(CURDIR) $(MAKECMDGOALS)
+
+#.PHONY: $(OBJDIR)
+# $(OBJDIR):
+#	+@[ -d $@ ] || mkdir -p $@
+#	+@$(MAKE) $(MAKETARGET)
+
+NOOBJTARG = 
+
+.PHONY: force
+force:
+ifneq (,$(strip $(findstring $(MAKECMDGOALS), $(NOOBJTARG))))
+	@echo 'Do not need (OBJDIR) for $(MAKECMDGOALS)'
+else
+	@echo 'Need (OBJDIR) for $(MAKECMDGOALS)'
+	@if ! test -r Makefile ; then \
+	  echo "Makefile does not exist!" ; \
+	  echo "Recursion not possible!"; \
+	  exit 1 ; \
+	fi
+	@[ -d $(OBJDIR) ] || mkdir -p $(OBJDIR)
+	@$(MAKE) $(MAKETARGET)
+endif
+
+% :: force ; :
+
+Makefile : ;
+%.mk :: ;
+
+.PHONY: clean
+clean: 
+	-find $(OBJDIR)  -type f -name '*' -exec rm -f '{}' \;
+#	-rm -fr $(OBJDIR)/*
+
+# Note: "-rm -fr $(OBJDIR)" must be the last command
+.PHONY: distclean
+distclean: clean
+	rm -fr $(OBJDIR)
+
+### % :: $(OBJDIR) ; :
+
+# ----------------------------------------------------------------------
+# MISC
+# ----------------------------------------------------------------------
+.PHONY: check
+check:
+	../messy/util/mfchk mpiom "$(F90DEFS0)" "$(SRCDIRS) $(LIBSRCS)" "$(MPIOM_INCLUDE)" "$(F90)" "$(FCKLIBS)"
+
+# ----------------------------------------------------------------------
+ else
+# FROM HERE UP TO 'endif' RULES AND TARGETS ARE VALID IF THIS Makefile
+# IS CALLED BY ITSELF FROM WITHIN THE (ARCHITECTIRE SPECIFIC) 'OBJDIR' 
+# ----------------------------------------------------------------------
+
+.SUFFIXES: $(SUFFIXES) .f90
+
+%.o: %.f90
+	$(F90) $(F90ALL) -c $<
+
+# ----------------------------------------------------------------------
+VPATH = $(SRCDIR)
+
+REDIR    = ..
+
+PROG     = $(REDIR)/../bin/mpiom.exe
+
+### SEARCH PATHs FOR MPIOM/MESSy
+vpath %.f90 $(REDIR)/src
+vpath %.f90 $(REDIR)/src_hamocc
+ifeq ($(strip $(MESSY)), MESSY)
+vpath %.f90 $(REDIR)/../messy/mpiom/bmil
+vpath %.f90 $(REDIR)/../messy/mpiom/smil
+endif
+
+SRCS0   := $(foreach DIR, $(SRCDIRS), $(wildcard $(REDIR)/$(DIR)/*.f90))
+SRCS    := $(sort $(notdir $(SRCS0)))
+OBJS    := $(SRCS:.f90=.o)
+
+MAKEFILE_INC = depend.mk
+F_makedepend = $(REDIR)/../messy/util/sfmakedepend.pl --modcase $(EXTMODCASE) \
+               --depend=obj --libdeps --file=$(MAKEFILE_INC) \
+               $(addprefix --srcdir $(REDIR)/, $(SRCDIRS)) \
+               $(addprefix -I$(REDIR)/, $(SRCDIRS)) -I$(REDIR)/include \
+               $(addprefix --modsearch $(REDIR)/, $(LIBSRCS))
+
+# ----------------------------------------------------------------------
+
+.SUFFIXES: $(SUFFIXES) .f90
+
+%.o: %.f90
+	$(F90) $(F90ALL) -c $<
+
+# ----------------------------------------------------------------------
+
+.PHONY: all
+all: $(PROG)
+	@echo ''
+	@echo 'The compilation has been successful.'
+	@echo 'The model can be used now with the run script'
+	@echo '(messy/util/xmessy_mmd).'
+	@echo 'Use "xmessy_mmd -h" for more information.'
+	@echo ''
+
+
+###ifeq ($(strip $(ARCH)), rs6000)
+###$(PROG): depend $(OBJS)
+###	$(AR) $(ARFLAGS) $(REDIR)/../lib/libmessy_e5.a \
+###              $(filter messy_%, $(OBJS))
+###	$(AR) $(ARFLAGS) $(REDIR)/../lib/libe5mod.a \
+###              $(filter mo_%, $(OBJS))
+###	$(AR) $(ARFLAGS) $(REDIR)/../lib/libe5src.a \
+###              $(filter-out messy_% mo_%, $(OBJS))
+###	$(LD) $(LDFLAGS) -o $@ $(LIBS) -L$(REDIR)/../lib \
+###              -lmessy_e5 -le5mod $(REDIR)/../lib/libe5src.a
+###else
+$(PROG): depend $(OBJS)
+	$(LD) $(LDFLAGS) -o $@ $(OBJS) $(LIBS)
+###endif
+
+# update file dependencies
+depend $(MAKEFILE_INC): $(SRCS)
+	$(F_makedepend)
+
+# check files
+.PHONY: list
+list:
+	@echo "------------------------------------------------"
+	@echo "SRCS = $(SRCS)"
+	@echo "------------------------------------------------"
+	@echo
+	@echo "------------------------------------------------"
+	@echo "OBJS = $(OBJS)"
+	@echo "------------------------------------------------"
+
+.DEFAULT:
+	@echo '  ---------------'
+	@echo '  UNKNOWN TARGET!' 
+	@echo '  ---------------'
+
+# ----------------------------------------------------------------------
+
+include $(MAKEFILE_INC)
+include $(REDIR)/specific.mk
+ifeq ($(strip $(MESSY)), MESSY)
+# no specific for MESSY with MPIOM
+#include $(REDIR)/../messy/mpiom/bmil/specific.mk
+#include $(REDIR)/../messy/mpiom/smil/specific.mk
+endif
+
+# ----------------------------------------------------------------------
+
+# ----------------------------------------------------------------------
+ endif
+# ----------------------------------------------------------------------
+
+
+
+
+
+
+######################################################################
+#####  ORIGINAL MAKEFILE.IN           ################################
+######################################################################
+##### export
+##### 
+##### PROG = ../bin/mpiom.x
+##### 
+##### CPPFLAGS = @MPI@ @CDI@ @PRISM@ -DzzTIMECHECK \
+#####         -DzzYEAR360 -DSOR -DRIVER_GIRIV -DCLOCK -DZO_NOCORRECT \
+#####         -DRESYEAR \
+#####         -DQLOBERL -DBULK_KARA -DzzCORE \
+#####         -DEISREST -DREDWMICE -DALBOMIP \
+#####         -DISOPYK -DGMBOLUS \
+#####         -DNURDIF -DzzTIDAL \
+#####         -DDIAG -DzzKONVDIAG \
+#####         -DzzAMLDDIAG \
+#####         -DzzRYEAR -Dzzbounds_exch_tp -DzzONESIDED \
+#####         @HAMOCC@
+##### 
+##### SHELL = /bin/sh
+#####  
+##### ARCH  = @ARCH@
+##### 
+##### srcdir = @srcdir@
+##### top_srcdir = @top_srcdir@
+##### #VPATH = @srcdir@
+##### VPATH = ../src : ../src_hamocc : ../src_dummy
+##### prefix = @prefix@
+##### exec_prefix = @exec_prefix@
+##### 
+##### bindir = @bindir@
+##### sbindir = @sbindir@
+##### libexecdir = @libexecdir@
+##### datadir = @datadir@
+##### sysconfdir = @sysconfdir@
+##### libdir = @libdir@
+##### includedir = @includedir@
+##### oldincludedir = @oldincludedir@
+##### infodir = @infodir@
+##### mandir = @mandir@
+##### 
+##### sharedstatedir = @sharedstatedir@
+##### localstatedir = @localstatedir@
+##### 
+##### program_transform_name = @program_transform_name@
+##### 
+##### MPIROOT        = @MPIROOT@
+##### MPI_LIB        = @MPI_LIB@
+##### MPI_INCLUDE    = @MPI_INCLUDE@
+##### 
+##### NETCDFROOT     = @NETCDFROOT@
+##### NETCDF_LIB     = @NETCDF_LIB@
+##### NETCDF_INCLUDE = @NETCDF_INCLUDE@
+##### 
+##### CDIROOT        = @CDIROOT@
+##### CDI_LIB        = @CDI_LIB@
+##### CDI_INCLUDE    = @CDI_INCLUDE@
+##### 
+##### PRISMROOT      = @PRISMROOT@
+##### PRISM_LIB      = @PRISM_LIB@
+##### PRISM_INCLUDE  = @PRISM_INCLUDE@			
+##### 
+##### LIB      = -L../support -lsupport
+##### LIBS     = $(LIB) $(PRISM_LIB) $(CDI_LIB) $(NETCDF_LIB) $(MPI_LIB) 
+##### 
+##### INCLUDE  = -I../support
+##### INCLUDES = $(INCLUDE) $(PRISM_INCLUDE) $(CDI_INCLUDE) $(NETCDF_INCLUDE) $(MPI_INCLUDE) 
+##### 
+##### F90      = @F90@
+##### FC       = @F90@
+##### CC       = @CC@
+##### CPP      = @CPP@
+##### AR       = @AR@
+##### AS       = @AS@ 
+##### 
+##### DEFS     = @DEFS@
+##### 
+##### CFLAGS   = -I../config @CFLAGS@
+##### FFLAGS   = @FFLAGS@
+##### F90FLAGS = $(INCLUDES) @F90FLAGS@
+##### 
+##### #CPPFLAGS = @CPPFLAGS@
+##### ARFLAGS  = @ARFLAGS@
+##### LDFLAGS  = @LDFLAGS@
+##### 
+##### 
+##### all:
+##### 	back=`pwd`; \
+##### 	cd support ;\
+##### 	$(MAKE) ; status=$$? ; \
+##### 	if [ $$status != 0 ] ; then \
+##### 	echo "Exit status from make was $$status" ; exit $$status ; \
+##### 	fi ; \
+##### 	cd $$back ; \
+##### 	cd make ;\
+##### 	$(MAKE) ; status=$$? ; \
+##### 	if [ $$status != 0 ] ; then \
+##### 	echo "Exit status from make was $$status" ; exit $$status ; \
+##### 	fi ; \
+##### 	cd $$back ; 
+##### 
+##### clean:
+##### 	back=`pwd`; \
+##### 	cd support ;\
+##### 	$(MAKE) clean; status=$$? ; \
+##### 	if [ $$status != 0 ] ; then \
+##### 	echo "Exit status from make was $$status" ; exit $$status ; \
+##### 	fi ; \
+##### 	cd $$back ; \
+##### 	cd make ;\
+##### 	$(MAKE) clean ; \
+#####         if [ $$? != 0 ] ; then \
+##### 	echo "Exit status from make was $$?" ; exit 1 ;\
+#####         fi ;\
+##### 	\rm support/*.a bin/mpiom.x ;\
+##### 	\rm html/[a-z]* ;\
+#####         \rm make/i.*.L ;\
+##### 	cd $$back ; 
+##### 
+##### tar:
+##### 	@tarfile=../mpiom.f90.`date +%y%m%d`.taz ; gtar zcvf $$tarfile \
+##### 	`ls */*.f90 */*.[fhc] */*inc */Makefile Makefile.in Makefile run/hjob*`
+##### 
+##### index:
+##### 	\rm -f html/[a-z]*
+##### 	util/f2html.pl -f util/fgenrc -d html src_hamocc src

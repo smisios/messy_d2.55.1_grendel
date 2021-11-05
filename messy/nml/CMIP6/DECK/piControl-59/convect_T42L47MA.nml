@@ -1,0 +1,86 @@
+! -*- f90 -*-
+
+&CTRL
+! convparam = 0,    ! no convection at all
+  convparam = 1,    ! TIEDTKE convection with NORDENG closure (old iconv=1)/default 
+! convparam = 2,    ! TIEDTKE convection with TIEDTKE closure (old iconv=2)
+! convparam = 3,    ! TIEDTKE convection with HYBRID  closure (old iconv=3)
+! convparam = 4     ! ECMWF - operational scheme
+! convparam = 5,    ! ZHANG/HACK/McFARLANE convection scheme
+! convparam = 6,    ! BECHTOLD convection scheme
+! convparam = 7,    ! EMANUEL convection scheme
+! convparam = 8,    ! DONNER convection scheme
+
+!!!! WARNING: 
+!!!! - convparam = 2 or convparam = 3 do not produce positive tracer
+!!!!   concentrations
+!!!!   If you want to use those, you need to use CVTRANS submodule
+!!!!
+!!!! - convparam = 4 (Zhang/Hack convection) does not have a convective
+!!!!   transport routine
+!!!!   If you want to use it and have convective tracer transport, you have to
+!!!!   use the CVTRANS submodule
+/
+&CTRL_TIEDTKE
+ penetrative = T,   ! allowing penetrative convection
+ shallow     = T,   !          shallow convection
+ midlevel    = T,   !          midlevel convection
+ downdrafts  = T,   !          downdrafts
+ friction    = T,   !          convective friction
+ posdef = T,        ! update for positive definite tracers (only appropriate for convparam = 1) 
+!! set entrscv (entrainment rate for shallow convection) 
+!! -> to increase cloud cover 
+!! -> to reduce surface temperature and radiation imbalance
+!! default with MPIOM: 3.0E-04
+!!  rset_entrscv = T, 4.5E-04,
+!! only for simulations without ocean coupling:
+!!! rset_cmfctop = T, 0.35,    ! reset this parameter
+ rset_entrpen = T, 2.0E-4, ! reset this parameter
+!!
+!!  cprcon: coefficient for determining conversion from
+!!  cloud water to rain (T42L47,lcouple default: 3.0E-4
+ rset_cprcon = T, 8.0E-4, 
+!
+/
+&CTRL_ECMWF
+ penetrative = T,   ! allowing penetrative convection
+ shallow     = T,   !          shallow convection
+ midlevel    = T,   !          midlevel convection
+ downdrafts  = T,   !          downdrafts
+ friction    = T,   !          convective friction
+ tracertrans = F,   !          own tracer transport routine
+                    !
+ LEPCLD      = T,   ! produce detrained cloud water/ice
+                    ! to reuse in prognostic cloud scheme
+ LMFSCL_WSTAR= T,   ! use w* shallow convective closure proposed by Grant.
+/
+&CTRL_ZHANG
+ alterconv = F,     ! alternative convection due to different treatment of cloud water
+evap_sub  = T,      ! subcloud evaporation according to Wilcox (2002)
+/
+&CTRL_BECHTOLD
+ deep         = T,   ! allowing deep convection
+ shallow      = T,   !          shallow convection
+ downdrafts   = T,   !          downdrafts
+ ice          = 1,   ! treating cloud ice
+ friction     = T,   ! allowing convective friction
+
+ tracertrans  = F,   !          chemical tracer transport   (T = using own routine)
+                     !          WARNING!!!! CHECK IF CVTRANS Module is used !!!!                       
+
+ ensemble     = 0,   ! number of ensemble for deep convection (maximum 3)
+ refresh      = T,   ! refresh tendencies at every call
+ adjustment   = T,   ! user defined adjustment time switch
+! op_rd_20130603+
+! adjtimed     = 14400.,   ! user defined adjustment time for deep convection
+  adjtimed     = 10000.,   ! op_rd_20130603
+! op_rd_20130603-
+ adjtimes     = 14400.,   ! user defined adjustment time for shallow convection
+/
+&CTRL_EMANUEL
+ ltransport   = F    ! using the EMANUEL tracer transport routine
+/
+
+&CPL
+ l_lgmc_diag = F  ! additional channel objects for diagnostic (Tiedtke only!)
+/

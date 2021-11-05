@@ -1,0 +1,88 @@
+! ==============================================================================
+!
+! OH VAR experiment [Gromov, MPI-C, 2014]
+!
+! climatological OH input
+!
+! ------------------------------------------------------------------------------
+! tropospheric OH
+!
+! "holy" Spivakovsky OH @ orig. resolution, monthly
+! TransCom OH = 0.92*Spivakovsky * 0.92
+&regrid
+!outfile  = 'ncrg_${ECHAM5_HRES}_OH_trop_3D_spv2000.nc',
+ infile   = '$INPUTDIR_MESSY/ohvar/OH_trop_3D_spv2000.nc',
+i_latm    = 'lat',
+i_latr    = -90.0,90.0,
+i_lonm    = 'lon',
+i_timem   = 'time',
+i_hyai    = 'ilev',
+i_hyam    = 'lev',           !# hPa
+i_p0      = '100.0',         !# [ha * p0] = Pa
+var       = 'OHspi0=oh,1e6; OHtc0=oh,0.92e6;' !  molec/cm3 -> molec/m3
+/
+!
+! & "patched" Spivakovsky OH @ orig. resolution, monthly
+! TransCom OH = 0.92*Spivakovsky * 0.92
+&regrid
+!outfile  = 'ncrg_${ECHAM5_HRES}_OH_trop_3D_spv2000_ext.nc',
+ infile   = '$INPUTDIR_MESSY/ohvar/OH_trop_3D_spv2000_ext.nc',
+i_latm    = 'lat',
+i_latr    = -90.0,90.0,
+i_lonm    = 'lon',
+i_timem   = 'time',
+i_hyai    = 'ilev',
+i_hyam    = 'lev',           !# hPa
+i_p0      = '100.0',         !# [ha * p0] = Pa
+var       = 'OHspi=OH_patch,1e6; OHtc=OH_patch,0.92e6; OHtcN=OH_patch_NH20,0.92e6; OHtcS=OH_patch_SH20,0.92e6; ' !  molec/cm3 -> molec/m3
+/
+!
+! "interactive" OH from EMAC, monthly
+&regrid
+outfile = "ncrg_${ECHAM5_HRES}_RC1SD-base-07__mm_OH-trop_1990-2010.nc",
+infile    = "$INPUTDIR_MESSY/ohvar/RC1SD-base-07__mm_OH-trop_1990-2010.nc"
+i_latm    = "lat",
+i_latr    = -90.0,90.0,
+i_lonm    = "lon",
+i_timem   = "TIME2",
+i_hyam    = "hyam",         !# Pa
+i_hybm    = "hybm",         !# 
+i_ps      = "101325.0 Pa",  !# Pa
+i_p0      = "1.0",          !# [ha * p0] = Pa
+var       = "OHim=OH_ave; "
+/
+!* ! "patched" Spivakovsky OH @ particular resolution, daily
+!* &regrid
+!* !outfile  = 'ncrg_${ECHAM5_HRES}_OH_trop_3D_spv2000_ext-cda_{$ECHAM_RES}.nc',
+!*  infile   = '$INPUTDIR_MESSY/ohvar/OH_trop_3D_spv2000_ext.nc',
+!* i_latm    = 'lat_${ECHAM5_HRES}',
+!* i_latm    = 'ilat_${ECHAM5_HRES}',
+!* i_latr    = -90.0,90.0,
+!* i_lonm    = 'lon_${ECHAM5_HRES}',
+!* i_lonr    = -180.0,180.0,
+!* i_timem   = 'time_daily',
+!* i_hyai    = 'ilev',
+!* i_hyam    = 'lev',           !# hPa
+!* i_p0      = '100.0',         !# [ha * p0] = Pa
+!* var       = 'OHcdaR=OH_patch_da_${ECHAM5_HRES},1e6;' !  molec/cm3 -> molec/m3
+!* /
+!
+! ------------------------------------------------------------------------------
+! stratospheric OH
+!
+&regrid
+!outfile  = 'ncrg_${ECHAM_HRES}_OH_strat_2D_chb2000.nc',
+ infile   = '$INPUTDIR_MESSY/ohvar/OH_strat_2D_chb2000.nc',
+i_latm    = 'LAT',
+i_latr    = -90.0,90.0,
+i_lonm    = 'LON',
+i_lonr    = -180.,180.,
+i_timem   = 'TIME',
+i_hyam    = 'LEV',            !# hPa
+i_hyai    = 'LEVedges', 
+i_p0      = '100.0',          !# [ha * p0] = Pa
+var       = 'OHstrat=OH,1e6;' !  molec/cm3 -> molec/m3
+/
+!
+! ==============================================================================
+! EOF

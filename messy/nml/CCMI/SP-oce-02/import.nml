@@ -1,0 +1,130 @@
+! -*- f90 -*-
+
+&CTRL_TS
+! ### SYNTAX:
+!     - name of time series
+!     - [var@] name (incl. path) of data file
+!           .nc -> netCDF, e.g., "var@my_path_to_my_file/my_file.nc" 
+!               -> ASCII,  e.g., "my_path_to_my_file/my_file.txt" 
+!     - valid range ( default: -HUGE(0._dp), HUGE(0._dp) )
+!     - out of time interval policy: 0: stop; 1: continue with nearest ...
+!       ... (before time interval, after time interval)
+!     - interpolation method:  -1: previous; 0: linear interpolation; 1: next
+!     - yr,mo,dy,hr,mi,se : pick out always this date/time
+!       (example: 2000, , , , , , will cycle through the year 2000 etc.)
+!     - offset (in days)
+!
+! ###########
+! ### QBO ###
+! ###########
+!
+!TS(1) = 'qbo', '$INPUTDIR_MESSY/qbo/misc/qbo_data_v04.txt', ,99.90, 0, 0, 0, , , , , , , 0.0,
+!TS(1) = 'qbo', 'QBO@$INPUTDIR_MESSY/qbo/qbo_data_v04.nc',   ,99.90, 0, 0, 0, , , , , , , 0.0,
+!
+! ############ ######################
+! ### JVAL ### ### RAD4ALL_FUBRAD ###
+! ############ ######################
+!
+!   NOTE: 
+!    The data file must either contain
+!     * JVAL and/or FUBRAD:
+!       - the F10.7cm in sfu (adjusted to 1 AU !!!)
+!     * JVAL
+!       - phi_la,SR_toa_flux,flux(7),f0(7) (adjusted to 1 AU !!!)
+!     * FUBRAD
+!       - TSI, Flya, Fsch1, Fs, Fl, soscale, Fherz(7:21),
+!         Fhart(22:31), Fhug(32:49), Fchap
+!         (units: Wm-2, except: Fsch1, Fs, Fl (erg cm-2 s-1),
+!         soscale (dimensionless))
+!
+!TS(2) = 'solact','F107@$INPUTDIR_MESSY/jval/F10.7_1AU_1948_2085.nc', , , 0, 0, 0, , , , , , , 0.0,
+!TS(2) = 'solact','SOLCYC@$INPUTDIR_MESSY/jval/solar_data_1AU_1950_2006.nc', , , 0, 0, 0, , , , , , , 0.0,
+!
+!TS(3) = 'solspec','SOLAR_DATA@$INPUTDIR_MESSY/rad4all/spectral_solar_data_daily_1950_2007_fubrad_v01.nc', , , 0, 0, 0, , , , , , , 0.0,
+!
+/
+
+&CTRL_LT
+! ### SYNTAX:
+! ### LT(.) = 'table name','netcdf-file with path','netcdf variable name',
+! ###         (table name must be unique)
+!
+!LT(1) = 'mytable','$INPUTDIR_MESSY/mysubmodel/LT_my_file.nc','myvar',
+!
+/
+
+&RGTEVENTS
+! ### SYNTAX:
+!     (SPECIFIERS MUST BE UPPERCASE !)
+! ###         GP=    Gridpoint  Emission Method (0,1,2) (SURFACE ONLY)
+!                    0: no emission; only stream element (DEFAULT)
+!                    1: 2D (SURFACE EM.) -> lowest layer
+!                       3D (VOLUME  EM.) -> emission ON
+!                       Nx2D (MULTI LEVEL EM.) -> internally converted to 3D
+!                    SURFACE EMISSIONS ONLY:
+!                    2: lower boundary condition for flux
+!
+! ###         LG=    Lagrangian Emission Method (0,1,2,3,4)
+!                    0: no emission; only channel object (DEFAULT)
+!                    1: 2D (SURFACE EM.)       -> into CELLs in lowest layer
+!                       3D (VOLUME  EM.)       -> emission ON
+!                       Nx2D (MULTI LEVEL EM.) -> internally converted to 3D
+!                    SURFACE EMISSIONS ONLY:
+!                    2: into lowest CELLs within boundary layer
+!                    3: into all CELLs in boundary layer (vertical gradient)
+!                    4: into all CELLs in boundary layer (no vertical gradient)
+!
+! ###         NML=   '' (DEFAULT)   : this namelist-file (offlem.nml)
+!                    <namelist file>: other namelist file
+!
+! ###         FILE=  '' (DEFAULT)   : - ONLY first netCDF-file in NML
+!                    <netCDF-file>  : - this file in NML
+!
+! ###         VAR=   '' (DEFAULT)   : - all variables from FILE
+!                                     - all variables in first namelist in NML
+!                    <tracer name>  : - this variable from namelist in NML
+!                                       (FILE specifier ignored !!!)
+! ###         Z=     <z1,z2,...>    : - list of emission heights [m]
+!                                       (above GND) for multi level emissions
+!                                       (Nx2D)
+!
+! NOTEs: (1) SUMMATION OF DIFFERENT OFFLINE EMISSIONS FOR ONE TRACER
+!            CAN BE ACHEIVED BY USING THE
+!            FILE- or VAR- specifier in combination with the NML-specifier
+!        (2) PRESCRIBED MIXING RATIOS CAN BE ACHIEVED WITH
+!            GP=0 (stream element only) in combination with SUBMODEL TNUDGE
+!        (3) Surface emission fluxes (2D) must be in  molecules m-2 s-1.
+!        (4) Volume emissions (3D)        must be in  molecules m-3 s-1.
+!        (5) Multi level emissions (Nx2D) must be in  molecules m-2 s-1.
+!        (6) For volume emissions (3D), the corresponding &REGRID-namelist
+!            must contain the specification of the vertical coordinate.
+!            The Z-specifier (emission heights) must not be used!
+!        (7) The trigger for multi level emissions (Nx2D) is the presence
+!            of the Z-specifier (emission heights) in the RG_TRIG action
+!            string. The corresponding &REGRID-namelist must not contain any
+!            specification of a vertical coordinate, since the levels
+!            must be treated as 'invariant' (parameter-)dimension.
+!        (8) For Nx2D emissions, the FILE specifier must not be used, since
+!            the level is treated by NCREGRID as invariant dimension.
+!            (Regridding of a file (i.e., multiple variables in one step)
+!             containing one or more variables with a free parameter
+!             (here level index) is not possible, since the 'parameter'
+!             dimension is already used for the number of variables.)
+!
+! GHG
+! ### for preindustrial runs, use only first year cyclic
+!RG_TRIG(1)  = 1,'years', 'first',0, 'nyear', 1,1,1,1, 'NML=./import/tnudge/CCMI_MPIC1.0_HIST_X_GHG_1765-2005.nml;',
+!
+! ### for transient runs use the full time series
+! ### 1765:   1
+! ### 2005: 241
+RG_TRIG(1)  = 1,'years', 'first',0, 'nyear', 1,1,241,1, 'NML=./import/tnudge/CCMI_MPIC1.0_HIST_X_GHG_1765-2005.nml;',
+!
+! ### ozone
+RG_TRIG(2) = 1,'months', 'first',0, 'nmonth', 1,1,12,$START_MONTH, 'NML=./import/tnudge/CCMI_MPIC1.0_HIST_X_O3_000001-000012.nml;VAR=O3',
+!
+! ### for AEROPT
+RG_TRIG(195) = 1,'months', 'first',0,'OPT-LW' , 1,1,12,$START_MONTH,'NML=./import/aeropt/CCMI-ETH_MPIC1.1_hist_optLW-ECHAM5_X_195001-201112.nml;',
+RG_TRIG(196) = 1,'months', 'first',0,'OPT-SW' , 1,1,12,$START_MONTH,'NML=./import/aeropt/CCMI-ETH_MPIC1.1_hist_optSW-ECHAM5_X_195001-201112.nml;',
+!
+/

@@ -1,0 +1,670 @@
+<!DOCTYPE html 
+     PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+     "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xml:lang="en" lang="en">
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="GENERATOR" content="Mozilla/4.7C-SGI [en] (X11; I; IRIX64 6.5 IP27) [Netscape]">
+   <title>Changes in the COSMO-Model 4.26</title>
+<style type="text/css">
+  body { font-family:       Arial;
+         font-size:         12pt;
+         background-repeat: no-repeat; 
+         margin:            1em; }
+
+  tt   { font-size:         12pt;}
+
+  li   { margin-top:         5pt;
+         margin-bottom:      5pt }
+
+  th   { border:           1px solid black;
+         padding:          3pt;
+         vertical-align:   top;
+         background-color: lightblue;}
+
+  td   { border:           1px solid black;
+         padding:          3pt;
+         vertical-align:   top;}
+
+  td.middl   { border:           1px solid black;
+               padding:          3pt;
+               vertical-align:   middle;}
+
+  td.hilit       { border:           1px solid black;
+                   padding:          1pt;
+                   vertical-align:   top;
+                   background-color: lightblue;}
+
+  td.clean       { padding:          0pt;
+                   border-style:     none;
+                   vertical-align:   top;}
+
+  td.notes       { padding:          3pt;
+                   border-style:     none;
+                   vertical-align:   top;}
+
+  td.nomid       { padding:          3pt;
+                   border-style:     none;
+                   vertical-align:   middle;}
+
+  table.note     { border-width:     0pt;
+                   border-style:     none;
+                   margin-left:      5pt;
+                   margin-top:       1pt;
+                   margin-bottom:    1pt;
+                   cell-padding:     5pt;
+                   vertical-align:   top;
+                   text-align:       left;}
+  
+  table.atte     { border-width:     0pt;
+                   border-style:     none;
+                   margin-left:      5pt;
+                   margin-top:       1pt;
+                   margin-bottom:    1pt;
+                   cell-padding:     5pt;
+                   vertical-align:   top;
+                   text-align:       left;
+                   background-color: red;}
+  
+  table.namelist { border-width:  2pt;
+                   border-style:  groove;
+                   border-color:  black;
+                   width:         90%;
+                   text-align:    left;
+                   margin-top:    1pt;
+                   margin-bottom: 1pt;
+                   padding:       3pt;
+                   align:         center;}
+  
+  tr.headings    { text-align:       left;
+                   vertical-align:   top;
+                   border-width:     1pt;
+                   border-style:     groove;
+                   border-color:     grey;
+                   padding:          2pt;
+                   font-weight:      bold;}
+
+  .rot           { background-color: red;}
+</style>
+
+</head>
+  <body text="#000000" bgcolor="#FFFFFF" link="#0000EE" vlink="#551A8B" alink="#FF0000">
+
+<center>
+<h1>
+<a NAME="begin">Documentation of the Changes in the COSMO-Model <br /> Version 4.26</a>
+</h1>
+<h3>
+12.12.2012
+</h3>
+</center>
+
+<p>
+This version is basically a consolidation version. Extensive testing of version 4.25 revealed
+several problems with the restart functionality and some smaller bugs. Also, some problems with 
+the multi-layer snow model have been fixed and the new tracer module got its first update in view
+of COSMO_ART.
+</p>
+
+<h4><a NAME="content">Contents:</a></h4>
+
+<ol>
+<li><a href="#tkescal">Saving Scale Interaction TKE Source Terms</a></li>
+<li><a href="#rttov10">Modified RTTOV Interface for RTTOV10</a></li>
+<li><a href="#obsradp">Radiance Processing in the COSMO-Model</a></li>
+<li><a href="#restart">Problems with the Restart Functionality</a></li>
+<li><a href="#tracers">Update of the Tracer Module</a></li>
+<li><a href="#mulsnow">Technical Update of the Multi-Layer Snow Model</a></li>
+<li><a href="#netcdfi">CLM Changes for NetCDF I/O</a></li>
+<li><a href="#bugfixe">Bug Fixes and Technical Changes</a></li>
+<li><a href="#namelis">Changes to the Namelists</a></li>
+<li><a href="#results">Changes of Results</a></li>
+</ol>
+<p>
+<hr>
+
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="tkescal">1. Saving Scale Interaction TKE Source Terms</a></h3>
+  <h4>(by Matthias Raschendorfer)</h4>
+
+<p>
+New variables have been introduced to save the scale interaction TKE sources for output.
+Corresponding shortnames for output and associated Grib1 numbers have been defined:
+</p>
+
+<p>
+<center>
+<table border="1" cellspacing="3" class="namelist">
+ <tbody>
+   <tr>
+     <th>Shortname</th>
+     <th>Variable<br />Name</th>
+     <th>Table<br />Number</th>
+     <th>Element<br />Number</th>
+     <th>Description</th>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td><tt>DTKE_SSO</tt></td>
+     <td><tt>tket_sso</tt></td>
+     <td>201</td>
+     <td>155</td>
+     <td>TKE-tendency due to SSO wake production</td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td><tt>DTKE_HSH</tt></td>
+     <td><tt>tket_hshr</tt></td>
+     <td>201</td>
+     <td>156</td>
+     <td>TKE-tendency due to (sep.) horizontal shear</td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td><tt>DTKE_CON</tt></td>
+     <td><tt>tket_conv</tt></td>
+     <td>201</td>
+     <td>157</td>
+     <td>TKE-tendency due to convective buoyancy</td>
+   </tr>
+<!---------------------------------------------------------------------------->
+ </tbody>
+</table>
+</center>
+</p>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+<p align="right"><a href="#content">Back to Contents</a>
+<hr>
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="rttov10">2. Modified RTTOV Interface for RTTOV10</a></h3>
+  <h4>(by Andreas Messer)</h4>
+
+<p>
+The modules <tt>organize_satellites.f90</tt> and <tt>src_sat_rttov.f90</tt> have 
+been modified in a way that also the RTTOV10 library can be used now. The code has 
+to be compiled with the macro <tt>-DRTTOV10</tt> and the following external 
+modules and libraries have to be linked:
+</p>
+
+<p>
+<ul>
+  <li><tt>libradiance10.2.a</tt>: the modules of this library have to be in the 
+      <tt>INCLUDE</tt> path for compiling the RTTOV-interface of the COSMO-Model</li>
+  <li><tt>librttov10.2.a</tt></li>
+</ul>
+</p>
+
+<p>
+For using RTTOV9, the code can still be compiled with the macro <tt>-DRTTOV9</tt> and has
+to be linked with the libraries:
+</p>
+
+<p>
+<ul>
+  <li><tt>librttov9.3.a</tt></li>
+  <li><tt>librttov9.3_parallel.a</tt></li>
+  <li><tt>librttov_ifc.a</tt></li>
+</ul>
+</p>
+
+<p>
+Other updates for using RTTOV10 have been in the modules <tT>data_satellites.f90,
+mo_fdbk_cosmo.f90, mo_fdbk_tables.f90</tt>.
+</p>
+
+<p>
+To activate the RTTOV10 library in the model, the switch <tt>itype_rttov=10</tt> has 
+to be set.
+</p>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+<p align="right"><a href="#content">Back to Contents</a>
+<hr>
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="obsradp">3. Radiance Processing in the COSMO-Model</a></h3>
+  <h4>(by Andreas Messer)</h4>
+
+<p>
+Independent from computing the synthetic satellite images the COSMO-Model has been
+extended to read satellite observation files from the <tt>sat-pp</tt> (satellite post-processing;
+a tool developed at DWD), calculate the first guess brightness temperatures at the
+observation time and location and write back the results into feedback files.
+The assimilation itself will then be performed outside of the COSMO-Model.
+</p>
+
+<p>
+To control the processing of the <tt>sat-pp</tt> files, a new Namelist <tt>INPUT</tt> 
+file (<tt>INPUT_OBS_RAD</tt>) is necessary, which contains the groups <tt>/TOVS_OBS/</tt> 
+and <tt>/TOVS_OBS_CHAN/</tt>.
+</p>
+
+<p>
+To choose the actions for satellite processing, two new logical switches have been
+introduced in the group /SATCTL/:
+</p>
+
+<p>
+
+  - lsynsat (Default: .TRUE.)
+    To activate computation of synthetic satellite images
+    (default behaviour from former versions)
+
+  - lobsrad (Default: .FALSE.)
+    To activate satellite observation processing. This can only be done, if the model
+    is compiled with -DRTTOV10!
+
+<center>
+<table border="1" cellspacing="3" class="namelist">
+ <tbody>
+   <tr>
+     <th>Group</th>
+     <th>Name</th>
+     <th>Meaning</th>
+     <th align="center", width="5%">Default</th>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td class="hilit" rowspan="2"><tt>/SATCTL/</tt></td>
+     <td><tt>lsynsat</tt></td>
+     <td class="middl" rowspan="1">To activate computation of synthetic satellite 
+         images (default behaviour from former versions).</td>
+     <td class="middl" align="center" rowspan="1"><tt>.TRUE.</tt></td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td><tt>lobsrad</tt></td>
+     <td class="middl" rowspan="1">To activate satellite observation processing. 
+         This can only be done, if the model is compiled with <tt>-DRTTOV10</tt>!
+         </td>
+     <td class="middl" align="center" rowspan="1"><tt>.FALSE.</tt></td>
+   </tr>
+<!---------------------------------------------------------------------------->
+ </tbody>
+</table>
+</center>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+<p align="right"><a href="#content">Back to Contents</a>
+<hr>
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="restart">4. Problems with the Restart Functionality</a></h3>
+  <h4>(by Uli Sch&auml;ttler, Hans-J&uuml;rgen Panitz, Burkhardt Rockel)</h4>
+
+<p>
+There were several issues and problems with writing / processing restart files:
+</p>
+
+<p>
+<ul>
+ <li>Additional diagnosis of <tt>qrs</tt> and <tt>rho</tt> for output steps:<br />
+     In <tt>src_output.f90</tt> an additional update of <tt>qrs</tt> and <tt>rho</tt> 
+     is computed for output steps. This must not be done for restart steps.</li>
+
+ <li>Advection of TKE (if not semi-lagrange advection):<br />
+     This is a problem which was not noticed up to now, because advection of TKE is (still) not
+     used operationally (it is only done, if the logical <tt>switch lprog_tke=.TRUE.</tt>). But since
+     Version 4.23 TKE is treated as the humidity variables and therefore the timelevel, which has
+     to be advected, is copied to the timelevel <tt>nnew</tt>, with the following  statement:
+     <p>IF (ALLOCATED(tke)) tke(:,:,:,nnew) = tke(:,:,:,nadv)</p>
+     But this was done without the bracketing: <tt>IF (lprog_tke) THEN</tt>, which has been added now.
+
+    <p>
+    The problem with the TKE scheme is, that it does not use the COSMO time stepping mechanism
+    with (<tt>nnold</tt>), <tt>nnow</tt> and <tt>nnew</tt>. This is not taken care of for the 
+    advection neither was it taken care of in restart files.<br >
+    Remedy: Write the TKE time level ntke also to the binary restart file (in <tt>src_output.f90</tt>), 
+    read it (in <tt>src_input.f90</tt>) and store the TKE field in the correct time level. 
+    The recomputation of <tt>ntke</tt> in <tt>organize_physics.f90</tt> has to be eliminated therefore.
+    </p>
+
+    Note that TKE-advection is only implemented for the alternative turbulence schemes
+    <tt>itype_turb=5,...,8</tt>. Otherwise, the switch <tt>lprog_tke</tt> is reset to <tt>.FALSE.</tt>
+    in <tT>organize_physics.f90</tt> after namelist reading and and TKE is not advected!</li>
+
+
+ <li>File names of restart files when using asynchronous NetCDF I/O:<br >
+     When constructing the file names in the new module <tt>netcdf_io.f90</tt>, it has not been 
+     taken care of that <tt>nstart &gt; 0</tt> for restart runs.</li>
+
+ <li>Introduced call to <tt>get_free_unit</tt> for restart files again (which was erroneously
+     moved outside to <tt>organize_data</tt>, because of prefetching of grib files) (US)</li>
+
+ <li>Correct grib table numbers for multi-layer snow variables (BR)</li>
+
+ <li>Always construct the file name for the constant fields with step 0, also for restart runs.</li>
+
+ <li>In case of asynchronous I/O print the name of the file with the constant fields correctly
+   to file <tt>YUCHKDAT</tt>.</li>
+
+ <li>Set the correct timestep counter so that the correct date string is calculated
+     for restarts at full hours in case of 14 digits for the date string
+     (which means: eliminate ntstepstart)</li>
+</ul>
+</p>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+<p align="right"><a href="#content">Back to Contents</a>
+<hr>
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="tracers">5. Update of the Tracer Module</a></h3>
+  <h4>(by Anne Roches, Oliver Fuhrer)</h4>
+
+<p>
+Some refinements and adaptations have already been implemented for the tracer module:
+</p>
+
+<ul>
+ <li>Renaming of Namelist variables from <tt>/DYNCTL</tt> (and model variables) <tt>hd_corr_q_[in,bd]</tt> by 
+     <tt>hd_corr_trcr_[in,bd]</tt> in order to be consistent also with the naming of other 
+     switches (e.g. <tt>ltrcr_trilin</tt>, <tt>lef_adv_trcr_notpd</tt>, etc.). 
+     These are the variables for the correction factors of the horizontal diffusion fluxes 
+     for tracers (former: q-Variables):
+ 
+<p>
+<center>
+<table border="1" cellspacing="3" class="namelist">
+ <tbody>
+   <tr>
+     <th>Group</th>
+     <th>Old Name</th>
+     <th>New Name</th>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td class="hilit" rowspan="2"><tt>/DYNCTL/</tt></td>
+     <td><tt>hd_corr_q_in</tt></td>
+     <td><tt>hd_corr_trcr_in</tt></td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td><tt>hd_corr_q_bd</tt></td>
+     <td><tt>hd_corr_trcr_bd</tt></td>
+   </tr>
+<!---------------------------------------------------------------------------->
+ </tbody>
+</table>
+</center>
+</p>
+  </li>
+
+ <li>Removal of unnecessary information from the tracer module 
+     (<tt>T_TEND_XXX</tt>, boundary index,...)</li>
+    
+ <li>Addition of the options <tt>T_LBC_USER</tt> and <tt>T_INI_USER</tt> for tracer clients who want to
+     perform user defined boundary setting and initialization resp.</li>
+
+ <li>Change the default values of the metadata <tt>T_RELAX_ID</tt> and <tt>T_DAMP_ID</tt> in order to
+     be consistent with the other defaults (e.g. for advection)</li>
+
+ <li>Renaming of <tt>T_CLP_POSDEF</tt> to <tt>T_CLP_ON</tt> since only on and off are available 
+     for the moment.</li>
+    
+ <li>Addition of the pointer support in the metadata. This function is required for handling
+     associated fields (surface field, emissions, ...) gracefully.</li>
+   
+ <li>Handling of the surface field through the metadata mechanism which can now handle pointers.
+     We thus no longer need a pointer for the surface field in the tracer structure. We had
+     to shift the print of the tracer list and the metadata retrieval after organize_data
+     ('start') in order to see also the pointers (e.g. surface field) in the standard output.
+     The pointer is now a 3D pointer instead of a 2D pointer.</li>
+
+ <li>Increase of error message length in order to get more meaningful error messages.</li>
+
+ <li>Completion and correction of the behaviour for all types of lateral boundary conditions
+     (initialize_loop, relaxation, damping)</li>
+
+ <li>The previous correction led to non bit-identical results for some namelists settings due
+     to the strange treatment of <tt>QR</tt>, <tt>QS</tt> and <tt>QG</tt>. In order to get 
+     bit-identical results also in these cases, a new metadata ("hack") has been introduced for 
+     these species (<tt>DAMP_FORCED</tt>).</li>
+
+ <li>Cleanup and cosmetics (removal of unnecessary calls, correction in comments, 
+     update of headers, ...)</li>
+
+ <li>In <tt>src_radiation.f90</tt>: Renamed local variable <tt>lprog_qi</tt> to <tt>lzprog_qi</tt>
+     to not confuse it with the global variable. Initialize this variable explicitely to <tt>.FALSE.</tt>,
+     which had been forgotten before. This lead to a crash when using <tt>itype_gscp</tt> &lt; 3.</li>
+
+ <li>Add a new subroutine <tt>trcr_get_block</tt> in order to retrieve a block of tracers in one 
+     single call. This is required for COSMO-ART or other applications that deal with dozens of 
+     tracers.</li>
+
+ <li>Add a new subroutine for MESSY which gives access to the whole tracer structures.
+     This should replace the modifications made by Astrid in the tracer module.</li>
+
+ <li>Add a warning in case of Leapfrog and <tt>l3dturb</tt> (combination not possible).</li>
+</ul>
+  
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+<p align="right"><a href="#content">Back to Contents</a>
+<hr>
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="mulsnow">6. Technical Update of the Multi-Layer Snow Model</a></h3>
+  <h4>(by Burkhardt Rockel, Uli Sch&auml;ttler)</h4>
+
+<p>
+A few technical adaptations were necessary for handling the variables of the
+multi-layer snow model:
+
+<ul>
+ <li>Adapted variable names to corresponding I/O shortnames
+     (in modules <tt>data_fields.f90, src_allocation.f90, src_setup_vartab.f90, src_soil_multlay.f90,
+       dfi_initialization.f90, organize_data.f90, src_input.f90</tt>)</li>
+ 
+ <li>Initialize <tt>h_snow</tt> in case of restarts (in <tt>src_soil_multlay.f90</tt>)</li>
+ 
+ <li>Correct indices for gravity pre-setting (in <tt>src_soil_multlay.f90</tt>)</li>
+ 
+ <li>Correct grib table numbers for multi-layer snow variables in <tt>src_input.f90</tt>,
+     <tt>organize_data.f90</tt>.</li>
+</ul>
+</p>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+<p align="right"><a href="#content">Back to Contents</a>
+<hr>
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="netcdfi">7. CLM Changes for NetCDF I/O</a></h3>
+  <h4>(by Burkhardt Rockel)</h4>
+
+<p>
+Some variables, which had dimension of length 1, have been changed to scalar values.
+Therefore the number of dimension IDs (in <tt>data_io.f90, netcdf_io.f90, src_input.f90</tt>)
+could be reduced.
+</p>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+<p align="right"><a href="#content">Back to Contents</a>
+<hr>
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="bugfixe">8. Bug Fixes and Technical Changes</a></h3>
+
+<ul>
+ <li><tt>data_nudge_all.f90, organize_assimilation.f90</tt>:<br />
+  Increased length of directory for NetCDF OBS files to 250 (by setting <tt>icdfdirlen</tt> to 250).
+  Changes in <tt>organize_assimilation.f90</tt> for a proper broadcast of the character string
+  <tt>ycdfdir</tt>.</li>
+ 
+ <li><tt>mpe_io2.f90</tt>, Subroutine <tt>mpe_io_read</tt>:<br />
+  An MPI_Wait in the loop over the PEs has been moved from within the IF-block: IF (length > 0)...
+  to outside of that IF-block, because otherwise the buffers could be overwritten by the
+  succeeding messages.<br />
+  The DWD Grib-library calls have been embraced with <tt>ifdef GRIBDWD</tt>.
+  </li>
+  
+ <li><tt>netcdf_io.f90</tt>:<br />
+  <ul>
+    <li>Correction of the restart file names</li>
+    <li>Renamed the argument variable "namelist" in few subroutines to "outblock", because
+        NAMELIST is a Fortran Keyword.</li>
+  </ul></li>
+  
+ <li><tt>organize_data.f90</tt>:<br />
+  <ul>
+   <li>if 14-digit file names are used, allow writing of analysis files also with an increment
+       of less than an hour and also immediately after hour 0 (not only starting with hour 1).</li>
+   <li>added more consistency checks for the gribout namelist blocks:<br />
+       If lasync_io is .TRUE. and nprocio > 0, all gribout files have to be grib and<br />
+       If lasync_io is .TRUE. and nc_asyn_io > 0, all gribout files have to be NetCDF.</li>
+  </ul></li>
+  
+ <li><tt>src_conv_tiedtke.f90, src_conv_shallow.f90</tt>:<br />
+      Allowing only non negative buoyant production terms of TKE </li>
+  
+ <li><tt>src_gridpoints.f90</tt>:<br />
+     Corrected dimensions for wind speed in meteographs output, which is computed now in m/s
+     and not in knots any more.
+  </li>
+  
+ <li><tt>src_output.f90</tt>:<br />
+  <ul>
+   <li>Bug fix for itype_gather=2: correct dimensions have to be added for arrays procarray_real
+       and procarray2d_real</tt>
+   <li>Bug fix for calling SR potential_vorticity_rho: the prognostic fields u, v
+       and w have to be passed with the correct timelevel itl</tt>
+  </ul></li>
+  
+ <li><tt>src_setup_vartab.f90</tt>:<br />
+  <ul>
+   <li>Change leveltype for SOD_T and ASOD_T from 1 to 8 (HJP)</li>
+   <li>Adapted variable names of multi-layer snow model to corresponding short names for I/O (US)</li>
+   <li>Introduction of the additional output fields 'DTKE_(SSO, HSH, CON)' based on the
+       model variables 'tket_(sso, hshr, conv)'  (MR)</li>
+  </ul></li>
+  
+ <li><tt>turbulence_diff.f90</tt>:<br />
+  Saving scale interaction TKE soruce terms for output (for DTKE_SSO, DTKE_HSH, DTKE_CON)
+  </li>
+  
+ <li><tt>utilities.f90</tt>:<br />
+  Corrected comments for arguments in rotation routines, where latitude and
+  longitude were mixed up
+  </li>
+  
+</ul>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+<p align="right"><a href="#content">Back to Contents</a>
+<hr>
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="namelis">9. Changes to the Namelists</a></h3>
+
+<p>There was a change of variable names in <tt>/DYNCTL/</tt>
+
+<p>
+<center>
+<table border="1" cellspacing="3" class="namelist">
+ <tbody>
+   <tr>
+     <th>Group</th>
+     <th>Old Name</th>
+     <th>New Name</th>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td class="hilit" rowspan="2"><tt>/DYNCTL/</tt></td>
+     <td><tt>hd_corr_q_in</tt></td>
+     <td><tt>hd_corr_trcr_in</tt></td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td><tt>hd_corr_q_bd</tt></td>
+     <td><tt>hd_corr_trcr_bd</tt></td>
+   </tr>
+<!---------------------------------------------------------------------------->
+ </tbody>
+</table>
+</center>
+</p>
+
+<p>And two new namelist variables in the group <tt>/SATCTL/</tt></p>
+
+<center>
+<table border="1" cellspacing="3" class="namelist">
+ <tbody>
+   <tr>
+     <th>Group</th>
+     <th>Name</th>
+     <th>Meaning</th>
+     <th align="center", width="5%">Default</th>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td class="hilit" rowspan="2"><tt>/SATCTL/</tt></td>
+     <td><tt>lsynsat</tt></td>
+     <td class="middl" rowspan="1">To activate computation of synthetic satellite 
+         images (default behaviour from former versions).</td>
+     <td class="middl" align="center" rowspan="1"><tt>.TRUE.</tt></td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td><tt>lobsrad</tt></td>
+     <td class="middl" rowspan="1">To activate satellite observation processing. 
+         This can only be done, if the model is compiled with <tt>-DRTTOV10</tt>!
+         </td>
+     <td class="middl" align="center" rowspan="1"><tt>.FALSE.</tt></td>
+   </tr>
+<!---------------------------------------------------------------------------->
+ </tbody>
+</table>
+</center>
+
+<p align="right"><a href="#content">Back to Contents</a>
+<hr>
+
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="results">10. Changes of Results</a></h3>
+
+<p>
+All changes are pure technical. There is no change of results!
+</p>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+<p align="right"><a href="#content">Back to Contents</a>
+<hr>
+
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+</body>
+</html>

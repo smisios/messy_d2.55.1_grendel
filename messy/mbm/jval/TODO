@@ -1,0 +1,39 @@
+******************************************************************************
+JVAL
+******************************************************************************
+
+- check if INO2 = I-ONO or I-NO2 (mention in gas.spc), also for ClNO2
+- change pbllev?
+- is extraterrestric flux in jval ok? how does it compare to atlas
+  data used in jvpp???
+- simplify "(82.-zen)/5.5+1." to "(sza_thr-zen)/5.5" (check first)
+- remove lmidatm (i.e. always set to true)? yes but test effect in
+  boxmodel first. Always do MA correction:
+  DO i = 1,3
+    DO k=1,klev
+      DO j=1,kproma_day
+        r_m(j,k)  = r_m(j,k)  + b_la(i) * EXP(-c_la(i)*v2s2(j,k))
+        r_o2(j,k) = r_o2(j,k) + d_la(i) * EXP(-e_la(i)*v2s2(j,k))
+      ENDDO
+    ENDDO
+  ENDDO
+- The parameter iaer_ref is currently fixed to iaer_ref=5. This needs
+  to be adjusted according to the height of the boundary layer. ->
+  above 4 km according to L+C98
+- changes that will keep binary identical output ("diff *.nc" test):
+  - delete level 0 for relo3 and relo3_2d (not used)
+  - remove check if input files exist in jval_read_nml
+  - read cloud info from cloud module, not main data
+- for general coupling of JVAL to aerosol submodels, it would
+  (according to chb) be best to transfer the following 3 streams,
+  which currently contain data derived from Shettle and Fenn
+  (ref2638):
+  taer_sca: scattering optical depth of aerosol
+  taer_abs: absorption optical depth of aerosol
+  gaer    : asymmetry factor of aerosol
+
+******************************************************************************
+JVPP
+******************************************************************************
+
+******************************************************************************

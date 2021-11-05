@@ -1,0 +1,259 @@
+<!DOCTYPE html 
+     PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+     "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xml:lang="en" lang="en">
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="GENERATOR" content="Mozilla/4.7C-SGI [en] (X11; I; IRIX64 6.5 IP27) [Netscape]">
+   <title>Changes for COSMO-Model 4.14 and INT2LM 1.12</title>
+<style type="text/css">
+  body { font-family:       Arial;
+         font-size:         12pt;
+         background-repeat: no-repeat; 
+         margin:            1em; }
+
+  tt   { font-size:         12pt;}
+
+  li   { margin-top:         5pt;
+         margin-bottom:      5pt }
+
+  th   { border:           1px solid black;
+         padding:          3pt;
+         vertical-align:   top;
+         background-color: lightblue;}
+
+  td   { border:           1px solid black;
+         padding:          3pt;
+         vertical-align:   top;}
+
+  td.middl   { border:           1px solid black;
+               padding:          3pt;
+               vertical-align:   middle;}
+
+  td.hilit       { border:           1px solid black;
+                   padding:          1pt;
+                   vertical-align:   top;
+                   background-color: lightblue;}
+
+  td.clean       { padding:          0pt;
+                   border-style:     none;
+                   vertical-align:   top;}
+
+  td.notes       { padding:          3pt;
+                   border-style:     none;
+                   vertical-align:   top;}
+
+  td.nomid       { padding:          3pt;
+                   border-style:     none;
+                   vertical-align:   middle;}
+
+  table.note     { border-width:     0pt;
+                   border-style:     none;
+                   margin-left:      5pt;
+                   margin-top:       1pt;
+                   margin-bottom:    1pt;
+                   cell-padding:     5pt;
+                   vertical-align:   top;
+                   text-align:       left;}
+  
+  table.atte     { border-width:     0pt;
+                   border-style:     none;
+                   margin-left:      5pt;
+                   margin-top:       1pt;
+                   margin-bottom:    1pt;
+                   cell-padding:     5pt;
+                   vertical-align:   top;
+                   text-align:       left;
+                   background-color: red;}
+  
+  table.namelist { border-width:  2pt;
+                   border-style:  groove;
+                   border-color:  black;
+                   width:         90%;
+                   text-align:    left;
+                   margin-top:    1pt;
+                   margin-bottom: 1pt;
+                   padding:       3pt;
+                   align:         center;}
+  
+  tr.headings    { text-align:       left;
+                   vertical-align:   top;
+                   border-width:     1pt;
+                   border-style:     groove;
+                   border-color:     grey;
+                   padding:          2pt;
+                   font-weight:      bold;}
+
+</style>
+
+</head>
+  <body text="#000000" bgcolor="#FFFFFF" link="#0000EE" vlink="#551A8B" alink="#FF0000">
+
+<center>
+<h1>
+<a NAME="begin">Documentation of the Changes for COSMO-Model 4.14<br /> 
+                and INT2LM 1.12</a></h1></center>
+
+<p>
+Before the operational start of the COSMO-EU with Runge-Kutta dynamics we had
+to build new binaries for the COSMO-Model and the INT2LM with the latest updates.
+For the INT2LM there are only some technical changes together with the possibility
+to switch the reference atmosphere. For the COSMO-Model there is a change in the 
+microphysics, which affects the results of the COSMO-EU application. Also, there
+is one new Namelist Variable for the COSMO-Model.
+</p>
+
+<h4><a NAME="content">Contents:</a></h4>
+
+<ol>
+<li><a href="#cosmo">Changes for COSMO-Model 4.14</a></li>
+<li><a href="#intlm">Changes for INT2LM 1.12</a></li>
+</ol>
+<p>
+<hr>
+
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="cosmo">Changes for COSMO-Model 4.14</a></h3>
+
+<!---------------------------------------------------------------------------->
+
+<h4>Changes in the microphysics <br /> (by Axel Seifert)</h4>
+
+<p>
+In subroutine <tt>hydci_pp</tt> (used for <tt>itype_gscp=3</tt>) the density 
+correction of the terminal fall velocity of raindrops and snowflakes is now 
+taken into account. This leads to an increase of the sedimentation velocity in the
+atmosphere. The parameter <tt>zv0s</tt> which determines the actual empirical
+terminal fall velocity of snow at a reference density has been implemented as a 
+new namelist variable <tt>v0snow</tt>. The special values for the different
+applications can be seen in the following table:
+</p>
+
+<p>
+<center>
+<table border="1" cellspacing="3" class="namelist">
+ <tbody>
+   <tr>
+     <th>Application</th>
+     <th>Setting of <tt>itype_gscp</tt></th>
+     <th>Setting of <tt>v0snow</tt></th>
+   </tr>
+   <tr>
+     <td>COSMO-EU with Leapfrog dynamics</td>
+     <td align="center"><tt> 3  </tt></td>
+     <td align="center"><tt>15.0</tt></td>
+   </tr>
+   <tr>
+     <td>COSMO-EU with Runge-Kutta dynamics</td>
+     <td align="center"><tt> 3  </tt></td>
+     <td align="center"><tt>25.0</tt></td>
+   </tr>
+   <tr>
+     <td>COSMO-DE with Runge-Kutta dynamics</td>
+     <td align="center"><tt> 4  </tt></td>
+     <td align="center"><tt>20.0</tt></td>
+   </tr>
+ </tbody>
+</table>
+</center>
+</p>
+
+
+<h4>Changes in the nudging<br /> (by Christoph Schraff)</h4>
+
+<p>Two bugs have been fixed in routine <tt>src_obs_proc_cdf</tt>:
+<ul>
+  <li>Bug fix to avoid model crash at processing of mobile TEMPs during COPS.</li>
+  <li>Bug fix for writing correctly the aircraft flight phase to the ODR.</li>
+</ul>
+</p>
+
+<p align="right"><a href="#content">Back to Contents</a>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="intlm">Changes for INT2LM 1.12</a></h3>
+
+<!---------------------------------------------------------------------------->
+
+<h4>Bug fix in routine <tt>coor_coarse_grid_lm</tt> for the option <tt>lec2lm</tt>
+    (by Stephan Pfahls, ETH Z&uuml;rich)</h4>
+
+<p>
+While introducing the decomposition independent computation of the
+interpolation weights, it was forgotten to take care of a non-staggered
+grid like the one from IFS. This has been corrected.
+</p>
+
+<h4>Possibility to switch the reference atmosphere (by Ulrich Sch&auml;ttler)</h4>
+
+<p>
+The possibility to switch the reference atmosphere from the incoming to the
+outgoing grid has been implemented in the module <tt>src_vert_inter_lm.f90</tt>:
+</p>
+
+<p>The problem:
+<ul>
+ <li>If the incoming model delivers pressure or pressure deviation, the pressure
+     deviation is used and interpolated to the outgoing grid. But this pressure
+     deviation belongs to the incoming reference atmosphere.</li>
+ <li>If the outgoing reference atmosphere is different, the following adaptation
+     is done (Section 5 in routine <tt>org_vert_inter_lm</tt>):
+     <ul>
+      <li> Compute the incoming reference atmosphere on the outgoing vertical levels
+           (Variable <tt>zp0_lm_refmod</tt>: the corresponding formulats from routine
+           <tt>reference_atmosphere_x</tt> are used)</li>
+      <li> Compute the full pressure on the outgoing grid: 
+           <tt>p_lm = zp0_lm_refmod + pp_lm</tt></li>
+      <li> Compute the pressure deviation for the outgoing reference_atmosphere
+           <tt>pp_lm = p_lm - p0_lm</tt></li>
+     </ul></li>
+</ul>
+</p>
+
+<h4>Vectorization of routine <tt>moist_split</tt> (by Oliver Fuhrer)</h4>
+
+<p>
+The routine <tt>moist_split</tt> has now been written for whole fields. Therefore no CALL
+within DO-loops is necessary and the calling routines do vectorize now.
+</p>
+
+<h4>Miscellaneous:</h4>
+
+<p>
+For the option <tt>lum2lm</tt>, the new reference atmosphere is now used 
+in any case to compute the pressure deviation from full pressure, delivered
+by UKMO.
+</p>
+
+<p>
+The new info-module is called after the domain decomposition only by compute
+processor 0.
+</p>
+
+<h4>Changes of results for INT2LM:</h4>
+
+<p>
+The options <tt>lgme2lm</tt> and <tt>llm2lm</tt> are not influenced by
+these changes.<br />
+For <tt>lec2lm</tt>, the bug fix in <tt>src_grids</tt> changes the results.<br />
+For <tt>lum2lm</tt>, the results are modified because of using the other 
+reference atmosphere.
+<p>
+
+
+<p align="right"><a href="#content">Back to Contents</a>
+
+<hr>
+
+<!---------------------------------------------------------------------------->
+</body>
+</html>

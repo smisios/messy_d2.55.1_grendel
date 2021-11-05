@@ -1,0 +1,401 @@
+// ------------------------------ mozart.eqn ---------------------------------
+// Time-stamp: <2017-12-13 14:53:52 sander>
+
+#INLINE F90_GLOBAL
+  REAL :: kO_O2, kO_O, kHO2_HO2, kN2O5, kNO2_NO3, k0_HNO3_OH, k2_HNO3_OH, &
+          k3_HNO3_OH, kHNO3_OH, kNO2_HO2, kHNO4, kClOClO, kCl2O2, &
+          kCO_OH, kCH3CO3_NO2, kPAN, kCH3COCH3_OH, kMACO3_NO2, kMPAN, &
+          kC5H10O4_OH, kSO2_OH, kDMS_OH, kNH3
+#ENDINLINE
+
+#INLINE F90_RCONST
+  kO_O2 = 6.e-34*cair*(300./TEMP)**2.4
+  kO_O = 2.76e-34 * EXP(720./TEMP)
+  kHO2_HO2 = (3.5e-13*EXP(430./TEMP)+1.7e-33*cair*EXP(1000./TEMP))* &
+    (1+1.4e-21*c(ind_H2O)*EXP(2200./TEMP))
+
+  kNO2_NO3 = k_3rd(TEMP,cair,2.000e-30,4.4,1.400e-12,0.7,0.6)
+  kN2O5 = kNO2_NO3 * 3.703704e26 * EXP(-11000./TEMP)
+
+  k0_HNO3_OH = 2.4e-14*EXP(460./TEMP)
+  k2_HNO3_OH = 2.7e-17*EXP(2199./TEMP)
+  k3_HNO3_OH = 6.5e-34*EXP(1335./TEMP)
+  kHNO3_OH = k0_HNO3_OH + k3_HNO3_OH*cair / (1. + k3_HNO3_OH*cair/k2_HNO3_OH)
+
+  kNO2_HO2 = k_3rd(TEMP,cair,2.000e-31,3.4,2.900e-12,1.1,0.6)
+  kHNO4 = kNO2_HO2 * EXP(-10900./TEMP) / 2.1e-27
+
+  kClOClO = k_3rd(TEMP,cair,1.600e-32,4.5,2.000e-12,2.4,0.6)
+  kCl2O2 = kClOClO/(9.3e-28 * EXP(8835./TEMP))
+
+  kCO_OH = k_activation(TEMP,cair,1.5e-13, -0.6, 2.1e9, -6.1, 0.6)
+
+  kCH3CO3_NO2 = k_3rd(TEMP,cair,8.500e-29,6.5,1.100e-11,1.,0.6)
+  kPAN = kCH3CO3_NO2 * 1.111e28*EXP(-14000./TEMP)
+
+  kCH3COCH3_OH = 1.33e-13+3.82e-11*EXP(-2000./TEMP)
+
+  kMACO3_NO2 = 1.1e-11 * 300./TEMP/cair
+  kMPAN = kMACO3_NO2 * 1.111e28*EXP(-14000./TEMP)
+
+  kC5H10O4_OH = TEMP**2 * 7.69e-17 * EXP(253./TEMP)
+  kSO2_OH = k_3rd(TEMP,cair,3.300e-31,3.3,1.500e-12,0.,0.6)
+  kDMS_OH = 1.7d-42*EXP(7810./TEMP)*0.21*cair / (1. + 5.5e-31*EXP(7460./TEMP)*0.21*cair)
+  kNH3 = 0.
+#ENDINLINE
+
+#INLINE F90_RATES
+  ELEMENTAL REAL(dp) FUNCTION k_activation(temp,cair,k0_300K,n,kinf_300K,m,fc)
+    ! special rate function for CO+OH
+    ! irreversible addition channel - activation formula from JPL2011
+    REAL(dp), INTENT(IN) :: temp      ! temperature
+    REAL(dp), INTENT(IN) :: cair      ! air concentration [molecules/cm3]
+    REAL,     INTENT(IN) :: k0_300K   ! low pressure limit at 300 K
+    REAL,     INTENT(IN) :: n         ! exponent for low pressure limit
+    REAL,     INTENT(IN) :: kinf_300K ! high pressure limit at 300 K
+    REAL,     INTENT(IN) :: m         ! exponent for high pressure limit
+    REAL,     INTENT(IN) :: fc        ! broadening factor (e.g. 0.45 or 0.6...)
+    REAL :: zt_help, k0_T, kinf_T, k_ratio
+    INTRINSIC :: EXP
+    k0_T    = k0_300K   * (300./temp)**(n)        ! k_0   at current T
+    kinf_T  = kinf_300K * (300./temp)**(m)        ! k_inf at current T
+    k_ratio = k0_T*cair/kinf_T
+    k_activation = k0_T/(1._dp+k_ratio)*fc**(1._dp/(1._dp+LOG10(k_ratio)**2))
+  END FUNCTION k_activation
+#ENDINLINE
+
+#EQUATIONS
+<G1001>          O3P + O2 {+M} = {+M} O3                         : {%StTrG} kO_O2;
+<G1002>          O3P + O3 = 2 O2                               : {%StTrG} 8.000e-12*EXP(-2060./TEMP);
+<G1003>           O3P + O3P {+M} = {+M} O2                          : {%StTrG} kO_O;
+<G1004>       O2_1S + O3P = O3P + O2_1D                       : {%StTrG} 8.000e-14;
+<G1005>      O2_1S + O2 = O2 + O2_1D                     : {%StTrG} 3.900e-17;
+<G3101>      O2_1S + N2 = N2 + O2_1D                     : {%StTrG} 1.800e-15*EXP(45./TEMP);
+<G1006>      O2_1S + O3 = O2_1D + O3                     : {%StTrG} 3.500e-11*EXP(-135./TEMP);
+<G4101>     O2_1S + CO2 = CO2 + O2_1D                   : {%StTrG} 4.200e-13;
+<G1007>         O2_1S = O2                                  : {%StTrG} 0.085;
+<G1008>       O2_1D + O3P = O3P + O2                          : {%StTrG} 1.300e-16;
+<G1009>      O2_1D + O2 = 2 O2                           : {%StTrG} 3.600e-18*EXP(-220./TEMP);
+<G3102>      O2_1D + N2 = N2 + O2                        : {%StTrG} 1.000e-20;
+<G1010>         O2_1D = O2                                  : {%StTrG} 0.000258;
+<G3103>        O1D + N2 = N2 + O3P                           : {%StTrG} 2.150e-11*EXP(110./TEMP);
+<G1011>      O1D + O2 = O3P + O2_1S                        : {%StTrG} 3.135e-11*EXP(55./TEMP);
+<G1012>      O1D + O2 = O3P + O2                           : {%StTrG} 3.300e-11*EXP(55./TEMP);
+<G2101>       O1D + H2O = 2 OH                            : {%StTrG} 1.630e-10*EXP(60./TEMP);
+<G3104>     O1D + N2O = 2 NO                            : {%StTrG} 6.700e-11*EXP(20./TEMP);
+<G3105>     O1D + N2O = N2 + O2                         : {%StTrG} 4.700e-11*EXP(20./TEMP);
+<G1013>        O1D + O3 = 2 O2                             : {%StTrG} 1.200e-10;
+<G6501>     O1D + CFCl3 = 3 Cl                          : {%StTrG} 1.700e-10;
+<G6502>     O1D + CF2Cl2 = 2 Cl                          : {%StTrG} 1.200e-10;
+<G6503>    O1D + CF2ClCFCl2 = 3 Cl                         : {%StTrG} 1.500e-10;
+<G6504>    O1D + CHF2Cl = Cl                           : {%StTrG} 7.200e-11;
+<G6401>      O1D + CCl4 = 4 Cl                           : {%StTrG} 2.840e-10;
+<G7401>     O1D + CH3Br = Br                            : {%StTrG} 1.800e-10;
+<G7601>   O1D + CF2ClBr = Br                          : {%StTrG} 9.600e-11;
+<G7501>     O1D + CF3Br = Br                            : {%StTrG} 4.100e-11;
+<G4102>     O1D + CH4 = CH3O2 + OH                      : {%StTrG} 1.125e-10;
+<G4103>     O1D + CH4 = HCHO + H + HO2                  : {%StTrG} 3.000e-11;
+<G4104>     O1D + CH4 = HCHO + H2                       : {%StTrG} 7.500e-12;
+<G2102>        O1D + H2 = H + OH                           : {%StTrG} 1.100e-10;
+<G6201>       O1D + HCl = Cl + OH                         : {%StTrG} 1.500e-10;
+<G7201>       O1D + HBr = Br + OH                         : {%StTrG} 1.500e-10;
+<G2103>          H + O2 {+M} = HO2 {+M}                        : {%StTrG} k_3rd(TEMP,cair,4.400e-32,1.3,4.700e-11,0.2,0.6);
+<G2104>          H + O3 = O2 + OH                            : {%StTrG} 1.400e-10*EXP(-470./TEMP);
+<G2105>       H + HO2 = 2 OH                              : {%StTrG} 7.200e-11;
+<G2106>       H + HO2 = H2 + O2                           : {%StTrG} 6.900e-12;
+<G2107>       H + HO2 = H2O + O3P                           : {%StTrG} 1.600e-12;
+<G2108>          OH + O3P = H + O2                             : {%StTrG} 2.200e-11*EXP(120./TEMP);
+<G2109>         OH + O3 = HO2 + O2                          : {%StTrG} 1.700e-12*EXP(-940./TEMP);
+<G2110>        OH + HO2 = H2O + O2                         : {%StTrG} 4.800e-11*EXP(250./TEMP);
+<G2111>       OH + OH = H2O + O3P                           : {%StTrG} 1.800e-12;
+<G2112>       OH + OH {+M} = H2O2 {+M}                      : {%StTrG} k_3rd(TEMP,cair,6.900e-31,1.,2.600e-11,0.,0.6);
+<G2113>         OH + H2 = H + H2O                           : {%StTrG} 2.800e-12*EXP(-1800./TEMP);
+<G2114>       OH + H2O2 = H2O + HO2                       : {%StTrG} 1.800e-12;
+<G2115>         HO2 + O3P = O2 + OH                           : {%StTrG} 3.000e-11*EXP(200./TEMP);
+<G2116>        HO2 + O3 = OH + 2 O2                        : {%StTrG} 1.000e-14*EXP(-490./TEMP);
+<G2117>       HO2 + HO2 = H2O2 + O2                       : {%StTrG} kHO2_HO2;
+<G2118>        H2O2 + O3P = HO2 + OH                         : {%StTrG} 1.400e-12*EXP(-2000./TEMP);
+<G3106>        N2D + O2 = NO + O1D                         : {%StTrG} 5.000e-12;
+<G3107>         N2D + O3P = N + O3P                             : {%StTrG} 7.000e-13;
+<G3108>          N + O2 = NO + O3P                             : {%StTrG} 1.500e-11*EXP(-3600./TEMP);
+<G3109>          N + NO = N2 + O3P                             : {%StTrG} 2.100e-11*EXP(100./TEMP);
+<G3110>         N + NO2 = N2O + O3P                           : {%StTrG} 5.800e-12*EXP(220./TEMP);
+<G3111>          NO + O3P {+M} = {+M} NO2                        : {%StTrG} k_3rd(TEMP,cair,9.000e-32,1.5,3.000e-11,0.,0.6);
+<G3201>        NO + HO2 = NO2 + OH                         : {%StTrG} 3.500e-12*EXP(250./TEMP);
+<G3112>         NO + O3 = NO2 + O2                          : {%StTrG} 3.000e-12*EXP(-1500./TEMP);
+<G3113>       NO2 + O3P = NO + O2                           : {%StTrG} 5.100e-12*EXP(210./TEMP);
+<G3114>       NO2 + O3P {+M} = {+M} NO3                       : {%StTrG} k_3rd(TEMP,cair,2.500e-31,1.8,2.200e-11,0.7,0.6);
+<G3115>        NO2 + O3 = NO3 + O2                         : {%StTrG} 1.200e-13*EXP(-2450./TEMP);
+<G3116>       NO2 + NO3 {+M} = {+M} N2O5                    : {%StTrG} k_3rd(TEMP,cair,2.000e-30,4.4,1.400e-12,0.7,0.6);
+<G3117>        N2O5 {+M} = NO2 + NO3 {+M}                    : {%StTrG} kN2O5;
+<G3202>        NO2 + OH {+M} = HNO3 {+M}                     : {%StTrG} k_3rd(TEMP,cair,1.800e-30,3.,2.800e-11,0.,0.6);
+<G3203>       HNO3 + OH = H2O + NO3                       : {%StTrG} kHNO3_OH;
+<G3118>        NO3 + NO = 2 NO2                            : {%StTrG} 1.500e-11*EXP(170./TEMP);
+<G3119>         NO3 + O3P = NO2 + O2                          : {%StTrG} 1.000e-11;
+<G3204>        NO3 + OH = HO2 + NO2                        : {%StTrG} 2.200e-11;
+<G3205>       NO3 + HO2 = NO2 + OH + O2                   : {%StTrG} 3.500e-12;
+<G3206>       NO2 + HO2 {+M} = HNO4 {+M}                  : {%StTrG} k_3rd(TEMP,cair,2.000e-31,3.4,2.900e-12,1.1,0.6);
+<G3207>     HNO4 + OH = H2O + NO2 + O2                : {%StTrG} 1.300e-12*EXP(380./TEMP);
+<G3208>        HNO4 {+M} = HO2 + NO2 {+M}                  : {%StTrG} kHNO4;
+<G6101>         Cl + O3 = ClO + O2                          : {%StTrG} 2.300e-11*EXP(-200./TEMP);
+<G6202>         Cl + H2 = H + HCl                           : {%StTrG} 3.050e-11*EXP(-2270./TEMP);
+<G6203>       Cl + H2O2 = HCl + HO2                       : {%StTrG} 1.100e-11*EXP(-980./TEMP);
+<G6204>      Cl + HO2 = HCl + O2                         : {%StTrG} 1.800e-11*EXP(170./TEMP);
+<G6205>      Cl + HO2 = ClO + OH                         : {%StTrG} 4.100e-11*EXP(-450./TEMP);
+<G6206>       Cl + HCHO = HCl + HO2 + CO                  : {%StTrG} 8.100e-11*EXP(-30./TEMP);
+<G6402>        Cl + CH4 = CH3O2 + HCl                      : {%StTrG} 7.300e-12*EXP(-1280./TEMP);
+<G6102>         ClO + O3P = Cl + O2                           : {%StTrG} 2.800e-11*EXP(85./TEMP);
+<G6207>      ClO + OH = Cl + HO2                         : {%StTrG} 7.400e-12*EXP(270./TEMP);
+<G6208>      ClO + OH = HCl + O2                         : {%StTrG} 6.000e-13*EXP(230./TEMP);
+<G6209>       ClO + HO2 = HOCl + O2                       : {%StTrG} 2.700e-12*EXP(220./TEMP);
+<G6301>        ClO + NO = Cl + NO2                         : {%StTrG} 6.400e-12*EXP(290./TEMP);
+<G6302>       ClO + NO2 {+M} = ClNO3 {+M}                  : {%StTrG} k_3rd(TEMP,cair,1.800e-31,3.4,1.500e-11,1.9,0.6);
+<G6103>     ClO + ClO = 2 Cl + O2                       : {%StTrG} 3.000e-11*EXP(-2450./TEMP);
+<G6104>     ClO + ClO = Cl2 + O2                        : {%StTrG} 1.000e-12*EXP(-1590./TEMP);
+<G6105>     ClO + ClO = Cl + OClO                       : {%StTrG} 3.500e-13*EXP(-1370./TEMP);
+<G6106>     ClO + ClO {+M} = Cl2O2 {+M}                   : {%StTrG} k_3rd(TEMP,cair,1.600e-32,4.5,2.000e-12,2.4,0.6);
+<G6107>         Cl2O2 {+M} = 2 ClO {+M}                       : {%StTrG} kCl2O2;
+<G6210>        HCl + OH = Cl + H2O                         : {%StTrG} 2.600e-12*EXP(-350./TEMP);
+<G6211>         HCl + O3P = Cl + OH                           : {%StTrG} 1.000e-11*EXP(-3300./TEMP);
+<G6212>        HOCl + O3P = ClO + OH                         : {%StTrG} 1.700e-13;
+<G6213>       HOCl + Cl = ClO + HCl                       : {%StTrG} 2.500e-12*EXP(-130./TEMP);
+<G6214>       HOCl + OH = ClO + H2O                       : {%StTrG} 3.000e-12*EXP(-500./TEMP);
+<G6303>      ClNO3 + O3P = ClO + NO3                      : {%StTrG} 2.900e-12*EXP(-800./TEMP);
+<G6304>     ClNO3 + OH = HOCl + NO3                    : {%StTrG} 1.200e-12*EXP(-330./TEMP);
+<G6305>     ClNO3 + Cl = Cl2 + NO3                     : {%StTrG} 6.500e-12*EXP(135./TEMP);
+<G7101>         Br + O3 = BrO + O2                          : {%StTrG} 1.700e-11*EXP(-800./TEMP);
+<G7202>        Br + HO2 = HBr + O2                         : {%StTrG} 4.800e-12*EXP(-310./TEMP);
+<G7402>       Br + HCHO = HBr + HO2 + CO                  : {%StTrG} 1.700e-11*EXP(-800./TEMP);
+<G7102>         BrO + O3P = Br + O2                           : {%StTrG} 1.900e-11*EXP(230./TEMP);
+<G7203>        BrO + OH = Br + HO2                         : {%StTrG} 1.700e-11*EXP(250./TEMP);
+<G7204>       BrO + HO2 = HOBr + O2                       : {%StTrG} 4.500e-12*EXP(460./TEMP);
+<G7301>        BrO + NO = Br + NO2                         : {%StTrG} 8.800e-12*EXP(260./TEMP);
+<G7302>       BrO + NO2 {+M} = BrNO3 {+M}                  : {%StTrG} k_3rd(TEMP,cair,5.200e-31,3.2,6.900e-12,2.9,0.6);
+<G7602>     BrO + ClO = Br + OClO                       : {%StTrG} 9.500e-13*EXP(550./TEMP);
+<G7603>     BrO + ClO = Br + Cl + O2                    : {%StTrG} 2.300e-12*EXP(260./TEMP);
+<G7604>     BrO + ClO = BrCl + O2                       : {%StTrG} 4.100e-13*EXP(290./TEMP);
+<G7103>       BrO + BrO = 2 Br + O2                       : {%StTrG} 1.500e-12*EXP(230./TEMP);
+<G7205>        HBr + OH = Br + H2O                         : {%StTrG} 5.500e-12*EXP(200./TEMP);
+<G7206>         HBr + O3P = Br + OH                           : {%StTrG} 5.800e-12*EXP(-1500./TEMP);
+<G7207>        HOBr + O3P = BrO + OH                         : {%StTrG} 1.200e-10*EXP(-430./TEMP);
+<G7303>      BrNO3 + O3P = BrO + NO3                      : {%StTrG} 1.900e-11*EXP(215./TEMP);
+<G6403>      CH3Cl + Cl = CO + HO2 + 2 HCl               : {%StTrG} 2.170e-11*EXP(-1130./TEMP);
+<G6404>      CH3Cl + OH = Cl + H2O + HO2                 : {%StTrG} 2.400e-12*EXP(-1250./TEMP);
+<G6405>    CH3CCl3 + OH = H2O + 3 Cl                   : {%StTrG} 1.640e-12*EXP(-1520./TEMP);
+<G6505>     CHF2Cl + OH = Cl + H2O                      : {%StTrG} 1.050e-12*EXP(-1600./TEMP);
+<G7403>      CH3Br + OH = Br + H2O + HO2                 : {%StTrG} 2.350e-12*EXP(-1300./TEMP);
+<G4105>        CH4 + OH = CH3O2 + H2O                      : {%StTrG} 2.450e-12*EXP(-1775./TEMP);
+<G4106>      CH3O2 + NO = HCHO + NO2 + HO2               : {%StTrG} 2.800e-12*EXP(300./TEMP);
+<G4107>     CH3O2 + HO2 = CH3OOH + O2                   : {%StTrG} 4.100e-13*EXP(750./TEMP);
+<G4108>   CH3OOH + OH = CH3O2 + H2O                   : {%StTrG} 3.800e-12*EXP(200./TEMP);
+<G4109>      HCHO + NO3 = CO + HO2 + HNO3                : {%StTrG} 6.000e-13*EXP(-2058./TEMP);
+<G4110>       HCHO + OH = CO + H2O + H                    : {%StTrG} 5.500e-12*EXP(125./TEMP);
+<G4111>        HCHO + O3P = HO2 + OH + CO                    : {%StTrG} 3.400e-11*EXP(-1600./TEMP);
+<G4112>       CO + OH {+M} = CO2 + HO2 {+M}                 : {%StTrG} k_3rd(TEMP,cair,5.900e-33,1.4,1.100e-12,-1.3,0.6);
+<G4113>       CO + OH = CO2 + H                           : {%StTrG} kCO_OH;
+<G4114> CH3O2 + CH3O2 = 2 HCHO + 2 HO2              : {%StTrG} 5.000e-13*EXP(-424./TEMP);
+<G4115> CH3O2 + CH3O2 = HCHO + CH3OH                : {%StTrG} 1.900e-14*EXP(706./TEMP);
+<G4116>      CH3OH + OH = HCHO + HO2                     : {%StTrG} 2.900e-12*EXP(-345./TEMP);
+<G4117>   CH3OOH + OH = 0.7 CH3O2 + 0.3 OH + 0.3 HCHO + H2O : {%StTrG} 3.800e-12*EXP(200./TEMP);
+<G4201>       C2H6 + OH = C2H5O2 + H2O                    : {%StTrG} 8.700e-12*EXP(-1070./TEMP);
+<G4202>       C2H4 + OH {+M} = 0.75 HOCH2CH2O2 + 0.5 HCHO + 0.25 HO2 {+M} : {%StTrG} k_3rd(TEMP,cair,1.000e-28,0.8,8.800e-12,0.,0.6);
+<G4203>       C2H4 + O3 = HCHO + 0.12 HO2 + 0.5 CO + 0.12 OH + 0.32 CH3CO2H : {%StTrG} 1.200e-14*EXP(-2630./TEMP);
+<G4204>    CH3CO2H + OH = CH3O2 + CO2 + H2O            : {%StTrG} 7.000e-13;
+<G4205>     C2H5O2 + NO = CH3CHO + HO2 + NO2            : {%StTrG} 2.600e-12*EXP(365./TEMP);
+<G4206>    C2H5O2 + HO2 = C2H5OOH + O2                 : {%StTrG} 7.500e-13*EXP(700./TEMP);
+<G4207>  C2H5O2 + CH3O2 = 0.7 HCHO + 0.8 CH3CHO + HO2 + 0.3 CH3OH + 0.2 C2H5OH : {%StTrG} 2.000e-13;
+<G4208> C2H5O2 + C2H5O2 = 1.6 CH3CHO + 1.2 HO2 + 0.4 C2H5OH : {%StTrG} 6.800e-14;
+<G4209>    C2H5OOH + OH = 0.5 C2H5O2 + 0.5 CH3CHO + 0.5 OH : {%StTrG} 3.800e-12*EXP(200./TEMP);
+<G4210>     CH3CHO + OH = CH3CO3 + H2O                  : {%StTrG} 5.600e-12*EXP(270./TEMP);
+<G4211>    CH3CHO + NO3 = CH3CO3 + HNO3                : {%StTrG} 1.400e-12*EXP(-1900./TEMP);
+<G4212>     CH3CO3 + NO = CH3O2 + CO2 + NO2             : {%StTrG} 8.100e-12*EXP(270./TEMP);
+<G4213>    CH3CO3 + NO2 {+M} = {+M} PAN                  : {%StTrG} k_3rd(TEMP,cair,8.500e-29,6.5,1.100e-11,1.,0.6);
+<G4214>    CH3CO3 + HO2 = 0.75 CH3CO3H + 0.25 CH3CO2H + 0.25 O3 : {%StTrG} 4.300e-13*EXP(1040./TEMP);
+<G4215>  CH3CO3 + CH3O2 = 0.9 CH3O2 + HCHO + 0.9 HO2 + 0.9 CO2 + 0.1 CH3CO2H : {%StTrG} 2.000e-12*EXP(500./TEMP);
+<G4216> CH3CO3 + CH3CO3 = 2 CH3O2 + 2 CO2           : {%StTrG} 2.500e-12*EXP(500./TEMP);
+<G4217>   CH3CO3H + OH = 0.5 CH3CO3 + 0.5 HCHO + 0.5 CO2 + H2O : {%StTrG} 1.000e-12;
+<G4218>        HOCH2CH2O2 + NO = HOCH2CH2O + NO2                         : {%StTrG} 4.200e-12*EXP(180./TEMP);
+<G4219>         HOCH2CH2O + O2 = HOCH2CHO + HO2                      : {%StTrG} 1.000e-14;
+<G4220>            HOCH2CH2O = 2 HCHO + HO2                           : {%StTrG} 1.600e+11*EXP(-4150./TEMP);
+<G4221>     HOCH2CHO + OH = HO2 + 0.2 GLYOX + 0.8 HCHO + 0.8 CO2 : {%StTrG} 1.000e-11;
+<G4222>    GLYOX + OH = CO + HO2 + CO2               : {%StTrG} 1.150e-11;
+<G4223>     C2H5OH + OH = CH3CHO + HO2                  : {%StTrG} 6.900e-12*EXP(-230./TEMP);
+<G4224>           PAN {+M} = CH3CO3 + NO2 {+M}                  : {%StTrG} kPAN;
+<G4225>        PAN + OH = HCHO + NO3                       : {%StTrG} 4.000e-14;
+<G4301>       C3H6 + OH {+M} = {+M} HYPROPO2                     : {%StTrG} k_3rd(TEMP,cair,8.000e-27,3.5,3.000e-11,0.,0.5);
+<G4302>       C3H6 + O3 = 0.54 HCHO + 0.19 HO2 + 0.33 OH + 0.08 CH4 + 0.56 CO + 0.5 CH3CHO + 0.31 CH3O2 + 0.25 CH3CO2H : {%StTrG} 6.500e-15*EXP(-1900./TEMP);
+<G4303>      C3H6 + NO3 = ONIT                           : {%StTrG} 4.600e-13*EXP(-1156./TEMP);
+<G4304>     C3H7O2 + NO = 0.82 CH3COCH3 + NO2 + HO2 + 0.27 CH3CHO : {%StTrG} 4.200e-12*EXP(180./TEMP);
+<G4305>    C3H7O2 + HO2 = C3H7OOH + O2                 : {%StTrG} 7.500e-13*EXP(700./TEMP);
+<G4306>  C3H7O2 + CH3O2 = HCHO + HO2 + 0.82 CH3COCH3 : {%StTrG} 3.750e-13*EXP(-40./TEMP);
+<G4307>    C3H7OOH + OH = C3H7O2 + H2O                 : {%StTrG} 3.800e-12*EXP(200./TEMP);
+<G4308>       C3H8 + OH = C3H7O2 + H2O                    : {%StTrG} 8.700e-12*EXP(-615./TEMP);
+<G4309>        HYPROPO2 + NO = HCHO + CH3CHO + HO2 + NO2        : {%StTrG} 4.200e-12*EXP(180./TEMP);
+<G4310>       HYPROPO2 + HO2 = O2 + HYPROPO2H                       : {%StTrG} 7.500e-13*EXP(700./TEMP);
+<G4311>       HYPROPO2H + OH = 0.5 HYPROPO2 + 0.5 OH + 0.5 ACETOL + H2O : {%StTrG} 3.800e-12*EXP(200./TEMP);
+<G4312>   CH3COCH3 + OH = H2O + CH3COCH2O2                   : {%StTrG} kCH3COCH3_OH;
+<G4313>        CH3COCH2O2 + NO = HCHO + CH3CO3 + NO2              : {%StTrG} 2.900e-12*EXP(300./TEMP);
+<G4314>       CH3COCH2O2 + HO2 = O2 + HOC2H4CO2H                       : {%StTrG} 8.600e-13*EXP(700./TEMP);
+<G4315>     CH3COCH2O2 + CH3O2 = 0.3 CH3CO3 + 0.8 HCHO + 0.3 HO2 + 0.2 ACETOL + 0.5 MGLYOX + 0.5 CH3OH : {%StTrG} 7.500e-13*EXP(500./TEMP);
+<G4316>       HOC2H4CO2H + OH = H2O + CH3COCH2O2                       : {%StTrG} 3.800e-12*EXP(200./TEMP);
+<G4317>       ACETOL + OH = MGLYOX + HO2                  : {%StTrG} 1.200e-12;
+<G4318>   MGLYOX + OH = CH3CO3 + CO + H2O           : {%StTrG} 8.400e-13*EXP(830./TEMP);
+<G4319>  MGLYOX + NO3 = CO + HNO3 + CH3CO3         : {%StTrG} 1.400e-12*EXP(-1860./TEMP);
+<G4320>       ONIT + OH = MGLYOX + NO2                  : {%StTrG} 6.800e-13;
+<G4401>     C4H8 + OH = C4H9O3                         : {%StTrG} 5.400e-11;
+<G4402>      C4H9O3 + NO = CH3CHO + 0.5 HCHO + 0.5 CH3COCH3 + HO2 + NO2 : {%StTrG} 4.200e-12*EXP(180./TEMP);
+<G4403>        MVK + OH = MACRO2                           : {%StTrG} 4.130e-12*EXP(452./TEMP);
+<G4404>        MVK + O3 = 0.8 HCHO + 0.95 MGLYOX + 0.08 OH + 0.2 O3 + 0.06 HO2 + 0.05 CO + 0.04 CH3CHO : {%StTrG} 7.520e-16*EXP(-1521./TEMP);
+<G4405>        MEK + OH = LMEKO2                            : {%StTrG} 2.300e-12*EXP(-170./TEMP);
+<G4406>      LMEKO2 + NO = CH3CHO + CH3CO3 + NO2          : {%StTrG} 4.200e-12*EXP(180./TEMP);
+<G4407>     LMEKO2 + HO2 = LMEKOOH                        : {%StTrG} 7.500e-13*EXP(700./TEMP);
+<G4408>     LMEKOOH + OH = LMEKO2                         : {%StTrG} 3.800e-12*EXP(200./TEMP);
+<G4409>       MACR + OH = 0.5 MACRO2 + 0.5 H2O + 0.5 MACO3 : {%StTrG} 1.860e-11*EXP(175./TEMP);
+<G4410>       MACR + O3 = 0.8 MGLYOX + 0.275 HO2 + 0.2 CO + 0.2 O3 + 0.7 HCHO + 0.215 OH : {%StTrG} 4.400e-15*EXP(-2500./TEMP);
+<G4411>   MACRO2 + NO = NO2 + 0.47 HO2 + 0.25 HCHO + 0.53 HOCH2CHO + 0.25 MGLYOX + 0.53 CH3CO3 + 0.22 ACETOL + 0.22 CO : {%StTrG} 2.700e-12*EXP(360./TEMP);
+<G4412>   MACRO2 + NO = ONITR                         : {%StTrG} 1.300e-13*EXP(360./TEMP);
+<G4413>    MACRO2 + NO3 = NO2 + 0.47 HO2 + 0.25 HCHO + 0.25 MGLYOX + 0.22 CO + 0.53 HOCH2CHO + 0.22 ACETOL + 0.53 CH3CO3 : {%StTrG} 2.400e-12;
+<G4414>    MACRO2 + HO2 = MACROOH                      : {%StTrG} 8.000e-13*EXP(700./TEMP);
+<G4415>  MACRO2 + CH3O2 = 0.73 HO2 + 0.88 HCHO + 0.11 CO + 0.24 MGLYOX + 0.26 HOCH2CHO + 0.26 CH3CO3 + 0.25 CH3OH + 0.23 ACETOL : {%StTrG} 5.000e-13*EXP(400./TEMP);
+<G4416> MACRO2 + CH3CO3 = 0.25 MGLYOX + CH3O2 + 0.22 CO + 0.47 HO2 + 0.53 HOCH2CHO + 0.22 ACETOL + 0.25 HCHO + 0.53 CH3CO3 : {%StTrG} 1.400e-11;
+<G4417>    MACROOH + OH = 0.5 MACO3 + 0.2 MACRO2 + 0.1 OH + 0.2 HO2 : {%StTrG} 2.300e-11*EXP(200./TEMP);
+<G4418>       MACO3 + NO = HCHO + NO2 + CH3CO3             : {%StTrG} 5.300e-12*EXP(360./TEMP);
+<G4419>      MACO3 + NO3 = HCHO + NO2 + CH3CO3            : {%StTrG} 5.000e-12;
+<G4421>      MACO3 + HO2 = 0.25 O3 + 0.25 CH3CO2H + 0.75 CH3CO3H + 0.75 O2 : {%StTrG} 4.300e-13*EXP(1040./TEMP);
+<G4422>    MACO3 + CH3O2 = 2 HCHO + HO2 + CO2 + CH3CO3  : {%StTrG} 2.000e-12*EXP(500./TEMP);
+<G4423>   MACO3 + CH3CO3 = 2 CO2 + CH3O2 + HCHO + CH3CO3 : {%StTrG} 4.600e-12*EXP(530./TEMP);
+<G4424>     MACO3 + MACO3 = 2 CO2 + 2 HCHO + 2 CH3CO3     : {%StTrG} 2.300e-12*EXP(530./TEMP);
+<G4425>      MACO3 + NO2 {+M} = {+M} MPAN                   : {%StTrG} kMACO3_NO2;
+<G4426>          MPAN {+M} = MACO3 + NO2 {+M}                   : {%StTrG} kMPAN;
+<G4427>       MPAN + OH = 0.5 ACETOL + 0.5 NO3 + 0.5 HCHO + 0.5 HO2 : {%StTrG} k_3rd(TEMP,cair,8.000e-27,3.5,3.000e-11,0.,0.5);
+<G4501>       C5H8 + OH = ISOPO2                          : {%StTrG} 2.540e-11*EXP(410./TEMP);
+<G4502>       C5H8 + O3 = 0.4 MACR + 0.2 MVK + 0.07 C3H6 + 0.27 OH + 0.06 HO2 + 0.6 HCHO + 0.3 CO + 0.1 O3 + 0.2 MACO3 + 0.2 CH3CO2H : {%StTrG} 1.050e-14*EXP(-2000./TEMP);
+<G4503>      C5H8 + NO3 = NISOPO2                        : {%StTrG} 3.030e-12*EXP(-446./TEMP);
+<G4504>     ISOPO2 + NO = 0.08 ONITR + 0.92 NO2 + HO2 + 0.51 HCHO + 0.23 MACR + 0.32 MVK + 0.37 HYDRALD : {%StTrG} 4.400e-12*EXP(180./TEMP);
+<G4505>    ISOPO2 + NO3 = HO2 + NO2 + 0.6 HCHO + 0.25 MACR + 0.35 MVK + 0.4 HYDRALD : {%StTrG} 2.400e-12;
+<G4506>    ISOPO2 + HO2 = ISOPOOH                      : {%StTrG} 8.000e-13*EXP(700./TEMP);
+<G4507>    ISOPOOH + OH = 0.5 C5H9O3 + 0.5 ISOPO2         : {%StTrG} 3.800e-12*EXP(200./TEMP);
+<G4508>  ISOPO2 + CH3O2 = 0.25 CH3OH + HO2 + 1.2 HCHO + 0.19 MACR + 0.26 MVK + 0.3 HYDRALD : {%StTrG} 5.000e-13*EXP(400./TEMP);
+<G4509> ISOPO2 + CH3CO3 = CH3O2 + HO2 + 0.6 HCHO + 0.25 MACR + 0.35 MVK + 0.4 HYDRALD : {%StTrG} 1.400e-11;
+<G4510>    NISOPO2 + NO = 1.206 NO2 + 0.794 HO2 + 0.072 HCHO + 0.167 MACR + 0.039 MVK + 0.794 ONITR : {%StTrG} 2.700e-12*EXP(360./TEMP);
+<G4511>   NISOPO2 + NO3 = 1.206 NO2 + 0.072 HCHO + 0.167 MACR + 0.039 MVK + 0.794 ONITR + 0.794 HO2 : {%StTrG} 2.400e-12;
+<G4512>   NISOPO2 + HO2 = C5H10O4 + 0.206 NO2 + 0.794 HO2 + 0.008 HCHO + 0.167 MACR + 0.039 MVK + 0.794 ONITR : {%StTrG} 8.000e-13*EXP(700./TEMP);
+<G4513>     C5H12 + OH = C5H11O2                         : {%StTrG} 3.500e-12;
+<G4514>      ONITR + OH = HYDRALD + 0.4 NO2 + HO2        : {%StTrG} 4.500e-11;
+<G4515>     ONITR + NO3 = HO2 + NO2 + HYDRALD           : {%StTrG} 1.400e-12*EXP(-1860./TEMP);
+<G4516>    HYDRALD + OH = C5H9O3                          : {%StTrG} 1.860e-11*EXP(175./TEMP);
+<G4517>      C5H11O2 + NO = 0.4 CH3CHO + 0.1 HCHO + 0.25 CH3COCH3 + 0.9 HO2 + 0.8 MEK + 0.9 NO2 + 0.1 ONIT : {%StTrG} 4.200e-12*EXP(180./TEMP);
+<G4518>     C5H11O2 + HO2 = C5H12O2                        : {%StTrG} 7.500e-13*EXP(700./TEMP);
+<G4519>     C5H12O2 + OH = C5H11O2                         : {%StTrG} 3.800e-12*EXP(200./TEMP);
+<G4520>        C5H9O3 + NO = NO2 + 1.5 HO2 + CO + 0.25 ACETOL + 0.25 MGLYOX + 0.25 HOCH2CHO : {%StTrG} 2.700e-12*EXP(360./TEMP);
+<G4521>       C5H9O3 + NO3 = NO2 + 1.5 HO2 + CO + 0.25 ACETOL + 0.25 MGLYOX + 0.25 HOCH2CHO : {%StTrG} 2.400e-12;
+<G4522>       C5H9O3 + HO2 = C5H10O4                            : {%StTrG} 8.000e-13*EXP(700./TEMP);
+<G4523>     C5H9O3 + CH3O2 = 0.3 CH3OH + HO2 + 0.7 HCHO + 0.4 CO + 0.1 ACETOL + 0.1 MGLYOX + 0.1 HOCH2CHO : {%StTrG} 5.000e-13*EXP(400./TEMP);
+<G4524>    C5H9O3 + CH3CO3 = CH3O2 + CO + 1.5 HO2 + 0.25 ACETOL + 0.25 MGLYOX + 0.25 HOCH2CHO : {%StTrG} 1.300e-12*EXP(640./TEMP);
+<G4525>     C5H10O4 + OH = H2O + C5H9O3                       : {%StTrG} 1.900e-12*EXP(190./TEMP);
+<G4526>     C5H10O4 + OH = H2O + OH                        : {%StTrG} kC5H10O4_OH;
+<G4701>    TOLUENE + OH = 0.25 CRESOL + 0.25 HO2 + 0.7 C716O2 : {%StTrG} 1.700e-12*EXP(352./TEMP);
+<G4702>      C716O2 + NO = 0.45 GLYOX + 0.45 MGLYOX + 0.9 C5H6O2 + 0.9 NO2 + 0.9 HO2 : {%StTrG} 4.200e-12*EXP(180./TEMP);
+<G4703>     C716O2 + HO2 = C716OOH                        : {%StTrG} 7.500e-13*EXP(700./TEMP);
+<G4704>     C716OOH + OH = C716O2                         : {%StTrG} 3.800e-12*EXP(200./TEMP);
+<G4705>     CRESOL + OH = ROO6R5P                           : {%StTrG} 3.000e-12;
+<G4706>       ROO6R5P + NO2 = 0.7 NO2 + 0.7 C5H6O2 + 0.7 HO2  : {%StTrG} 1.000e-11;
+<G41001>     LTERP + OH = BPINAO2                        : {%StTrG} 1.200e-11*EXP(444./TEMP);
+<G41002>     LTERP + O3 = 0.7 OH + MVK + MACR + HO2     : {%StTrG} 1.000e-15*EXP(-732./TEMP);
+<G41003>    LTERP + NO3 = NO2 + BPINAO2                 : {%StTrG} 1.200e-12*EXP(490./TEMP);
+<G41004>     BPINAO2 + NO = 0.1 CH3COCH3 + HO2 + MVK + MACR + NO2 : {%StTrG} 4.200e-12*EXP(180./TEMP);
+<G41005>    BPINAO2 + HO2 = BPINAOOH                      : {%StTrG} 7.500e-13*EXP(700./TEMP);
+<G41006>    BPINAOOH + OH = BPINAO2                       : {%StTrG} 3.800e-12*EXP(200./TEMP);
+//<HET>        N2O5 = 2 HNO3                               : {%StTrG} hetN2O5;
+//<HET>      ClNO3 = HNO3 + HOCl                        : {%StTrG} hetClNO3;
+//<HET>      BrNO3 = HNO3 + HOBr                        : {%StTrG} hetBrNO3;
+//<HET>  ClNO3 + HCl = Cl2 + HNO3                   : {%StTrG} hetClNO3_HCl;
+//<HET>    HOCl + HCl = Cl2 + H2O                      : {%StTrG} hetHOCl_HCl;
+//<HET>    HOBr + HCl = BrCl + H2O                     : {%StTrG} hetHOBr_HCl;
+//<HET>        N2O5 = 2 HNO3                               : {%StTrG} hetN2O5;
+//<HET>      ClNO3 = HNO3 + HOCl                        : {%StTrG} hetClNO3;
+//<HET>  ClNO3 + HCl = Cl2 + HNO3                   : {%StTrG} hetClNO3_HCl;
+//<HET>    HOCl + HCl = Cl2 + H2O                      : {%StTrG} hetHOCl_HCl;
+//<HET>      BrNO3 = HNO3 + HOBr                        : {%StTrG} hetBrNO3;
+//<HET>        N2O5 = 2 HNO3                               : {%StTrG} hetN2O5;
+//<HET>      ClNO3 = HNO3 + HOCl                        : {%StTrG} hetClNO3;
+//<HET>      BrNO3 = HNO3 + HOBr                        : {%StTrG} hetBrNO3;
+//<HET>  ClNO3 + HCl = Cl2 + HNO3                   : {%StTrG} hetClNO3_HCl;
+//<HET>    HOCl + HCl = Cl2 + H2O                      : {%StTrG} hetHOCl_HCl;
+//<HET>    HOBr + HCl = BrCl + H2O                     : {%StTrG} hetHOBr_HCl;
+<G9201>        SO2 + OH = SO4                              : {%StTrG} kSO2_OH;
+<G9202>      DMS + OH = SO2                              : {%StTrG} 1.100e-11*EXP(-240./TEMP);
+<G9203>      DMS + OH = 0.5 SO2 + 0.5 HO2                : {%StTrG} kDMS_OH;
+<G9301>       DMS + NO3 = HNO3 + SO2                      : {%StTrG} 1.000e-12*EXP(500./TEMP);
+<G3209>           NH3 = NH4                                   : {%StTrG} kNH3;
+<G3210>        NH3 + OH = H2O                              : {%StTrG} 1.700e-12*EXP(-710./TEMP);
+
+// --------------------------------------------------------------------------------
+// Photolysis reactions
+// --------------------------------------------------------------------------------
+
+<J1001>  O2         + hv = O3P + O1D                           : {%StTrGJ} jx(ip_O3PO1D)      ; {&2342}
+<J1002>  O2         + hv = 2 O3P                               : {%StTrGJ} jx(ip_O2)          ; {&2342}
+<J1003>  O3         + hv = O1D + O2_1D                         : {%StTrGJ} jx(ip_O1D)         ; {&2342}
+<J1004>  O3         + hv = O3P + O2                            : {%StTrGJ} jx(ip_O3P)         ; {&2342}
+<J3101>  N2O        + hv = N2 + O1D                            : {%StTrGJ} jx(ip_N2O)         ; {&2342}
+<J3102>  NO         + hv = N + O3P                             : {%StTrGJ} jx(ip_NO)          ; {&2342}
+<J3103>  NO         + hv = NOp + em                            : {%StTrGJ} jx(ip_NOp)         ; {&2342}
+<J3104>  NO2        + hv = NO + O3P                            : {%StTrGJ} jx(ip_NO2)         ; {&2342}
+<J3105>  N2O5       + hv = NO2 + NO3                           : {%StTrGJ} jx(ip_N2O5)        ; {&2342}
+<J3106>  N2O5       + hv = NO + O3P + NO3                      : {%StTrGJ} jx(ip_NO3NOO)      ; {&2342}
+<J3201>  HNO3       + hv = NO2 + OH                            : {%StTrGJ} jx(ip_HNO3)        ; {&2342}
+<J3107>  NO3        + hv = NO2 + O3P                           : {%StTrGJ} jx(ip_NO2O)        ; {&2342}
+<J3108>  NO3        + hv = NO + O2                             : {%StTrGJ} jx(ip_NOO2)        ; {&2342}
+<J3204>  HNO4       + hv = .667 NO2 + .667 HO2 + .333 NO3 + .333 OH : {%StTrGJ} jx(ip_HNO4)   ; {&2342}
+<J4101>  CH3OOH     + hv = HCHO + H + OH                       : {%StTrGJ} jx(ip_CH3OOH)      ; {&2342}
+<J4103>  HCHO       + hv = CO + H2                             : {%StTrGJ} jx(ip_COH2)        ; {&2342}
+<J2101>  H2O        + hv = H + OH                              : {%StTrGJ} jx(ip_H2O)         ; {&2342}
+<J2102>  H2O        + hv = H2 + O1D                            : {%StTrGJ} jx(ip_H2O1D)       ; {&2342}
+<J2104>  H2O2       + hv = 2 OH                                : {%StTrGJ} jx(ip_H2O2)        ; {&2342}
+<J6001>  Cl2        + hv = 2 Cl                                : {%StTrGJ} jx(ip_Cl2)         ; {&2342}
+<J6101>  OClO       + hv = ClO + O3P                           : {%StTrGJ} jx(ip_OClO)        ; {&2342}
+<J6102>  Cl2O2      + hv = 2 Cl                                : {%StTrGJ} jx(ip_Cl2O2)       ; {&2342}
+<J6201>  HOCl       + hv = Cl + OH                             : {%StTrGJ} jx(ip_HOCl)        ; {&2342}
+<J6202>  HCl        + hv = Cl + H                              : {%StTrGJ} jx(ip_HCl)         ; {&2342}
+<J6301>  ClNO3      + hv = Cl + NO3                            : {%StTrGJ} jx(ip_ClNO3)       ; {&2342}
+<J6302>  ClNO3      + hv = ClO + NO2                           : {%StTrGJ} jx(ip_ClONO2)      ; {&2342}
+<J7601>  BrCl       + hv = Br + Cl                             : {%StTrGJ} jx(ip_BrCl)        ; {&2342}
+<J7101>  BrO        + hv = Br + O3P                            : {%StTrGJ} jx(ip_BrO)         ; {&2342}
+<J7201>  HOBr       + hv = Br + OH                             : {%StTrGJ} jx(ip_HOBr)        ; {&2342}
+<J7301>  BrNO3      + hv = .85 Br + .85 NO3 + .15 BrO + .15 NO2 : {%StTrGJ} jx(ip_BrNO3)      ; {&2342}
+<J6401>  CH3Cl      + hv = CH3O2 + Cl                          : {%StTrGJ} jx(ip_CH3Cl)       ; {&2342}
+<J6402>  CCl4       + hv = 4 Cl                                : {%StTrGJ} jx(ip_CCl4)        ; {&2342}
+<J6403>  CH3CCl3    + hv = 3 Cl                                : {%StTrGJ} jx(ip_CH3CCl3)     ; {&2342}
+<J6501>  CFCl3      + hv = 3 Cl                                : {%StTrGJ} jx(ip_CFCl3)       ; {&2342}
+<J6502>  CF2Cl2     + hv = 2 Cl                                : {%StTrGJ} jx(ip_CF2Cl2)      ; {&2342}
+<J6503>  CF2ClCFCl2 + hv = 3 Cl                                : {%StTrGJ} jx(ip_CF2ClCFCl2)  ; {&2342}
+<J6504>  CHF2Cl     + hv = Cl                                  : {%StTrGJ} jx(ip_CHF2Cl)      ; {&2342}
+<J7401>  CH3Br      + hv = Br + CH3O2                          : {%StTrGJ} jx(ip_CH3Br)       ; {&2342}
+<J7501>  CF3Br      + hv = Br                                  : {%StTrGJ} jx(ip_CF3Br)       ; {&2342}
+<J7602>  CF2ClBr    + hv = Br + Cl                             : {%StTrGJ} jx(ip_CF2ClBr)     ; {&2342}
+<J4104>  CO2        + hv = CO + O3P                            : {%StTrGJ} jx(ip_CO2)         ; {&2342}
+<J4106>  CH4        + hv = .47 CH3 + .47 H + .763 H2 + .0954 HCHO + .0954 O3P + .175 OH + .175 HO2 + .233 CO2 + .201 CO + .0265 H2O : {%StGJJ} jx(ip_CH4){§}  ; {&2342}
+<J4107>  CH3CHO     + hv = CH3O2 + CO + HO2                    : {%StTrGJ} jx(ip_CH3CHO)      ; {&2342}
+<J4108>  HYPROPO2H  + hv = HCHO + CH3CHO + HO2 + OH            : {%StTrGJ} jx(ip_CH3OOH)      ; {&2342}
+<J4201>  CH3CO3H    + hv = CH3O2 + OH + CO2                    : {%StTrGJ} 0.28*jx(ip_H2O2)   ; {&2342}
+<J4202>  PAN        + hv = .6 CH3CO3 + .6 NO2 + .4 CH3O2 + .4 NO3 : {%StTrGJ} jx(ip_PAN)      ; {&2342}
+<J4401>  MPAN       + hv = MACO3 + NO2                         : {%StTrGJ} jx(ip_PAN)         ; {&2342}
+<J4402>  MACR       + hv = .5 MACO3 + .5 CH3CO3 + .5 HCHO + .5 CO + HO2 : {%TrGJ} jx(ip_MACR) ; {&2342}
+<J4404>  MVK        + hv = .7 C3H6 + .7 CO + .3 CH3O2 + .3 CH3CO3 : {%StTrGJ} jx(ip_MVK)      ; {&2342}
+<J4203>  C2H5OOH    + hv = CH3CHO + HO2 + OH                   : {%StTrGJ} jx(ip_CH3OOH)      ; {&2342}
+<J4301>  C3H7OOH    + hv = .82 CH3COCH3 + OH + HO2             : {%StTrGJ} jx(ip_CH3OOH)      ; {&2342}
+<J4302>  HOC2H4CO2H + hv = HCHO + CH3CO3 + OH                  : {%StTrGJ} jx(ip_CH3OOH)      ; {&2342}
+<J4303>  CH3COCH3   + hv = CH3CO3 + CH3O2                      : {%StTrGJ} jx(ip_CH3COCH3)    ; {&2342}
+<J4304>  MGLYOX     + hv = CH3CO3 + CO + HO2                   : {%StTrGJ} jx(ip_MGLYOX)      ; {&2342}
+<J4501>  C5H10O4    + hv = OH                                  : {%StTrGJ} jx(ip_CH3OOH)      ; {&2342}
+<J4502>  ONITR      + hv = CO + HO2 + NO2 + HCHO               : {%StTrGJ} jx(ip_CH3OOH)      ; {&2342}
+<J4503>  ISOPOOH    + hv = .402 MVK + .288 MACR + .69 HCHO + HO2 : {%StTrGJ} jx(ip_CH3OOH)    ; {&2342}
+<J4204>  HOCH2CHO   + hv = 2 HO2 + CO + HCHO                   : {%StTrGJ} jx(ip_HOCH2CHO)    ; {&2342}
+<J4405>  MEK        + hv = C2H5O2 + CH3CO3                     : {%StTrGJ} jx(ip_CH3COCH3)    ; {&2342}
+<J4504>  C5H6O2     + hv = .45 CO + .13 GLYOX + .56 HO2 + .13 CH3CO3 + .18 MGLYOX : {%StTrG} 0.2*jx(ip_NO2)  ; {&2342}
+<J4205>  GLYOX      + hv = 2 CO + 2 HO2                        : {%StTrGJ} jx(ip_GLYOX)       ; {&2342}
+<J4505>  C5H12O2    + hv = .4 CH3CHO + .1 HCHO + .25 CH3COCH3 + .9 HO2 + .8 MEK + OH : {%StTrG} jx(ip_CH3OOH)  ; {&2342}
+<J4406>  LMEKOOH    + hv = CH3CO3 + OH + CH3CHO                : {%StTrGJ} jx(ip_CH3OOH)      ; {&2342}
+<J4701>  C716OOH    + hv = OH + .45 GLYOX + .45 MGLYOX + .9 C5H6O2 : {%StTrGJ} jx(ip_CH3OOH)  ; {&2342}
+<J41001> BPINAOOH   + hv = OH + .1 CH3COCH3 + HO2 + MVK + MACR : {%StTrGJ} jx(ip_CH3OOH)      ; {&2342}

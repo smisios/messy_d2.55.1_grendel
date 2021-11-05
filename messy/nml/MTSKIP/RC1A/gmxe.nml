@@ -1,0 +1,304 @@
+! -*- f90 -*-
+!
+&CTRL
+                   ! <--- GMXe general options
+                   !
+  LGMXe      = T, ! Aerosol composition scheme GMXe (interface)
+  LOUTPUT    = T, ! Write GMXe channel to diagnose output
+  LMASS_DIAG = F, ! Mass balance check in gmXe_physc
+  LSTRAT     = F, ! Exclude stratosphere (requires TROPOP channel)
+  LPSC       = T, ! Exclude PSC region   (requires PSC channel)
+
+  LNUCL      = T, ! Calculate nucleation of aerosol particles
+  LCOND      = T, ! Calculate amount of condensable species 
+                   ! due to kinetic limitations
+  LCOAG      = T,  ! Reshape the size distribution due to particle 
+                   ! coagulation (if LSIZE=.F.)
+
+  LSIZE      = F, ! Reshape the size distribution due to hygroscopic 
+                   ! growth (requires THERMO interface (NEQM > -1))
+  LCOAT      = T, ! Calculate coating/ageing of primary particles 
+                   ! (requires THERMO interface (NEQM > -1))
+
+  LAH2O      = T, ! Calculate aerosol water concentration limited 
+                   ! by specific humidity (otherwise equilibrium is assumed)
+  LGH2O      = F, ! Update water vapor concentration (H2O tracer only 
+                   ! if defined in H2O tracer coupling) !currently not used!
+  LSHUM      = F, ! Update specific humidity (ECHAM5)
+
+! switches that deal with aerosol cloud coupling 
+! (to be (re)moved to the cloud submodel)
+  LACC       = F, ! Aerosol-cloud-coupling (diag only, if not LCLC,LCLWC,LCIWC,LCDNC,LICNC)
+  LCLC       = F, ! Update cloud cover
+  LADYN      = F, ! Calculate aerosol dynamics (limits EQSAM3 gas/liquid/solid equilibration time by transport time scales)
+  LCLWC      = F, ! Update cloud liquid water concentration (sets LCDNC = T)
+  LCIWC      = F, ! Update cloud ice water concentration    (sets LICNC = T)
+  LCDNC      = F, ! Update cloud droplet number concentration (CLWC calc. by ECHAM5)
+  LICNC      = F, ! Update ice crystal number concentration   (CIWC calc. by ECHAM5)
+
+
+
+  LGAS       = T, ! Update gas phase chemistry     - Gases  : H3PO4, H2SO4, HNO3, HCl, HBr, HI, H2CO3, H2O, CH2O2, C2H4O2,
+                   !                                           C2H2O4, C6H8O7, Hg, NH3
+  LAEROSOL   = T, ! Update aerosol phase chemistry - Cations: H+, NH4+, Na+, K+, Mg++, Ca++, Fe++/Fe+++
+                   !                                - Anions : PO4---, SO4--, HSO4-, NO3, Cl-, Br-, I-, CO3--, HCO3-, OH-, CHO2-,
+                   !                                           C2H3O2-, C2O4--, C6H5O7---
+                   !                                - Solutes: NH3, C3H6O, CH3OH, C2H6O, C6H12O6, C6H13O5, C12H22O11,
+                   !                                           Hg, Pb, C6H10O5, C4H6O4, C33H32O19
+                   !                                - Gases  : H3PO4, H2SO4, HNO3, HCl, HBr, HI, H2CO3, H2O, CH2O2, C2H4O2,
+                   !                                           C2H2O4, C6H8O7, Hg, NH3
+                   !                                Note - Within EQSAM3 all major cation/anion combinations as well as gases 
+                   !                                       and (neutral) solutes are considered for the aerosol water uptake; 
+                   !                                       All these compounds, but especially the salts are important for the
+                   !                                       aerosol water mass and hyrgoscopic growth due their different RH regimes,
+                   !                                       where they are able to absorb or desorb water vapor from the atmosphere
+                   !                                       (deliquescence/efflorescence relative humidity, respectively).
+                   !                                     - Resolving the hyrgoscopic growth is important, as this determines the 
+                   !                                       ambient particle size, life-time of aerosols and trace gasses, as well as
+                   !                                       the interaction of the aerosols with sunlight (direct forcing) and clouds
+                   !                                       (indirect forcing).
+                   ! <--- GMXe channel
+                   !
+  LNUMBER    = F, ! .T. = Calculate aerosol numbers from aerosol mass; the GMXe channel contains a channel element 'anumber'.
+                   ! .F. = Transport aerosol numbers as tracers (initial aerosol numbers are assigned from emissions, etc).
+  LWETRAD    = T, ! .T. = Calculate wet aerosol radius  from EQSAM3 thermodynamics; .F. from bulk thermodynamics.
+  LDRYRAD    = T, ! .T. = Calculate dry aerosol radius  from EQSAM3 thermodynamics; .F. from bulk thermodynamics.
+  LDRYDENS   = T, ! .T. = Calculate dry aerosol density from EQSAM3 thermodynamics; .F. from bulk thermodynamics.
+                   !
+                   ! Calculate aerosol composition and hygroscopic growth for selected modes:
+                   !
+  NLOWERMODE = 1   ! Lowest mode (min. mode number = 1; nucleation mode,   soluble)
+  NUPPERMODE = 7   ! Uppest mode (max. mode number = 7; coarse     mode, insoluble)
+                   !
+                   ! <--- Choice of aerosol composition module
+                   !
+  NEQM     = 2     ! Thermodynamic module: -1, 0 = None (bulk hygroscopic growth only)
+                   !                        1= EQSAM3h
+                   !                        2= ISOROPIA2
+                   !                      [-1 = no EQSAM3 interface (gmXe_eqsam3), only gmXe core]
+                   !
+                   ! <--- Choice of nucleation scheme
+                   !
+  NNUCL    = 1     !  0 = test, 1 = Vehkamaeki (2002), 2 = Kulmala (1998)
+                   ! (0 requires EQSAM3 interface, neqm >= 0)
+                   !
+
+  l_aerchem = F,   ! calculate aerosol chemistry using a kpp based 
+!                  ! reaction mechanism
+  l_oc_aging = F,  ! calculate aging of organic carbon
+  ! mz_dk_20120120+
+  l_passive_aer = F ! use passive aerosol tracers
+  ! mz_dk_20120120-
+/
+&CTRL_GMXE_EQSAM
+                   ! <--- EQSAM3 core specific options
+                   !
+  LSKIP      = T, ! Calculations only for non-zero compounds/solutes (global modeling)
+  LDRY       = F, ! Force aerosol particles to be dry (no aerosol water)
+  LSOLIDS    = T, ! Inclusion of solid aerosol particles (if false, only metastable)
+  LRHDMIX    = F, ! Use RHD and RHcr of mixed solutions (.F. RHDs/RHcr of single solutes are used)
+  LHYSTER    = T, ! Inclusion of hysteresis effect (includes solids/metastable)
+                   !
+
+
+
+/
+&CTRL_GMXE_AERCHEM         
+                       ! namelist for aerchem subsubmodel
+lmode = 3              ! lower mode boundary for aerchem
+umode = 4              ! upper mode boundary for aerchem
+/
+
+! mz_dk_20120120+
+! NOTES: If passive aerosols are turned on here, then consider the following:
+!        - SCAV: if it should be possible to scavenge them, then the  
+!          full name has to be included in the out_string_aer in scav.nml; 
+!        - AEROPT: if it is turned on and the passive tracers should 
+!          NOT contribute to the AOT, then exclude them in aeropt.nml;
+!        - emissions: so far only offlem emissions, see offlem46.nml
+!          and emis_PA46.nml
+!        - tracers are initialized in messy_gmxe_e5.nml
+! 
+&CTRL_GMXE_PASSIVE
+                      ! namelist for passive aerosol tracers
+num_pa = 1            ! number of passive aerosol tracers
+                      ! modes for tracer initialization:
+                      ! (1-4: hydrophilic, 5-7: hydrophobic)
+pamode1 = 2           ! lower mode boundary for passive aerosol
+pamode2 = 4           ! upper mode boundary for passive aerosol                 
+/
+! mz_dk_20120120-
+&CPL
+l_calc_emis = T    ! calculate direct emission of compounds within gmxe
+! 1.1   add emission to tendency (TRUE) or in xtems (FALSE)
+!       note that 3D or X-NLEV2D are always added in the tendency
+l_tendency = T
+
+! <--- 1. Choice of tropopause channel
+!
+Tropopchannel = 'tropop'     ! channel containing tropopause index
+TropopIndex  = 'tp_i'       ! tropopause index channel element
+!
+! <--- 2. Choice of PSC channel
+!
+!!$Pscchannel = 'psc'           ! channel containing PSC mask
+Pscchannel = 'msbm'           ! channel containing PSC mask
+Pscreg    = 'PSC_region'    ! mask for psc region
+phase     = 'phase'         ! phase of psc (to be used as a mask)
+
+!
+driver_call = 'radiation'   !Swich indicated where gmXe_driver is called from
+!driver_call = 'physc'       !Swich indicated where gmXe_driver is called from
+                            ! (radiation or physc) 
+
+! 
+! emission setup (new way)
+! for each emission flux one EMIS_CASK should be filled
+! all possible fluxes are listed in the messy_gmxe_e5.f90
+! in the subroutine gmxe_emis_e5_init
+! certain characteristics of the fluxes are defined there as well,
+! e.g. if only a fraction of the total flux should be used for 
+! another flux (e.g. SO2 emissions, 2.5% are used for particulate sulfate emissions)
+! emis_casks - array: 
+!                    1st entry: name (used for identification in the 
+!                               list of the e5 file section emis_init)
+!                    2nd entry: total scaling factor for incoming flux
+!                    3rd entry: channel name of the emission flux
+!                    4th entry: name of the mass emission flux object
+!                    5th entry: name of the corresponding number 
+!                               emission flux object (If it does not exist a 
+!                               number is calculated from the mass)
+!                    6th entry: ";" separated list of tracers which should 
+!                               receive emissions from this flux
+!                    7th entry: ";" separated list of fractions of this emission
+!                               flux for all the tracers defined in entry 5
+! Theoretically, one can define an emission flux several time for several tracers.
+! BUT, BE AWARE, that is means that the number flux is also added several times, which 
+!                is most likely not desired   
+! WARNING: In case the 1st entry from a cask is not matching any of the fluxes in the list
+!          it is ignored
+!        
+
+! seasalt 
+!AEROCOM
+! number calculated from mass
+!EMIS_CASK(1,:) = "seasalt_mass_cs","import_grid","emis_ss_m_cs" ,"            ","Nap_cs;Clm_cs;SS_cs","0.376;0.573;0.051"
+!EMIS_CASK(2,:) = "seasalt_mass_as","import_grid","emis_ss_m_as" ,"            ","Nap_as;Clm_as;SS_as","0.376;0.573;0.051"
+!EMIS_CASK(3,:) = "seasalt_mass_ks","import_grid","emis_ss_m_ks" ,"            ","Nap_ks;Clm_ks;SS_ks","0.376;0.573;0.051"
+
+!EMIS_CASK(1,:) = "seasalt_mass_cs","","import_grid","emis_ss_m_cs" ,"            ","Nap_cs;Clm_cs;SS_cs;SO4mm_cs","0.376;0.518;0.03;0.076"
+!EMIS_CASK(2,:) = "seasalt_mass_as","","import_grid","emis_ss_m_as" ,"            ","Nap_as;Clm_as;SS_as;SO4mm_as","0.376;0.518;0.03;0.076"
+!EMIS_CASK(3,:) = "seasalt_mass_ks","","import_grid","emis_ss_m_ks" ,"            ","Nap_ks;Clm_ks;SS_ks;SO4mm_ks","0.376;0.518;0.03;0.076"
+
+
+! number taken from number fluxes
+!EMIS_CASK(1,:) = "seasalt_mass_cs","","import_grid","emis_ss_m_cs" ,"emis_ss_n_cs","Nap_cs;Clm_cs;SS_cs","0.376;0.573;0.051"
+!EMIS_CASK(2,:) = "seasalt_mass_as","","import_grid","emis_ss_m_as" ,"emis_ss_n_as","Nap_as;Clm_as;SS_as","0.376;0.573;0.051"
+!EMIS_CASK(3,:) = "seasalt_mass_ks","","import_grid","emis_ss_m_ks" ,"emis_ss_n_ks","Nap_ks;Clm_ks;SS_ks","0.376;0.573;0.051"
+
+
+!LSCE 
+!emissions rescaled with a factor of 1.46 to obtain a similar mass as in the AEROCOM offline SS emissions
+!EMIS_CASK(1,:) = "seasalt_mass_cs","1.0","onemis","mss_cs_lsce" ,"            ","Nap_cs;Clm_cs;SS_cs;SO4mm_cs","0.376;0.518;0.03;0.076"
+!EMIS_CASK(2,:) = "seasalt_mass_as","0.99925","onemis","mss_as_lsce" ,"        ","Nap_as;Clm_as;SS_as;SO4mm_as","0.376;0.518;0.03;0.076"
+!EMIS_CASK(3,:) = "seasalt_mass_ks","0.00075","onemis","mss_as_lsce" ,"        ","Nap_ks;Clm_ks;SS_ks;SO4mm_ks","0.376;0.518;0.03;0.076"
+EMIS_CASK(1,:) = "seasalt_mass_cs","1.46","onemis","mss_cs_lsce" ,"            ","Nap_cs;Clm_cs;SS_cs;SO4mm_cs","0.376;0.518;0.03;0.076"
+EMIS_CASK(2,:) = "seasalt_mass_as","1.458905","onemis","mss_as_lsce" ,"        ","Nap_as;Clm_as;SS_as;SO4mm_as","0.376;0.518;0.03;0.076"
+EMIS_CASK(3,:) = "seasalt_mass_ks","0.001095","onemis","mss_as_lsce" ,"        ","Nap_ks;Clm_ks;SS_ks;SO4mm_ks","0.376;0.518;0.03;0.076"
+
+
+
+
+! particulate sulphate emissions from anthropogenic SO2
+
+! CCMI
+EMIS_CASK(5,:) = "so2_mass_ks","0.0125" ,"offemis",   "ANTHNT_SO2",""        ,"SO4mm_ks;Hp_ks","1.0;2.0"
+EMIS_CASK(6,:) = "so2_mass_ks","0.0125" ,"offemis",   "SHIP_SO2",""          ,"SO4mm_ks;Hp_ks","1.0;2.0"
+EMIS_CASK(7,:) = "so2_mass_ks","0.0125" ,"offemis",   "AWB_SO2",""           ,"SO4mm_ks;Hp_ks","1.0;2.0"
+EMIS_CASK(8,:) = "so2_mass_ks","0.0125" ,"offemis",   "BB_SO2",""            ,"SO4mm_ks;Hp_ks","1.0;2.0"
+EMIS_CASK(9,:) = "so2_mass_ks","0.0125" ,"import_grid","ROAD_SO2",""          ,"SO4mm_ks;Hp_ks","1.0;2.0"
+
+EMIS_CASK(10,:) = "so2_mass_ks","0.0125" ,"import_grid",   "VOLC_SO2_SO2",""       ,"SO4mm_ks;Hp_ks","1.0;2.0"
+
+EMIS_CASK(11,:) = "so2_mass_as","0.0125" ,"offemis",   "ANTHNT_SO2",""        ,"SO4mm_as;Hp_as","1.0;2.0"
+EMIS_CASK(12,:) = "so2_mass_as","0.0125" ,"offemis",   "SHIP_SO2",""          ,"SO4mm_as;Hp_as","1.0;2.0"
+EMIS_CASK(13,:) = "so2_mass_as","0.0125" ,"offemis",   "AWB_SO2",""           ,"SO4mm_as;Hp_as","1.0;2.0"
+EMIS_CASK(14,:) = "so2_mass_as","0.0125" ,"offemis",   "BB_SO2",""            ,"SO4mm_as;Hp_as","1.0;2.0"
+EMIS_CASK(15,:) = "so2_mass_as","0.0125" ,"import_grid","ROAD_SO2",""          ,"SO4mm_as;Hp_as","1.0;2.0"
+
+EMIS_CASK(16,:) = "so2_mass_as","0.0125" ,"import_grid",   "VOLC_SO2_SO2",""   ,"SO4mm_as;Hp_as","1.0;2.0"
+
+
+
+
+! organic carbon
+
+!AEROCOM
+! summed fluxes
+!EMIS_CASK(20,:)= "oc_mass_ks"     ,"onemis" ,"OC_sum_sol"   ,"Num_sol"     ,"OC_ks","1.0"
+!EMIS_CASK(21,:)= "oc_mass_ki"     ,"onemis" ,"OC_sum_insol" ,"Num_insol_oc","OC_ki","1.0"
+! individual contributions
+!EMIS_CASK(22,:)= "oc_mass_soa_ks" ,"onemis" ,"OC_soa_sol"   ,""            ,"OC_ks","1.0"
+!EMIS_CASK(22,:)= "oc_mass_soa_ks" ,"onemis" ,"OC_soa_sol"   ,""            ,"OC_ks;WSOC01_ks;WSOC02_ks;WSOC03_ks","0.2;0.3;0.4;0.1"
+!!$EMIS_CASK(22,:)= "oc_mass_soa_ks" ,"onemis" ,"OC_soa_sol"   ,""            ,"OC_ks;WSOC01_ks;WSOC02_ks;WSOC03_ks;OC_as;WSOC01_as;WSOC02_as;WSOC03_as","0.1;0.15;0.2;0.05;0.1;0.15;0.2;0.05"
+!!$EMIS_CASK(23,:)= "oc_mass_bb_ks"  ,"onemis" ,"OC_bb_sol"    ,""            ,"OC_ks","1.0"
+!!$EMIS_CASK(24,:)= "oc_mass_ff_ks"  ,"onemis" ,"OC_ff_sol"    ,""            ,"OC_ks","1.0"
+!!$EMIS_CASK(25,:)= "oc_mass_soa_ki" ,"onemis" ,"OC_soa_insol" ,""            ,"OC_ki","1.0"
+!!$EMIS_CASK(26,:)= "oc_mass_bb_ki"  ,"onemis" ,"OC_bb_insol"  ,""            ,"OC_ki","1.0"
+!!$EMIS_CASK(27,:)= "oc_mass_ff_ki"  ,"onemis" ,"OC_ff_insol"  ,""            ,"OC_ki","1.0"
+
+! biogenic - SOA - AEROCOM
+! Scaling factor contains water soluble fraction and conversion om2oc
+!EMIS_CASK(22,:)= "oc_mass_soa_ks" ,"0.91","import_grid" ,"OC_soa_sol"   ,""            ,"OC_ks;WSOC01_ks;WSOC02_ks;WSOC03_ks;OC_as;WSOC01_as;WSOC02_as;WSOC03_as","0.1;0.15;0.2;0.05;0.1;0.15;0.2;0.05"
+
+EMIS_CASK(22,:)= "oc_mass_soa_ks" ,"0.91","import_grid" ,"OC_bge_emis_oc_bge"   ,""            ,"OC_ks","1.0"
+EMIS_CASK(23,:)= "oc_mass_soa_ki" ,"0.49","import_grid" ,"OC_bge_emis_oc_bge"   ,""            ,"OC_ki","1.0"
+
+! CCMI
+! BB
+! Scaling factor contains water soluble fraction and conversion om2oc
+EMIS_CASK(24,:)= "oc_mass_bb_ks"  ,"0.91","offemis" ,"BB_AER_OC"    ,""            ,"OC_ks","1.0"
+EMIS_CASK(25,:)= "oc_mass_bb_ki"  ,"0.49","offemis" ,"BB_AER_OC"    ,""            ,"OC_ki","1.0"
+! AWB
+! Scaling factor contains water soluble fraction and conversion om2oc
+EMIS_CASK(26,:)= "oc_mass_bb_ks"  ,"0.91","offemis" ,"AWB_AER_OC"   ,""            ,"OC_ks","1.0"
+EMIS_CASK(27,:)= "oc_mass_bb_ki"  ,"0.49","offemis" ,"AWB_AER_OC"   ,""            ,"OC_ki","1.0"
+
+! Anthropogenic
+! Scaling factor contains conversion om2oc / all material insoluble
+EMIS_CASK(28,:)= "oc_mass_ff_ki"  ,"1.4","offemis" ,"ANTHNT_AER_OC" ,""            ,"OC_ki","1.0"
+EMIS_CASK(29,:)= "oc_mass_ff_ki"  ,"1.4","offemis" ,"SHIP_AER_OC"   ,""            ,"OC_ki","1.0"
+EMIS_CASK(30,:)= "oc_mass_ff_ki"  ,"1.4","import_grid" ,"ROAD_AER_OC"   ,""            ,"OC_ki","1.0"
+
+! ocean
+EMIS_CASK(32,:)= "oc_ss_mass_as"  ,"1.0","onemis" ,"emis_poc_swifs_mss_as_lsce"  ,""            ,"OC_as","1.0"
+
+! black carbon
+
+! AEROCOM
+! summed fluxes
+!EMIS_CASK(40,:)= "bc_mass_ki"     ,"onemis" ,"BC_sum_insol" ,"Num_insol_bc","BC_ki","1.0"
+! individual contributions
+!EMIS_CASK(41,:)= "bc_mass_ff_ki"  ,"onemis" ,"BC_ff_insol"  ,""            ,"BC_ki","1.0"
+!EMIS_CASK(42,:)= "bc_mass_bb_ki"  ,"onemis" ,"BC_bb_insol"  ,""            ,"BC_ki","1.0"
+!CCMI
+EMIS_CASK(41,:)= "bc_mass_ff_ki"  ,"1.0", "offemis" ,"BB_AER_BC"  ,""            ,"BC_ki","1.0"
+EMIS_CASK(42,:)= "bc_mass_bb_ki"  ,"1.0", "offemis" ,"BB_AER_BC"  ,""            ,"BC_ki","1.0"
+EMIS_CASK(43,:)= "bc_mass_bb_ki"  ,"1.0", "offemis" ,"AWB_AER_BC" ,""            ,"BC_ki","1.0"
+EMIS_CASK(44,:)= "bc_mass_air_ki" ,"1.0", "import_grid" ,"airc_AER_BC" ,""           ,"BC_ki","1.0"
+EMIS_CASK(45,:)= "bc_mass_ff_ki"  ,"1.0", "offemis" ,"SHIP_AER_BC"   ,""         ,"BC_ki","1.0"
+EMIS_CASK(46,:)= "bc_mass_ff_ki"  ,"1.0", "import_grid" ,"ROAD_AER_BC"   ,""         ,"BC_ki","1.0"
+
+! dust
+
+!AEROCOM
+!EMIS_CASK(50,:)= "dust_mass_ci"   ,"0.95","import_grid","emis_dust"     ,""            ,"DU_ci","1.0"
+!EMIS_CASK(51,:)= "dust_mass_ai"   ,"0.05","import_grid","emis_dust"     ,""            ,"DU_ai","1.0"
+! Tegen
+! rescaled with a factor of 3.0 to obtain similar emissions as in the offline AEROCOM dust emissions
+!EMIS_CASK(50,:)= "dust_mass_ci"   ,"1.0","onemis","du_emflux_T_ci"     ,""            ,"DU_ci","1.0"
+!EMIS_CASK(51,:)= "dust_mass_ai"   ,"1.0","onemis","du_emflux_T_ai"     ,""            ,"DU_ai","1.0"
+EMIS_CASK(50,:)= "dust_mass_ci"   ,"3.0","onemis","du_emflux_T_ci"     ,""            ,"DU_ci","1.0"
+EMIS_CASK(51,:)= "dust_mass_ai"   ,"3.0","onemis","du_emflux_T_ai"     ,""            ,"DU_ai","1.0"
+
+/

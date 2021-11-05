@@ -1,0 +1,134 @@
+! -*- f90 -*-
+&CTRL
+L_FAMILY     = T, !# USE TRACER FAMILIES (SEE CTRL_FAMILY BELOW)
+L_PDEF       = T, !# SWITCH TRACER SUB-SUBMODEL PDEF (SEE CPL/CTRL_PDEF BELOW)
+/
+
+&CPL
+L_TRACER_INIT = T, !# SWITCH ON(T)/OFF(F) TRACER INITIALISATION
+L_CONV_LG2GP =  F, !# ONLY IF LAGRANGIAN TRACERS PRESENT 
+!
+!             channel , tracer_to, tracer_from , 0: no unit conversion 1: mol/mol -> kg/kg
+ini_pvar(1) = 'ECHAM5','q','H2OISOHHOvap',0,  
+!
+/
+
+&CTRL_FAMILY
+l_verbose = F,   !# diagnostic output
+i_diag_pe = 0,   !# ... for this p_pe
+i_diag_jrow = 1, !# ... and this jrow
+!#
+!# NOTES:
+!#    - MAX. NUMBER OF FAMILIES: 50
+!#    - FAMILY-TYPE = 1: FAMILY = SUM OF TRACERS, TRACER = FRACTION OF FAMILY
+!#                                - TRACER FRACTIONS NOT TRANSPORTED
+!#                                - PROCESS SPECIFIC CONVERSION
+!#                                - switch is meaningless for type 1
+!#    -             = 2: FAMILY = SUM OF TRACERS, TRACER REMAINS
+!#                                - TRACER TRANSPORTED
+!#                                - RESCALED TO SUM AFTER TRANSPORT
+!#                                - switch = .FALSE.: no re-scaling,
+!#                                                    only summation
+!#                                -        = .TRUE. (default): re-scaling ON
+!#    - FAMILY TRACER MUST NOT EXIST
+!#    - FIRST VALID TRACER IN FAMILY SPECIFIES ATTRIBUTES OF TRACER FAMILY
+!#    - nadvect=nconvect=nvdiff = ON FOR FAMILIES WITH FAMILY-TYPE = 1
+!#    - EACH TRACER CAN BE MEMBER OF ZERO OR ONE TRACER FAMILY
+!#    - THE DEFAULT WEIGHT FOR EACH TRACER IS 1.0
+!# SYNTAX:
+!#    tracer-set, family-type, switch, family-name, family-subname,
+!#    LIST OF TRACERS ...
+!#    ... ('name' OR 'name_subname' OR 'name:weight' OR 'name_subname:weight')
+!# EXAMPLES:
+!
+TF(1) = 'gp',1, ,'ClOX','','Cl','ClO','HOCl','OClO','Cl2O2:2.0','Cl2:2.0',!94*''
+TF(2) = 'gp',1, ,'BrOX','','Br','BrO','HOBr','BrCl','Br2:2.0',!95*''
+TF(3) = 'gp',1, ,'NOX','','N','NO','NO2','NO3','N2O5:2.0',!95*''
+!TF(4) = 'gp',1, ,'HOx','','H','OH','HO2',!97*''
+!TF(5) = 'gp',1, ,'Ox','','O1D','O3P','O3',!97*''
+!
+TF(7) = 'gp',2,F,'Bry','', 'BrNO2','BrCl','Br2:2.0','BrNO3','HOBr','HBr','BrO','Br',!84*'',
+TF(8) = 'gp',2,F,'Cly','','OClO','ClNO2','Cl2:2.0','BrCl','HOCl','ClNO3','ClO','HCl','Cl','Clmres_cs',!80*'',
+/
+
+
+&CTRL_PDEF
+!# diagnostic output ?
+L_DIAGOUT = F,
+!# SYNTAX: set-name, tracer-name, subname,
+!#         reset to zero?, stop on exceed?, relative tolerance
+TPD_DEFAULT(1) = 'gp',   '',     '',    T, F, 0.01,
+TPD_DEFAULT(2) = 'lg',   '',     '',    T, F, 0.01,
+TPD_DEFAULT(3) = 'lggp', '',     '',    F, F, 0.01,
+!
+!TPD(1)         = 'gp',   'HNO3', 'nat', T, F,     ,
+!TPD(2)         = 'gp',   'N',    '',    T, F,     ,
+!
+/
+
+! Import from EMAC-x-02
+! Basically all water tracer (from H2OISO, CH4, MECCA-TAG)
+! Initialize CH4 consistently with CH4_fx and all Isotopologue tracers from CH4, as well as I1CH4 and I2CH4 from MECCA-TAG
+&regrid
+infile    = "$INPUTDIR_MESSY/tracer/EMAC-x-02_____0013_restart_0005_tracer_gp_w_H2O.nc",
+i_latm    = "lat",          ! name of latitude axis in input file
+i_latr    = -90.0,90.0,     ! range of latitude axis in input file 
+i_lonm    = "lon",          ! name of longitude axis in input file 
+i_lonr    = 0.0,360.0,      ! range of longitude axis in input file 
+! No time coordinate in restart files
+!i_timem   = "time",         ! name of time axis in input file
+!i_hyai    = "hyai",     ! name of hybrid A coefficients in input file
+i_hyam    = "hyam",     ! name of hybrid A coefficients in input file
+!i_hybi    = "hybi",     ! name of hybrid B coefficients in input file
+i_hybm    = "hybm",     ! name of hybrid B coefficients in input file
+! i_ps      = "aps",
+i_ps      = "101325.0 Pa",
+i_p0      = "1. Pa",        ! value of reference pressure in input file
+pressure  = F,
+var       =  "H2OISOHHOvap;H2OISOHHOliq;H2OISOHHOice;H2OISOHH18Ovap;H2OISOHH18Oliq;H2OISOHH18Oice;H2OISOHDOvap;H2OISOHDOliq;H2OISOHDOice;HDO;H2O;I1H2O=HHO;I2H2O=HDO;CH4_fx;CH4=CH4_fx;I1CH4=CH4_D0;I2CH4=CH4_D1;CH4_13C;CH4_12C", ! H2O will be initialized by this file! 
+! No time coordinate in restart files
+!i_t       = 25,
+/
+! Import from first spin-up
+! Initialize tagged species with isotopic reference VSMOW (except I1H2O and I2H2O, I1CH4 and I2CH4)
+&regrid
+infile    = "$INPUTDIR_MESSY/tracer/EMAC-x-03-su_0033_restart_0002_tracer_gp.nc",
+i_latm    = "lat",          ! name of latitude axis in input file
+i_latr    = -90.0,90.0,     ! range of latitude axis in input file 
+i_lonm    = "lon",          ! name of longitude axis in input file 
+i_lonr    = 0.0,360.0,      ! range of longitude axis in input file 
+! No time coordinate in restart files
+!i_timem   = "time",         ! name of time axis in input file
+!i_hyai    = "hyai",     ! name of hybrid A coefficients in input file
+i_hyam    = "hyam",     ! name of hybrid A coefficients in input file
+!i_hybi    = "hybi",     ! name of hybrid B coefficients in input file
+i_hybm    = "hybm",     ! name of hybrid B coefficients in input file
+! i_ps      = "aps",
+i_ps      = "101325.0 Pa",
+i_p0      = "1. Pa",        ! value of reference pressure in input file
+pressure  = F,
+var       =  "I1CH3I=CH3I,0.9998442;I1CH3I=CH3I,0.999532793;I2CH3I=CH3I,0.000467207;I1H2SO4=H2SO4,0.999688529;I2H2SO4=H2SO4,0.000311471;I1CH3SO3H=CH3SO3H,0.999377057;I2CH3SO3H=CH3SO3H,0.000622943;I1CH3SO3=CH3SO3,0.999532793;I2CH3SO3=CH3SO3,0.000467207;I1CHCl2Br=CHCl2Br,0.999844264;I2CHCl2Br=CHCl2Br,0.000155736;I1CHClBr2=CHClBr2,0.999844264;I2CHClBr2=CHClBr2,0.000155736;I1CH2ClBr=CH2ClBr,0.999688529;I2CH2ClBr=CH2ClBr,0.000311471;I1CH2Br2=CH2Br2,0.999688529;I2CH2Br2=CH2Br2,0.000311471;I1CHBr3=CHBr3,0.999844264;I2CHBr3=CHBr3,0.000155736;I1NH3=NH3,0.999532793;I2NH3=NH3,0.000467207;I1CH3CCl3=CH3CCl3,0.999532793;I2CH3CCl3=CH3CCl3,0.000467207;I1CH3Br=CH3Br,0.999532793;I2CH3Br=CH3Br,0.000467207;I1HCOOH=HCOOH,0.999688529;I2HCOOH=HCOOH,0.000311471;I1CH3Cl=CH3Cl,0.999532793;I2CH3Cl=CH3Cl,0.000467207;I1CH3SO2=CH3SO2,0.999532793;I2CH3SO2=CH3SO2,0.000467207;I1NH2O=NH2O,0.999688529;I2NH2O=NH2O,0.000311471;I1HNO4=HNO4,0.999844264;I2HNO4=HNO4,0.000155736;I1DMSO=DMSO,0.999844264;I2DMSO=DMSO,0.000155736;I1CH3OH=CH3OH,0.999377057;I2CH3OH=CH3OH,0.000622943;I1HONO=HONO,0.999844264;I2HONO=HONO,0.000155736;I1NH2OH=NH2OH,0.999532793;I2NH2OH=NH2OH,0.000467207;I1HOCl=HOCl,0.999844264;I2HOCl=HOCl,0.000155736;I1H2O2=H2O2,0.999688529;I2H2O2=H2O2,0.000311471;I1NHOH=NHOH,0.999688529;I2NHOH=NHOH,0.000311471;I1NH2=NH2,0.999688529;I2NH2=NH2,0.000311471;I1HBr=HBr,0.999844264;I2HBr=HBr,0.000155736;I1HOBr=HOBr,0.999844264;I2HOBr=HOBr,0.000155736;I1DMS=DMS,0.999844264;I2DMS=DMS,0.000155736;I1HNO=HNO,0.999844264;I2HNO=HNO,0.000155736;I1HNO3=HNO3,0.999844264;I2HNO3=HNO3,0.000155736;I1CH3OOH=CH3OOH,0.999377057;I2CH3OOH=CH3OOH,0.000622943;I1H2=H2,0.999648044;I2H2=H2,0.000351956;I1H=H,0.999844264;I2H=H,0.000155736;I1HCHO=HCHO,0.999688529;I2HCHO=HCHO,0.000311471;I1CH3O2=CH3O2,0.999532793;I2CH3O2=CH3O2,0.000467207;I1HO2=HO2,0.999844264;I2HO2=HO2,0.000155736;I1HCl=HCl,0.999844264;I2HCl=HCl,0.000155736;I1OH=OH,0.999844264;I2OH=OH,0.000155736;",
+! No time coordinate in restart files
+!i_t       = 25,
+/
+! Import from first spin-up
+! All other variables
+&regrid
+infile    = "$INPUTDIR_MESSY/tracer/EMAC-x-03-su_0033_restart_0002_tracer_gp.nc",
+i_latm    = "lat",          ! name of latitude axis in input file
+i_latr    = -90.0,90.0,     ! range of latitude axis in input file 
+i_lonm    = "lon",          ! name of longitude axis in input file 
+i_lonr    = 0.0,360.0,      ! range of longitude axis in input file 
+! No time coordinate in restart files
+!i_timem   = "time",         ! name of time axis in input file
+!i_hyai    = "hyai",     ! name of hybrid A coefficients in input file
+i_hyam    = "hyam",     ! name of hybrid A coefficients in input file
+!i_hybi    = "hybi",     ! name of hybrid B coefficients in input file
+i_hybm    = "hybm",     ! name of hybrid B coefficients in input file
+! i_ps      = "aps",
+i_ps      = "101325.0 Pa",
+i_p0      = "1. Pa",        ! value of reference pressure in input file
+pressure  = F,
+! No time coordinate in restart files
+!i_t       = 25,
+/

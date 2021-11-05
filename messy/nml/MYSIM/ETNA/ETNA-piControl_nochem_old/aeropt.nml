@@ -1,0 +1,89 @@
+! -*- f90 -*-
+
+&CTRL
+! lookup tables for SW and LW
+READ_LUT_SETS(1) = 1, '$INPUTDIR_MESSY/aeropt/aeropt_sw_1.59_1.59_2.00.nc', '$INPUTDIR_MESSY/aeropt/aeropt_lw_1.59_1.59_2.00.nc'
+!
+!READ_LUT_SETS(2) = 2, '$INPUTDIR_MESSY/aeropt/aeropt_sw_1.59_1.59_1.70.nc', '$INPUTDIR_MESSY/aeropt/aeropt_lw_1.59_1.59_1.70.nc'
+!
+/
+
+&CPL
+!
+! ##############################################################################
+! Syntax:
+! ------------------------------------------------------------------------------
+! READ_AERO_SETS(N) = asetname, l_tracer, tsetname, exclspec, excltrac, l_calcss,
+!                     l_extmix, amodname, wradname, dradname, anumname, lutnum,
+!                     lcalc_jval, dwavelen
+! ------------------------------------------------------------------------------
+! with:
+! ------------------------------------------------------------------------------
+! asetname (string):   name of aerosol set (arbitrary, but has to be unique)
+! l_tracer (logical):  T -> aerosol set contains tracers
+!                      F -> aerosol set does not contain tracers
+! tsetname (string):   name of tracer set (seems to have no meaning at present)
+! exclspec (string):   species to exclude from the optical properties
+!                      calculations (in all modes); separate multiple species
+!                      by `;'
+! excltrac (string):   tracers to exclude from the optical properties
+!                      calculations (i.e. species in individualt modes); separate
+!                      multiple species by `;'
+! l_calcss (logical):  T -> calculate SS from Na and Cl tracers
+!                      F -> use SS tracer supplied by aerosol submodel
+! l_extmix (logical):  T -> treat aerosol species as externally mixed in certain
+!                           modes
+!                           WARNING: This does currently not work with MADE3!
+!                      F -> treat aerosol species as internally mixed in all
+!                           modes
+! amodname (string):   name of aerosol submodel channel
+! wradname (string):   name of aerosol submodel channel object for wet radius
+! dradname (string):   name of aerosol submodel channel object for dry radius
+! anumname (string):   name of aerosol submodel channel object for aerosol number
+!                      concentration (set if no number tracers available)
+! lutnum (integer):    number (i.e. first entry) of corresponding entry in
+!                      `READ_LUT_SETS' (see CTRL namelist)
+! lcalc_jval(logical): T -> calculate optical properties for JVAL
+!                      F -> do not calculate optical properties for JVAL
+! dwavelen (double):   array of wavelengths (in 10-6 m) at which to output
+!                      optical properties (max. number: 16)
+! ##############################################################################
+!POS.  READ_AERO_SETS()
+! --   ----------------
+!  1   CHARACTER        'name', 
+!  2   LOGICAL          tracer, 
+!  3   CHARACTER        'tracer_set',
+!  4   CHARACTER        'exclude_str_full',
+!  5   CHARACTER        'exclude_str_spec',
+!  6   LOGICAL          lcalc_seasalt,
+!  7   LOGICAL          lextmix,
+!  8   CHARACTER        'aermodel',
+!  9   CHARACTER        'wetradius',
+! 10   CHARACTER        'dryradius',
+! 11   CHARACTER        'aernumber',
+! 12   INTEGER          lut_number,
+! 13   LOGICAL          lcalc_jval 
+! 14   REAL(dp)         diag_wavelength
+!
+!                   1,            2,  3,  4,   5, 6, 7,  8,  9, 10, 11, 12, 13,
+!
+READ_AERO_SETS(1) = 'TANRE_STD' , F, '', '',  '', T, T, '', '', '', '',  0,  T, 0.44, 0.55, 0.87,
+!
+!READ_AERO_SETS(2) = 'GMXE'      , T, '', 'RGM;PASSAER01;Pb210', '', T, F, 'gmxe_gp', 'wetradius', 'dryradius', '', 1, T, 0.44,0.55,0.87,
+!
+!READ_AERO_SETS(3) = 'TEST'      , T, '', 'RGM', '', T, T, 'gmxe_gp', 'wetradius', 'dryradius', '', 2, F, 0.55,1.0
+!
+/
+
+&CPL_IMP
+! last integer indicates the dimensions of the dataset (without time dimension)
+!READ_INPUT_SETS(1) = 'CCMI_CLIM', 'import_grid', 'OPT-LW_AOD_LW', 'import_grid', 'OPT-SW_AOD_SW', 'import_grid', 'OPT-SW_GAMMA_SW', 'import_grid', 'OPT-SW_OMEGA_SW',3,
+!
+/
+
+&CPL_MERGE
+!
+!READ_MERGE_SETS(1) = 'MERGED', 'TANRE_STD', 1.0, 'CCMI_CLIM', 1.0, 60000.0, 30000.0,
+!READ_MERGE_SETS(1) = 'MERGED', 'GMXE', 1.0, 'CCMI_CLIM', 1.0, 50000.0, 30000.0,
+!
+/

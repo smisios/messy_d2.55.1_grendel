@@ -1,0 +1,70 @@
+// -*- kpp -*- kpp mode for emacs
+
+// Author: Domenico Taraborrelli 
+
+// Syntax of this replacement file is similar to kpp syntax, but...
+// - Only the commands "#REPLACE" and "#ENDREPLACE" are allowed.
+// - Comments must start with "//", curly braces ("{}") cannot be used here.
+
+// known limitation:
+// - The reaction number (e.g. "<G9876>") in the input equation file
+//   (gas.eqn) must be the first (non-whitespace) item in the line. If it is
+//   preceded by a comment in curly braces, replace.awk will not be able to
+//   find it.
+
+// Apply by running xmecca1 or using:
+//gawk -f replace1.awk -v infile=gas.eqn.org -v outfile=gas.eqn gas.rpl
+
+// O3s diagnostic:
+#REPLACE <>
+<G01Diag> O3s            = LO3s        : {%StTrG} k_O3s; {&1714}
+#ENDREPLACE
+
+// add new reactions, specify an empty reaction number
+
+//#REPLACE <G3201>
+//<n>  NO   + HO2      = HOONO    {+ 33.8 kJmol} : {%UpStTrG} 3.3E-12*EXP(270./temp){§1.15}; {&2626}
+////<a> NO   + HO2      = HOONO  : {%StTrG} k1w_NO_HO2; {&1555}
+////<b> NO   + HO2      = HNO3   : {%StTrG} k2w_NO_HO2; {&&2661}
+//#ENDREPLACE
+
+// Using JPL recommendations
+//#REPLACE <G3202>
+//<a> NO2  + OH  {+M} = HNO3          : {%UpStTrG} k_3rd(temp,cair,1.8E-30,3.0,2.8E-11,0.,0.6){§1.3}; {&2626}
+//<b> NO2  + OH  {+M} = HOONO         : {%UpStTrG} k_3rd(temp,cair,9.1E-32,3.9,4.2E-11,0.5,0.6){§1.5}; {&2626}
+//<c> HOONO {+M}      = OH + NO2      : {%UpStTrG} k_3rd(temp,cair,9.1E-32,3.9,4.2E-11,0.5,0.6){§1.5}/(3.5E-27*EXP(10135./temp)); {&1759,2626}
+//<d> HOONO + OH      = NO   + H2O   : {%StTrG} 1.3E-12{§1.3}*EXP(380./temp); {&2626} // Analogously to HNO4 + OH
+//<e> HOONO + hv      = .667 NO + .667 HO2 + .333 NO2 + .333 OH : {%StTrGJ} jx(ip_HNO4){§}; {&SGN} // Analogously to HNO4 + hv
+//#ENDREPLACE
+
+// this has been suggested by Ch. Bruehl, maybe with an original rate coefficient prior to JPL-2011
+// #REPLACE <G9200>
+// <a>  SO2    + OH    = SO3 + HO2 : {%TrStG}   k_3rd(temp,cair,3.E-31,3.3,1.5E-12,0.,0.6); {&1555}
+// #ENDREPLACE
+//
+// this is the original reaction in gas_mim1.eqn (JPL-2011):
+// <G9200>  SO2 + OH {+O2+H2O} = H2SO4 + HO2  : {%StTrG}   k_3rd(temp,cair,3.3E-31,4.3,1.6E-12,0.,0.6){§1.1}; {&2626}
+// keeping the same reaction rate coefficient splitting the reaction yields:
+#REPLACE <G9200>
+<a>  SO2    + OH    = SO3 + HO2 : {%StTrG}   k_3rd(temp,cair,3.3E-31,4.3,1.6E-12,0.,0.6){§1.1}; {&2626}
+#ENDREPLACE
+
+// compared to CCMI-aero-01.rpl 
+// - G9202, J9002 and J9003 are new
+// - <J9001>  SO2 + hv  = SO  + O3P   : {%TrStGJ} JX(ip_SO2); {&SGN}
+//   not used, because J_SO2 not correct, apply scaled J_OCS instead
+//
+#REPLACE <>
+<G9100>  SO + O2   = SO2 + O3P   : {%TrStG} 1.25e-13*exp(-2190/temp); {&2626}
+<G9101>  SO + O3   = SO2 + O2    : {%TrStG} 3.4e-12*exp(-1100/temp); {&2626}
+<G9102>  S  + O2   = SO  + O3P   : {%TrStG} 2.3e-12; {&2626}
+<G9201>  SH + O2   = OH  + SO    : {%TrStG} 4.e-19; {&2626}
+<G9202>  SO3 + H2O = H2SO4       : {%TrStG} 8.5e-41*exp(6540./temp)*C(ind_H2O); {&&1555}
+<G9406>  OCS + OH  = SH  + CO2   : {%TrStG} 1.1e-13*exp(-1200./temp); {&2626}
+<G9407>  OCS + O3P = CO  + SO    : {%TrStG} 2.1e-11*exp(-2200./temp); {&2626}
+<J9000>  OCS + hv  = CO  + S     : {%TrStGJ} JX(ip_OCS); {&SGN}
+<J9001>  SO2 + hv  = SO  + O3P   : {%TrStGJ} 60.*JX(ip_OCS); {&SGN}
+<J9002>  SO3 + hv   = SO2 + O3P  : {%TrStGJ} JX(ip_SO3); {&SGN}
+<J9003>  H2SO4 + hv = SO3 + H2O  : {%TrStGJ} JX(ip_H2SO4); {&SGN}
+#ENDREPLACE
+

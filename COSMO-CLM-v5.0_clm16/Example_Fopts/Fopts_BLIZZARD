@@ -1,0 +1,50 @@
+#
+#  change compiler, options and libraries according to your needs
+#  check the COMFLGs in Dependencies!!!!!
+#
+#########
+#  blizzard (IBM)
+#########
+
+# modules and libraries
+#
+MPIINC  = -I/usr/lpp/ppe.poe/include -I/usr/lpp/ppe.poe/include/thread64
+LPATH   = -L/usr/lib -L/sw/aix61/netcdf-4.1.1-rc2/lib
+OTHLIBS1= -L/usr/lib -lessl -lmass -L/sw/aix53/lapack-3.2.0/lib -llapack -lblas
+#
+# might be possible that the following libs are needed in context of hdf5 format and data compression within this format
+#
+OTHLIBS2= -L/sw/aix61/hdf5-1.8.4-patch1/lib -lhdf5_hl -lhdf5  -L /sw/aix53/zlib-1.2.3/lib -lz -L/sw/aix53/szip-2.1/lib -lsz
+LIBS    =  -lnetcdf
+#
+NC_INCLUDE  =  -I/sw/aix61/netcdf-4.1.1-rc2/include
+#
+# GRIB_LIB defines a working GRIBLIB
+#
+GRIB_LIB = /pf/b/b364034/Programme/Libs/DWD_libgrib1/DWD-libgrib1_061107/libgrib1.a
+#
+# standard binary
+PROGRAM      = lmparbin
+#
+# compiler, options and libraries
+#
+F90          = mpxlf95_r $(MPIINC) ${NC_INCLUDE} -I$(SRCDIR)
+#
+# it is recommended to use optimization level -O2 instead of -O3 or even higher; an unexplainable crash of CCLM might occur with -O3 or higher
+# experience shows that there is no loss of performnce when -O2 is used
+#
+COMFLG        = -c -q64 -qsuffix=cpp=f90 -qmaxmem=-1 -O2 -qstrict -qarch=pwr6 -qtune=pwr6 -qextname -WF,-D__AIX,-D_AIX,-DIBM,-D__ibm__,-Dextname,-D_EXTNAME,-DNETCDF,-DCLM
+
+COMFLG1      = $(COMFLG)
+COMFLG2      = $(COMFLG)
+COMFLG3      = $(COMFLG)
+#
+# Compile src_setup_vartab.f90 with optimization level -O0; speeds up the compilation very much!!
+#
+COMFLG4       = -c -q64 -qsuffix=cpp=f90 -qmaxmem=-1 -O0 -qarch=pwr6 -qtune=pwr6 -qextname -WF,-D__AIX,-D_AIX,-DIBM,-D__ibm__,-Dextname,-D_EXTNAME,-DNETCDF,-DCLM
+#
+LDSEQ        = mpxlf95_r
+LDPAR        = mpxlf95_r
+#
+LDFLG        = -q64 -qextname  -I$(SRCDIR)
+LIB          = ${LPATH} ${GRIB_LIB} ${LIBS} ${OTHLIBS1} ${OTHLIBS2}

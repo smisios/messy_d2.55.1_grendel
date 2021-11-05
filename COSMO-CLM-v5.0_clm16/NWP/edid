@@ -1,0 +1,57 @@
+#!/bin/ksh
+#
+set -e          # Abbruch bei Fehler
+#
+#    Defaulteinstellungen:
+#
+EDITOR=${EDITOR:-vi}
+HOMEDIR=${HOMEDIR:-$HOME}
+LMDIR=${LMDIR:-$HOME/cosmo_131108_5.00}
+SRCDIR=${SRCDIR:-$LMDIR/src}
+WORKDIR=${WORKDIR:-$LMDIR/work}
+#
+#    Parameter abfragen
+#
+if [ ${OPTIND} -eq 1 ]
+then
+  DECK=${1:-${DECK}}
+fi
+#
+#    Pruefen, ob der Arbeitskatalog vorhanden ist:
+#
+if [ ! -d ${WORKDIR} ]
+then
+  echo "Der Arbeitskatalog <${WORKDIR}> existiert nicht!"
+  exit 202
+fi
+#
+#    Abfrage des Decks:
+#
+while [ -z "${DECK}" ]
+do
+  read DECK?"Name der Datei? "
+done
+#
+#    Datei ins Arbeitsverzeichnis kopieren
+#
+if [ ! -f ${WORKDIR}/${DECK} ]
+then
+  if [ -f ${SRCDIR}/${DECK} ]
+  then
+    (cp ${SRCDIR}/${DECK} ${WORKDIR} )
+  else 
+    read DUMMY?"Die Datei <${DECK}> existiert nicht! Soll sie erzeugt werden? (j/n) "
+    if [ "${DUMMY}" != "j" ]
+    then
+      exit 203
+    fi
+  fi
+fi
+#
+#
+#    Datei editieren
+#
+( cd ${WORKDIR} && ${EDITOR} ${DECK} )
+#
+#
+#    Ende von <edid>

@@ -1,0 +1,479 @@
+# 1 "../../messy/bmil/messy_main_mpi_bi.f90"
+
+! **************************************************************************
+MODULE messy_main_mpi_bi
+! **************************************************************************
+
+  USE messy_main_constants_mem, ONLY: dp, sp, i4, i8, iouerr
+
+
+
+  USE mo_mpi,           ONLY: p_parallel_io               &  ! LOGICAL
+                            , p_io, p_pe, p_nprocs        &  ! INTEGER
+                            , p_bcast                     &  ! SUBROUTINES
+                            , p_send, p_recv, p_sendrecv  &  ! SUBROUTINES
+                            , p_all_comm                  &  ! INTEGER
+                            , p_abort, p_parallel         &
+                            , p_sum                       &  ! FUNCTION
+                            , p_set_communicator          &  ! mz_ab_20100307+
+                            , p_barrier                   &  ! mz_ab_20100518
+                            , npes                        &  ! um_ak_20130502
+                            , p_isend, p_irecv, p_wait    &  ! mz_ht_20140801
+                            , p_max, p_lor
+
+
+  USE mo_mpi,           ONLY: p_error, p_real          ! um_ak_20130502
+
+
+
+! ### ADDITINAL REQUESTS ...
+
+
+# 33
+
+
+
+
+! NON-1; TO BE REPLACED BY error_bi and info_bi from BLATHER
+  USE mo_exception,     ONLY: finish, message                ! SUBROUTINES
+! DECOMPOSITION
+  USE mo_decomposition,    ONLY: dcg => global_decomposition       &
+                               , dcl => local_decomposition
+
+! TRANSFORMATION
+  USE mo_transpose,        ONLY: gather_gp, scatter_gp, indx, reorder &
+                               , gather_sa, scatter_sa  &
+                               , gather_sp, scatter_sp
+  USE mo_tr_gather,        ONLY: gather_field
+  USE mo_tr_allgather,     ONLY: allgather_field
+
+
+# 53
+
+
+
+  USE messy_mpiom_mem_e5,  ONLY:  gather_arr, scatter_arr &
+                               ,  allgather_arr
+
+
+# 64
+
+
+# 85
+
+
+# 96
+
+
+! op_bk_20140116+
+# 131
+
+! ... defined(ICON)
+! op_bk_20130828-
+
+
+! ######################################################################
+  IMPLICIT NONE
+  PUBLIC
+  SAVE
+! ######################################################################
+
+! op_pj_20121001+
+  INTERFACE p_allgather
+     MODULE PROCEDURE p_allgather_2d1d
+     MODULE PROCEDURE p_allgather_3d2d ! op_pj_20160408
+     MODULE PROCEDURE p_allgather_4d3d
+  END INTERFACE
+  INTERFACE p_scatter
+     MODULE PROCEDURE p_scatter_4d3d
+  END INTERFACE
+! op_pj_20121001-
+
+# 164
+
+
+
+   PUBLIC :: dcl  ! um_ak_20120601
+   PUBLIC :: dcg  ! um_ak_20130618
+   PUBLIC :: p_pe ! um_ak_20120601
+
+
+# 209
+
+
+# 218
+
+
+! op_bk_20170223+
+# 293
+
+! op_bk_20170223-
+
+# 298
+
+
+!#if defined(CESM1) && defined(SPMD)
+!#define NOMPI
+!#endif
+!#ifdef NOMPI
+# 322
+
+!#endif
+
+# 388
+
+! ... (defined COSMO) || defined(BLANK) || defined(CESM1) || defined(VERTICO)
+
+# 409
+
+
+! ######################################################################
+ CONTAINS
+! ######################################################################
+
+! ############################################################################
+! ############################################################################
+
+! ############################################################################
+! ############################################################################
+
+! ############################################################################
+! ############################################################################
+# 463
+
+! ############################################################################
+! ############################################################################
+
+! ############################################################################
+! ############################################################################
+# 4449
+
+! ############################################################################
+! ############################################################################
+
+!==============================================================================
+!==============================================================================
+!==============================================================================
+!==============================================================================
+! op_pj_20121001+
+!------------------------------------------------------------------------------
+SUBROUTINE p_allgather_2d1d(recvbuf, sendbuf, comm)
+
+  USE messy_main_constants_mem, ONLY: dp
+
+  USE mo_mpi, ONLY: p_real_dp                      ! op_pj_20121001
+
+# 4467
+
+# 4470
+
+# 4473
+
+# 4476
+
+
+  IMPLICIT NONE
+
+! I/O
+  REAL(DP), DIMENSION(:,:), INTENT(OUT) :: recvbuf
+  REAL(DP), DIMENSION(:),   INTENT(IN)  :: sendbuf
+  INTEGER,  OPTIONAL,       INTENT(IN)  :: comm
+
+! LOCAL
+
+  INTEGER :: p_error
+  INTEGER :: p_comm
+
+  IF (PRESENT(comm)) THEN
+     p_comm = comm
+  ELSE
+     p_comm = p_all_comm
+  ENDIF
+
+!!$  CALL MPI_ALLGATHER(sendbuf, SIZE(sendbuf),   p_real_dp, &
+!!$                     recvbuf, SIZE(recvbuf,1), p_real_dp, &
+!!$                     p_comm, p_error)
+  CALL MPI_GATHER(sendbuf, SIZE(sendbuf),   p_real_dp, &
+                  recvbuf, SIZE(recvbuf,1), p_real_dp, &
+                  p_io, p_comm, p_error)
+  CALL MPI_BCAST(recvbuf, SIZE(recvbuf), p_real_dp, p_io, p_comm, p_error)
+# 4505
+
+
+END SUBROUTINE p_allgather_2d1d
+!------------------------------------------------------------------------------
+! op_pj_20121001-
+! op_pj_20121027+
+!------------------------------------------------------------------------------
+SUBROUTINE p_allgather_4d3d(recvbuf, sendbuf, comm)
+
+  USE messy_main_constants_mem, ONLY: dp
+
+  USE mo_mpi, ONLY: p_real_dp                      ! op_pj_20121001
+
+# 4520
+
+# 4523
+
+# 4526
+
+
+  IMPLICIT NONE
+
+! I/O
+  REAL(DP), DIMENSION(:,:,:,:), INTENT(OUT) :: recvbuf
+  REAL(DP), DIMENSION(:,:,:),   INTENT(IN)  :: sendbuf
+  INTEGER,  OPTIONAL,           INTENT(IN)  :: comm
+
+! LOCAL
+
+  INTEGER :: p_error
+  INTEGER :: p_comm
+
+  IF (PRESENT(comm)) THEN
+     p_comm = comm
+  ELSE
+     p_comm = p_all_comm
+  ENDIF
+
+  CALL MPI_ALLGATHER(sendbuf, SIZE(sendbuf)                , p_real_dp, &
+                     recvbuf, SIZE(recvbuf)/SIZE(recvbuf,4), p_real_dp, &
+                     p_comm, p_error)
+!!$  CALL MPI_GATHER(sendbuf, SIZE(sendbuf),                 p_real_dp, &
+!!$                  recvbuf, SIZE(recvbuf)/SIZE(recvbuf,4), p_real_dp, &
+!!$                  p_io, p_comm, p_error)
+!!$  CALL MPI_BCAST(recvbuf, SIZE(recvbuf), p_real_dp, p_io, p_comm, p_error)
+# 4555
+
+
+END SUBROUTINE p_allgather_4d3d
+!------------------------------------------------------------------------------
+! op_pj_20121027-
+! op_pj_20160408+
+!------------------------------------------------------------------------------
+SUBROUTINE p_allgather_3d2d(recvbuf, sendbuf, comm)
+
+  USE messy_main_constants_mem, ONLY: dp
+
+  USE mo_mpi, ONLY: p_real_dp
+
+# 4570
+
+# 4573
+
+# 4576
+
+
+  IMPLICIT NONE
+
+! I/O
+  REAL(DP), DIMENSION(:,:,:), INTENT(OUT) :: recvbuf
+  REAL(DP), DIMENSION(:,:),   INTENT(IN)  :: sendbuf
+  INTEGER,  OPTIONAL,         INTENT(IN)  :: comm
+
+! LOCAL
+
+  INTEGER :: p_error
+  INTEGER :: p_comm
+
+  IF (PRESENT(comm)) THEN
+     p_comm = comm
+  ELSE
+     p_comm = p_all_comm
+  ENDIF
+
+  CALL MPI_ALLGATHER(sendbuf, SIZE(sendbuf)                , p_real_dp, &
+                     recvbuf, SIZE(recvbuf)/SIZE(recvbuf,3), p_real_dp, &
+                     p_comm, p_error)
+!!$  CALL MPI_GATHER(sendbuf, SIZE(sendbuf),                 p_real_dp, &
+!!$                  recvbuf, SIZE(recvbuf)/SIZE(recvbuf,3), p_real_dp, &
+!!$                  p_io, p_comm, p_error)
+!!$  CALL MPI_BCAST(recvbuf, SIZE(recvbuf), p_real_dp, p_io, p_comm, p_error)
+# 4605
+
+
+END SUBROUTINE p_allgather_3d2d
+!------------------------------------------------------------------------------
+! op_pj_20160408-
+! op_pj_20121027+
+!------------------------------------------------------------------------------
+SUBROUTINE p_scatter_4d3d(sendbuf, recvbuf, comm)
+
+  USE messy_main_constants_mem, ONLY: dp
+
+  USE mo_mpi, ONLY: p_real_dp                      ! op_pj_20121001
+
+# 4620
+
+# 4623
+
+# 4626
+
+
+  IMPLICIT NONE
+# 4631
+
+
+! I/O
+  REAL(DP), DIMENSION(:,:,:,:), INTENT(IN)  :: sendbuf
+  REAL(DP), DIMENSION(:,:,:),   INTENT(OUT) :: recvbuf
+  INTEGER,  OPTIONAL,           INTENT(IN)  :: comm
+
+! LOCAL
+
+  INTEGER :: p_error
+  INTEGER :: p_comm
+
+  IF (PRESENT(comm)) THEN
+     p_comm = comm
+  ELSE
+     p_comm = p_all_comm
+  ENDIF
+
+! op_pj_20130606+
+!!$  CALL MPI_Scatter(sendbuf, SIZE(sendbuf)/SIZE(sendbuf,4), p_real_dp, &
+  CALL MPI_Scatter(sendbuf, SIZE(recvbuf), p_real_dp, &
+! op_pj_20130606-
+                   recvbuf, SIZE(recvbuf), p_real_dp, p_io, &
+                   p_comm, p_error)
+# 4657
+
+
+END SUBROUTINE p_scatter_4d3d
+!------------------------------------------------------------------------------
+! op_pj_20121027-
+
+!------------------------------------------------------------------------------
+SUBROUTINE get_node_ids(status, comm, id)
+
+
+
+  USE mpi
+
+
+  USE messy_main_tools, ONLY: unique
+
+  IMPLICIT NONE
+  INTRINSIC :: TRIM, ADJUSTL
+
+
+# 4679
+
+
+
+! I/O
+  INTEGER,                            INTENT(OUT) :: status
+  INTEGER,                            INTENT(IN)  :: comm ! communiator
+  INTEGER, DIMENSION(:), ALLOCATABLE, INTENT(OUT) :: id  ! node-IDs
+
+! LOCAL
+  CHARACTER(LEN=*), PARAMETER :: substr = 'get_node_ids'
+  INTEGER :: npes
+  INTEGER :: p_error
+  INTEGER :: my_pe
+  INTEGER :: len, i, j
+
+  CHARACTER(LEN=MPI_MAX_PROCESSOR_NAME), DIMENSION(:), ALLOCATABLE :: names
+  CHARACTER(LEN=MPI_MAX_PROCESSOR_NAME), DIMENSION(:), ALLOCATABLE :: uniqnames
+  CHARACTER(LEN=MPI_MAX_PROCESSOR_NAME)  :: local_name
+# 4700
+
+
+
+  CALL MPI_COMM_SIZE(comm, npes, p_error)
+  IF (p_error /= MPI_SUCCESS) THEN
+     WRITE(iouerr,*) 'ERROR: MPI_COMM_SIZE failed (',substr,')'
+     status = 1
+     RETURN
+  END IF
+  CALL MPI_COMM_RANK(comm, my_pe, p_error)
+  IF (p_error /= MPI_SUCCESS) THEN
+     IF (p_error == MPI_ERR_COMM) THEN
+! current taks is not a valid rank in comm
+        my_pe = -1
+     ELSE
+        WRITE(iouerr,*) 'ERROR: MPI_COMM_RANK failed (',substr,')'
+        status = 1
+        RETURN
+     END IF
+  END IF
+# 4724
+
+
+!write(*,*) substr,': PE = ',my_pe, ' out of ', npes-1
+
+  ALLOCATE(id(0:npes-1))
+  ALLOCATE(names(0:npes-1))
+
+
+  CALL MPI_GET_PROCESSOR_NAME(local_name, len, p_error )
+  IF (p_error /= MPI_SUCCESS) THEN
+     WRITE(iouerr,*) 'ERROR: MPI_GET_PROCESSOR_NAME failed (',substr,')'
+     status = 1
+     RETURN
+  END IF
+# 4741
+
+
+!write(*,*) substr,': ',my_pe, names(my_pe)
+
+
+  IF (my_pe >= 0) THEN
+     CALL MPI_ALLGATHER(local_name, MPI_MAX_PROCESSOR_NAME, MPI_CHARACTER, &
+                        names(:),     MPI_MAX_PROCESSOR_NAME, MPI_CHARACTER, &
+                        comm, p_error)
+     IF (p_error /= MPI_SUCCESS) THEN
+        WRITE(iouerr,*) 'ERROR: MPI_ALLGATHER failed (',substr,')'
+        status = 1
+        RETURN
+     END IF
+     names(my_pe) = local_name
+  END if
+# 4759
+
+
+! create a list of unique node names
+  CALL unique(names, uniqnames)
+
+  DO i=0, npes-1
+     DO j=1, SIZE(uniqnames)
+        IF ( TRIM(ADJUSTL(names(i))) == TRIM(ADJUSTL(uniqnames(j))) ) THEN
+           id(i) = j-1
+           EXIT
+        END IF
+     END DO
+  END DO
+
+! DEBUG OUTPUT
+  IF (my_pe == 0) THEN
+     DO i=0, npes-1
+        WRITE(*,*) substr,': PE = ',i ,'; node = ', TRIM(ADJUSTL(names(i))) &
+             , '; id = ', id(i)
+     END DO
+  END IF
+
+! FREE MEMORY
+  DEALLOCATE(names, uniqnames)
+
+  status = 0
+
+END SUBROUTINE get_node_ids
+!------------------------------------------------------------------------------
+
+# 5276
+
+
+!==============================================================================
+!==============================================================================
+!==============================================================================
+!==============================================================================
+# 6360
+
+!==============================================================================
+!==============================================================================
+!==============================================================================
+!==============================================================================
+
+! **************************************************************************
+END MODULE messy_main_mpi_bi
+! **************************************************************************

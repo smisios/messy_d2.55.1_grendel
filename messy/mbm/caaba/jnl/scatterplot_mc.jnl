@@ -1,0 +1,18 @@
+let q = ($1)
+let p = ($2)[d=1]
+GO regresst_rs
+say ($2) slope = `slope,prec=3` intercep = `intercep,prec=3` rsquare = `rsquare,prec=3`
+DEFINE SYMBOL rsquare = `rsquare,prec=3`
+
+! define the threshold above which the plot will be shown:
+IF `(rsquare GT 0.1)` THEN
+  LET lgrange = 1-INT(LOG(p[t=@MAX]))
+  DEFINE SYMBOL lgrange = `lgrange`
+  LET/TITLE="($2)*1E($lgrange) (r2=($rsquare))" p_scaled = p*10^lgrange
+  GO nextviewport
+  PLOT/SET/VS p_scaled, q
+  GO ppl_mylayout
+  PPL PLOT
+  PLOT/NOLABEL/TITLE="r2=($rsquare)"/LINE/VS/OVER p_scaled, qhat
+ENDIF
+

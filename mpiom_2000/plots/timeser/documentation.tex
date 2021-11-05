@@ -1,0 +1,434 @@
+%This document was written by using TeXShop Version 1 (v1.43) for Mac
+\documentclass[12pt, english]{article}
+\usepackage[T1]{fontenc}
+\usepackage[applemac]{inputenc}
+\usepackage[ngerman]{babel} 
+\usepackage{geometry}
+\usepackage{amsmath} 
+\usepackage{amsthm} 
+\usepackage{amssymb}
+\geometry{a4paper}
+\usepackage{graphicx}
+%\usepackage{epstopdf}
+\usepackage{setspace}
+\DeclareGraphicsRule{.tif}{png}{.png}{`convert #1 `basename #1 .tif`.png}
+
+\begin{document}
+
+\begin{center}
+\thispagestyle{empty}
+{\LARGE \bf 
+ Max-Planck-Institute for Meteorology \\
+ \LARGE in Hamburg \\ [16ex]
+\LARGE $\mathbf{tsplot}$ \\ [1ex]
+\Large a tool to plot time series data \\
+
+\Large Documentation \\
+[18ex] 
+\Large Frank Ršske \\
+frank.roeske@zmaw.de \\
+August, 2007 \\
+modified by Helmuth Haak\\
+November 2007\\
+}
+\end{center}
+\newpage
+
+\onehalfspacing
+%\addtocounter{page}{-1}
+
+%\tableofcontents
+
+%\section{Description of $\mathbf{tsplot}$}
+{
+%$\mathbf{tsplot}$ supports one as well as two hyphen options.
+%Both, {\tt tsplot $--$help} and {\tt tsplot $-$h} produce the same following help text:\\
+
+{\tt
+\noindent $\mathbf{NAME}$ \\
+tsplot - To plot time series \\
+ \\
+$\mathbf{SYNOPSIS}$ \\
+$\mathbf{tsplot}$ [\underline{OPTIONS}] [\underline{FILE(S)}] \\
+ \\
+$\mathbf{DESCRIPTION}$ \\
+$\mathbf{tsplot}$ generates xy-plots in \underline{PostScript} from MPIOM data by using GMT tools. \\
+ \\
+\underline{OPTIONS} \\
+--help,{~ }-h         Print this text. \\
+--codes,  -c \underline{CODES}  Codes: Commas for lists and hyphens for ranges. \\
+\indent \indent \indent \indent \indent \indent No overlap. (Default: '1') \\
+--resol,  -r \underline{RESOL}  Time resolution: 0 for yearly, 1 for monthly \\
+\indent \indent \indent \indent \indent \indent and 2 for daily. (Default: '1') \\
+\indent \indent \indent \indent \indent  \indent It is dependent on what the FILE(S) allow(s) for. \\
+--nplots,-n \underline{NPLOTS}  Number of plots per page  (Default: '2') \\
+--xticks,-x \underline{XTICKS}  Tickmarks on the x-axis   (Default: '10') \\
+--yticks,-y \underline{YTICKS}  Tickmarks on the y-axis   (Default: '10') \\
+--suppr, -s         Suppress plotting variable names. \\
+--gaps,{~ }-g         Look for gaps. \\
+--vfile, -v \underline{FILE}    File of variable names    \\
+\indent \indent \indent \indent \indent  \indent (Default: 'TSVAR' is created from mpiom.partab) \\
+--dfile, -d \underline{FILE}    File of description texts \\
+\indent \indent \indent \indent \indent  \indent (Default: 'TSDESC' is created from mpiom.partab) \\
+--ufile, -u \underline{FILE}    File of physical units \\
+ \indent \indent \indent \indent \indent  \indent  (Default: 'TSUNIT' is created from mpiom.partab) \\
+\underline{FILE(S)} \indent \indent \indent Up to ten file(s) of time series data written in the \\
+\indent \indent \indent \indent \indent{~ }EXTRA format. Names must include just one '\_'. \\
+\indent \indent \indent \indent \indent{~ }(Default: 'ZEITSER.ext\_'). \\
+\indent \indent \indent \indent \indent{~ }Characters after '\_' are interpreted as experiment names. \\
+\indent \indent \indent \indent \indent{~ }Experiment names may not contain '\_0', '\_1' or '\_2'. \\
+
+
+\newpage
+
+\noindent If \underline{OPTIONS} are not given, $\mathbf{tsplot}$ inquires them interactively \\
+and shows the information extracted from the files. \\
+At least one \underline{OPTION} is necessary to run non-interactively. \\
+}
+
+\noindent \underline{CODES} may be given by a list of numbers separated by commas. The
+list entries may be single numbers or ranges of numbers indicated by
+hyphens. e.g. {\tt 1-4,6,9-11}. The numbers specified that way must occur just
+once and may not overlap.
+
+\noindent \underline{RESOL} may be 0 for yearly, 1 for monthly, and 2 for daily
+resolution. $\mathbf{tsplot}$ examines the \underline{FILE(S)} for their
+resolutions. If they have daily resolution, \underline{RESOL} may be 0, 1, or
+2. If they have monthly resolution, \underline{RESOL} may only be 0 or 1, and
+if they have yearly resolution, \underline{RESOL} may only be 0. If more than
+one file is given, that one with the most coarse resolution determines the
+range allowed for \underline{RESOL}. Dependent on this structure,
+$\mathbf{tsplot}$ decides whether files have to be averaged or not. If the
+file resolution is equal to \underline{RESOL}, a symbolic link is created.
+
+\noindent \underline{NPLOTS} may be any number greater than or equal to 1. It determines
+the number of time series plots on one page. On such a page the plots are
+arranged bottom-up.
+
+\noindent \underline{XTICKS} and \underline{YTICKS} determine the number of tickmarks on
+the x- and y-axis, respectively.  {However}, these numbers are only
+approximations of those really plotted, because they are adjusted to match
+reasonable intervals.
+
+\noindent The {\tt$--$suppr} or {\tt$-$s} option allows to suppress plotting variable
+names that might be interesting for publication purposes. Default is no.
+
+\noindent The {\tt$--$gaps} or {\tt$-$g} option allows to search through the time series
+files for gaps on a yearly base. If gaps are found, the time series are
+decomposed into several subseries. They are plotted independently of each
+other so that disturbing connection lines between those subseries are not
+plotted. Default is no.
+
+\noindent The {\tt$--$vfile} or {\tt$-$v}, {\tt$--$dfile} or {\tt$-$d}, {\tt$--$ufile}
+or {\tt$-$d} options allow to specify three files containing texts needed to
+label the time series plots.  For all options which were described defaults
+are given.
+
+\noindent $\mathbf{tsplot}$ distinguishes an interactive and a non-interactive mode.  If
+\underline{OPTIONS} are not given, the script runs interactively. If at least
+one option is supplied, it runs non- interactively.  This should be preferred
+when the content of the file or the files is not known. However, the script
+extracts information about the files which is shown only in the interactive
+mode. These informations include the first and the last year and if a year is
+not complete, the number of codes and the temporal resolution. If more than
+one file of time series data is given, the script determines the minimum of
+those numbers to account for future changes in the number of codes.
+Furthermore, in the interactive mode the script informs about what it is doing
+at the moment - similar to a verbose mode.
+
+\noindent If \underline{FILE(S)} are not given, the script looks in the current
+directory by default for files whose names begin with {\tt ZEITSER.ext\_}. If
+\underline{FILE(S)} are given, their names must include just one underscore
+sign ( \_ ), because the character string which follows this sign is
+interpreted as experiment name.
+
+\noindent {While} $\mathbf{tsplot}$ is running some intermediate files are created which
+are removed again when the script finishes properly. The names of those files
+consist of the original file name extended by a \_ and a number denoting the
+resolution, followed by another \_ and a number denoting the code. In
+addition, files are created whose names are furthermore extended by \_info,
+\_info2, \_info3, and \_output. The files whose names end on \_info3 can
+further on be extended by another \_ and the subseries number, if gaps were
+encountered.
+
+\noindent In order not to confuse those file names in regard to the temporal resolution,
+the names of the \underline{FILE(S)} may not include \_0, \_1, or
+\_2. Therefore, also the experiment names may not include these three
+character strings.
+
+\noindent Up to ten files are allowed. This somewhat arbitrary limit is linked to the
+way colors are defined. Ten names for colors are used in this order: black,
+red, gold, green, cyan, blue, purple, brown, grey, pink.  }
+
+
+\newpage
+
+\label{tsplot}
+\noindent In $\mathbf{tsplot}$ five GMT tools are used,
+
+\begin{tabular}{ll}
+\\
+gmtset&to set GMT variables \\
+minmax&to determine minima and maxima of the data to be plotted \\
+psbasemap&to draw axis' and labels \\
+psxy&to plot the data \\
+pstext&to plot MPIOM variables, physical units, experiment names. \\
+\\
+\end{tabular}
+
+\noindent These commands produce the file {\tt plot.ps} containing PostScript code. This
+file is controlled by the GMT options {\tt -O} and {\tt -K} which are
+available for all these commands. Option {\tt -O} denotes the overlay mode,
+and option {\tt -K} refers to as the append mode. That GMT command which is
+invoked first, may use only the option {\tt -K}, that one which is invoked
+last, may use only the option {\tt -O}, and all those invoked in between must
+use both options.
+
+\noindent $\mathbf{tsplot}$ has been tested on a Linux machine ('cross') and on a SunOS
+machine ('yang'). Although the Bourne Again Shell (bash) was available on both
+computers, this shell showed different behaviour in regard to reading options
+and the {\tt tr} command. Under Linux the {\tt getopt} command is applied for
+reading options but under SunOS the {\tt getopts} command is used instead. The
+{\tt tr} command is applied in a multiple way to achieve similar behaviour on
+both machines. Also, the GNU {\tt awk} ({\tt gawk}) command is used instead of
+{\tt awk} to provide similar behaviour. {\tt gawk} is needed to calculate real
+numbers, whereas calculating integers is done by the {\tt expr} command.  On
+the Linux machine the GMT version 4.1.4 is applied, whereas on the SunOS
+machine GMT version 4.2 is used instead of version 4.1.3 which showed a
+different behaviour. If $\mathbf{tsplot}$ is ported to a machine other than
+Linux or SunOS, the paths for CDO and GMT have to be changed accordingly and
+the shell commands controlled by the {\tt uname} shell variable should be
+traced carefully.
+
+\newpage
+\section{Timeseries in MPIOM}
+{
+\label{changes}
+\noindent The time series data from MPIOM consist of 151 codes (Summer 2007). These are
+ written {\tt formatted} (TIMESER.asc) and/or {\tt unformatted} (TIMESER.ext)
+ by using the EXTRA format.  A record written in EXTRA format can be read in a
+ FORTRAN program by
+\newline \\ {\tt \indent READ(10) IDATE,ICODE,ILEVEL,NSIZE \\ \indent READ(10)
+ (FIELD(ISIZE),ISIZE=1,NSIZE) \\ } \\ whereas {\tt IDATE} denotes the date,
+ {\tt ICODE} the code, {\tt ILEVEL} the level, and {\tt NSIZE} the size of the
+ record (http://www.mad.zmaw.de/Pingo/downloads.html).\\
+
+\noindent PSEUDO EXTRA : If the user wishes all 151 codes can be written at once in one record. This
+ however violates the principle of the EXTRA format, because one record should
+ be assigned to just one code (see {\tt ICODE}). Therefore, this format is
+ called PSEUDO EXTRA format. For $\mathbf{tsplot}$ to be able to plot time
+ series, the data have to be transposed. Unfortunately, CDO does not support a
+ transpose function. The {\tt OCECTL} Namelist from MPIOM includes a variable {\tt ltstranspose} of
+ type {\tt logical}. If it is {\tt .false.} the PSEUDO EXTRA format is applied 
+ and if it is {\tt .true.}, the EXTRA format is applied so that only one code is
+  written in one record, i.e. {\tt NSIZE=1}.\\
+
+\noindent The namelist variable {\tt itsdiag} controls the output. Eight settings are possible.
+
+\begin{tabular}{rl}
+\\
+0&no output \\
+1&one snapshot per day \\
+2&monthly averaged snapshot \\
+3&yearly averaged snapshot \\
+4&output every timestep \\
+5&daily average \\
+6&monthly mean of daily averages \\
+7&yearly mean of daily averages \\
+\end{tabular}
+\newline
+ 
+\noindent In {\tt mpiom.f90} the variable {\tt itsdiag} controls how often the
+subroutine {\tt diagnosis} is called. This subroutine is called each time
+step, if {\tt itsdiag} is greater than are equal to 4. Otherwise {\tt
+diagnosis} is called once per day as in the former version.  In {\tt
+mo\_diagnosis.f90} the new subroutine {\tt write\_timeseries} is called, if
+{\tt itsdiag} is greater than or equal to 1. In {\tt write\_timeseries} the
+variable {\tt itsdiag} controls the accumulating and averaging of time series
+data as described above.  In addition, three new files are generated by {\tt
+write\_timeseries} containing texts used by $\mathbf{tsplot}$ to label the
+time series plots. File {\tt TSVAR} contains the variable names as used in
+MPIOM. File {\tt TSDESC} includes the scientific expressions of these
+variables to be used as titles for the plots. File {\tt TSUNIT} provides the
+physical units to label the y-axis of the plots (see Appendix).  These files
+are written only when {\tt diagnosis} is called the first time. 
+
+\section*{Appendix}
+\noindent Examples:\\
+{\tt
+As first step the user needs to cat the individual time series in to one file.\\
+ 
+cat \$WRKSHR//TIMESER.????0101\_????1231.ext >> TIMESER\_hel9994 \\
+
+\noindent As second step make the plot, e.g. for codes 1-16 and 32-151\\
+
+tsplot -c1-16,32-151 -r 0 -n 2 TIMESER\_hel9994 \\
+}
+\newpage
+
+%\noindent TIMESER VARIABLES: \\
+\begin{tabular}{rlll}
+  1  &  PSIGULF	 & max\_of\_barotropic\_streamfunction\_in\_subtropical\_atlantic	 & m3 s-1\\
+  2  &  PSIKURO	 & max\_of\_barotropic\_streamfunction\_in\_subtropical\_pacific	 & m3 s-1\\
+  3  &  PSIBANDA & barotropic\_transport\_through\_indonesian\_archipelago	 & m3 s-1\\
+  4  &  PSIDRAKE & barotropic\_transport\_through\_drake\_passage	 & m3 s-1\\
+  5  &  PSIBERING & barotropic\_transport\_through\_bering\_strait	 & m3 s-1\\
+  6  &  PSISPG	 & max\_of\_barotropic\_streamfunction\_in\_subpolar\_atlantic	 & m3 s-1\\
+  7  &  CO2	 & mass\_fraction\_of\_carbon\_dioxide\_in\_air	 & ppm\\
+  8  &  CO2FLUX	 & downward\_carbon\_flux\_at\_surface	 & mole m-2\\
+  9  &  AABW2	 & mass\_transport\_below\_1000m\_in\_atlantic\_around\_60N	 & m3 s-1\\
+ 10  &  NADW2	 & mass\_transport\_below\_1000m\_in\_atlantic\_around\_60N	 & m3 s-1\\
+ 11 &   AABW3	 & mass\_transport\_below\_1000m\_in\_atlantic\_around\_50N	 & m3 s-1\\
+ 12 &   NADW3	 & mass\_transport\_below\_1000m\_in\_atlantic\_around\_50N	 & m3 s-1\\
+ 13 &   AABW4	 & mass\_transport\_below\_1000m\_in\_atlantic\_around\_30N	 & m3 s-1\\
+ 14 &   NADW4	 & mass\_transport\_below\_1000m\_in\_atlantic\_around\_30N	 & m3 s-1\\
+ 15 &   AABW5	 & mass\_transport\_below\_1000m\_in\_atlantic\_around\_30S	 & m3 s-1\\
+ 16 &   NADW5	 & mass\_transport\_below\_1000m\_in\_atlantic\_around\_30S	 & m3 s-1\\
+ 17 &   TVQUER1	 & heat\_transport\_by\_advection\_in\_pacific\_at\_65N	 & W\\
+ 18 &   SVQUER1	 & salt\_transport\_by\_advection\_in\_pacific\_at\_65N	 & g s-1\\
+ 19 &   TMERCI1	 & mass\_transport\_in\_pacific\_at\_65N	 & m3 s-1\\
+ 20 &   TVQUER2	 & heat\_transport\_by\_advection\_in\_atlantic\_at\_60N	 & W\\
+ 21 &   SVQUER2	 & salt\_transport\_by\_advection\_in\_atlantic\_at\_60N	 & g s-1\\
+ 22 &   TMERCI2	 & mass\_transport\_in\_atlantic\_at\_60N	 & m3 s-1\\
+ 23 &   TVQUER3	 & heat\_transport\_by\_advection\_in\_atlantic\_at\_50N	 & W\\
+ 24 &   SVQUER3	 & salt\_transport\_by\_advection\_in\_atlantic\_at\_50N	 & g s-1\\
+ 25 &   TMERCI3	 & mass\_transport\_in\_atlantic\_at\_50N	 & m3 s-1\\
+ 26 &   TVQUER4	 & heat\_transport\_by\_advection\_in\_atlantic\_at\_30N	 & W\\
+ 27 &   SVQUER4	 & salt\_transport\_by\_advection\_in\_atlantic\_at\_30N	 & g s-1\\
+ 28 &   TMERCI4	 & mass\_transport\_in\_atlantic\_at\_30N	 & m3 s-1\\
+ 29 &   TVQUER5	 & heat\_transport\_by\_advection\_in\_atlantic\_at\_30S	 & W\\
+ 30 &   SVQUER5	 & salt\_transport\_by\_advection\_in\_atlantic\_at\_30S	 & g s-1\\
+ 31 &   TMERCI5	 & mass\_transport\_in\_atlantic\_at\_30S	 & m3 s-1\\
+ 32 &   TVNET2	 & net\_heat\_transport\_by\_advection\_in\_atlantic\_at\_60N	 & W\\
+ 33 &   SVNET2	 & net\_salt\_transport\_by\_advection\_in\_atlantic\_at\_60N	 & g s-1\\
+ 34 &   TVNET3	 & net\_heat\_transport\_by\_advection\_in\_atlantic\_at\_50N	 & W\\
+ 35 &   SVNET3	 & net\_salt\_transport\_by\_advection\_in\_atlantic\_at\_50N	 & g s-1\\
+ 36 &   TVNET4	 & net\_heat\_transport\_by\_advection\_in\_atlantic\_at\_30N	 & W\\
+ 37 &   SVNET4	 & net\_salt\_transport\_by\_advection\_in\_atlantic\_at\_30N	 & g s-1\\
+ 38 &   TVNET5	 & net\_heat\_transport\_by\_advection\_in\_atlantic\_at\_30S	 & W\\
+ 39 &   SVNET5	 & net\_salt\_transport\_by\_advection\_in\_atlantic\_at\_30S	 & g s-1\\
+ 40 &   TRBERING & mass\_transport\_through\_bering\_strait	 & m3 s-1\\
+\end{tabular}
+\newpage
+\begin{tabular}{rlll}
+ 41 &   TRDENMARK & overflow\_transport\_through\_denmark\_strait	 & m3 s-1\\
+ 42 &   TRFAROER & overflow\_transport\_through\_faroer\_bank\_channel	 & m3 s-1\\
+ 43 &   SFRAM	& seaice\_transport\_through\_fram\_strait	 & m3 s-1\\
+ 44 &   ICEARE\_ARC	 & seaice\_area	 & m2\\
+ 45 &   ICEVOL\_ARC	 & seaice\_volume	 & m3\\
+ 46 &   HFL\_ARC	 & downward\_heatflux\_into\_ocean	 & W  \\
+ 47 &   WFL\_ARC	 & downward\_waterflux\_into\_ocean	 & m3 s-1  \\
+ 48 &   SST\_ARC	 & sea\_surface\_temperature	 & deg C  \\
+ 49 &   SSS\_ARC	 & sea\_surface\_salinity	 & psu  \\
+ 50 &   T200\_ARC	 & potential\_temperature	 & deg C  \\
+ 51 &   S200\_ARC	 & salinity	 & psu  \\
+ 52 &   T700\_ARC	 & potential\_temperature	 & deg C  \\
+ 53 &   S700\_ARC	 & salinity	 & psu  \\
+ 54 &   T2200\_ARC	 & potential\_temperature	 & deg C  \\
+ 55 &   S2200\_ARC	 & salinity	 & psu  \\
+ 56 &   ICEARE\_GIN	 & seaice\_area	 & m2\\
+ 57 &   ICEVOL\_GIN	 & seaice\_volume	 & m3\\
+ 58 &   HFL\_GIN	 & downward\_heatflux\_into\_ocean	 & W  \\
+ 59 &   WFL\_GIN	 & downward\_waterflux\_into\_ocean	 & m3 s-1  \\
+ 60 &   SST\_GIN	 & sea\_surface\_temperature	 & deg C  \\
+ 61 &   SSS\_GIN	 & sea\_surface\_salinity	 & psu  \\
+ 62 &   T200\_GIN	 & potential\_temperature	 & deg C  \\
+ 63 &   S200\_GIN	 & salinity	 & psu  \\
+ 64 &   T700\_GIN	 & potential\_temperature	 & deg C  \\
+ 65 &   S700\_GIN	 & salinity	 & psu  \\
+ 66 &   T2200\_GIN	 & potential\_temperature	 & deg C  \\
+ 67 &   S2200\_GIN	 & salinity	 & psu  \\
+ 68 &   ICEARE\_LAB	 & seaice\_area	 & m2\\
+ 69 &   ICEVOL\_LAB	 & seaice\_volume	 & m3\\
+ 70 &   HFL\_LAB	 & downward\_heatflux\_into\_ocean	 & W  \\
+ 71 &   WFL\_LAB	 & downward\_waterflux\_into\_ocean	 & m3 s-1  \\
+ 72 &   SST\_LAB	 & sea\_surface\_temperature	 & deg C \\ 
+ 73 &   SSS\_LAB	 & sea\_surface\_salinity	 & psu  \\
+ 74 &   T200\_LAB	 & potential\_temperature	 & deg C  \\
+ 75 &   S200\_LAB	 & salinity	 & psu  \\
+ 76 &   T700\_LAB	 & potential\_temperature	 & deg C  \\
+ 77 &   S700\_LAB	 & salinity	 & psu  \\
+ 78 &   T2200\_LAB	 & potential\_temperature	 & deg C  \\
+ 79 &   S2200\_LAB	 & salinity	 & psu  \\
+ 80 &   ICEARE\_NAT	 & seaice\_area	 & m2\\
+\end{tabular}
+\newpage
+\begin{tabular}{rlll}
+ 81 &   ICEVOL\_NAT	 & seaice\_volume	 & m3\\
+ 82 &   HFL\_NAT	 & downward\_heatflux\_into\_ocean	 & W  \\
+ 83 &   WFL\_NAT	 & downward\_waterflux\_into\_ocean	 & m3 s-1  \\
+ 84 &   SST\_NAT	 & sea\_surface\_temperature	 & deg C  \\
+ 85 &     SSS\_NAT	 & sea\_surface\_salinity	 & psu  \\
+ 86 &    T200\_NAT	 & potential\_temperature	 & deg C  \\
+ 87 &   S200\_NAT	 & salinity\_at\_200m	 & psu  \\
+ 88 &   T700\_NAT	 & potential\_temperature	 & deg C  \\
+ 89 &   S700\_NAT	 & salinity	 & psu  \\
+ 90 &   T2200\_NAT	 & potential\_temperature	 & deg C  \\
+ 91 &   S2200\_NAT	 & salinity	 & psu  \\
+ 92 &   ICEARE\_ATL	 & seaice\_area	 & m2\\
+ 93 &   ICEVOL\_ATL	 & seaice\_volume	 & m3\\
+ 94 &   HFL\_ATL	 & downward\_heatflux\_into\_ocean	 & W  \\
+ 95 &   WFL\_ATL	 & downward\_waterflux\_into\_ocean	 & m3 s-1  \\
+ 96 &   SST\_ATL	 & sea\_surface\_temperature	 & deg C  \\
+ 97 &   SSS\_ATL	 & sea\_surface\_salinity	 & psu  \\
+ 98 &   T200\_ATL	 & potential\_temperature	 & deg C  \\
+ 99 &   S200\_ATL	 & salinity	 & psu  \\
+100 &   T700\_ATL	 & potential\_temperature	 & deg C  \\
+101  &  S700\_ATL	 & salinity	 & psu  \\
+102  &  T2200\_ATL	 & potential\_temperature	 & deg C  \\
+103 &   S2200\_ATL	 & salinity	 & psu  \\
+104 &   ICEARE\_SO	 & seaice\_area	 & m2\\
+105 &   ICEVOL\_SO	 & seaice\_volume	 & m3\\
+106 &   HFL\_SO	 & downward\_heatflux\_into\_ocean	 & W  \\
+107 &   WFL\_SO	 & downward\_waterflux\_into\_ocean	 & m3 s-1  \\
+108 &   SST\_SO	 & sea\_surface\_temperature	 & deg C  \\
+109 &   SSS\_SO	 & sea\_surface\_salinity	 & psu  \\
+110 &   T200\_SO	 & potential\_temperature	 & deg C  \\
+111  &    S200\_SO	 & salinity	 & psu  \\
+112 &   T700\_SO	 & potential\_temperature	 & deg C  \\
+113  &    S700\_SO	 & salinity	 & psu  \\
+114 &   T2200\_SO	 & potential\_temperature	 & deg C  \\
+115 &   S2200\_SO	 & salinity	 & psu  \\
+116 &   ICEARE\_PAC	 & seaice\_area	 & m2\\
+117 &   ICEVOL\_PAC	 & seaice\_volume	 & m3\\
+118 &   HFL\_PAC	 & downward\_heatflux\_into\_ocean	 & W  \\
+119 &   WFL\_PAC	 & downward\_waterflux\_into\_ocean	 & m3 s-1  \\
+120 &   SST\_PAC	 & sea\_surface\_temperature	 & deg C  \\
+\end{tabular}
+\newpage
+\begin{tabular}{rlll}
+121 & SSS\_PAC & sea\_surface\_salinity	 & psu  \\
+122 & T200\_PAC	 & potential\_temperature	 & deg C  \\
+123 & S200\_PAC	 & salinity	 & psu  \\
+124 & T700\_PAC	 & potential\_temperature	 & deg C  \\
+125 & S700\_PAC	 & salinity	 & psu  \\
+126 & T2200\_PAC & potential\_temperature	 & deg C  \\
+127 & S2200\_PAC & salinity	 & psu  \\
+128 & ICEARE\_NI3 & seaice\_area	 & m2\\
+129 & ICEVOL\_NI3 & seaice\_volume	 & m3\\
+130 & HFL\_NI3 & downward\_heatflux\_into\_ocean	 & W  \\
+131 & WFL\_NI3 & downward\_waterflux\_into\_ocean	 & m3 s-1  \\
+132 & SST\_NI3 & sea\_surface\_temperature	 & deg C  \\
+133 & SSS\_NI3 & sea\_surface\_salinity	 & psu  \\
+134 & T200\_NI3 & potential\_temperature	 & deg C  \\
+135 & S200\_NI3 & salinity	 & psu  \\
+136 & T700\_NI3 & potential\_temperature	 & deg C  \\
+137 & S700\_NI3 & salinity	 & psu  \\
+138 & T2200\_NI3 & potential\_temperature	 & deg C  \\
+139 & S2200\_NI3 & salinity	 & psu  \\
+140 & ICEARE\_GLO & seaice\_area	 & m2\\
+141 & ICEVOL\_GLO & seaice\_volume	 & m3\\
+142 & HFL\_GLO & downward\_heatflux\_into\_ocean	 & W  \\
+143 & WFL\_GLO & downward\_waterflux\_into\_ocean	 & m3 s-1  \\
+144 & SST\_GLO & sea\_surface\_temperature	 & deg C  \\
+145 & SSS\_GLO & sea\_surface\_salinity	 & psu  \\
+146 & T200\_GLO & potential\_temperature	 & deg C  \\
+147 & S200\_GLO & salinity	 & psu  \\
+148 & T700\_GLO & potential\_temperature	 & deg C  \\
+149 & S700\_GLO & salinity	 & psu  \\
+150 & T2200\_GLO & potential\_temperature	 & deg C  \\
+151 & S2200\_GLO & salinity	 & psu  \\
+\end{tabular}
+}
+
+\end{document}

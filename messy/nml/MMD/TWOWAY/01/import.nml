@@ -1,0 +1,267 @@
+! -*- f90 -*-
+
+&CTRL_TS
+! ### SYNTAX:
+!     - name of time series
+!     - [var@] name (incl. path) of data file
+!           .nc -> netCDF, e.g., "var@my_path_to_my_file/my_file.nc"
+!               -> ASCII,  e.g., "my_path_to_my_file/my_file.txt"
+!     - valid range ( default: -HUGE(0._dp), HUGE(0._dp) )
+!     - out of time interval policy: 0: stop; 1: continue with nearest ...
+!       ... (before time interval, after time interval)
+!     - interpolation method:  -1: previous; 0: linear interpolation; 1: next
+!     - yr,mo,dy,hr,mi,se : pick out always this date/time
+!       (example: 2000, , , , , , will cycle through the year 2000 etc.)
+!     - offset (in days)
+!
+TS(1) = 'qbo', '$INPUTDIR_MESSY/qbo/misc/DLR_05_X_X_QBO_195001_201212.txt', ,99.90, 0, 0, 0, , , , , , , 0.0,
+!
+!TS(1) = 'qbo', 'QBO@$INPUTDIR_MESSY/qbo/qbo_data_v04.nc',   ,99.90, 0, 0, 0, , , , , , , 0.0,
+!
+/
+
+&CTRL_LT
+! ### SYNTAX:
+! ### LT(.) = 'table name','netcdf-file with path','netcdf variable name',
+! ###         (table name must be unique)
+!
+!LT(1) = 'mytable','$INPUTDIR_MESSY/mysubmodel/LT_my_file.nc','myvar',
+!
+/
+
+&RGTEVENTS
+! ### SYNTAX:
+! ###         NML=   '' (DEFAULT)   : this namelist-file (import.nml)
+!                    <namelist file>: other namelist file
+!
+! ###         FILE=  '' (DEFAULT)   : - ONLY first netCDF-file in NML
+!                    <netCDF-file>  : - this file in NML
+!
+! ###         VAR=   '' (DEFAULT)   : - all variables from FILE
+!                                     - all variables in first namelist in NML
+!                    <tracer name>  : - this variable from namelist in NML
+!                                       (FILE specifier ignored !!!)
+! ###         Z=     <z1,z2,...>    : - list of emission heights [m]
+!                                       (above GND) for multi level emissions
+!                                       (Nx2D)
+!
+! NOTEs: (1) SUMMATION OF DIFFERENT OFFLINE EMISSIONS FOR ONE TRACER
+!            CAN BE ACHEIVED BY USING THE
+!            FILE- or VAR- specifier in combination with the NML-specifier
+!        (2) PRESCRIBED MIXING RATIOS CAN BE ACHIEVED
+!            in combination with SUBMODEL TNUDGE
+!        (3) Surface emission fluxes (2D) must be in  molecules m-2 s-1.
+!        (4) Volume emissions (3D)        must be in  molecules m-3 s-1.
+!        (5) Multi level emissions (Nx2D) must be in  molecules m-2 s-1.
+!        (6) For volume emissions (3D), the corresponding &REGRID-namelist
+!            must contain the specification of the vertical coordinate.
+!            The Z-specifier (emission heights) must not be used!
+!        (7) The trigger for multi level emissions (Nx2D) is the presence
+!            of the Z-specifier (emission heights) in the RG_TRIG action
+!            string. The corresponding &REGRID-namelist must not contain any
+!            specification of a vertical coordinate, since the levels
+!            must be treated as 'invariant' (parameter-)dimension.
+!        (8) For Nx2D emissions, the FILE specifier must not be used, since
+!            the level is treated by NCREGRID as invariant dimension.
+!            (Regridding of a file (i.e., multiple variables in one step)
+!             containing one or more variables with a free parameter
+!             (here level index) is not possible, since the 'parameter'
+!             dimension is already used for the number of variables.)
+!
+! LOWER BOUNDARY CONDITIONS (SEE tnudge.nml)
+RG_TRIG(1) = 1, 'months', 'first', 0, 'RADO3', 1,1,12,$START_MONTH, 'NML=./import/rad/FortuinKelder_MPIM1.0_clim_X_O3_01-12.nml; VAR=O3',
+RG_TRIG(2) = 1,'months','first',0,  'O3ubc', 1, 1, 12, $START_MONTH, 'NML=./import/jval/HALOE_MPIC1.0_clim_X_O3_01-12.nml; VAR=O3_H; P=0.5,1,1.3,1.8,2.3,3.1,4.1,5.5,7.4,9.8,13,18,23,31,41,55,74,98,131,175,233,311,414,552,737,982,1310,1750,2330,3100,4140,5520,7360,9810,13100,17400;',
+! GHG
+!!$RG_TRIG(1)  = 1,'months', 'first',0, 'n001', 73,1,84,13, 'NML=./import/sfmr_GHG.nml; VAR=N2O',
+!!$RG_TRIG(2)  = 1,'months', 'first',0, 'n002', 73,1,84,13, 'NML=./import/sfmr_GHG.nml; VAR=CH4',
+!!$! CFC
+!!$RG_TRIG(3)  = 1,'months', 'first',0, 'n003', 73,1,84,13, 'NML=./import/sfmr_CFC.nml; VAR=CFCl3',
+!!$RG_TRIG(4)  = 1,'months', 'first',0, 'n004', 73,1,84,13, 'NML=./import/sfmr_CFC.nml; VAR=CF2Cl2',
+!!$RG_TRIG(5)  = 1,'months', 'first',0, 'n005', 73,1,84,13, 'NML=./import/sfmr_CFC.nml; VAR=CH3CCl3',
+!!$RG_TRIG(6)  = 1,'months', 'first',0, 'n006', 73,1,84,13, 'NML=./import/sfmr_CFC.nml; VAR=CCl4',
+!!$! HCFC
+!!$RG_TRIG(7)  = 1,'months', 'first',0, 'n007', 73,1,84,13, 'NML=./import/sfmr_HCFC.nml; VAR=CH3Cl',
+!!$RG_TRIG(8)  = 1,'months', 'first',0, 'n008', 73,1,84,13, 'NML=./import/sfmr_HCFC.nml; VAR=CH3Br',
+!!$! Halons
+!!$RG_TRIG(9)  = 1,'months', 'first',0, 'n009', 73,1,84,13, 'NML=./import/sfmr_Halon.nml; VAR=CF2ClBr',
+!!$RG_TRIG(10)  = 1,'months', 'first',0, 'n010', 73,1,84,13, 'NML=./import/sfmr_Halon.nml; VAR=CF3Br',
+!
+! EMISSIONS
+!RG_TRIG(11)  = 1,'months', 'first',0, , 1,1,12,$START_MONTH, 'NML=./import/nox_2000.nml; VAR=NO; Z=45,140,240,400,600,800',
+!RG_TRIG(12)  = 1,'months', 'first',0, , 1,1,12,$START_MONTH, 'NML=./import/co_2000.nml; VAR=CO; Z=45,140,240,400,600,800',
+!RG_TRIG(13)  = 1,'months', 'first',0, , 1,1,12,$START_MONTH, 'NML=./import/c2h4_2000.nml; VAR=C2H4; Z=45,140,240,400,600,800',
+!RG_TRIG(14)  = 1,'months', 'first',0, , 1,1,12,$START_MONTH, 'NML=./import/c2h6_2000.nml; VAR=C2H6; Z=45,140,240,400,600,800',
+!!$RG_TRIG(15)  = 1,'months', 'first',0, , 1,1,12,$START_MONTH, 'NML=./import/c3h6_2000.nml; VAR=C3H6; Z=45,140,240,400,600,800',
+!!$RG_TRIG(16)  = 1,'months', 'first',0, , 1,1,12,$START_MONTH, 'NML=./import/c3h8_2000.nml; VAR=C3H8; Z=45,140,240,400,600,800',
+!!$RG_TRIG(17)  = 1,'months', 'first',0, , 1,1,12,$START_MONTH, 'NML=./import/c4h10_2000.nml; VAR=NC4H10; Z=45,140,240,400,600,800',
+!!$RG_TRIG(18)  = 1,'months', 'first',0, , 1,1,12,$START_MONTH, 'NML=./import/ch3cho_2000.nml; VAR=CH3CHO; Z=45,140,240,400,600,800',
+!!$RG_TRIG(19)  = 1,'months', 'first',0, , 1,1,12,$START_MONTH, 'NML=./import/ch3coch3_2000.nml; VAR=CH3COCH3; Z=45,140,240,400,600,800',
+!!$RG_TRIG(20)  = 1,'months', 'first',0, , 1,1,12,$START_MONTH, 'NML=./import/ch3cooh_2000.nml; VAR=CH3CO2H; Z=45,140,240,400,600,800',
+!!$RG_TRIG(21)  = 1,'months', 'first',0, , 1,1,12,$START_MONTH, 'NML=./import/ch3oh_2000.nml; VAR=CH3OH; Z=45,140,240,400,600,800',
+!!$RG_TRIG(22)  = 1,'months', 'first',0, , 1,1,12,$START_MONTH, 'NML=./import/hcho_2000.nml; VAR=HCHO; Z=45,140,240,400,600,800',
+!!$RG_TRIG(23)  = 1,'months', 'first',0, , 1,1,12,$START_MONTH, 'NML=./import/hcooh_2000.nml; VAR=HCOOH; Z=45,140,240,400,600,800',
+!!$RG_TRIG(24)  = 1,'months', 'first',0, , 1,1,12,$START_MONTH, 'NML=./import/mek_2000.nml; VAR=MEK; Z=45,140,240,400,600,800',
+!!$RG_TRIG(25) = 1,'months', 'first',0, , 1,1,12,$START_MONTH, 'NML=./import/emis_airc_NOx_1995.nml'
+!!$!
+!!$RG_TRIG(26)  = 1,'months', 'first',0, , 1,1,12,$START_MONTH, 'NML=./import/so2_2000.nml; VAR=SO2; Z=45,140,240,400,600,800',
+!!$!
+!!$RG_TRIG(27)  = 1,'months', 'first',0, , 1,1,12,$START_MONTH, 'NML=./import/emis_NH3.nml; VAR=NH3;',
+!
+! SPECIAL
+!!$RG_TRIG(28)  = 1,'months', 'first',0, 'nCO2_bot', 73,1,84,$START_MONTH, 'NML=./import/sfmr_CO2_1998_2004.nml; VAR=CO2',
+!!$!RG_TRIG(29)  = 1,'months', 'first',0, 'nCO2_top', 73,1,84,$START_MONTH, 'NML=./import/toamr_CO2_1998_2004.nml; VAR=CO2',
+!!$RG_TRIG(30)  = 1,'months', 'first',0, 'nSF6_bot', 73,1,84,$START_MONTH, 'NML=./import/sfmr_SF6_1998_2004.nml; VAR=SF6',
+!!$!RG_TRIG(31)  = 1,'months', 'first',0, 'nSF6_top', 73,1,84,$START_MONTH, 'NML=./import/toamr_SF6_1998_2004.nml; VAR=SF6',
+!!$!
+!!$! MECCA_KHET
+!!$RG_TRIG(40) = 1,'months','first',0,'aerosurf_clim',1,1,12,$START_MONTH,'NML=./import/aerosurf_clim.nml; VAR=A_CLIM'
+!!$!
+!!$! AIRSEA
+!!$RG_TRIG(50)  = 1,'months', 'first',0, 'salt', 1,1,12,$START_MONTH, 'NML=./import/airsea.nml; VAR=salt'
+!!$RG_TRIG(51)  = 1,'months', 'first',0, 'CO2_W', 1,1,12,$START_MONTH, 'NML=./import/airsea.nml; VAR=CO2_W'
+!RG_TRIG(52)  = 1,'months', 'first',0, 'DMS_SEA', 1,1,12,$START_MONTH, 'NML=./import/airsea.nml; VAR=DMS_SEA'
+!
+!!$! FIRE - VEGETATION MODELLING
+!!$RG_TRIG(60) = 1,'years', 'first', 0, 'fire1' ,1,1,1,1, 'NML=./import/popdens.nml; VAR=POPDEN',
+!!$RG_TRIG(61) = 1,'years', 'first', 0, 'fire2' ,1,1,1,1, 'NML=./import/a_nd.nml; VAR=a_nd',
+
+
+
+
+!******************************************************************************
+!******************************************************************************
+!******************************************************************************
+!******************************************************************************
+! FIELD USED FOR ONLINE EMISSIONS:
+!******************************************************************************
+!******************************************************************************
+!******************************************************************************
+!******************************************************************************
+! INFO: FILE, VAR, NML: specified as in OFFLEM (see offlem.nml)
+!       NO_RGT: inserted if the online emission needs no input from offline
+!               data sets
+!       TYPE  : needed to associate the input fields with the apropriate online
+!               emission (DO NOT CHANGE !!!)
+!******************************************************************************
+!******************************************************************************
+! GAS PHASE EMISSIONs
+!******************************************************************************
+!******************************************************************************
+!==============================================================================
+! DMS emissions over water
+!==============================================================================
+!RG_TRIG(100) = 1, 'months', 'first', 0, 'emis_DMS_sea', 1,1,12,$START_MONTH, 'NML=./import/seawater_DMS.nml'
+!------------------------------------------------------------------------------
+
+!==============================================================================
+! CH4 
+!==============================================================================
+!RG_TRIG(102) = 1,'months','first',0,'CH4_conc',    1,1,12,$START_MONTH, 'NML=./import/CH4_clim.nml'
+!------------------------------------------------------------------------------
+
+!==============================================================================
+! VOC = isoprene, monoterpene
+!==============================================================================
+!RG_TRIG(104) =  1,'months','first',0,'surf_para',  1,1,12,$START_MONTH,'NML=./import/surf_para_4l.nml'
+!RG_TRIG(105) =  1,'months','first',0,'emis_VOC',   1,1,12,$START_MONTH,'NML=./import/emis_VOC.nml'
+!------------------------------------------------------------------------------
+
+!==============================================================================
+! NO biogenic emission
+!==============================================================================
+!RG_TRIG(110) = 1,'months','first',0,'emis_NO',   1,1,12,$START_MONTH,'NML=./import/emis_NO.nml'
+!RG_TRIG(111) = 1,'months','first',0,'noemclass1',1,1,12,$START_MONTH,'VAR=noemclass1; NML=./import/NOemisclass1.nml'
+!RG_TRIG(112) = 1,'months','first',0,'noemclass2',1,1,12,$START_MONTH,'VAR=noemclass2; NML=./import/NOemisclass2.nml'
+!RG_TRIG(113) = 1,'months','first',0,'lai',       1,1,12,$START_MONTH,'VAR=lai; NML=./import/surf_para_4l.nml'
+!------------------------------------------------------------------------------
+
+!==============================================================================
+! new NO biogenic emission (STILL UNDER DEVELOPMENT, DO NOT SWITCH ON !!! )
+!==============================================================================
+!!$RG_TRIG(115) = 1,'years', 'first',0,'NOemclass_yl95sl10',1,1,1,1,'VAR=NOemclass_yl95sl10; NML=./import/yl95sl10_NOemclass.nml'
+!!$RG_TRIG(116) = 1,'years' ,'first',0,'fertil_yl95sl10',   1,1,28,13,'VAR=fertil_yl95sl10; NML=./import/yl95sl10_fertil.nml'
+!!$RG_TRIG(117) = 1,'months','first',0,'lai_yl95sl10',      1,1,12,$START_MONTH,'VAR=lai_yl95sl10; NML=./import/yl95sl10_lai.nml'
+!!$RG_TRIG(118) = 1,'years', 'first',0,'root_depth',        1,1,1,1,'NML=./import/yl95sl10_root_depth.nml'
+!------------------------------------------------------------------------------
+!******************************************************************************
+
+!******************************************************************************
+! AEROSOL  EMISSIONs (only channel output possible)
+!******************************************************************************
+!******************************************************************************
+!==============================================================================
+! sea salt emissions
+!==============================================================================
+! seasalt emission by aerocom data
+!!$RG_TRIG(119) = 1,'days','first',0 ,'SSaerocom' ,1,1,365,1, 'NML=./import/emis_SS_aerocom.nml'
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+
+!==============================================================================
+! OC/BC emissions use all files of one scenario always together
+!==============================================================================
+!!------------------------------------------------------------------------------
+! first scenario (unknown input file source)
+!!-----------------------------------------------------------------------------
+!RG_TRIG(120) = 1, 'years', 'first', 0, 'BC_ag',  1,1,1,1, 'NML=./import/emis_BC_ag.nml'
+!RG_TRIG(121) = 1, 'years', 'first', 0, 'BC_ant', 1,1,1,1, 'NML=./import/emis_BC_ant.nml'
+!RG_TRIG(122) = 1, 'years', 'first', 0, 'BC_wf',  1,1,1,1, 'NML=./import/emis_BC_wf.nml'
+!RG_TRIG(123) = 1, 'years', 'first', 0, 'OC_ag',  1,1,1,1, 'NML=./import/emis_OC_ag.nml'
+!RG_TRIG(124) = 1, 'years', 'first', 0, 'OC_ant', 1,1,1,1, 'NML=./import/emis_OC_ant.nml'
+!RG_TRIG(125) = 1, 'years', 'first', 0, 'OC_bge', 1,1,1,1, 'NML=./import/emis_OC_bge.nml'
+!RG_TRIG(126) = 1, 'years', 'first', 0, 'OC_wf',  1,1,1,1, 'NML=./import/emis_OC_wf.nml'
+!!-----------------------------------------------------------------------------
+! second scenario: AEROCOM data 
+! ATTENTION: use offline emission wildfire in addition 
+!!-----------------------------------------------------------------------------
+!RG_TRIG(130) = 1, 'years', 'first', 0, 'C_ag',  1,1,1,1,             'NML=./import/aerocom_ag.nml'
+!RG_TRIG(131) = 1, 'years', 'first', 0, 'C_ant', 1,1,1,1,             'NML=./import/aerocom_ant.nml'
+!RG_TRIG(132) = 1, 'months', 'first', 0, 'C_bge', 1,1,12,$START_MONTH, 'NML=./import/aerocom_bge.nml'
+!------------------------------------------------------------------------------
+
+!==============================================================================
+! Dust emissions
+!==============================================================================
+!RG_TRIG(135) = 1,'years','first',0,'emis_DU', 1,1,1,1,'NML=./import/emis_DU.nml'
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+!RG_TRIG(141) = 1,'years','first',0,'dut_mat_s2', 1,1,1,1,'NML=./import/emis_dut_mat_s2.nml'
+!RG_TRIG(142) = 1,'years','first',0,'dut_mat_s3', 1,1,1,1,'NML=./import/emis_dut_mat_s3.nml'
+!RG_TRIG(143) = 1,'years','first',0,'dut_mat_s4', 1,1,1,1,'NML=./import/emis_dut_mat_s4.nml'
+!RG_TRIG(144) = 1,'years','first',0,'dut_mat_s6', 1,1,1,1,'NML=./import/emis_dut_mat_s6.nml'
+!RG_TRIG(145) = 1,'years','first',0,'dut_mat_psrc', 1,1,1,1,'NML=./import/emis_dut_mat_psrc.nml'
+!RG_TRIG(146) = 1,'months','first',0,'dut_k_fpar_eff', 1,1,12,$START_MONTH,'NML=./import/emis_dut_k_fpar_eff.nml'
+!==============================================================================
+! SO2 emissions and Sulphate aerosol emissions 
+!==============================================================================
+!RG_TRIG(150) = 1,'months','first',0,'emis_SO2', 1,1,1,1,'NML=./import/emis_SO2.nml'
+!------------------------------------------------------------------------------
+
+!==============================================================================
+! Bacterial aerosol emissions
+!==============================================================================
+!RG_TRIG(155) = 80,'years','first',0,'Olson',    1,1,1,1,'VAR=Olson; NML=./import/olson.nml'
+!RG_TRIG(156) = 80,'years','first',0,'mod12c1f', 1,1,1,1,'VAR=mod12c1f; NML=./import/modis.nml'
+!------------------------------------------------------------------------------
+
+!==============================================================================
+! 13C
+!==============================================================================
+!RG_TRIG(160) = 1,'months','first',0,'terr13C', 1,1,1,1,'NML=./import/terr13C.nml'
+!------------------------------------------------------------------------------
+!******************************************************************************
+!******************************************************************************
+! FIELDS USED FOR DRY DEPOSITION
+!******************************************************************************
+!******************************************************************************
+!RG_TRIG(200) = 1,'years', 'first',0,'soilpH',  1,1, 1,1,'VAR=soilpH; NML=./import/soilpH.nml',
+! additionally the fields lai, hc and drag (overlap with online emissions)
+!  are needed.
+!RG_TRIG(104) =  1,'months','first',0,'surf_para',  1,1,12,$START_MONTH,'NML=./import/surf_para_4l.nml'
+! ...
+!##############################################
+! JVAL: use upper boundary condition of ozone
+!##############################################
+RG_TRIG(400) = 1,'months','first',0,  'O3ubc', 1, 1, 12, $START_MONTH, 'NML=./import/jval/HALOE_MPIC1.0_clim_X_O3_01-12.nml; VAR=O3_H; P=0.5,1,1.3,1.8,2.3,3.1,4.1,5.5,7.4,9.8,13,18,23,31,41,55,74,98,131,175,233,311,414,552,737,982,1310,1750,2330,3100,4140,5520,7360,9810,13100,17400;',
+!
+/

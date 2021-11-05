@@ -1,0 +1,83 @@
+! -*- f90 -*-
+
+&CTRL
+ bulk      = T,
+ seg_plume = F,
+ sc_trans  = 2,     ! interaction of transport and convective scavenging
+                    ! 1 = convective transport after scavenging
+                    ! 2 = convective transport splitted by scavenging
+                    !     first part until top level of rain production, 
+                    !     then scavenging, then second part
+                    ! 3 = as 2 but the second transport from bottom of 
+                    !     convection to top of convection (might overestimate
+                    !     the convective transport)
+                    ! 4 = as 1, but considering only a convective column 
+                    !     of approx. 5 % (determined by updraft strength), 
+                    !     also for scavenging if active
+                    ! 5 = as 2, but considering only a convective column 
+                    !     of approx. 5 % (determined by updraft strength), 
+                    !     also for scavenging if active
+ lcvt_gp = T,       ! transport of gridpoint tracers active
+ lcvt_lg = F,       ! transport of mapped lagrangian tracers active
+!
+!! ######################################################################
+!! ### alternative transport algorithm (Ouwersloot et al., GMD, 2015) ###
+!! ######################################################################
+!! Switch whether subcloud processes affect convective transport 
+lcvt_sc = T,
+!! Factor for transported species, equal to -xi_2 in Eq. (13) of 
+!! Ouwersloot et al. (2013)
+trans_fac = 1.23
+!! Height (m) below which a cloud base is always assumed to be coupled to a
+!! (convective) boundary layer
+hlimit = 2500.0
+!! During every time step use the temporal mean concentration at cloud
+!! base to calculate what's entering the plume
+lmeanconc = T,
+!! Enables (adaptive) intermediate time steps for convective transport
+lintsteps = T,
+!! Maximum fraction of grid box that is allowed to be emptied by upward 
+!! mass-flux per intermediate time step
+maxfrac   = 0.50,
+!maxfrac   = 0.10,
+!! ######################################################################
+!
+!!$ The influence of lcvt_sc (and the associated factor trans_fac) should
+!!$ be small, so if we want to focus solely on the effect of properly
+!!$ accounting for the total mass fluxes (as provided by CONVECT), lcvt_sc
+!!$ could be set to false.
+!!$
+!!$ The value maxfrac of 0.50 (in combination with the enabled lmeanconc)
+!!$ should suffice to capture the convective tracer transport reasonably
+!!$ without needing a lot of computational time. If the simulation is
+!!$ already very heavy anyway (e.g. due to radiation or chemistry),
+!!$ maxfrac could be set to e.g. 0.10 for even more accurate
+!!$ results. However, differences due to this setting will be relatively
+!!$ small compared to the change caused by just enabling the intermediate
+!!$ time steps.
+!!$
+!!$ For CVTRANS, it is further important in general to select a proper
+!!$ scheme with sc_trans, which determines the interaction between
+!!$ transport and scavenging and which cloud area is used for these
+!!$ calculations. For a fair comparison, sc_trans should be kept identical
+!!$ between the two numerical experiments with different
+!!$ representations. However, schemes 4 and 5 should be best (since they
+!!$ account for cloud cover).
+!
+/
+&CPL
+ umass   = 'convect','massfu',
+ dmass   = 'convect','massfd',
+ entru   = 'convect','u_entr',
+ detru   = 'convect','u_detr',
+ entrd   = 'convect','d_entr',
+ detrd   = 'convect','d_detr',
+ raincv  = 'convect','cv_precflx',
+ snowcv  = 'convect','cv_snowflx',
+ covcv   = 'convect','cv_cover',
+ c_top   = 'convect','conv_top',
+ mass    = 'grid_def','grmass',
+ vol     = 'grid_def','grvol',
+ press   = 'ECHAM5','press',
+ pressi  = 'ECHAM5','pressi',
+/

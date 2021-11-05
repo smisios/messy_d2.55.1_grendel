@@ -1,0 +1,125 @@
+! -*- f90 -*-
+
+&CPL
+L_GP       = T  ! EMISSIONS FOR GRIDPOINT TRACERS
+L_LG       = F  ! EMISSIONS FOR LAGRANGIAN TRACERS
+l_lg_tend  = F  ! LAGRANGIAN TRACER TENDENCY AS CHANNEL OBJECT ?
+! ### SYNTAX:
+!     (SPECIFIERS MUST BE UPPERCASE !)
+! ###         GP=    Gridpoint  Emission Method (0,1,2) (SURFACE ONLY)
+!                    0: no emission; only channel object (DEFAULT)
+!                    1: 2D (SURFACE EM.) -> lowest layer
+!                       3D (VOLUME  EM.) -> emission ON
+!                       Nx2D (MULTI LEVEL EM.) -> internally converted to 3D
+!                    SURFACE EMISSIONS ONLY:
+!                    2: lower boundary condition for flux
+!
+! ###         LG=    Lagrangian Emission Method (0,1,2,3,4)
+!                    0: no emission; only channel object (DEFAULT)
+!                    1: 2D (SURFACE EM.)       -> into CELLs in lowest layer
+!                       3D (VOLUME  EM.)       -> emission ON
+!                       Nx2D (MULTI LEVEL EM.) -> internally converted to 3D
+!                    SURFACE EMISSIONS ONLY:
+!                    2: into lowest CELLs within boundary layer
+!                    3: into all CELLs in boundary layer (vertical gradient)
+!                    4: into all CELLs in boundary layer (no vertical gradient)
+!
+!NOTEs:  (1) Surface emission fluxes (2D) must be in  molecules m-2 s-1.
+!        (2) Volume emissions (3D)        must be in  molecules m-3 s-1.
+!        (3) Multi level emissions (Nx2D) must be in  molecules m-2 s-1.
+!        (4) For volume emissions (3D), the corresponding channel object 
+!            must be in the GP_3D_MID representation
+!        (5) The trigger for multi level emissions (Nx2D) is the presence
+!            of the channel object attribute heights
+!
+! EMISSION: 'TRACER[_SUBNAME][,scaling];...', CHANNEL NAME, CHANNEL OBJECT, 
+!           EMISSION METHOD
+!
+! LOWER BOUNDARY CONDITIONS (SEE tnudge.nml)
+!
+! ###########################################
+! DIRECT EMISSIONS
+! ###########################################
+!
+! CH3CCl3
+!!$EMIS_IN(180) = 'CH3CCl3', 'import_grid', 'Mfx_MCF_CH3CCl3', 'GP=2', ! Methylcloroform 
+!
+!
+! CH4_fx
+!
+! EMISSION CLASSES OF EMPA
+!
+! anthropogenic
+!
+EMIS_IN(190) = 'CH4_fx;', 'import_grid', 'ANTH_CH4_CH4', 'GP=2', ! anth.
+!
+!!$EMIS_IN(190) = 'CH4_fx;', 'import_grid', 'Mfx_an_AFRICA_CH4', 'GP=2', ! anth.
+!!$EMIS_IN(191) = 'CH4_fx;', 'import_grid', 'Mfx_an_AUS_CH4', 'GP=2', ! anth.
+!!$EMIS_IN(192) = 'CH4_fx;', 'import_grid', 'Mfx_an_CHINA_CH4', 'GP=2', ! anth.
+!!$EMIS_IN(193) = 'CH4_fx;', 'import_grid', 'Mfx_an_EU_CH4', 'GP=2', ! anth.
+!!$EMIS_IN(194) = 'CH4_fx;', 'import_grid', 'Mfx_an_INDIA_CH4', 'GP=2', ! anth.
+!!$EMIS_IN(195) = 'CH4_fx;', 'import_grid', 'Mfx_an_MIDEAST_CH4', 'GP=2', ! anth.
+!!$EMIS_IN(196) = 'CH4_fx;', 'import_grid', 'Mfx_an_NA_CH4', 'GP=2', ! anth.
+!!$EMIS_IN(197) = 'CH4_fx;', 'import_grid', 'Mfx_an_OCEAN_CH4', 'GP=2', ! anth.
+!!$EMIS_IN(198) = 'CH4_fx;', 'import_grid', 'Mfx_an_RUS_CH4', 'GP=2', ! anth.
+!!$EMIS_IN(199) = 'CH4_fx;', 'import_grid', 'Mfx_an_SA_CH4', 'GP=2', ! anth.
+!!$EMIS_IN(200) = 'CH4_fx;', 'import_grid', 'Mfx_an_SE_ASIA_CH4', 'GP=2', ! anth.
+!
+! biomass burning
+!
+EMIS_IN(201) = 'CH4_fx;', 'import_grid', 'BB_AUS_CH4',     'GP=2', ! bb
+EMIS_IN(202) = 'CH4_fx;', 'import_grid', 'BB_CHINA_CH4',     'GP=2', ! bb
+EMIS_IN(203) = 'CH4_fx;', 'import_grid', 'BB_EU_CH4',     'GP=2', ! bb
+EMIS_IN(204) = 'CH4_fx;', 'import_grid', 'BB_INDIA_CH4',     'GP=2', ! bb
+EMIS_IN(205) = 'CH4_fx;', 'import_grid', 'BB_NA_bor_CH4',     'GP=2', ! bb
+EMIS_IN(206) = 'CH4_fx;', 'import_grid', 'BB_N_AFR_CH4',     'GP=2', ! bb
+EMIS_IN(207) = 'CH4_fx;', 'import_grid', 'BB_NA_temp_CH4',     'GP=2', ! bb
+EMIS_IN(208) = 'CH4_fx;', 'import_grid', 'BB_N_MIDEAST_CH4',     'GP=2', ! bb
+EMIS_IN(209) = 'CH4_fx;', 'import_grid', 'BB_RUS_CH4',     'GP=2', ! bb
+EMIS_IN(210) = 'CH4_fx;', 'import_grid', 'BB_S_AFR_CH4',     'GP=2', ! bb
+EMIS_IN(211) = 'CH4_fx;', 'import_grid', 'BB_SA_temp_CH4',     'GP=2', ! bb
+EMIS_IN(212) = 'CH4_fx;', 'import_grid', 'BB_SA_trop_CH4',     'GP=2', ! bb
+EMIS_IN(213) = 'CH4_fx;', 'import_grid', 'BB_SE_ASIA_CH4',     'GP=2', ! bb
+!
+! ocean
+!
+EMIS_IN(214) = 'CH4_fx;', 'import_grid', 'Mfx_oc_CH4', 'GP=2', ! ocean
+!
+! rice
+!
+!!$EMIS_IN(215) = 'CH4_fx;', 'import_grid', 'Mfx_ri_AFR_CH4', 'GP=2', ! rice
+!!$EMIS_IN(216) = 'CH4_fx;', 'import_grid', 'Mfx_ri_ASIA_AUS_CH4', 'GP=2', ! rice
+!!$EMIS_IN(217) = 'CH4_fx;', 'import_grid', 'Mfx_ri_CHINA_CH4', 'GP=2', ! rice
+!!$EMIS_IN(218) = 'CH4_fx;', 'import_grid', 'Mfx_ri_EU_CH4', 'GP=2', ! rice
+!!$EMIS_IN(219) = 'CH4_fx;', 'import_grid', 'Mfx_ri_INDIA_CH4', 'GP=2', ! rice
+!!$EMIS_IN(220) = 'CH4_fx;', 'import_grid', 'Mfx_ri_NA_CH4', 'GP=2', ! rice
+!!$EMIS_IN(221) = 'CH4_fx;', 'import_grid', 'Mfx_ri_SA_CH4', 'GP=2', ! rice
+!
+! termites
+!
+EMIS_IN(222) = 'CH4_fx;', 'import_grid', 'Mfx_te_CH4', 'GP=2', ! termites
+!
+! volcanoes
+!
+EMIS_IN(223) = 'CH4_fx;', 'import_grid', 'Mfx_vo_CH4', 'GP=2', ! volcanoes
+!
+! wetlands
+!
+EMIS_IN(224) = 'CH4_fx;', 'import_grid', 'Mfx_wl_AUS_CH4', 'GP=2', ! wetlands
+EMIS_IN(225) = 'CH4_fx;', 'import_grid', 'Mfx_wl_CHINA_CH4', 'GP=2', ! wetlands
+EMIS_IN(226) = 'CH4_fx;', 'import_grid', 'Mfx_wl_EU_CH4', 'GP=2', ! wetlands
+EMIS_IN(227) = 'CH4_fx;', 'import_grid', 'Mfx_wl_india_CH4', 'GP=2', ! wetlands
+EMIS_IN(228) = 'CH4_fx;', 'import_grid', 'Mfx_wl_MIDEAST_CH4', 'GP=2', ! wetlands
+EMIS_IN(229) = 'CH4_fx;', 'import_grid', 'Mfx_wl_NA_bor_CH4', 'GP=2', ! wetlands
+EMIS_IN(230) = 'CH4_fx;', 'import_grid', 'Mfx_wl_N_AFR_CH4', 'GP=2', ! wetlands
+EMIS_IN(231) = 'CH4_fx;', 'import_grid', 'Mfx_wl_NA_TEMP_CH4', 'GP=2', ! wetlands
+EMIS_IN(232) = 'CH4_fx;', 'import_grid', 'Mfx_wl_RUS_CH4', 'GP=2', ! wetlands
+EMIS_IN(233) = 'CH4_fx;', 'import_grid', 'Mfx_wl_S_AFR_CH4', 'GP=2', ! wetlands
+EMIS_IN(234) = 'CH4_fx;', 'import_grid', 'Mfx_wl_SA_temp_CH4', 'GP=2', ! wetlands
+EMIS_IN(235) = 'CH4_fx;', 'import_grid', 'Mfx_wl_SA_TROP_CH4', 'GP=2', ! wetlands
+EMIS_IN(236) = 'CH4_fx;', 'import_grid', 'Mfx_wl_se_asia_CH4', 'GP=2', ! wetlands
+!
+! wild animals
+!
+EMIS_IN(237) = 'CH4_fx;', 'import_grid', 'Mfx_wa_CH4', 'GP=2', !wild animals
+/

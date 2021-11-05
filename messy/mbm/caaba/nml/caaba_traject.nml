@@ -1,0 +1,119 @@
+! -*- f90 -*- Time-stamp: <2018-02-18 20:25:32 sander>
+
+!*****************************************************************************
+! coupling namelist for CAABA BOXMODEL
+!*****************************************************************************
+
+! TRAJECTORY mode
+! typical applications:
+! - move a 'box' through the atmosphere, e.g., along a trajectory
+! - simulate changing physical parameters over time, e.g., in a reaction
+!   chamber
+!
+! INPUT files:
+! 1) input_physc: netCDF file with physical parameters
+!   - Must contain at least 2 trajectory waypoints with the variables (see
+!     also external variable names below):
+!     temperature [K]
+!     pressure [Pa]
+!     relative humidity [0-1] or specific humidity [kg/kg]
+!     latitude [deg north] -> photolysis rates
+!     longitude [deg east] -> photolysis rates
+!     time origin in 'seconds/minutes/hours/days since yyyy-mm-dd hh:mm:ss'
+!     use fixed variable on time axis to simulate a fixed value
+! 2) input_jval (optional): netCDF file with photolysis rates for J_NO2
+!   - must be on same time axis as input_physc
+!   - can be in same file with input_physc and/or init_spec
+!   - no file given => no scaling applied to JVAL j-values
+!   - JVAL must be used as photolysis rate submodel (USE_JVAL = T and
+!     photrat_channel = 'jval')
+!   - a scaling factor (J_NO2 from input_jval)/(J_NO2 JVAL) is then applied
+!     to all photolysis rates in CAABA:
+!     j_X = (j_X_JVAL)/(j_NO2_JVAL)*j_NO2_external
+! 3) init_spec (optional): netCDF file with initial values for chemical
+!    species
+!   - overwrites CAABA init_scenario values;
+!   - can be in same file with input_physc and/or input_jval
+!   - no time axis needed (ignored if only 1 point in time present)
+!   - if >= 2 points on time axis present then interpolation to desired
+!     model start time is performed for initialization
+!   - species not included in current meccanism are skipped
+
+&CAABA
+
+ USE_JVAL    = T
+ USE_MECCA   = T
+!USE_SAPPHO  = T
+!USE_SEMIDEP = T
+ USE_TRAJECT = T
+
+!--- see "list_of_scenarios" in caaba.f90 for possibilities:
+!init_scenario     = 'CUMULUS'
+!photo_scenario    = ''
+!emission_scenario = ''
+!drydep_scenario   = ''
+
+!--- Choose a channel that contains J-values for photolysis reactions:
+ photrat_channel = 'jval'
+!photrat_channel = 'sappho'
+
+!--- PHYSC: physical (trajectory) data as function of time
+!input_physc = 'input/traject/example_input_physc.nc'
+input_physc = 'input/traject/example_input_all.nc'
+
+!--- JVAL: external J_NO2 j-values for scaling j-values computed by JVAL
+!input_jval = 'input/traject/example_input_jval_no2.nc'
+input_jval = 'input/traject/example_input_all.nc'
+
+!--- CHEM: init chemical species
+!---   examples in input/traject:
+!---     point data, time axis ignored: example_init_spec.nc
+!---     with time axis: example_input_physc_jval_init_spec.nc
+!init_spec = 'input/init_spec.nc'
+init_spec = 'input/traject/example_input_all.nc'
+
+!--- input_physc: specify external variable names present in netCDF file
+!--- time variable, default: TIME
+!vtime    = 'TIME'
+!--- vlat: latitude, default: LAT
+!vlat = 'LAT_TR'
+!--- vlon: longitude, default: LON
+!vlon = 'LON_TR'
+!--- vpress: pressure, default: PRESS
+!vpress = 'PRESS_TR'
+!--- vtemp: temperature, default: TEMP
+!vtemp = 'TM1'
+!--- humidity: activate only one, vspechum or vrelhum
+!--- vspechum: specific humidity, default: SPECHUM
+!---   specific humidity q (kg/kg) = (mass water vapor)/(mass moist air)
+!vspechum = 'QM1'
+!vspechum = 'Q'
+!vspechum = 'SPECHUM'
+!--- vrelhum: relative humidity, no default
+!---   relative humidity [0-1] in (see also l_relhum_WMO)
+!vrelhum = 'RELHUM'
+
+!--- HUMIDITY
+!--- convert c(H2O) to relhum or spechum (instead of vice versa)
+!l_ignore_relhum = T
+!--- relhum WMO definition (H2O(g) mass mixing ratios in dry air over liquid)
+!---   instead of traditional p(H2O)/psat(H2O)
+!l_relhum_wmo = T
+!--- use same psat and cair functions as in EMAC:
+!l_hum_emac = T
+!--- saturation vapor pressure always over liquid
+!l_psat_liquid = T
+
+!--- TIME
+!--- output time step in 'seconds', 'minutes' or 'hours', default: 20 minutes
+!timesteplen_str = '15 minutes'
+!--- runlast (days), TRAJECT: run only last part of trajectory;
+!---   default: not active
+!runlast = 0.2
+!--- model runtime; default: 8 days
+!---   TRAJECT: run only first part of trajectory, applied after runlast
+!runtime_str = '0.2 days'
+
+/
+
+!*****************************************************************************

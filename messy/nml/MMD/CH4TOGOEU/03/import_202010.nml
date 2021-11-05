@@ -1,0 +1,295 @@
+! -*- f90 -*-
+
+&CTRL_TS
+! ### SYNTAX:
+!     - name of time series
+!     - [var@] name (incl. path) of data file
+!           .nc -> netCDF, e.g., "var@my_path_to_my_file/my_file.nc" 
+!               -> ASCII,  e.g., "my_path_to_my_file/my_file.txt" 
+!     - valid range ( default: -HUGE(0._dp), HUGE(0._dp) )
+!     - out of time interval policy: 0: stop; 1: continue with nearest ...
+!       ... (before time interval, after time interval)
+!     - interpolation method:  -1: previous; 0: linear interpolation; 1: next
+!     - yr,mo,dy,hr,mi,se : pick out always this date/time
+!       (example: 2000, , , , , , will cycle through the year 2000 etc.)
+!     - offset (in days)
+!
+! ###########
+! ### QBO ###
+! ###########
+!
+!TS(1) = 'qbo', 'QBO@$INPUTDIR_MESSY/qbo/FUB_03_X_X_QBO_195001_213512.nc',  ,99.90, 0, 0, 0, , , , , , , 0.0,
+!TS(1) = 'qbo', '$INPUTDIR_MESSY/qbo/misc/FUB_03_X_X_QBO_195001_213512.txt',  ,99.90, 0, 0, 0, , , , , , , 0.0,
+!
+! ############ ##################
+! ### JVAL ### ### RAD_FUBRAD ###
+! ############ ##################
+!
+!   NOTE: 
+!    The data file must either contain
+!     * JVAL and/or FUBRAD:
+!       - the F10.7cm in sfu (adjusted to 1 AU !!!)
+!     * JVAL
+!       - phi_la,SR_toa_flux,flux(7),f0(7) (adjusted to 1 AU !!!)
+!     * FUBRAD
+!       - TSI, Flya, Fsch1, Fs, Fl, soscale, Fherz(7:21),
+!         Fhart(22:31), Fhug(32:49), Fchap
+!         (units: Wm-2, except: Fsch1, Fs, Fl (erg cm-2 s-1),
+!         soscale (dimensionless))
+!
+!TS(2) = 'solact','$INPUTDIR_MESSY/jval/misc/NRLSSI_FUB1.0_hist_X_solar1AU_19500101_20111231.txt', , , 0, 0, 0, , , , , , , 0.0,
+!
+!TS(3) = 'solspec','$INPUTDIR_MESSY/rad/fubrad/misc/NRLSSI_FUB1.0_hist_X_spec055_19500101_20111231.txt', , , 0, 0, 0, , , , , , , 0.0,
+!
+/
+
+&CTRL_LT
+! ### SYNTAX:
+! ### LT(.) = 'table name','netcdf-file with path','netcdf variable name',
+! ###         (table name must be unique)
+!
+!LT(1) = 'mytable','$INPUTDIR_MESSY/mysubmodel/LT_my_file.nc','myvar',
+!
+/
+
+&RGTEVENTS
+! ### SYNTAX:
+! ###         NML=   '' (DEFAULT)   : this namelist-file (import.nml)
+!                    <namelist file>: other namelist file
+!
+! ###         FILE=  '' (DEFAULT)   : - ONLY first netCDF-file in NML
+!                    <netCDF-file>  : - this file in NML
+!
+! ###         VAR=   '' (DEFAULT)   : - all variables from FILE
+!                                     - all variables in first namelist in NML
+!                    <tracer name>  : - this variable from namelist in NML
+!                                       (FILE specifier ignored !!!)
+! ###         Z=     <z1,z2,...>    : - list of emission heights [m]
+!                                       (above GND) for multi level emissions
+!                                       (Nx2D)
+!
+! NOTEs: (1) SUMMATION OF DIFFERENT OFFLINE EMISSIONS FOR ONE TRACER
+!            CAN BE ACHEIVED BY USING THE
+!            FILE- or VAR- specifier in combination with the NML-specifier
+!        (2) PRESCRIBED MIXING RATIOS CAN BE ACHIEVED
+!            in combination with SUBMODEL TNUDGE
+!        (3) Surface emission fluxes (2D) must be in  molecules m-2 s-1.
+!        (4) Volume emissions (3D)        must be in  molecules m-3 s-1.
+!        (5) Multi level emissions (Nx2D) must be in  molecules m-2 s-1.
+!        (6) For volume emissions (3D), the corresponding &REGRID-namelist
+!            must contain the specification of the vertical coordinate.
+!            The Z-specifier (emission heights) must not be used!
+!        (7) The trigger for multi level emissions (Nx2D) is the presence
+!            of the Z-specifier (emission heights) in the RG_TRIG action
+!            string. The corresponding &REGRID-namelist must not contain any
+!            specification of a vertical coordinate, since the levels
+!            must be treated as 'invariant' (parameter-)dimension.
+!        (8) For Nx2D emissions, the FILE specifier must not be used, since
+!            the level is treated by NCREGRID as invariant dimension.
+!            (Regridding of a file (i.e., multiple variables in one step)
+!             containing one or more variables with a free parameter
+!             (here level index) is not possible, since the 'parameter'
+!             dimension is already used for the number of variables.)
+!
+!
+! ############################################################################
+! RAD: ozone climatology
+! ############################################################################
+!
+!RG_TRIG(1) = 1,'months','first',0, 'RADO3', 1,1,12,$START_MONTH, 'NML=./import/rad/FortuinKelder_MPIM1.0_clim_X_O3_01-12.nml; VAR=O3',
+!
+! ############################################################################
+! QCTM and CH4 oxidation
+! ############################################################################
+!
+!RG_TRIG(1) = 1,'months','first',0, 'QCTM', 1,1,12,$START_MONTH, 'NML=./import/MISC/QCTM/SC1SD-base-01_clim2007-2016_4QCTM_01-12.nml;',
+!
+!RG_TRIG(3) = 1,'months','first',0, 'QCTM', 1,1,12,$START_MONTH, 'NML=./import/MISC/QCTM/SC1SD-base-02_clim2007-2016_4QCTM_01-12.nml;',
+!
+! ############################################################################
+! LOWER BOUNDARY CONDITIONS (SEE tnudge.nml)
+! ############################################################################
+!
+! TIMER: JAN 1950 =   1        DEC 1950 =   12
+!        JAN 1951 =  13        DEC 1951 =   24
+!        JAN 1960 =  121       DEC 1960 =  132   
+!        JAN 2010 =  721       DEC 2010 =  732
+!        JAN 2011 =  733       DEC 2011 =  744
+!        JAN 2019 =  829
+!        ...                   ...
+!        JAN 2100 = 1801       DEC 2100 = 1812
+!
+! GHG: N2O, CH4, CO2
+RG_TRIG(2)  = 1,'months', 'first',0, 'TN_GHG',  1801,1,1812,850, 'NML=./import/tnudge/CCMI_DLR1.0_RCP6.0_sfmr_GHG_195001-210012.nml;',
+!
+! CFC: CFCl3, CF2Cl, CH3CCl3, CCl4
+RG_TRIG(3)  = 1,'months', 'first',0, 'TN_CFC',  1801,1,1812,850, 'NML=./import/tnudge/CCMI_DLR1.0_RCP6.0_sfmr_CFC_195001-210012.nml;',
+!
+! HCFC: CH3Cl, CH3Br 
+RG_TRIG(4)  = 1,'months', 'first',0, 'TN_HCFC', 1801,1,1812,850, 'NML=./import/tnudge/CCMI_DLR1.0_RCP6.0_sfmr_HCFC_195001-210012.nml;',
+!
+! Halons: CF2ClBr, CF3Br
+RG_TRIG(5) = 1,'months', 'first',0, 'TN_Halon', 1801,1,1812,850, 'NML=./import/tnudge/CCMI_DLR1.0_RCP6.0_sfmr_Halons_195001-210012.nml;',
+
+! H2: (SPECIAL) [repeat 2011 for 2012 ... 2100]
+RG_TRIG(11) = 1,'months', 'first',0, 'TN_H2',   733,1,744,742, 'NML=./import/tnudge/DLR_1.0_X_sfmr_H2_195001-201112.nml; VAR=H2',
+
+
+
+! ############################################################################
+! OFFEMIS
+! ############################################################################
+!
+! CH4_fx emissions
+!
+! biomass burning
+RG_TRIG(20) = 1,'months','first',0, 'BB_AUS', 265,1,276,274, 'NML=./import/offemis/CH4/EMPA/EMPA_DLR1.1_PostE_bb+AUS_CH4_199001-201212.nml; VAR=CH4;',
+RG_TRIG(21) = 1,'months','first',0, 'BB_CHINA', 265,1,276,274, 'NML=./import/offemis/CH4/EMPA/EMPA_DLR1.1_PostE_bb+CHINA_CH4_199001-201212.nml; VAR=CH4;',
+RG_TRIG(22) = 1,'months','first',0, 'BB_EU', 265,1,276,274, 'NML=./import/offemis/CH4/EMPA/EMPA_DLR1.1_PostE_bb+EU_CH4_199001-201212.nml; VAR=CH4;',
+RG_TRIG(23) = 1,'months','first',0, 'BB_INDIA', 265,1,276,274, 'NML=./import/offemis/CH4/EMPA/EMPA_DLR1.1_PostE_bb+INDIA_CH4_199001-201212.nml; VAR=CH4;',
+RG_TRIG(24) = 1,'months','first',0, 'BB_NA_bor', 265,1,276,274, 'NML=./import/offemis/CH4/EMPA/EMPA_DLR1.1_PostE_bb+NAbor_CH4_199001-201212.nml; VAR=CH4;',
+RG_TRIG(25) = 1,'months','first',0, 'BB_N_AFR', 265,1,276,274, 'NML=./import/offemis/CH4/EMPA/EMPA_DLR1.1_PostE_bb+NAFR_CH4_199001-201212.nml; VAR=CH4;',
+RG_TRIG(26) = 1,'months','first',0, 'BB_NA_temp', 265,1,276,274, 'NML=./import/offemis/CH4/EMPA/EMPA_DLR1.1_PostE_bb+NAtemp_CH4_199001-201212.nml; VAR=CH4;',
+RG_TRIG(27) = 1,'months','first',0, 'BB_N_MIDEAST', 265,1,276,274, 'NML=./import/offemis/CH4/EMPA/EMPA_DLR1.1_PostE_bb+NMIDEAST_CH4_199001-201212.nml; VAR=CH4;',
+RG_TRIG(28) = 1,'months','first',0, 'BB_RUS', 265,1,276,274, 'NML=./import/offemis/CH4/EMPA/EMPA_DLR1.1_PostE_bb+RUS_CH4_199001-201212.nml; VAR=CH4;',
+RG_TRIG(29) = 1,'months','first',0, 'BB_S_AFR', 265,1,276,274, 'NML=./import/offemis/CH4/EMPA/EMPA_DLR1.1_PostE_bb+SAFR_CH4_199001-201212.nml; VAR=CH4;',
+RG_TRIG(30) = 1,'months','first',0, 'BB_SA_temp', 265,1,276,274, 'NML=./import/offemis/CH4/EMPA/EMPA_DLR1.1_PostE_bb+SAtemp_CH4_199001-201212.nml; VAR=CH4;',
+RG_TRIG(31) = 1,'months','first',0, 'BB_SA_trop', 265,1,276,274, 'NML=./import/offemis/CH4/EMPA/EMPA_DLR1.1_PostE_bb+SAtrop_CH4_199001-201212.nml; VAR=CH4;',
+RG_TRIG(32) = 1,'months','first',0, 'BB_SE_ASIA', 265,1,276,274, 'NML=./import/offemis/CH4/EMPA/EMPA_DLR1.1_PostE_bb+SEASIA_CH4_199001-201212.nml; VAR=CH4;',
+!
+! anthropogenic
+!
+! anthropogenic from EDGAR
+!RG_TRIG(139) = 1,'years','first',0, 'ANTH_CH4', 1,1,1,1, 'NML=./import/offemis/CH4/EDGAR/EDGAR_v42FT2010_X_anth_CH4_2010-2010.nml'
+!RG_TRIG(139) = 1,'years','first',0, 'ANTH_CH4', 1,1,1,1, 'NML=./import/offemis/CH4/EDGAR/EDGAR_v42FT2010xf_X_anth_CH4_2010-2010.nml'
+
+!anthropognic emissions from EDGAR 5.0                                                                   
+RG_TRIG(139) = 1,'years','first',0, 'ANTH_CH4', 1,1,1,1, 'NML=./import/offemis/EDGAR/5.0/EDGAR_v5.0_X_anth_CH4_2015.nml'
+
+
+
+!
+! anthropogenic from EMPA
+!
+!!$RG_TRIG(140) = 1,'months','first',0, 'Mfx_an_AFRICA', 265,1,276,274, 'NML=./import/offemis/CH4/EMPA/EMPA_DLR1.1_PostE_anth+AFRICA_CH4_199001-201212.nml; VAR=CH4;',
+!!$RG_TRIG(141) = 1,'months','first',0, 'Mfx_an_AUS', 265,1,276,274, 'NML=./import/offemis/CH4/EMPA/EMPA_DLR1.1_PostE_anth+AUS_CH4_199001-201212.nml; VAR=CH4;',
+!!$RG_TRIG(142) = 1,'months','first',0, 'Mfx_an_CHINA', 265,1,276,274, 'NML=./import/offemis/CH4/EMPA/EMPA_DLR1.1_PostE_anth+CHINA_CH4_199001-201212.nml; VAR=CH4;',
+!!$RG_TRIG(143) = 1,'months','first',0, 'Mfx_an_EU', 265,1,276,274, 'NML=./import/offemis/CH4/EMPA/EMPA_DLR1.1_PostE_anth+EU_CH4_199001-201212.nml; VAR=CH4;',
+!!$RG_TRIG(144) = 1,'months','first',0, 'Mfx_an_INDIA', 265,1,276,274, 'NML=./import/offemis/CH4/EMPA/EMPA_DLR1.1_PostE_anth+INDIA_CH4_199001-201212.nml; VAR=CH4;',
+!!$RG_TRIG(145) = 1,'months','first',0, 'Mfx_an_MIDEAST', 265,1,276,274, 'NML=./import/offemis/CH4/EMPA/EMPA_DLR1.1_PostE_anth+MIDEAST_CH4_199001-201212.nml; VAR=CH4;',
+!!$RG_TRIG(146) = 1,'months','first',0, 'Mfx_an_NA', 265,1,276,274, 'NML=./import/offemis/CH4/EMPA/EMPA_DLR1.1_PostE_anth+NA_CH4_199001-201212.nml; VAR=CH4;',
+!!$RG_TRIG(147) = 1,'months','first',0, 'Mfx_an_OCEAN', 265,1,276,274, 'NML=./import/offemis/CH4/EMPA/EMPA_DLR1.1_PostE_ship_CH4_199001-201212.nml; VAR=CH4;',
+!!$RG_TRIG(148) = 1,'months','first',0, 'Mfx_an_RUS', 265,1,276,274, 'NML=./import/offemis/CH4/EMPA/EMPA_DLR1.1_PostE_anth+RUS_CH4_199001-201212.nml; VAR=CH4;',
+!!$RG_TRIG(149) = 1,'months','first',0, 'Mfx_an_SA', 265,1,276,274, 'NML=./import/offemis/CH4/EMPA/EMPA_DLR1.1_PostE_anth+SA_CH4_199001-201212.nml; VAR=CH4;',
+!!$RG_TRIG(150) = 1,'months','first',0, 'Mfx_an_SE_ASIA', 265,1,276,274, 'NML=./import/offemis/CH4/EMPA/EMPA_DLR1.1_PostE_anth+SEASIA_CH4_199001-201212.nml; VAR=CH4;',
+!
+! ocean
+!
+RG_TRIG(151) = 1,'months','first',0, 'Mfx_oc', 265,1,276,274, 'NML=./import/offemis/CH4/EMPA/EMPA_DLR1.1_PostE_ocean_CH4_199001-201212.nml; VAR=CH4;',
+!
+! rice
+!
+!!$RG_TRIG(152) = 1,'months','first',0, 'Mfx_ri_AFR', 265,1,276,274, 'NML=./import/offemis/CH4/EMPA/EMPA_DLR1.1_PostE_rice+AFR_CH4_199001-201212.nml; VAR=CH4;',
+!!$RG_TRIG(153) = 1,'months','first',0, 'Mfx_ri_ASIA_AUS', 265,1,276,274, 'NML=./import/offemis/CH4/EMPA/EMPA_DLR1.1_PostE_rice+ASIA+AUS_CH4_199001-201212.nml; VAR=CH4;',
+!!$RG_TRIG(154) = 1,'months','first',0, 'Mfx_ri_CHINA', 265,1,276,274, 'NML=./import/offemis/CH4/EMPA/EMPA_DLR1.1_PostE_rice+CHINA_CH4_199001-201212.nml; VAR=CH4;',
+!!$RG_TRIG(155) = 1,'months','first',0, 'Mfx_ri_EU', 265,1,276,274, 'NML=./import/offemis/CH4/EMPA/EMPA_DLR1.1_PostE_rice+EU_CH4_199001-201212.nml; VAR=CH4;',
+!!$RG_TRIG(156) = 1,'months','first',0, 'Mfx_ri_INDIA', 265,1,276,274, 'NML=./import/offemis/CH4/EMPA/EMPA_DLR1.1_PostE_rice+INDIA_CH4_199001-201212.nml; VAR=CH4;',
+!!$RG_TRIG(157) = 1,'months','first',0, 'Mfx_ri_NA', 265,1,276,274, 'NML=./import/offemis/CH4/EMPA/EMPA_DLR1.1_PostE_rice+NA_CH4_199001-201212.nml; VAR=CH4;',
+!!$RG_TRIG(158) = 1,'months','first',0, 'Mfx_ri_SA', 265,1,276,274, 'NML=./import/offemis/CH4/EMPA/EMPA_DLR1.1_PostE_rice+SA_CH4_199001-201212.nml; VAR=CH4;',
+!
+! termites
+!
+RG_TRIG(159) = 1,'months','first',0, 'Mfx_te', 265,1,276,274, 'NML=./import/offemis/CH4/EMPA/EMPA_DLR1.1_PostE_biotermites_CH4_199001-201212.nml; VAR=CH4;',
+!
+! volcanoes
+!
+RG_TRIG(160) = 1,'months','first',0, 'Mfx_vo', 265,1,276,274, 'NML=./import/offemis/CH4/EMPA/EMPA_DLR1.1_PostE_volc_CH4_199001-201212.nml; VAR=CH4;',
+!
+! wetlands
+!
+RG_TRIG(161) = 1,'months','first',0, 'Mfx_wl_AUS', 265,1,276,274, 'NML=./import/offemis/CH4/EMPA/EMPA_DLR1.1_PostE_biowetlands+AUS_CH4_199001-201212.nml; VAR=CH4;',
+RG_TRIG(162) = 1,'months','first',0, 'Mfx_wl_CHINA', 265,1,276,274, 'NML=./import/offemis/CH4/EMPA/EMPA_DLR1.1_PostE_biowetlands+CHINA_CH4_199001-201212.nml; VAR=CH4;',
+RG_TRIG(163) = 1,'months','first',0, 'Mfx_wl_EU', 265,1,276,274, 'NML=./import/offemis/CH4/EMPA/EMPA_DLR1.1_PostE_biowetlands+EU_CH4_199001-201212.nml; VAR=CH4;',
+RG_TRIG(164) = 1,'months','first',0, 'Mfx_wl_india', 265,1,276,274, 'NML=./import/offemis/CH4/EMPA/EMPA_DLR1.1_PostE_biowetlands+INDIA_CH4_199001-201212.nml; VAR=CH4;',
+RG_TRIG(165) = 1,'months','first',0, 'Mfx_wl_MIDEAST', 265,1,276,274, 'NML=./import/offemis/CH4/EMPA/EMPA_DLR1.1_PostE_biowetlands+MIDEAST_CH4_199001-201212.nml; VAR=CH4;',
+RG_TRIG(166) = 1,'months','first',0, 'Mfx_wl_NA_bor', 265,1,276,274, 'NML=./import/offemis/CH4/EMPA/EMPA_DLR1.1_PostE_biowetlands+NAbor_CH4_199001-201212.nml; VAR=CH4;',
+RG_TRIG(167) = 1,'months','first',0, 'Mfx_wl_N_AFR', 265,1,276,274, 'NML=./import/offemis/CH4/EMPA/EMPA_DLR1.1_PostE_biowetlands+NAFR_CH4_199001-201212.nml; VAR=CH4;',
+RG_TRIG(168) = 1,'months','first',0, 'Mfx_wl_NA_TEMP', 265,1,276,274, 'NML=./import/offemis/CH4/EMPA/EMPA_DLR1.1_PostE_biowetlands+NAtemp_CH4_199001-201212.nml; VAR=CH4;',
+RG_TRIG(169) = 1,'months','first',0, 'Mfx_wl_RUS', 265,1,276,274, 'NML=./import/offemis/CH4/EMPA/EMPA_DLR1.1_PostE_biowetlands+RUS_CH4_199001-201212.nml; VAR=CH4;',
+RG_TRIG(170) = 1,'months','first',0, 'Mfx_wl_S_AFR', 265,1,276,274, 'NML=./import/offemis/CH4/EMPA/EMPA_DLR1.1_PostE_biowetlands+SAFR_CH4_199001-201212.nml; VAR=CH4;',
+RG_TRIG(171) = 1,'months','first',0, 'Mfx_wl_SA_temp', 265,1,276,274, 'NML=./import/offemis/CH4/EMPA/EMPA_DLR1.1_PostE_biowetlands+SAtemp_CH4_199001-201212.nml; VAR=CH4;',
+RG_TRIG(172) = 1,'months','first',0, 'Mfx_wl_SA_TROP', 265,1,276,274, 'NML=./import/offemis/CH4/EMPA/EMPA_DLR1.1_PostE_biowetlands+SAtrop_CH4_199001-201212.nml; VAR=CH4;',
+RG_TRIG(173) = 1,'months','first',0, 'Mfx_wl_se_asia', 265,1,276,274, 'NML=./import/offemis/CH4/EMPA/EMPA_DLR1.1_PostE_biowetlands+SEASIA_CH4_199001-201212.nml; VAR=CH4;',
+!
+! wild animals
+!
+RG_TRIG(174) = 1,'months','first',0, 'Mfx_wa', 265,1,276,274, 'NML=./import/offemis/CH4/EMPA/EMPA_DLR1.1_PostE_wildlife_CH4_199001-201212.nml; VAR=CH4;',
+!
+! ###########################################
+! AEROPT
+! ###########################################
+!
+! TIMER: JAN 1950 =   1       DEC 1950 =  12
+!        JAN 1951 =  13       DEC 1951 =  24
+!        ...
+!        JAN 1960 = 121       DEC 1960 = 132  
+!        ...
+!        JAN 1991 = 493       DEC 1991 = 504
+!        JAN 1992 = 505       DEC 1992 = 516
+!        ...
+!        JAN 2010 = 721       DEC 2010 = 732
+!        JAN 2011 = 733       DEC 2011 = 744
+!
+!RG_TRIG(195) = 1,'months','first',0, 'OPT-LW', 733,1,744,$AE_START, 'NML=./import/aeropt/CCMI-ETH_UMZ1.0_hist_optLW-ECHAM5_X_195001-201112.nml;',
+!
+!RG_TRIG(196) = 1,'months','first',0, 'OPT-SW', 733,1,744,$AE_START, 'NML=./import/aeropt/CCMI-ETH_UMZ1.0_hist_optSW-ECHAM5_X_195001-201112.nml;',
+!
+!
+!#############################################
+! OMI HTAP SO2
+!############################################
+
+
+RG_TRIG(196) =  1,'months','first',0,'omi_htap',  1,1,12,$START_MONTH,'NML=./import/offemis/MISC/OMI-HTAP-2.2_2.0_X_all_SO2_201901-201912.nml'
+
+
+!###########################################
+! Specific CH4/SO2 point source emissions
+!###########################################
+
+RG_TRIG(197) =  1,'months','first',0,'ptr_so2',  1,1,1,1,'NML=./import/offemis/MISC/CH4-TO-GO-EU_DLR2.0_X_anth_SO2_2019-2019.nml; Z=100'
+
+RG_TRIG(198) =  1,'months','first',0,'ptr_ch4',  1,1,1,1,'NML=./import/offemis/MISC/CH4-TO-GO-EU_DLR2.0_X_anth_CH4_2019-2019.nml'
+
+
+
+! ###########################################
+! DATA IMPORT FOR DDEP (DRY DEPOSITION)
+! ###########################################
+!
+RG_TRIG(270) = 1,'years', 'first',0,'soilpH',  1,1, 1,1,'VAR=soilpH; NML=./import/ddep/X_X_X_soilpHcl_X_X-X.nml',
+! additionally the fields lai, hc and drag (overlap with online emissions)
+! are needed.
+RG_TRIG(271) =  1,'months','first',0,'surf_para',  1,1,12,$START_MONTH,'NML=./import/onemis/X_X_X_surfpara_X_01-12.nml'
+!
+! TIMER: JAN 1950 =  1        DEC 1950 = 12
+!        JAN 1951 = 13        DEC 1951 = 24
+!        JAN 1960 = 121       DEC 1960 = 132   
+!        JAN 2009 = 709       DEC 2009 = 720
+!
+RG_TRIG(275) = 1,'months', 'first',0, 'DVMETH', 709,1,720,718, 'VAR=oxid; NML=./import/ddep/UBernLPJ_DLR1.0_HIST_soiloxid_CH4_195001-200912.nml'
+!
+! ###########################################
+! for testing
+! ###########################################
+!
+!!$RG_TRIG(197) = 1,'months','first',0, 'test', 1,1,1,1, 'NML=./import/MISC/IMPORT_GRID_TEST/single_point_emission.nml;',
+!
+
+!##############################################
+! JVAL: use upper boundary condition of ozone
+!##############################################
+RG_TRIG(400) = 1,'months','first',0,  'O3ubc', 1, 1, 12, $START_MONTH, 'NML=./import/jval/HALOE_MPIC1.0_clim_X_O3_01-12.nml; VAR=O3_H; P=0.5,1,1.3,1.8,2.3,3.1,4.1,5.5,7.4,9.8,13,18,23,31,41,55,74,98,131,175,233,311,414,552,737,982,1310,1750,2330,3100,4140,5520,7360,9810,13100,17400;',
+
+
+/

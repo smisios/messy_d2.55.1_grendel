@@ -1,0 +1,211 @@
+# 1 "../modules/mo_scan_buffer.f90"
+# 145
+
+
+MODULE mo_scan_buffer
+!
+! Authors:
+!  ?                               original source and changes
+!  A. Rhodin,      DWD, June 2002, new subroutine cleanup_scanbuf
+!  P. Joeckel,     MPICH, Nov. 2004, converted to stream
+
+  USE messy_main_constants_mem, ONLY: DP
+  USE messy_main_tracer_mem_bi, ONLY: xtte, xtte_a, &
+                                      xtte_c ! op_sb_20191007
+
+! NOTE: xtte=>xtte, xtte_a=>xtte_a MUST be renamed and USEd,
+!       since 1 USEs the tracer memory from here;
+!       A local pointer-assignment in m_bufscan is not possible, since the
+!       memory for xtte and xtte_a is ALLOCATED AFTER m_bufscan
+!       is called:
+!         init_memory (mo_memory_streams.f90)
+!          |--> m_bufscan (mo_scan_buffer.f90)
+!          |--> messy_init_memory (messy_main_control_e5.f90)
+!               |--> main_tracer_init_memory (messy_main_tracer_bi.f90)
+!                    |--> ...
+!                          |--> setup_tracer_set
+!                          |--> get_tracer_set
+!
+
+  IMPLICIT NONE
+  SAVE
+
+!                                                             ! set in  ! used in
+  REAL(DP), POINTER, DIMENSION(:,:,:)  :: dtm    => NULL()  ! ffti    ! dyn
+  REAL(DP), POINTER, DIMENSION(:,:,:)  :: dtl    => NULL()  ! ffti    ! dyn
+  REAL(DP), POINTER, DIMENSION(:,:)    :: dalpsl => NULL()  ! ffti    ! dyn
+  REAL(DP), POINTER, DIMENSION(:,:)    :: dalpsm => NULL()  ! ffti    ! dyn
+  REAL(DP), POINTER, DIMENSION(:,:,:)  :: dm     => NULL()  ! scan1sl ! fftd
+  REAL(DP), POINTER, DIMENSION(:,:,:)  :: vo     => NULL()  ! ffti    ! dyn,scan1sl,statd,tf2n
+  REAL(DP), POINTER, DIMENSION(:,:,:)   :: d      => NULL()  ! ffti
+  REAL(DP), POINTER, DIMENSION(:,:,:)   :: t      => NULL()  ! ffti
+  REAL(DP), POINTER, DIMENSION(:,:)     :: alps   => NULL()  ! ffti
+  REAL(DP), POINTER, DIMENSION(:,:,:)   :: u      => NULL()  ! ffti
+  REAL(DP), POINTER, DIMENSION(:,:,:)   :: dudl   => NULL()  ! ffti
+  REAL(DP), POINTER, DIMENSION(:,:,:)   :: v      => NULL()  ! ffti
+  REAL(DP), POINTER, DIMENSION(:,:,:)   :: dvdl   => NULL()  ! ffti
+  REAL(DP), POINTER, DIMENSION(:,:,:)   :: vol    => NULL()  ! fftd
+  REAL(DP), POINTER, DIMENSION(:,:,:)   :: vom    => NULL()  ! fftd
+  REAL(DP), POINTER, DIMENSION(:,:,:)   :: rh     => NULL()  ! fftd
+  REAL(DP), POINTER, DIMENSION(:,:,:)   :: qte    => NULL()
+  REAL(DP), POINTER, DIMENSION(:,:,:)   :: xlte   => NULL()
+  REAL(DP), POINTER, DIMENSION(:,:,:)   :: xite   => NULL()
+!!$  REAL(DP), POINTER, DIMENSION(:,:,:,:) :: xtte   => NULL()
+!!$  REAL(dp), POINTER, DIMENSION(:,:,:,:) :: xtte_a => NULL()
+  REAL(DP), POINTER, DIMENSION(:,:,:)   :: tte    => NULL()
+  REAL(DP), POINTER, DIMENSION(:,:)     :: alpste => NULL()
+  REAL(DP), POINTER, DIMENSION(:,:)     :: u0     => NULL() ! fftd
+  REAL(DP), POINTER, DIMENSION(:,:)     :: du0    => NULL() ! fftd
+  REAL(DP), POINTER, DIMENSION(:,:)     :: ul     => NULL() ! fftd
+  REAL(DP), POINTER, DIMENSION(:,:,:)   :: alnpr  => NULL()
+  REAL(DP), POINTER, DIMENSION(:,:,:)   :: alpha  => NULL()
+  REAL(DP), POINTER, DIMENSION(:,:,:)   :: vervel => NULL()
+
+CONTAINS
+!------------------------------------------------------------------------------
+  SUBROUTINE m_bufscan
+
+    USE mo_decomposition, ONLY: dcl => local_decomposition
+    USE mo_memory_base,   ONLY: t_stream, new_stream, add_stream_element &
+                              , GRIDPOINT, default_stream_setting 
+
+    USE mo_exception,     ONLY: finish
+    
+! LOCAL
+    INTEGER                               :: ngpblks, nlev, nproma, ngl, nlat
+    TYPE(t_stream),               POINTER :: stream_ptr
+    REAL(DP), DIMENSION(:,:,:,:), POINTER :: p4
+    LOGICAL, PARAMETER                    :: lverbose = .FALSE.
+
+    ngl     = dcl% nglat
+    ngpblks = dcl% ngpblks
+    nlev    = dcl% nlev
+    nproma  = dcl% nproma
+    nlat    = dcl% nlat
+    
+! CREAT NEW STREAM
+    CALL new_stream(stream_ptr, 'scnbuf', lpost=.false., lrerun=.false.)
+    CALL default_stream_setting(stream_ptr, repr=GRIDPOINT, &
+         lpost=.false., lrerun=.false.)
+    
+! ADD STREAM ELEMENTS (3D) nproma x nlev x ngpblks
+    CALL add_stream_element(stream_ptr, 'dtm',  dtm  &
+         , verbose=lverbose)
+    CALL add_stream_element(stream_ptr, 'dtl',  dtl  &
+         , verbose=lverbose)
+    CALL add_stream_element(stream_ptr, 'dm',   dm  &
+         , verbose=lverbose)
+    CALL add_stream_element(stream_ptr, 'vo',   vo  &
+         , verbose=lverbose)
+    CALL add_stream_element(stream_ptr, 'd',    d  &
+         , verbose=lverbose)
+    CALL add_stream_element(stream_ptr, 't',    t  &
+         , verbose=lverbose)
+    CALL add_stream_element(stream_ptr, 'u',    u  &
+         , verbose=lverbose)
+    CALL add_stream_element(stream_ptr, 'dudl', dudl  &
+         , verbose=lverbose)
+    CALL add_stream_element(stream_ptr, 'v',    v  &
+         , verbose=lverbose)
+    CALL add_stream_element(stream_ptr, 'dvdl', dvdl  &
+         , verbose=lverbose)
+    CALL add_stream_element(stream_ptr, 'vol',  vol  &
+         , verbose=lverbose)
+    CALL add_stream_element(stream_ptr, 'vom',  vom  &
+         , verbose=lverbose)
+    CALL add_stream_element(stream_ptr, 'rh',   rh  &
+         , verbose=lverbose)
+    CALL add_stream_element(stream_ptr, 'qte',  qte  &
+         , verbose=lverbose)
+    CALL add_stream_element(stream_ptr, 'xlte', xlte  &
+         , verbose=lverbose)
+    CALL add_stream_element(stream_ptr, 'xite', xite  &
+         , verbose=lverbose)
+    CALL add_stream_element(stream_ptr, 'tte',  tte  &
+         , verbose=lverbose)
+    CALL add_stream_element(stream_ptr, 'alnpr',alnpr  &
+         , verbose=lverbose)
+    CALL add_stream_element(stream_ptr, 'alpha',alpha  &
+         , verbose=lverbose)
+    CALL add_stream_element(stream_ptr, 'vervel',vervel  &
+         , verbose=lverbose)
+    
+! ADD STREAM ELEMENTS (2D) nproma x ngpblks
+    CALL add_stream_element(stream_ptr, 'dalpsl', dalpsl &
+         , verbose=lverbose)
+    CALL add_stream_element(stream_ptr, 'dalpsm', dalpsm &
+         , verbose=lverbose)
+    CALL add_stream_element(stream_ptr, 'alps',   alps   &
+         , verbose=lverbose)
+    CALL add_stream_element(stream_ptr, 'alpste', alpste &
+         , verbose=lverbose)
+    
+    ALLOCATE (u0     (nlev,ngl))                  ;u0     = 0.0_dp
+    ALLOCATE (du0    (nlev,ngl))                  ;du0    = 0.0_dp
+    ALLOCATE (ul     (nlev,ngl))                  ;ul     = 0.0_dp
+
+  END SUBROUTINE m_bufscan
+!-------------------------------------------------------------------------
+  SUBROUTINE cleanup_scanbuffer
+
+    IMPLICIT NONE
+    
+    NULLIFY (dtm    )
+    NULLIFY (dtl    )
+    NULLIFY (dalpsl )
+    NULLIFY (dalpsm )
+    NULLIFY (dm     )
+    NULLIFY (vo     )
+    NULLIFY (d      )
+    NULLIFY (t      )
+    NULLIFY (alps   )
+    NULLIFY (u      )
+    NULLIFY (dudl   )
+    NULLIFY (v      )
+    NULLIFY (dvdl   )
+    NULLIFY (vol    )
+    NULLIFY (vom    )
+    NULLIFY (rh     )
+    NULLIFY (qte    )
+    NULLIFY (xlte   )
+    NULLIFY (xite   )
+!!$    NULLIFY (xtte   )
+!!$    NULLIFY (xtte_a )
+    NULLIFY (tte    )
+    NULLIFY (alpste )
+    DEALLOCATE(u0); NULLIFY (u0     )
+    DEALLOCATE(du0); NULLIFY (du0    )
+    DEALLOCATE(ul); NULLIFY (ul     )
+    NULLIFY (alnpr  )
+    NULLIFY (alpha  )
+    NULLIFY (vervel )
+    
+    NULLIFY (vo)
+    NULLIFY (d)
+    NULLIFY (t)
+    NULLIFY (alps)
+    NULLIFY (u)
+    NULLIFY (dudl)
+    NULLIFY (v)
+    NULLIFY (dvdl)
+    NULLIFY (vol)
+    NULLIFY (vom)
+    NULLIFY (rh)
+    NULLIFY (qte)
+    NULLIFY (xlte)
+    NULLIFY (xite)
+    NULLIFY (xtte)
+    NULLIFY (xtte_a)
+    NULLIFY (xtte_c) ! op_sb_20191007
+    NULLIFY (tte)
+    NULLIFY (alpste)
+    NULLIFY (alnpr)
+    NULLIFY (alpha)
+    NULLIFY (vervel)
+    
+  END SUBROUTINE cleanup_scanbuffer
+!----------------------------------------------------------------------------
+
+END MODULE mo_scan_buffer
+
+

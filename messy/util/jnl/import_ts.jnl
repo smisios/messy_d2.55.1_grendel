@@ -1,0 +1,116 @@
+cancel data/all
+cancel variable/all
+cancel region/all
+cancel viewport
+
+! ---------------------------------------------------------------------
+! check output of MBM import_ts (call this ferret script from WORKDIR)
+! ---------------------------------------------------------------------
+! Author: Patrick Joeckel, DLR, Nov 2010 
+! ---------------------------------------------------------------------
+! Parameters:
+! $1: output file number: 01, 02, 03 etc
+! $2: parameter index (1 ... parameter dimension of original variable)
+! ---------------------------------------------------------------------
+
+define symbol nr = $1
+define symbol param = $2
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! detect original variable and file from import.nml namelist
+! NOTES:
+!   - works only for netCDF files (original file)
+!   - works only, if number of time series in import.nml in monotonous
+!     and therefore corresponds to output file numbers
+!
+sp grep -i "ts(" import.nml | awk -F ',' '{print $2}' | sed 's|@| |g' | sed "s|'||g" > tmp.dat
+file/format=delimited/delimiter=" "/var="v,f"/columns=2 tmp.dat
+define symbol var = `v[d=1,i=($nr)]`
+define symbol finput = `f[d=1,i=($nr)]`
+cancel data 1
+sp rm tmp.dat
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+! INIT
+define symbol fname = output_($nr).dat
+let mstr = \
+ {'Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'}
+
+!! COMPILE AND RUN F90 PROGRAM
+!sp (cd ../../.. ; gmake mbm)
+!sp ../../../bin/tseries.exe
+
+! SCAN OUTPUT
+let noclstr1 = {spawn:"head -1 ($fname) | wc -w"}
+let nocl1 = STRFLOAT(noclstr1[i=1])
+!
+let nolistr1 = {spawn:"wc -l ($fname)"}
+let noli1 = STRFLOAT(nolistr1[i=1])
+
+! DUMMY AXES FOR IMPORT
+define axis/x=1:`nocl1`:1 xi1
+define axis/t=1:`noli1`:1 ti1
+define grid/x=xi1/t=ti1 g1
+
+file/var="qdat"/grid=g1/columns=`nocl1` ($fname)
+
+let/d=1 year  = qdat[i=1]
+let/d=1 month = qdat[i=2]
+let/d=1 day   = qdat[i=3]
+let/d=1 hour  = qdat[i=4]
+
+define symbol mi1 = `month[l=1]`
+define symbol mostr1 = `mstr[i=($mi1)]`
+
+! for some strange reason, this definition is required twice ...
+define axis/\
+  t0="`day[d=1,l=1],zw=2`-($mostr1)-`year[d=1,l=1],zw=4` `hour[d=1,l=1],zw=2`:00:00"/from/name=tax1/unit=days \
+  DAYS1900(year[d=1],month[d=1],day[d=1])+hour[d=1]/24 - \
+  DAYS1900(year[d=1,l=1],month[d=1,l=1],day[d=1,l=1])-hour[d=1,l=1]/24
+
+define axis/\
+  t0="`day[d=1,l=1],zw=2`-($mostr1)-`year[d=1,l=1],zw=4` `hour[d=1,l=1],zw=2`:00:00"/from/name=tax1/unit=days \
+  DAYS1900(year[d=1],month[d=1],day[d=1])+hour[d=1]/24 - \
+  DAYS1900(year[d=1,l=1],month[d=1,l=1],day[d=1,l=1])-hour[d=1,l=1]/24
+
+define axis/x=1:`nocl1-4`:1 xax1
+
+let/d=1 sdat = qdat[d=1,i=@SHF:4]
+define/d=1 variable/title="time series data" \
+  dat = sdat[d=1,gx=xax1@asn,gt=tax1@asn]
+
+! ! -----------------------------
+! ! REFERENCE DATA
+! ! -----------------------------
+! ! SCAN OUTPUT
+! let noclstr2 = {spawn:"head -9 test_data_monthly.txt | tail -n 1 | wc -w"}
+! let nocl2 = STRFLOAT(noclstr2[i=1])
+! !
+! let nolistr2 = {spawn:"wc -l test_data_monthly.txt"}
+! let noli2 = STRFLOAT(nolistr2[i=1])-8
+
+! ! DUMMY AXES FOR IMPORT
+! define axis/x=1:`nocl2`:1 xi2
+! define axis/t=1:`noli2`:1 ti2
+! define grid/x=xi2/t=ti2 g2
+
+! file/skip=8/var="qdat"/grid=g2/columns=`nocl2` test_data_monthly.txt
+
+! let/d=2 year  = qdat[i=1,d=2]
+! let/d=2 month = qdat[i=2,d=2]
+
+! define symbol mi2 = `month[l=1,d=2]`
+! define symbol mostr2 = `mstr[i=($mi2)]`
+
+! define axis/\
+!   t0="01-($mostr2)-`year[d=2,l=1],zw=4`"/from/name=tax2/unit=days \
+!   DAYS1900(year[d=2],month[d=2],15) - \
+!   DAYS1900(year[d=2,l=1],month[d=2,l=1],1)
+
+! let/d=2 sdat = qdat[d=2,i=@SHF:2]
+! define/d=2 variable/title="time series data" \
+!   dat = sdat[d=2,gx=xax1@asn,gt=tax2@asn]
+set data "($finput)"
+
+plot dat[i=($param),d=1]
+plot/over/symbol=28/color=red/thick=3 ($var)[k=($param),d=2]

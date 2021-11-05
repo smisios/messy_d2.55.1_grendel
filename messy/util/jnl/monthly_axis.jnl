@@ -1,0 +1,48 @@
+! -----------------------------------------------------------------------
+! FERRET SCRIPT TO GENERATE A MONTHLY TIME AXIS FROM YYYY1 MM1 to YYYY2 MM2
+! -----------------------------------------------------------------------
+!
+! Examples:
+! - go monthly_axis.jnl 1990 01 2000 12
+!
+! ----------------------------------------------------------------------
+! Author: Patrick Joeckel, DLR, Nov 2012
+! ----------------------------------------------------------------------
+!
+\cancel mode verify
+cancel data/all
+cancel variable/all
+cancel region/all
+! cancel viewport
+
+query/ignore $1"<Usage: GO monthly_axis.jnl YYYY MM YYYY MM"
+query/ignore $2"<Usage: GO monthly_axis.jnl YYYY MM YYYY MM"
+query/ignore $3"<Usage: GO monthly_axis.jnl YYYY MM YYYY MM"
+query/ignore $4"<Usage: GO monthly_axis.jnl YYYY MM YYYY MM"
+
+
+
+define symbol start_year = $1
+define symbol start_month = $2
+define symbol stop_year  = $3
+define symbol stop_month = $4
+
+
+let nyear = ($stop_year) - ($start_year) + 1
+
+let month = MOD(l-1,12)+1
+let add_year = INT((l-1)/12)
+let tstep = DAYS1900(($start_year)+add_year,month,1) \
+           -DAYS1900(($start_year),1,1)
+define axis/T/units=days/t0=1-jan-($start_year)/edges/NAME=monthly  \
+       tstep[l=($start_month):`12*(nyear-1)+1+($stop_month)`]
+
+let one  = T[gt=monthly]/T[gt=monthly]
+let qdpm = one[t=@iin]/(24*3600)
+define variable/title="days/month" dpm = \
+     IF (l EQ 1) THEN 31 ELSE (qdpm-qdpm[l=@shf:-1])
+
+list dpm
+
+save/clobber/file="monthly_time_axis_($start_year)($start_month)_($stop_year)($stop_month).nc" dpm
+

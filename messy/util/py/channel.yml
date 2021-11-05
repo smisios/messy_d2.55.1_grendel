@@ -1,0 +1,408 @@
+##############################################################
+### GLOBAL SETTINGS                                        ###
+### verbose: True/False ### more or less output to logfile ###
+### subdir: <directory> ### output to this directory       ###
+### logfile: <file>     ### output to this log-file        ###
+###                     ### - in subdir, if set            ###
+###                     ### - default: stdout              ###
+##############################################################
+global:
+  verbose: True
+  subdir: X
+  #logfile: fpy.log
+
+####################################
+### SETTINGS FOR CHANNELS        ###
+### (which funtion to be called) ###
+####################################
+channels:
+  default: fpy_log
+  viso: fpy_map
+  tropop: fpy_map
+  vaxtra: fpy_map
+  ECHAM5: fpy_map
+  COSMO: fpy_map
+
+#########################################################
+### SETTINGS FOR FUNCTION SPECIFIC OBJECT SETTINGS    ###
+###functions:
+###  <function>
+###    ...
+###  fpy_map:
+###
+###    subdirs: True/False        ### create object-wise subdirectories
+###
+###    default:                   ### set defaults for all channels
+###      ...
+###
+###    <channel>:                 ### set defaults for specific channel
+###      ...
+###
+###    <channel>::<object>:       ### settings for specific channel object
+###      skip: True/False
+###      <mode>:                  ### default, std, kml
+###        skip: True/False
+###        plotargs:
+###          <key>: <name>
+###          ...
+###        plotrange: !!python/tuple [xmin,ymin,xmax,ymax]
+###        overlay:
+###          - <object>:
+###            ...
+###          - <object>:
+###            ...
+###      <mode>:
+###        ...
+#########################################################
+functions:
+
+  ### DEFINE NEW OBJECTS (Note: This function is ALWAYS called first!)
+  fpy_def:
+    ECHAM5::wind:
+      function:
+        vector: {x: "um1", y: "vm1"}
+      attributes:
+        long_name: wind
+        units: m/s
+
+    COSMO::wind:
+      function:
+        vector: {x: "um1", y: "vm1"}
+      attributes:
+        long_name: wind
+        units: m/s
+
+
+  ### PLOT HORIZONTAL MAPS
+  fpy_map:
+
+    subdirs: True
+    parallel: 0
+
+    default:
+      skip: False
+      dpi: 100
+      default:
+        skip: False
+        #plotrange
+      std:
+        skip: False
+        #plotrange:
+      kml:
+        skip: False
+        #plotrange:
+
+    tropop:
+      skip: True
+      default:
+        skip: False
+        #plotrange: !!python/tuple [-180.0,-90.0,180.0,90.0]
+      std:
+        skip: False
+        #plotrange: !!python/tuple [-180.0,-90.0,180.0,90.0]
+      kml:
+        skip: False
+        #plotrange: !!python/tuple [-180.0,-90.0,180.0,90.0]
+
+    tropop::pblh:
+      skip: False
+      default:
+        skip: False
+        plotrange: !!python/tuple [-60.0,-30.0,40.0,20.0]
+      std:
+        skip: False
+        plotrange: !!python/tuple [-60.0,-30.0,40.0,20.0]
+      kml:
+        skip: False
+        plotrange: !!python/tuple [-60.0,-30.0,40.0,20.0]
+
+    tropop::tp:
+      skip: False
+      default:
+#        skip: False
+#      std:
+        #plotrange: !!python/tuple [-60.0,-30.0,40.0,20.0]
+        plotargs:
+          cmap: viridis
+          vmin: 5000
+          vmax: 50000
+          levels: 10
+          #levels: !!python/list [50.E2,100.E2,150.E2,200.E2,250.E2,300.E2,350.E2,400.E2,450.E2,500.E2]
+          extend: both
+          #norm: mpl.colors.Normalize
+          #norm: mpl.colors.LogNorm
+          #norm: mpl-colors.BoundaryNorm
+        overlay:
+          - cpt:
+              plotargs:
+                colors: white
+                alpha: 1.0
+                #vmin: 5000
+                #vmax: 50000
+                #levels: 18
+                levels: !!python/list [5000, 10000, 15000, 20000, 25000, 30000]
+                labfmt: "%5.0f"
+
+    tropop::cpt_i:
+      skip: True
+    tropop::pblh_i:
+      skip: True
+    tropop::pblhRi_i:
+      skip: True
+    tropop::tp_clim_i:
+      skip: True
+    tropop::tp_i:
+      skip: True
+    tropop::tp_PV_i:
+      skip: True
+    tropop::tp_WMO_i:
+      skip: True
+
+    tropop::cpt_f:
+      skip: True
+    tropop::pblh_f:
+      skip: True
+    tropop::pblhRi_f:
+      skip: True
+    tropop::tp_clim_f:
+      skip: True
+    tropop::tp_f:
+      skip: True
+    tropop::tp_PV_f:
+      skip: True
+    tropop::tp_WMO_f:
+      skip: True
+
+    tropop::PV:
+      skip: True
+
+    tropop::PV@5:
+      skip: False
+
+    viso:
+      skip: True
+      default:
+      std:
+      kml:
+
+    viso::MAIpblh:
+      skip: False
+      default:
+        skip: True
+        #plotrange
+      std:
+        skip: True
+        plotrange: !!python/tuple [-10.0,30.0,10.0,70.0]
+      kml:
+        skip: False
+        plotrange: !!python/tuple [-10.0,30.0,10.0,70.0]
+
+    viso::LODpblh:
+      skip: False
+      default:
+        skip: False
+        dpi: 150
+        #plotrange
+        overlay:
+          - geolon:
+              plotargs:
+                colors: white
+                alpha: 1.0
+                vmin: -180
+                vmax: 180
+                levels: 36
+                labfmt: "%3.0f"
+          - geolat:
+              plotargs:
+                colors: white
+                alpha: 1.0
+                vmin: -90
+                vmax: 90
+                levels: 18
+                labfmt: "%3.0f"
+      std:
+        skip: False
+        plotrange: !!python/tuple [-20.0,30.0,10.0,70.0]
+        plotargs:
+          cmap: viridis
+          extend: both
+          levels: !!python/list [1.E-16,1.E-15,1.E-14,1.E-13,1.E-12]
+          vmin: 1.E-16
+          vmax: 1.E-12
+          norm: mpl.colors.LogNorm
+      kml:
+        skip: False
+        #plotrange: !!python/tuple [-10.0,30.0,10.0,70.0]
+        plotargs:
+          cmap: jet
+          extend: both
+          levels: 100
+          vmin: 1.E-16
+          vmax: 1.E-12
+          norm: mpl.colors.LogNorm
+
+    vaxtra:
+      skip: True
+      default:
+        skip: True
+      std:
+        skip: True
+      kml:
+        skip: True
+
+    vaxtra::O3@1:
+      skip: False
+      default:
+        skip: False
+        plotargs:
+          vmin: 0.1E-06
+          vmax: 1.1E-06
+          extend: both
+          levels: 11
+        overlay:
+          - CO@5:
+              plotargs:
+                colors: white
+                alpha: 1.0
+                levels: 10
+                labfmt: "%5.2e"
+          #- O3@3:
+          #    #contours
+      kml:
+        skip: False
+
+    # contains missing values
+    vaxtra::O3@10:
+      skip: False
+      default:
+        dpi: 200
+        skip: False
+        text:
+          - {"x":  8.2473, "y": 49.9929, "s": "Mainz", "ha": left, "rotation": 45, "fontsize": 12, "color": "red"}
+          - {"x": 11.5820, "y": 48.1351, "s": "Munich", "ha": left, "rotation": 45, "fontsize": 12, "color": "blue"}
+        marker:
+          - {"x":  8.2473, "y": 49.9929, "markersize": 2, "marker": "o", "color": "red"}
+          - {"x": 11.5820, "y": 48.1351, "markersize": 2, "marker": "o", "color": "blue"}
+        plotargs:
+          missing: True
+          vmin: 3.0E-08
+          vmax: 8.0E-08
+          extend: both
+          levels: 6
+        #overlay:
+        #  - CO@5:
+        #      plotargs:
+        #        colors: white
+        #        alpha: 1.0
+        #        levels: 10
+        #        labfmt: "%5.2e"
+      #std:
+      #  skip: False
+      kml:
+        skip: False
+
+    ECHAM5:
+      skip: True
+      default:
+        skip: True
+      std:
+        skip: True
+      kml:
+        skip: True
+
+    ECHAM5::wind@85:
+      skip: False
+      default:
+        skip: False
+        dpi: 150
+        plotargs:
+          missing: True
+          levels: 6
+          vmin: 0
+          vmax: 40
+          extend: max
+          cmap: jet
+          scale_unit: inches
+          scale: 40
+      std:
+        skip: False
+      kml:
+        skip: False
+
+    ECHAM5::tsurf:
+      skip: False
+      default:
+        skip: False
+        dpi: 150
+        plotargs:
+          missing: True
+          levels: 16
+          vmin: 200
+          vmax: 350
+          extend: max
+          cmap: jet
+        overlay:
+          - wind@90:
+              plotargs:
+                #levels: 6
+                #vmin: 0
+                #vmax: 40
+                color: black
+                scale_unit: inches
+                scale: 40.0
+      std:
+        skip: False
+      kml:
+        skip: False
+
+    COSMO:
+      skip: True
+      default:
+        skip: True
+      std:
+        skip: True
+      kml:
+        skip: True
+
+    COSMO::wind@50:
+      skip: False
+      default:
+        skip: False
+        dpi: 100
+        plotargs:
+          dx: 10
+          dy: 10
+          missing: True
+          vmin: 0
+          vmax: 20
+          extend: max
+          cmap: jet
+          scale_units: inches
+          scale: 20.0  # m/s per inch
+      std:
+        skip: False
+      kml:
+        skip: False
+
+    COSMO::T_2M:
+      skip: False
+      default:
+        skip: False
+        dpi: 150
+        plotargs:
+          missing: True
+          levels: 16
+          vmin: 200
+          vmax: 350
+          extend: max
+          cmap: jet
+        overlay:
+          - wind@50:
+              plotargs:
+                dx: 10
+                dy: 10
+                color: blue
+      std:
+        skip: False
+      kml:
+        skip: False

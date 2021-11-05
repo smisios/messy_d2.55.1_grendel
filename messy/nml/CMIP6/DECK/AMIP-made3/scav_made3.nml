@@ -1,0 +1,129 @@
+! -*- f90 -*-
+! NOTE: Submodel SCAV requires submodels CLOUD and CONVECT to be switched on.
+
+&CTRL
+ lscav_ls    = T,      ! true for large scale scavenging
+ lscav_cv    = T,      ! true for convective scavenging
+
+ lscav_nuc   = T,      ! nucleation scavenging
+ lscav_imp   = T,      ! impaction scavenging
+
+ lscav_l     = T,      ! scavenging by rain
+ lscav_i     = T,      ! scavenging by snow/ice
+! concerning gas phase scavenging
+ lscav_gas   = T,      ! true for scavenging of gasphase species
+ USE_schwartz = T,     ! true for calculation of transfer coefficient 
+                       !      following Schwartz, else Roelofs
+ lscav_easy  = F,      ! true for simplified scavenging (coefficients) 
+                       !      (no KPP for liquid phase)
+                       ! WARNING: the selected species are the same as 
+                       !          for the LIQUID KPP mechanism, so be careful 
+                       !          which mechanism to choose and which species 
+                       !          to consider
+                       !          This does not give very reasonable results
+ iscav_easy  = T,      ! true for simplified scavenging (coefficients)
+                       !      (no KPP for ice phase)
+                       ! WARNING: the selected species are the same as 
+                       !          for the ICE KPP mechanism, so be careful 
+                       !          which mechanism to choose and which species 
+                       !          to consider
+ l_scav_easy= 3,       ! switch for the type of easy scavenging
+                       ! 0 = no gaseous liquid scavenging
+                       ! 1 = fixed coefficients
+                       ! 2 = absolute Henry's law
+                       ! 3 = effective Henry's law (pH 5)
+ i_scav_easy= 0,       ! switch for the type of easy scavenging
+                       ! 0 = no gaseous ice scavenging
+                       ! 1 = fixed coefficients
+                       ! 2 = pseudo Henry's law
+                       ! 3 = iterative Langmuir uptake
+                       ! 4 = iterative Trapping uptake (For testing only!)
+
+! concerning aerosol scavenging
+ lscav_aer   = T,      ! true for scavenging of aerosol species
+ coeff_para  = 2,      ! scavenging parameter  
+                       ! 1 = constant parameters (Feichter)
+                       ! 2 = radius dependent (Slinn)
+ cpl_aerosol = 2,      ! coupling to aerosol chemical composition
+                       ! 0 = OFF (not mass conserving), 1 = simple coupling, 
+                       ! 2 = more extensive coupling (requires aerosol module),
+                       !     or full coupling (requires MECCA aerosol chemistry)
+ i_evap  = 2,          ! 1 = aerosols go after evaporation in the mode 
+                       !     where they originate from
+                       ! 2 = aerosols go into the largest available
+                       !     soluble mode (or submodel specific treatment)
+ frac_resnum = 0.1     ! fraction of number conc. in residual (i. e.
+                       ! ``soluble'') mode with largest index after droplet
+                       ! evaporation; default value: 0.6
+                       ! NOTE: For MADE3 number conc. in all residual modes will
+                       !       be reduced to this fraction.
+/
+
+&CPL
+ boxarea   = 'geoloc', 'gboxarea',          ! grid box area
+ rain_cv   = 'convect', 'cv_precflx',       ! convective: rainflux
+ snow_cv   = 'convect', 'cv_snowflx',       !             snowflux
+ ccover    = 'convect', 'cv_cover',         !             cloud cover
+ cvprec    = 'convect', 'cv_precnew',       !             freshly formed precipitation
+ cvsnow    = 'convect', 'cv_snownew',       !             freshly formed snow
+ cvrform   = 'convect', 'cv_rform',
+ cvsform   = 'convect', 'cv_sform',
+ cvlwc     = 'convect', 'cv_lwc',
+ cviwc     = 'convect', 'cv_iwc',
+
+ lcover    = 'cloud', 'aclc',               ! large scale: cloud cover
+ rcover    = 'cloud', 'prec_cover',         !              precipitating cloud cover
+ prec      = 'cloud', 'rainflux_no',        !              liquid precipitation
+ fsi       = 'cloud', 'snowflux_no',        !              ice / snow  precipitation
+ ratep     = 'cloud', 'rain_form',          !              liquid precipitation
+                                            !              formation rate
+ ratesi    = 'cloud', 'snow_form',          !              ice precipitation
+                                            !              formation rate
+ lwc       = 'cloud', 'lwc',                !              liquid water content
+ iwc       = 'cloud', 'iwc',                !              ice / snow content
+ imelt     = 'cloud', 'mimelt',             !              snow melting
+ isedi     = 'cloud', 'misedi',             !              ice sedimentation
+
+! to use activated aerosol fraction as calculated by CLOUD with the A-R&G
+! scheme, enable the following two lines
+! nfrac_nuc = 'cloud', 'ARG_ACT_FRAC'
+! mfrac_nuc = 'cloud', 'ARG_ACT_MFRAC'
+
+! aerosol module name for tracers made by scav 
+! for grid point and langrangian representation
+ aermod_gp  = 'made3'
+!
+! if using MADE3, set mode indices, number of modes, index of mode for dummy
+!                     tracers, subname of mode for dummy tracers, index of
+!                     ``main'' residual mode, number of residual modes:
+!             ks,km,ki,as,am,ai,cs,cm,ci,nmod,i_mode,csubname,evap_mode,n_resmod
+made3params = 1, 2, 3, 4, 5, 6, 7, 8, 9, 9,   8,     'cm',    8,        4
+
+ mass    = 'grid_def',   'grmass',            ! box properties: grid mass
+ vol     = 'grid_def',   'grvol',             !                 grid volume
+ press   = 'ECHAM5',   'press',             !                 pressure
+ pressi  = 'ECHAM5',   'pressi',            !                 pressure at interface levels
+ photol  = 'jval_gp', ''                    ! photolysis rates from channel
+                                            ! (depends on photolysis module)
+
+! op_pg_20130225+
+! provide channel objects (<tracer>_scte) with copies of scavenging 
+! tendencies
+ te_string = 'HCl;HBr;Br2;HOBr;BrCl;Cl2;HOCl;'
+! op_pg_20130225-
+
+ out_string = 'HNO3_l;NO3m_l;H2SO4_l;HSO3m_l;HSO4m_l;SO2_l;SO3mm_l;SO4mm_l;NH3_l;NH4p_l;HCl_l;Clm_l',
+
+ out_string_aer = 'SO4_ks;SO4_km;SO4_ki;SO4_as;SO4_am;SO4_ai;SO4_cs;SO4_cm;SO4_ci;NH4_ks;NH4_km;NH4_ki;NH4_as;NH4_am;NH4_ai;NH4_cs;NH4_cm;NH4_ci;NO3_ks;NO3_km;NO3_ki;NO3_as;NO3_am;NO3_ai;NO3_cs;NO3_cm;NO3_ci;Na_ks;Na_km;Na_ki;Na_as;Na_am;Na_ai;Na_cs;Na_cm;Na_ci;Cl_ks;Cl_km;Cl_ki;Cl_as;Cl_am;Cl_ai;Cl_cs;Cl_cm;Cl_ci;POM_ks;POM_km;POM_ki;POM_as;POM_am;POM_ai;POM_cs;POM_cm;POM_ci;BC_km;BC_ki;BC_am;BC_ai;BC_cm;BC_ci;DU_am;DU_ai;DU_cm;DU_ci;H2O_ks;H2O_km;H2O_ki;H2O_as;H2O_am;H2O_ai;H2O_cs;H2O_cm;H2O_ci;N_ks;N_km;N_ki;N_as;N_am;N_ai;N_cs;N_cm;N_ci',
+
+! Scavenging in gridpoint representation
+lscav_gp = T,
+! Scavenging in Lagrangian representation
+lscav_lg = F,
+
+! 1st: FRACTION [0...1] OF SUPER-COOLED WATER AT 0 degC
+! 2nd: LINEAR REGRESSION TO 0.0 at THIS TEMPERATURE (K)
+LIQFRAC = 1.00, 238.15
+! Altitude to which scav should calculate in Pa
+altitude = 5000.0
+/

@@ -1,0 +1,115 @@
+This guide is divided into two parts:
+
+1. Recreating the initialization data
+2. Creating a new grid
+
+where part 2. builds on part 1.
+
+Any path mentioned, if not an absolute one, will refer to the MPIOM
+source directory if prefixed with $SRC or the build directory if
+prefixed with $BUILD. Therefore it's required to first build MPIOM
+successfully before one can proceed to creating initialization data.
+In case you called configure from the same directory you extracted the
+source into, $BUILD and $SRC will refer to the same directory on your
+system. You will also need a directory with the setup input. At ZMAW
+it's mounted at /pool/data/MPIOM on almost all machines. The latter
+directory shall be referred to as $POOL (and /pool/data would be
+$POOL_ROOT). The default place of $POOL_ROOT can be set to DIR when
+running configure by setting the --with-pool-root=DIR option.
+
+There is also a directory the finished data goes into, the scripts and
+this documentation refers to it as $DEST.
+
+
+The relevant definitions for this discussion are:
+
+- setup-data refers to the files present in $POOL/setup. These files
+  come at a predefined resolution from multiple sources.
+
+- initial data are files derived from the setup data in the processes
+  described in part 1. Initial data differs from the setup data in the
+  following respects: It is
+  
+  a) uniformly provided in EXTRA-format (denoted by .ext
+     extension) and
+  b) already interpolated to the model grid resolution and shape.
+
+
+1. Recreating the initialization data
+-------------------------------------
+
+Supposing 
+
+ - you already have the topography file for a grid $G as topo and
+ - its parameters are present in $SRC/setup/grid-configs.sh.inc and
+ - you placed setup files in /some/path.
+ - the initial data should be put in /another/path
+ - and /tmp/work shall be used as working directory
+
+Then, to recreate the initial data, you simply run (in bash or ksh):
+
+$ mkdir -p /another/path
+$ cp topo /another/path/$G_topo
+$ GRID=$G POOL=/some/path SETUP_WORK_DIR=/tmp/work \
+ DEST=/another/path $BUILD/setup/build-setup.sh
+
+or (csh or tcsh):
+
+> mkdir -p /another/path
+> cp topo /another/path/$G_topo
+> setenv GRID $G
+> setenv POOL /some/path
+> setenv SETUP_WORK_DIR /tmp/work
+> setenv DEST /another/path
+> $BUILD/setup/build-setup.sh
+
+Since the topo file is known good, no prompts should query for
+further confirmation.
+
+2. Creating a new grid
+----------------------
+
+Grid creation expands on the initialization data procedure in that you
+need to verify your topography in two respects:
+
+  1. the "cut-out" around the pole regions must not include water
+  points,
+
+  2. the lake elimination in mk_topo should provide a plausible
+  topography, i.e. narrow straights or land-bridges should be
+  represented in a topologically sensible approximation.
+
+The recommended method to parameterize your new setup is to enter your
+new grid parameters in a new case clause in
+$SRC/setup/grid-configs.sh.inc.
+
+After writing your grid configuration proceed as in step 1. but omit
+copying the topography file (since there isn't one yet).
+
+To let you check these characteristics, the setup scripts pause at two points:
+
+  1. after running mk_anta, the pole regions should be inspected, if
+  this did not work out, you need to abort the run by e.g. pressing
+  Ctrl-C
+
+  2. after doing the lake elimination in mk_topo you should inspect
+  $DEST/$G_topo for any problematic areas. Then upon prompt
+
+    a) press return if everything looks fine
+
+    b) edit $DEST/$G_topo[1], enter 'n' and press return if the
+    process did not work
+
+Unfortunately there is still some experimentation needed: unusual (and
+hard to detect) topography configurations might cause the model to
+oscillate or otherwise become instable.
+
+Such an instability can in some cases be mitigated by choosing a
+shorter time-step either in spin-up or for the whole model run
+($SRC/prepare_sge_mpiom_hamocc_omip.in paramater DT[2]).
+
+[1] Note: instead of editing the topo file processed by mk_topo, it
+might be easier to edit a copy of $DEST/$G_topo.raw.
+
+[2] Please remember to call $SRC/config.status in case you edit any
+*.in file.

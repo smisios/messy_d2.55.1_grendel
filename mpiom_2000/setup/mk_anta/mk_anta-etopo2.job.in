@@ -1,0 +1,48 @@
+#! /bin/sh
+set -e
+. "@abs_builddir@/../setup-common.inc"
+
+#hh 09.08.05 setup anta and topo
+#note : program should be run at double precision
+
+#horizontal dimension: ie
+#horizontal dimension: je
+#1st pole lat: rlat1
+#1st pole lon: rlon1
+#2nd pole lat: rlat2
+#2nd pole lon: rlon2
+#size of 1st pole: phi
+
+#note:
+#phi=pi/2 gives no hole
+#phi smaller than pi/2 gives increasingly larger hole
+#size of second pole can be adjusted with parameter je
+
+#####################################
+# check that ie, je, rlat*, rlon* and GRID are set
+assert_vars_are_set ie je rlat1 rlat2 rlon1 rlon2 GRID
+
+@MKDIR_P@ "$GRID"
+cd "$GRID"
+
+cat >"${GRID}.asc"<<EOF
+&gridparams
+ie = ${ie}
+je = ${je}
+rlat1 = ${rlat1}
+rlon1 = ${rlon1}
+rlat2 = ${rlat2}
+rlon2 = ${rlon2}
+phi = ${phi}
+verbose=${DEBUG+1}${DEBUG-0} /
+${POOL}/setup/etopo2/etopo2.ext
+${DEST}/${GRID}_topo.raw
+EOF
+
+#"${CDO}" -f ext -p 8b copy "${POOL}/setup/etopo2/etopo2.ext" ./etopo2.ext
+
+$CMD_PREFIX "@abs_builddir@/zeko" <"${GRID}.asc"
+
+cp "${DEST}/${GRID}_topo.raw" "${DEST}/${GRID}_topo.ori"
+mv depto "$DEST/${GRID}_depto"
+mv anta "$DEST/${GRID}_anta"

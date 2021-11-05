@@ -1,0 +1,58 @@
+! -*- f90 -*-
+
+&CTRL
+!- iamu: switch for type of calculation for M_air in echam5/src/physc.f90
+!- iamu = 1      ! constant value of M_air=28.96
+!- iamu = 2      ! interpolated value based on MSIS-data
+!- iamu = 3      ! calculated online from only main tracers; CAUTION: You will need the tracers in the tracer field
+!- iamu = 4      ! calculated online from all tracers with i_vdiff=on; CAUTION: You will need the tracers in the tracer field
+! CAUTION: 3 and 4 can cause problems in the beginning -> best option at the moment is iamu = 2
+iamu = 2
+! calculate ion drag and joule heating
+! calc_iondrag = 0   ! switched off
+! calc_iondrag = 1   ! Hong and Lindzen 1976 (recommended)
+calc_iondrag = 1
+! for special NOx tracer experiments; not working at the moment
+passive_nox = 0
+! use_chem = T     ! for chemistry runs
+! use_chem = F     ! for runs without interactive chemistry
+use_chem = T
+! Prandtlnumber: value comes from HAMMONIA; other models use other values; needs further testing
+prandtlnumber = 0.72         ! standard
+! for calculation of ion drag and joule heating; calc_iondrag=1
+ed_solvar=4
+!ed_solvar=1     ! solar minimum
+!ed_solvar=2     ! solar maximum
+!ed_solvar=3     ! solar maximum (no difference to =2)
+!ed_solvar=4     ! variable solar conditions (tbd)
+! -----------------------
+! calculate SRC photolysis for O2 and CO2
+! -----------------------
+edith_phot = T
+! -----------------------
+! O2 photolysis branching
+! -----------------------
+! see: https://jpldataeval.jpl.nasa.gov/pdf/JPL_Publication_15-10.pdf A.1
+! 242.3nm - 175nm :  O3P + O3P
+! 175nm - 137nm   : O3P + O1D
+! 137nm - 132nm   : O1D + O1D
+! 132nm - 110nm   : O3P + O1S
+! 110nm -         : O1D + O1S
+! -> we assume a branching ratio of 1.0 O3P and 1.0 O1D
+ed_o2_o3p=1.0
+ed_o2_o1d=1.0
+! ed_o2_o1s: if you want to use it, be sure you have O1S in your meccanism
+ed_o2_o1s=0.0
+/
+
+&CPL
+! Coupling to tracers needed for calculations inside EDITh
+EDITH_NO='tracer_gp','NO'
+EDITH_CO2='tracer_gp','CO2'
+EDITH_O='tracer_gp','O3P'
+EDITH_O3='tracer_gp','O3'
+EDITH_O2='tracer_gp','O2'
+EDITH_N2='tracer_gp','N2'
+! Coupling to kp index
+edith_kp='import_ts','kp' !necessary for ed_solvar=4
+/

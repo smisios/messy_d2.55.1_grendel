@@ -1,0 +1,900 @@
+\CANCEL MODE verify ! like "unset echo" under unix
+CANCEL DATA/ALL
+CANCEL VARIABLE/ALL
+CANCEL SYMBOL/ALL
+
+! argument checking
+DEFINE SYMBOL dim         = $1"0d|0d|1d|2d"
+DEFINE SYMBOL unitacronym = $2"mpm|mpm|mpc|pa|"
+DEFINE SYMBOL jnlfile     = xxxg
+DEFINE SYMBOL argv        = ($dim) ($unitacronym)
+
+! don't stop after each page:
+DEFINE SYMBOL nopause = TRUE
+
+! set makepdf to TRUE only for 1-page plots:
+!DEFINE SYMBOL makepdf = TRUE
+
+go setmodelrun
+go initialize
+USE "($run0)/caaba_messy.nc"     ! d=1 press,temp
+! sensi first
+DEFINE SYMBOL dsensi = 2 !data set number of first sensi (try `,RETURN=dsetnum`)
+IF `($nsensi) GT 0` THEN ! for PLOT/OVER
+  REPEAT/range=1:($nsensi)/name=dnum ( \
+    DEFINE SYMBOL dnum = `dnum` ; \ ! convert VARIABLE to SYMBOL
+    USE "($run($dnum))/caaba_mecca.nc" )
+ENDIF
+! base last because it must be the current data set
+!USE "($run0)_tracer_gp.nc"
+USE "($run0)/caaba_mecca.nc"
+DEFINE SYMBOL dbase = `($nsensi)+2`
+say base run = data set number ($dbase)
+
+!GO initviewport 1 3 noheader
+!GO initviewport 3 7 header
+GO initviewport 3 7 smallheader
+DEFINE SYMBOL pagetitle = gas phase
+GO _mecca_spc ! DEFINE kpp variables
+
+! DEFINE factor for conversion to selected unit
+IF ($unitacronym%|mpm>TRUE|*>FALSE|%) THEN
+  ! leave DATA as it is [mol/mol]
+  LET conv = 1
+  DEFINE SYMBOL unit = fromdataset
+ENDIF
+IF ($unitacronym%|mpc>TRUE|*>FALSE|%) THEN
+  ! convert DATA to [molecules/cm3]
+  LET conv = 6.022e23*1.e-6*press[d=1]/(8.314409*temp[d=1])
+  DEFINE SYMBOL unit = mcl/cc
+ENDIF
+IF ($unitacronym%|pa>TRUE|*>FALSE|%) THEN
+  ! convert DATA to partial pressure [Pa]
+  LET conv = press[d=1]
+  DEFINE SYMBOL unit = Pa
+ENDIF
+SAY unit = [($unit)]
+LET factor = conv
+
+! SET verbosity (higher values of v produce more plots)
+LET v = 2
+
+!-------------------------------------------------------------------------------
+
+! DEFINE some families
+
+! NOx
+LET NOx = NO+NO2
+SET VARIABLE/TITLE="NO_x"/UNITS="mol/mol" NOx
+
+! NOy
+LET NOy = NO+NO2+NO3+2*N2O5+HONO+HNO3+HNO4+PAN+ClNO2+BrNO2+ClNO3+BrNO3
+SET VARIABLE/TITLE="NO_y"/UNITS="mol/mol" NOy
+
+! Clx = total reactive chlorine (excludes HCl)
+LET Clx = Cl+ClO+HOCl+2*Cl2O2+ClNO2+ClNO3+2*Cl2+OClO+BrCl+ICl
+SET VARIABLE/TITLE="Cl_x"/UNITS="mol/mol" Clx
+
+! Brx = total reactive bromine (excludes HBr)
+LET Brx = Br+BrO+HOBr+BrNO2+BrNO3+2*Br2+BrCl+IBr
+SET VARIABLE/TITLE="Br_x"/UNITS="mol/mol" Brx
+! if IBr is undefind, ferret produces the message:
+! *** NOTE: Ambiguous coordinates on X axis: BR+BRO+HOBR+...
+
+! Ix = total reactive iodine (excludes HI)
+LET Ix = Iod+IO+HOI+2*I2O2+HIO3+INO2+INO3+2*I2+ICl+IBr+OIO
+SET VARIABLE/TITLE="I_x"/UNITS="mol/mol" Ix
+
+! RGM
+LET RGM = HgO+HgCl+HgCl2+HgBr+HgBr2+ClHgOBr+ClHgBr
+SET VARIABLE/TITLE="RGM"/UNITS="mol/mol" RGM
+
+! ! Cl/ClO ratio
+! LET ClClO = Cl / ClO
+! SET VARIABLE/UNITS="1"      ClClO
+! SET VARIABLE/TITLE="Cl/ClO" ClClO
+! ! Cl/(HO2*ClO) ratio
+! LET ClClOHO2 = MIN( 1e9, Cl / (HO2*ClO))
+! SET VARIABLE/UNITS="1"            ClClOHO2
+! SET VARIABLE/TITLE="Cl/(HO2*ClO)" ClClOHO2
+
+!-------------------------------------------------------------------------------
+
+DEFINE SYMBOL saveunit = ($unit)
+DEFINE SYMBOL unit = fromdataset
+LET factor = 1
+
+! IF `v GE 1` THEN GO _plot_($dim) ClClO
+! IF `v GE 1` THEN GO _plot_($dim) ClClOHO2
+
+DEFINE SYMBOL unit = ($saveunit)
+LET factor = conv
+
+!-------------------------------------------------------------------------------
+
+IF `v GE 1` THEN Go _plot_($dim) em
+! O
+IF `v GE 2` THEN GO _plot_($dim) O1D
+IF `v GE 4` THEN GO _plot_($dim) O3P
+IF `v GE 3` THEN GO _plot_($dim) O2
+IF `v GE 1` THEN GO _plot_($dim) O3
+IF `v GE 1` THEN GO _plot_($dim) Op
+IF `v GE 1` THEN GO _plot_($dim) O2p
+! H
+IF `v GE 3` THEN GO _plot_($dim) H
+IF `v GE 2` THEN GO _plot_($dim) H2
+IF `v GE 1` THEN GO _plot_($dim) OH
+IF `v GE 1` THEN GO _plot_($dim) HO2
+IF `v GE 2` THEN GO _plot_($dim) H2O
+IF `v GE 1` THEN GO _plot_($dim) H2O2
+! N
+IF `v GE 1` THEN GO _plot_($dim) NOx
+IF `v GE 1` THEN GO _plot_($dim) NOy
+IF `v GE 3` THEN GO _plot_($dim) N
+IF `v GE 3` THEN GO _plot_($dim) N2
+IF `v GE 2` THEN GO _plot_($dim) NH3
+IF `v GE 2` THEN GO _plot_($dim) N2O
+IF `v GE 1` THEN GO _plot_($dim) NO
+IF `v GE 1` THEN GO _plot_($dim) NO2
+IF `v GE 1` THEN GO _plot_($dim) NO3
+IF `v GE 1` THEN GO _plot_($dim) N2O5
+IF `v GE 1` THEN GO _plot_($dim) HONO
+IF `v GE 1` THEN GO _plot_($dim) HNO3
+IF `v GE 2` THEN GO _plot_($dim) HNO4
+IF `v GE 4` THEN GO _plot_($dim) NH2
+IF `v GE 4` THEN GO _plot_($dim) HNO
+IF `v GE 4` THEN GO _plot_($dim) NHOH
+IF `v GE 4` THEN GO _plot_($dim) NH2O
+IF `v GE 4` THEN GO _plot_($dim) NH2OH
+IF `v GE 3` THEN GO _plot_($dim) Np
+IF `v GE 3` THEN GO _plot_($dim) N2p
+IF `v GE 3` THEN GO _plot_($dim) NOp
+! 1C
+IF `v GE 2` THEN GO _plot_($dim) CO
+IF `v GE 2` THEN GO _plot_($dim) CO2
+IF `v GE 2` THEN GO _plot_($dim) HCHO
+IF `v GE 2` THEN GO _plot_($dim) HCOOH
+IF `v GE 2` THEN GO _plot_($dim) CH2OO
+IF `v GE 2` THEN GO _plot_($dim) CH2OOA
+IF `v GE 2` THEN GO _plot_($dim) CH3
+IF `v GE 2` THEN GO _plot_($dim) CH3O
+IF `v GE 2` THEN GO _plot_($dim) CH3O2
+IF `v GE 2` THEN GO _plot_($dim) HOCH2O2
+IF `v GE 2` THEN GO _plot_($dim) CH4
+IF `v GE 2` THEN GO _plot_($dim) CH3OH
+IF `v GE 2` THEN GO _plot_($dim) CH3OOH
+IF `v GE 2` THEN GO _plot_($dim) HOCH2OOH
+IF `v GE 2` THEN GO _plot_($dim) HOCH2OH
+! 1C (CHON)
+IF `v GE 2` THEN GO _plot_($dim) CH3ONO
+IF `v GE 2` THEN GO _plot_($dim) CH3NO3
+IF `v GE 2` THEN GO _plot_($dim) CH3O2NO2
+IF `v GE 2` THEN GO _plot_($dim) HOCH2O2NO2
+IF `v GE 2` THEN GO _plot_($dim) HCN
+IF `v GE 2` THEN GO _plot_($dim) CN
+IF `v GE 2` THEN GO _plot_($dim) NCO
+! 1C (lumped)
+IF `v GE 2` THEN GO _plot_($dim) LCARBON
+! 2C (CHO)
+IF `v GE 2` THEN GO _plot_($dim) HCOCO3
+IF `v GE 2` THEN GO _plot_($dim) HCOCO3A
+IF `v GE 2` THEN GO _plot_($dim) HCOCO
+IF `v GE 2` THEN GO _plot_($dim) C2H2
+IF `v GE 2` THEN GO _plot_($dim) CH2CO
+IF `v GE 2` THEN GO _plot_($dim) GLYOX
+IF `v GE 2` THEN GO _plot_($dim) HCOCO2H
+IF `v GE 2` THEN GO _plot_($dim) CHOOCHO
+IF `v GE 2` THEN GO _plot_($dim) HCOCO3H
+IF `v GE 2` THEN GO _plot_($dim) CH3CO
+IF `v GE 2` THEN GO _plot_($dim) HOCH2CO
+IF `v GE 2` THEN GO _plot_($dim) HOCHCHO
+IF `v GE 2` THEN GO _plot_($dim) HCOCH2O2
+IF `v GE 2` THEN GO _plot_($dim) CH3CO3
+IF `v GE 2` THEN GO _plot_($dim) HOCH2CO3
+IF `v GE 2` THEN GO _plot_($dim) HOOCH2CO3
+IF `v GE 2` THEN GO _plot_($dim) C2H4
+IF `v GE 2` THEN GO _plot_($dim) CH2CHOH
+IF `v GE 2` THEN GO _plot_($dim) CH3CHO
+IF `v GE 2` THEN GO _plot_($dim) CH3CO2H
+IF `v GE 2` THEN GO _plot_($dim) HOCH2CHO
+IF `v GE 2` THEN GO _plot_($dim) HOOCH2CHO
+IF `v GE 2` THEN GO _plot_($dim) CH3CO3H
+IF `v GE 2` THEN GO _plot_($dim) HOCH2CO2H
+IF `v GE 2` THEN GO _plot_($dim) HOCH2CO3H
+IF `v GE 2` THEN GO _plot_($dim) HOOCH2CO2H
+IF `v GE 2` THEN GO _plot_($dim) HOOCH2CO3H
+IF `v GE 2` THEN GO _plot_($dim) C2H5O2
+IF `v GE 2` THEN GO _plot_($dim) HOCH2CH2O
+IF `v GE 2` THEN GO _plot_($dim) HOCH2CH2O2
+IF `v GE 2` THEN GO _plot_($dim) CH3CHOHO2
+IF `v GE 2` THEN GO _plot_($dim) C2H6
+IF `v GE 2` THEN GO _plot_($dim) C2H5OH
+IF `v GE 2` THEN GO _plot_($dim) C2H5OOH
+IF `v GE 2` THEN GO _plot_($dim) ETHGLY
+IF `v GE 2` THEN GO _plot_($dim) HYETHO2H
+IF `v GE 2` THEN GO _plot_($dim) CH3CHOHOOH
+! 2C (CHON)
+IF `v GE 2` THEN GO _plot_($dim) NCCH2O2
+IF `v GE 2` THEN GO _plot_($dim) NO3CH2CO3
+IF `v GE 2` THEN GO _plot_($dim) NO3CH2PAN
+IF `v GE 2` THEN GO _plot_($dim) CH3CN
+IF `v GE 2` THEN GO _plot_($dim) NO3CH2CHO
+IF `v GE 2` THEN GO _plot_($dim) PAN
+IF `v GE 2` THEN GO _plot_($dim) PHAN
+IF `v GE 2` THEN GO _plot_($dim) ETHOHNO3
+IF `v GE 2` THEN GO _plot_($dim) C2H5NO3
+IF `v GE 2` THEN GO _plot_($dim) C2H5O2NO2
+! 3C (CHO)
+IF `v GE 2` THEN GO _plot_($dim) C33CO
+IF `v GE 2` THEN GO _plot_($dim) CHOCOCH2O2
+IF `v GE 2` THEN GO _plot_($dim) HCOCH2CO3
+IF `v GE 2` THEN GO _plot_($dim) ALCOCH2OOH
+IF `v GE 2` THEN GO _plot_($dim) MGLYOX
+IF `v GE 2` THEN GO _plot_($dim) HOCH2COCHO
+IF `v GE 2` THEN GO _plot_($dim) HCOCH2CHO
+IF `v GE 2` THEN GO _plot_($dim) HCOCH2CO2H
+IF `v GE 2` THEN GO _plot_($dim) HCOCH2CO3H
+IF `v GE 2` THEN GO _plot_($dim) CH3COCH2O2
+IF `v GE 2` THEN GO _plot_($dim) HOC2H4CO3
+IF `v GE 2` THEN GO _plot_($dim) C3H6
+IF `v GE 2` THEN GO _plot_($dim) CH3COCH3
+IF `v GE 2` THEN GO _plot_($dim) ACETOL
+IF `v GE 2` THEN GO _plot_($dim) HYPERACET
+IF `v GE 2` THEN GO _plot_($dim) HOC2H4CO2H
+IF `v GE 2` THEN GO _plot_($dim) HOC2H4CO3H
+IF `v GE 2` THEN GO _plot_($dim) IC3H7O2
+IF `v GE 2` THEN GO _plot_($dim) HYPROPO2
+IF `v GE 2` THEN GO _plot_($dim) C3H8
+IF `v GE 2` THEN GO _plot_($dim) IC3H7OOH
+IF `v GE 2` THEN GO _plot_($dim) HYPROPO2H
+IF `v GE 2` THEN GO _plot_($dim) CH3COCO3
+IF `v GE 2` THEN GO _plot_($dim) CH3CHCO
+IF `v GE 2` THEN GO _plot_($dim) CH3COCO2H
+IF `v GE 2` THEN GO _plot_($dim) CH3COCO3H
+IF `v GE 2` THEN GO _plot_($dim) HCOCOCH2OOH
+IF `v GE 2` THEN GO _plot_($dim) C2H5CO3
+IF `v GE 2` THEN GO _plot_($dim) HOCH2COCH2O2
+IF `v GE 2` THEN GO _plot_($dim) C2H5CHO
+IF `v GE 2` THEN GO _plot_($dim) PROPENOL
+IF `v GE 2` THEN GO _plot_($dim) PROPACID
+IF `v GE 2` THEN GO _plot_($dim) PERPROACID
+IF `v GE 2` THEN GO _plot_($dim) HOCH2COCH2OOH
+IF `v GE 2` THEN GO _plot_($dim) NC3H7O2
+IF `v GE 2` THEN GO _plot_($dim) IPROPOL
+IF `v GE 2` THEN GO _plot_($dim) NPROPOL
+IF `v GE 2` THEN GO _plot_($dim) NC3H7OOH
+! 3C (CHO) aromatics
+IF `v GE 2` THEN GO _plot_($dim) C3DIALOOH
+IF `v GE 2` THEN GO _plot_($dim) C3DIALO2
+IF `v GE 2` THEN GO _plot_($dim) HCOCOHCO3
+IF `v GE 2` THEN GO _plot_($dim) METACETHO
+IF `v GE 2` THEN GO _plot_($dim) MGLOO
+IF `v GE 2` THEN GO _plot_($dim) MGLYOO
+IF `v GE 2` THEN GO _plot_($dim) C32OH13CO
+IF `v GE 2` THEN GO _plot_($dim) HCOCOHCO3H
+! 3C (CHON)
+IF `v GE 2` THEN GO _plot_($dim) C3PAN2
+IF `v GE 2` THEN GO _plot_($dim) NOA
+IF `v GE 2` THEN GO _plot_($dim) CH3COCH2O2NO2
+IF `v GE 2` THEN GO _plot_($dim) PPN
+IF `v GE 2` THEN GO _plot_($dim) C3PAN1
+IF `v GE 2` THEN GO _plot_($dim) PRONO3BO2
+IF `v GE 2` THEN GO _plot_($dim) NC3H7NO3
+IF `v GE 2` THEN GO _plot_($dim) IC3H7NO3
+IF `v GE 2` THEN GO _plot_($dim) PROPOLNO3
+IF `v GE 2` THEN GO _plot_($dim) PR2O2HNO3
+! 3C (CHON) aromatics
+IF `v GE 2` THEN GO _plot_($dim) HCOCOHPAN
+! 4C (CHO)
+IF `v GE 2` THEN GO _plot_($dim) C312COCO3
+IF `v GE 2` THEN GO _plot_($dim) HCOCCH3CO
+IF `v GE 2` THEN GO _plot_($dim) CH3COCHCO
+IF `v GE 2` THEN GO _plot_($dim) C4CODIAL
+IF `v GE 2` THEN GO _plot_($dim) CO23C3CHO
+IF `v GE 2` THEN GO _plot_($dim) C312COCO3H
+IF `v GE 2` THEN GO _plot_($dim) MACO2
+IF `v GE 2` THEN GO _plot_($dim) EZCH3CO2CHCHO
+IF `v GE 2` THEN GO _plot_($dim) EZCHOCCH3CHO2
+IF `v GE 2` THEN GO _plot_($dim) CO2H3CHO
+IF `v GE 2` THEN GO _plot_($dim) MACO3
+IF `v GE 2` THEN GO _plot_($dim) CH3COCHO2CHO
+IF `v GE 2` THEN GO _plot_($dim) HCOCO2CH3CHO
+IF `v GE 2` THEN GO _plot_($dim) BIACETO2
+IF `v GE 2` THEN GO _plot_($dim) CHOC3COO2
+IF `v GE 2` THEN GO _plot_($dim) C44O2
+IF `v GE 2` THEN GO _plot_($dim) CO2H3CO3
+IF `v GE 2` THEN GO _plot_($dim) MACR
+IF `v GE 2` THEN GO _plot_($dim) MVK
+IF `v GE 2` THEN GO _plot_($dim) BIACET
+IF `v GE 2` THEN GO _plot_($dim) MACO2H
+IF `v GE 2` THEN GO _plot_($dim) MVKOH
+IF `v GE 2` THEN GO _plot_($dim) HVMK
+IF `v GE 2` THEN GO _plot_($dim) HMAC
+IF `v GE 2` THEN GO _plot_($dim) CO2C3CHO
+IF `v GE 2` THEN GO _plot_($dim) IBUTDIAL
+IF `v GE 2` THEN GO _plot_($dim) MACO3H
+IF `v GE 2` THEN GO _plot_($dim) BIACETOH
+IF `v GE 2` THEN GO _plot_($dim) CH3COOHCHCHO
+IF `v GE 2` THEN GO _plot_($dim) HCOCCH3CHOOH
+IF `v GE 2` THEN GO _plot_($dim) C413COOOH
+IF `v GE 2` THEN GO _plot_($dim) BIACETOOH
+IF `v GE 2` THEN GO _plot_($dim) CH3COCOCO2H
+IF `v GE 2` THEN GO _plot_($dim) CO2H3CO2H
+IF `v GE 2` THEN GO _plot_($dim) C44OOH
+IF `v GE 2` THEN GO _plot_($dim) CO2H3CO3H
+IF `v GE 2` THEN GO _plot_($dim) MACRO
+IF `v GE 2` THEN GO _plot_($dim) IPRCO3
+IF `v GE 2` THEN GO _plot_($dim) MACRO2
+IF `v GE 2` THEN GO _plot_($dim) IPRHOCO3
+IF `v GE 2` THEN GO _plot_($dim) MACRNO3
+IF `v GE 2` THEN GO _plot_($dim) MVKNO3
+IF `v GE 2` THEN GO _plot_($dim) PIPN
+IF `v GE 2` THEN GO _plot_($dim) MEK
+IF `v GE 2` THEN GO _plot_($dim) HO12CO3C4
+IF `v GE 2` THEN GO _plot_($dim) MACROH
+IF `v GE 2` THEN GO _plot_($dim) MACROOH
+IF `v GE 2` THEN GO _plot_($dim) MEPROPENE
+IF `v GE 2` THEN GO _plot_($dim) BUT1ENE
+IF `v GE 2` THEN GO _plot_($dim) CBUT2ENE
+IF `v GE 2` THEN GO _plot_($dim) TBUT2ENE
+IF `v GE 2` THEN GO _plot_($dim) BUTENOL
+IF `v GE 2` THEN GO _plot_($dim) C3H7CHO
+IF `v GE 2` THEN GO _plot_($dim) IPRCHO
+IF `v GE 2` THEN GO _plot_($dim) MPROPENOL
+IF `v GE 2` THEN GO _plot_($dim) IBUTALOH
+IF `v GE 2` THEN GO _plot_($dim) MBOOO
+IF `v GE 2` THEN GO _plot_($dim) BUT2OLO
+IF `v GE 2` THEN GO _plot_($dim) PERIBUACID
+IF `v GE 2` THEN GO _plot_($dim) IPRHOCO2H
+IF `v GE 2` THEN GO _plot_($dim) IPRHOCO3H
+IF `v GE 2` THEN GO _plot_($dim) IBUTOLBO2
+IF `v GE 2` THEN GO _plot_($dim) BUT2OLO2
+IF `v GE 2` THEN GO _plot_($dim) TC4H9O2
+IF `v GE 2` THEN GO _plot_($dim) IC4H9O2
+IF `v GE 2` THEN GO _plot_($dim) IC4H9NO3
+IF `v GE 2` THEN GO _plot_($dim) TC4H9NO3
+IF `v GE 2` THEN GO _plot_($dim) BUT2OLNO3
+IF `v GE 2` THEN GO _plot_($dim) NC4H10
+IF `v GE 2` THEN GO _plot_($dim) IC4H10
+IF `v GE 2` THEN GO _plot_($dim) TC4H9OOH
+IF `v GE 2` THEN GO _plot_($dim) IC4H9OOH
+IF `v GE 2` THEN GO _plot_($dim) IBUTOLBOOH
+IF `v GE 2` THEN GO _plot_($dim) BUT2OLOOH
+! 4C (CHO) aromatics
+IF `v GE 2` THEN GO _plot_($dim) MALANHY
+IF `v GE 2` THEN GO _plot_($dim) CO2C4DIAL
+IF `v GE 2` THEN GO _plot_($dim) MALNHYOHCO
+IF `v GE 2` THEN GO _plot_($dim) MALDIALCO3
+IF `v GE 2` THEN GO _plot_($dim) EPXDLCO3
+IF `v GE 2` THEN GO _plot_($dim) MALANHYO2
+IF `v GE 2` THEN GO _plot_($dim) BZFUONE
+IF `v GE 2` THEN GO _plot_($dim) MALDIAL
+IF `v GE 2` THEN GO _plot_($dim) MALDALCO2H
+IF `v GE 2` THEN GO _plot_($dim) EPXC4DIAL
+IF `v GE 2` THEN GO _plot_($dim) HOCOC4DIAL
+IF `v GE 2` THEN GO _plot_($dim) MALDALCO3H
+IF `v GE 2` THEN GO _plot_($dim) BZFUCO
+IF `v GE 2` THEN GO _plot_($dim) EPXDLCO2H
+IF `v GE 2` THEN GO _plot_($dim) CO14O3CHO
+IF `v GE 2` THEN GO _plot_($dim) CO14O3CO2H
+IF `v GE 2` THEN GO _plot_($dim) EPXDLCO3H
+IF `v GE 2` THEN GO _plot_($dim) MALANHYOOH
+IF `v GE 2` THEN GO _plot_($dim) BZFUO2
+IF `v GE 2` THEN GO _plot_($dim) MECOACETO2
+IF `v GE 2` THEN GO _plot_($dim) MALDIALO2
+IF `v GE 2` THEN GO _plot_($dim) MALDIALOOH
+IF `v GE 2` THEN GO _plot_($dim) BZFUOOH
+IF `v GE 2` THEN GO _plot_($dim) MECOACEOOH
+! 4C (CHON)
+IF `v GE 2` THEN GO _plot_($dim) C312COPAN
+IF `v GE 2` THEN GO _plot_($dim) MPAN
+IF `v GE 2` THEN GO _plot_($dim) IBUTOLBNO3
+IF `v GE 2` THEN GO _plot_($dim) C4PAN5
+! 4C (CHON) aromatics
+IF `v GE 2` THEN GO _plot_($dim) NC4DCO2H
+IF `v GE 2` THEN GO _plot_($dim) MALDIALPAN
+IF `v GE 2` THEN GO _plot_($dim) NBZFUONE
+IF `v GE 2` THEN GO _plot_($dim) EPXDLPAN
+IF `v GE 2` THEN GO _plot_($dim) NBZFUO2
+IF `v GE 2` THEN GO _plot_($dim) NBZFUOOH
+! 4C (CHO) (lumped)
+IF `v GE 2` THEN GO _plot_($dim) LMEKO2
+IF `v GE 2` THEN GO _plot_($dim) LHMVKABO2
+IF `v GE 2` THEN GO _plot_($dim) LMEKOOH
+IF `v GE 2` THEN GO _plot_($dim) LHMVKABOOH
+IF `v GE 2` THEN GO _plot_($dim) LMVKOHABOOH
+IF `v GE 2` THEN GO _plot_($dim) LC4H9O2
+IF `v GE 2` THEN GO _plot_($dim) LC4H9OOH
+IF `v GE 2` THEN GO _plot_($dim) LBUT1ENO2
+IF `v GE 2` THEN GO _plot_($dim) LBUT1ENOOH
+! 4C (CHON) (lumped)
+IF `v GE 2` THEN GO _plot_($dim) LMEKNO3
+IF `v GE 2` THEN GO _plot_($dim) LC4H9NO3
+IF `v GE 2` THEN GO _plot_($dim) LBUT1ENNO3
+! 5C (CHO)
+IF `v GE 2` THEN GO _plot_($dim) LZCO3C23DBCOD
+IF `v GE 2` THEN GO _plot_($dim) CHOC3COCO3
+IF `v GE 2` THEN GO _plot_($dim) CO23C4CO3
+IF `v GE 2` THEN GO _plot_($dim) ME3FURAN
+IF `v GE 2` THEN GO _plot_($dim) C4MDIAL
+IF `v GE 2` THEN GO _plot_($dim) CO13C4CHO
+IF `v GE 2` THEN GO _plot_($dim) CO23C4CHO
+IF `v GE 2` THEN GO _plot_($dim) LZCO3HC23DBCOD
+IF `v GE 2` THEN GO _plot_($dim) C513CO
+IF `v GE 2` THEN GO _plot_($dim) CHOC3COOOH
+IF `v GE 2` THEN GO _plot_($dim) CO23C4CO3H
+IF `v GE 2` THEN GO _plot_($dim) C511O2
+IF `v GE 2` THEN GO _plot_($dim) C512O2
+IF `v GE 2` THEN GO _plot_($dim) C514O2
+IF `v GE 2` THEN GO _plot_($dim) C1ODC2O2C4OD
+IF `v GE 2` THEN GO _plot_($dim) C513O2
+IF `v GE 2` THEN GO _plot_($dim) C5H8
+IF `v GE 2` THEN GO _plot_($dim) HCOC5
+IF `v GE 2` THEN GO _plot_($dim) LZCODC23DBCOOH
+IF `v GE 2` THEN GO _plot_($dim) MBOCOCO
+IF `v GE 2` THEN GO _plot_($dim) C511OOH
+IF `v GE 2` THEN GO _plot_($dim) C514OOH
+IF `v GE 2` THEN GO _plot_($dim) C512OOH
+IF `v GE 2` THEN GO _plot_($dim) C1ODC2OOHC4OD
+IF `v GE 2` THEN GO _plot_($dim) C513OOH
+IF `v GE 2` THEN GO _plot_($dim) LISOPAB
+IF `v GE 2` THEN GO _plot_($dim) LISOPCD
+IF `v GE 2` THEN GO _plot_($dim) ISOPBO2
+IF `v GE 2` THEN GO _plot_($dim) ISOPDO2
+IF `v GE 2` THEN GO _plot_($dim) DB1O
+IF `v GE 2` THEN GO _plot_($dim) DB1O2
+IF `v GE 2` THEN GO _plot_($dim) C1ODC2O2C4OOH
+IF `v GE 2` THEN GO _plot_($dim) C1OOHC3O2C4OD
+IF `v GE 2` THEN GO _plot_($dim) C59O2
+IF `v GE 2` THEN GO _plot_($dim) DB2O2
+IF `v GE 2` THEN GO _plot_($dim) C1ODC3O2C4OOH
+IF `v GE 2` THEN GO _plot_($dim) C1OOHC2O2C4OD
+IF `v GE 2` THEN GO _plot_($dim) MBO
+IF `v GE 2` THEN GO _plot_($dim) ISOPAOH
+IF `v GE 2` THEN GO _plot_($dim) ISOPBOH
+IF `v GE 2` THEN GO _plot_($dim) ISOPDOH
+IF `v GE 2` THEN GO _plot_($dim) ISOPBOOH
+IF `v GE 2` THEN GO _plot_($dim) ISOPDOOH
+IF `v GE 2` THEN GO _plot_($dim) MBOACO
+IF `v GE 2` THEN GO _plot_($dim) DB1OOH
+IF `v GE 2` THEN GO _plot_($dim) C59OOH
+IF `v GE 2` THEN GO _plot_($dim) C1OOHC2OOHC4OD
+IF `v GE 2` THEN GO _plot_($dim) DB2OOH
+! 5C aromatics (CHO)
+IF `v GE 2` THEN GO _plot_($dim) C4CO2DBCO3
+IF `v GE 2` THEN GO _plot_($dim) MMALANHY
+IF `v GE 2` THEN GO _plot_($dim) C54CO
+IF `v GE 2` THEN GO _plot_($dim) C4CO2DCO3H
+IF `v GE 2` THEN GO _plot_($dim) C5DIALCO
+IF `v GE 2` THEN GO _plot_($dim) C5DIALO2
+IF `v GE 2` THEN GO _plot_($dim) C5CO14O2
+IF `v GE 2` THEN GO _plot_($dim) ACCOMECO3
+IF `v GE 2` THEN GO _plot_($dim) MMALANHYO2
+IF `v GE 2` THEN GO _plot_($dim) TLFUONE
+IF `v GE 2` THEN GO _plot_($dim) C5DICARB
+IF `v GE 2` THEN GO _plot_($dim) MC3ODBCO2H
+IF `v GE 2` THEN GO _plot_($dim) C5CO14OH
+IF `v GE 2` THEN GO _plot_($dim) C5134CO2OH
+IF `v GE 2` THEN GO _plot_($dim) C5DIALOOH
+IF `v GE 2` THEN GO _plot_($dim) ACCOMECHO
+IF `v GE 2` THEN GO _plot_($dim) C5CO14OOH
+IF `v GE 2` THEN GO _plot_($dim) C24O3CCO2H
+IF `v GE 2` THEN GO _plot_($dim) TLFUONOO
+IF `v GE 2` THEN GO _plot_($dim) MMALNHYOOH
+IF `v GE 2` THEN GO _plot_($dim) ACCOMECO3H
+IF `v GE 2` THEN GO _plot_($dim) C4M2ALOHO2
+IF `v GE 2` THEN GO _plot_($dim) C5DICARBO2
+IF `v GE 2` THEN GO _plot_($dim) TLFUO2
+IF `v GE 2` THEN GO _plot_($dim) TLFUOOH
+IF `v GE 2` THEN GO _plot_($dim) C5DICAROOH
+IF `v GE 2` THEN GO _plot_($dim) C4MALOHOOH
+! 5C (CHON)
+IF `v GE 2` THEN GO _plot_($dim) CHOC3COPAN
+IF `v GE 2` THEN GO _plot_($dim) LZCPANC23DBCOD
+IF `v GE 2` THEN GO _plot_($dim) C5PAN9
+IF `v GE 2` THEN GO _plot_($dim) NC4CHO
+IF `v GE 2` THEN GO _plot_($dim) C514NO3
+IF `v GE 2` THEN GO _plot_($dim) NISOPO2
+IF `v GE 2` THEN GO _plot_($dim) NC4OHCO3
+IF `v GE 2` THEN GO _plot_($dim) NC4OHCPAN
+IF `v GE 2` THEN GO _plot_($dim) ISOPBNO3
+IF `v GE 2` THEN GO _plot_($dim) ISOPDNO3
+IF `v GE 2` THEN GO _plot_($dim) NISOPOOH
+IF `v GE 2` THEN GO _plot_($dim) NMBOBCO
+IF `v GE 2` THEN GO _plot_($dim) C4MCONO3OH
+IF `v GE 2` THEN GO _plot_($dim) DB1NO3
+IF `v GE 2` THEN GO _plot_($dim) NC4OHCO3H
+IF `v GE 2` THEN GO _plot_($dim) ISOPBDNO3O2
+! 5C aromatics (CHON)
+IF `v GE 2` THEN GO _plot_($dim) C4CO2DBPAN
+IF `v GE 2` THEN GO _plot_($dim) NC4MDCO2H
+IF `v GE 2` THEN GO _plot_($dim) C5COO2NO2
+IF `v GE 2` THEN GO _plot_($dim) ACCOMEPAN
+IF `v GE 2` THEN GO _plot_($dim) MC3CODBPAN
+IF `v GE 2` THEN GO _plot_($dim) C3MCODBPAN
+IF `v GE 2` THEN GO _plot_($dim) NTLFUO2
+IF `v GE 2` THEN GO _plot_($dim) NTLFUOOH
+! 5C (CHO) (lumped)
+IF `v GE 2` THEN GO _plot_($dim) LME3FURANO2
+IF `v GE 2` THEN GO _plot_($dim) LHC4ACCO3
+IF `v GE 2` THEN GO _plot_($dim) LHC4ACCHO
+IF `v GE 2` THEN GO _plot_($dim) LHC4ACCO2H
+IF `v GE 2` THEN GO _plot_($dim) LHC4ACCO3H
+IF `v GE 2` THEN GO _plot_($dim) LISOPACO
+IF `v GE 2` THEN GO _plot_($dim) LDISOPACO
+IF `v GE 2` THEN GO _plot_($dim) LISOPEFO
+IF `v GE 2` THEN GO _plot_($dim) LISOPACO2
+IF `v GE 2` THEN GO _plot_($dim) LDISOPACO2
+IF `v GE 2` THEN GO _plot_($dim) LISOPEFO2
+IF `v GE 2` THEN GO _plot_($dim) LC578O2
+IF `v GE 2` THEN GO _plot_($dim) LIEPOX
+IF `v GE 2` THEN GO _plot_($dim) LISOPACOOH
+IF `v GE 2` THEN GO _plot_($dim) LC578OOH
+IF `v GE 2` THEN GO _plot_($dim) LMBOABO2
+IF `v GE 2` THEN GO _plot_($dim) LMBOABOOH
+! 5C (CHON) (lumped)
+IF `v GE 2` THEN GO _plot_($dim) LC5PAN1719
+IF `v GE 2` THEN GO _plot_($dim) LISOPACNO3
+IF `v GE 2` THEN GO _plot_($dim) LNMBOABO2
+IF `v GE 2` THEN GO _plot_($dim) LNMBOABOOH
+IF `v GE 2` THEN GO _plot_($dim) LISOPACNO3O2
+IF `v GE 2` THEN GO _plot_($dim) LMBOABNO3
+IF `v GE 2` THEN GO _plot_($dim) LNISO3
+IF `v GE 2` THEN GO _plot_($dim) LNISOOH
+! 6C (CHO)
+IF `v GE 2` THEN GO _plot_($dim) CO235C5CHO
+IF `v GE 2` THEN GO _plot_($dim) CO235C6O2
+IF `v GE 2` THEN GO _plot_($dim) C614CO
+IF `v GE 2` THEN GO _plot_($dim) CO235C6OOH
+IF `v GE 2` THEN GO _plot_($dim) C614O2
+IF `v GE 2` THEN GO _plot_($dim) C614OOH
+! C6 (CHO) aromatics
+IF `v GE 2` THEN GO _plot_($dim) PBZQONE
+IF `v GE 2` THEN GO _plot_($dim) CATECHOL
+IF `v GE 2` THEN GO _plot_($dim) C6CO4DB
+IF `v GE 2` THEN GO _plot_($dim) PBZQCO
+IF `v GE 2` THEN GO _plot_($dim) C6H5O
+IF `v GE 2` THEN GO _plot_($dim) CATEC1O
+IF `v GE 2` THEN GO _plot_($dim) C6H5O2
+IF `v GE 2` THEN GO _plot_($dim) CATEC1O2
+IF `v GE 2` THEN GO _plot_($dim) C5CO2DBCO3
+IF `v GE 2` THEN GO _plot_($dim) PBZQO2
+IF `v GE 2` THEN GO _plot_($dim) BZEMUCCO3
+IF `v GE 2` THEN GO _plot_($dim) C5CO2DCO3H
+IF `v GE 2` THEN GO _plot_($dim) C5CO2OHCO3
+IF `v GE 2` THEN GO _plot_($dim) BENZENE
+IF `v GE 2` THEN GO _plot_($dim) PHENOL
+IF `v GE 2` THEN GO _plot_($dim) C6H5OOH
+IF `v GE 2` THEN GO _plot_($dim) BZEPOXMUC
+IF `v GE 2` THEN GO _plot_($dim) C6125CO
+IF `v GE 2` THEN GO _plot_($dim) CATEC1OOH
+IF `v GE 2` THEN GO _plot_($dim) BZEMUCCO2H
+IF `v GE 2` THEN GO _plot_($dim) BZOBIPEROH
+IF `v GE 2` THEN GO _plot_($dim) BZEMUCCO
+IF `v GE 2` THEN GO _plot_($dim) PBZQOOH
+IF `v GE 2` THEN GO _plot_($dim) BZEMUCCO3H
+IF `v GE 2` THEN GO _plot_($dim) C5COOHCO3H
+IF `v GE 2` THEN GO _plot_($dim) C615CO2O2
+IF `v GE 2` THEN GO _plot_($dim) BZBIPERO2
+IF `v GE 2` THEN GO _plot_($dim) PHENO2
+IF `v GE 2` THEN GO _plot_($dim) BZEMUCO2
+IF `v GE 2` THEN GO _plot_($dim) C615CO2OOH
+IF `v GE 2` THEN GO _plot_($dim) BZBIPEROOH
+IF `v GE 2` THEN GO _plot_($dim) PHENOOH
+IF `v GE 2` THEN GO _plot_($dim) BZEMUCOOH
+IF `v GE 2` THEN GO _plot_($dim) CPDKETENE
+! 6C (CHON)
+IF `v GE 2` THEN GO _plot_($dim) C614NO3
+! C6 (CHON) aromatics
+IF `v GE 2` THEN GO _plot_($dim) NPHEN1O
+IF `v GE 2` THEN GO _plot_($dim) NPHEN1O2
+IF `v GE 2` THEN GO _plot_($dim) DNPHEN
+IF `v GE 2` THEN GO _plot_($dim) NBZQO2
+IF `v GE 2` THEN GO _plot_($dim) NDNPHENO2
+IF `v GE 2` THEN GO _plot_($dim) HOC6H4NO2
+IF `v GE 2` THEN GO _plot_($dim) NCATECHOL
+IF `v GE 2` THEN GO _plot_($dim) NPHEN1OOH
+IF `v GE 2` THEN GO _plot_($dim) BZEMUCPAN
+IF `v GE 2` THEN GO _plot_($dim) C5CO2DBPAN
+IF `v GE 2` THEN GO _plot_($dim) NBZQOOH
+IF `v GE 2` THEN GO _plot_($dim) C5CO2OHPAN
+IF `v GE 2` THEN GO _plot_($dim) DNPHENO2
+IF `v GE 2` THEN GO _plot_($dim) NNCATECO2
+IF `v GE 2` THEN GO _plot_($dim) NDNPHENOOH
+IF `v GE 2` THEN GO _plot_($dim) NPHENO2
+IF `v GE 2` THEN GO _plot_($dim) NCATECO2
+IF `v GE 2` THEN GO _plot_($dim) DNPHENOOH
+IF `v GE 2` THEN GO _plot_($dim) NNCATECOOH
+IF `v GE 2` THEN GO _plot_($dim) BZBIPERNO3
+IF `v GE 2` THEN GO _plot_($dim) BZEMUCNO3
+IF `v GE 2` THEN GO _plot_($dim) NPHENOOH
+IF `v GE 2` THEN GO _plot_($dim) NCATECOOH
+! 7C (CHO)
+IF `v GE 2` THEN GO _plot_($dim) MCPDKETENE
+IF `v GE 2` THEN GO _plot_($dim) CO235C6CO3
+IF `v GE 2` THEN GO _plot_($dim) CO235C6CHO
+IF `v GE 2` THEN GO _plot_($dim) C235C6CO3H
+IF `v GE 2` THEN GO _plot_($dim) C716O2
+IF `v GE 2` THEN GO _plot_($dim) C716OOH
+IF `v GE 2` THEN GO _plot_($dim) ROO6R4P
+IF `v GE 2` THEN GO _plot_($dim) ROO6R5P
+IF `v GE 2` THEN GO _plot_($dim) ROO6R3O
+IF `v GE 2` THEN GO _plot_($dim) C721O2
+IF `v GE 2` THEN GO _plot_($dim) C722O2
+IF `v GE 2` THEN GO _plot_($dim) ROO6R3O2
+IF `v GE 2` THEN GO _plot_($dim) ROO6R5O2
+IF `v GE 2` THEN GO _plot_($dim) C721OOH
+IF `v GE 2` THEN GO _plot_($dim) C722OOH
+IF `v GE 2` THEN GO _plot_($dim) ROO6R3OOH
+! C7 (CHO) aromatics
+IF `v GE 2` THEN GO _plot_($dim) C6H5CO3
+IF `v GE 2` THEN GO _plot_($dim) BENZAL
+IF `v GE 2` THEN GO _plot_($dim) PHCOOH
+IF `v GE 2` THEN GO _plot_($dim) PTLQONE
+IF `v GE 2` THEN GO _plot_($dim) C6H5CO3H
+IF `v GE 2` THEN GO _plot_($dim) C7CO4DB
+IF `v GE 2` THEN GO _plot_($dim) PTLQCO
+IF `v GE 2` THEN GO _plot_($dim) TOL1O
+IF `v GE 2` THEN GO _plot_($dim) OXYL1O2
+IF `v GE 2` THEN GO _plot_($dim) C6H5CH2O2
+IF `v GE 2` THEN GO _plot_($dim) MCATEC1O
+IF `v GE 2` THEN GO _plot_($dim) MCATEC1O2
+IF `v GE 2` THEN GO _plot_($dim) PTLQO2
+IF `v GE 2` THEN GO _plot_($dim) TLEMUCCO3
+IF `v GE 2` THEN GO _plot_($dim) C6CO2OHCO3
+IF `v GE 2` THEN GO _plot_($dim) TOLUENE
+IF `v GE 2` THEN GO _plot_($dim) CRESOL
+IF `v GE 2` THEN GO _plot_($dim) C6H5CH2OH
+IF `v GE 2` THEN GO _plot_($dim) OXYL1OOH
+IF `v GE 2` THEN GO _plot_($dim) C6H5CH2OOH
+IF `v GE 2` THEN GO _plot_($dim) MCATECHOL
+IF `v GE 2` THEN GO _plot_($dim) TLEPOXMUC
+IF `v GE 2` THEN GO _plot_($dim) MCATEC1OOH
+IF `v GE 2` THEN GO _plot_($dim) PTLQOH
+IF `v GE 2` THEN GO _plot_($dim) TLEMUCCO2H
+IF `v GE 2` THEN GO _plot_($dim) TLOBIPEROH
+IF `v GE 2` THEN GO _plot_($dim) PTLQOOH
+IF `v GE 2` THEN GO _plot_($dim) TLEMUCCO
+IF `v GE 2` THEN GO _plot_($dim) TLEMUCCO3H
+IF `v GE 2` THEN GO _plot_($dim) C6COOHCO3H
+IF `v GE 2` THEN GO _plot_($dim) TLBIPERO2
+IF `v GE 2` THEN GO _plot_($dim) TLEMUCO2
+IF `v GE 2` THEN GO _plot_($dim) CRESO2
+IF `v GE 2` THEN GO _plot_($dim) TLBIPER2OH
+IF `v GE 2` THEN GO _plot_($dim) TLEMUCOH
+IF `v GE 2` THEN GO _plot_($dim) CRESOH
+IF `v GE 2` THEN GO _plot_($dim) TLBIPEROOH
+IF `v GE 2` THEN GO _plot_($dim) CRESOOH
+IF `v GE 2` THEN GO _plot_($dim) TLEMUCOOH
+! 7C (CHON)
+IF `v GE 2` THEN GO _plot_($dim) C7PAN3
+IF `v GE 2` THEN GO _plot_($dim) ROO6R3NO3
+! C7 (CHON) aromatics
+IF `v GE 2` THEN GO _plot_($dim) NCRESOOH
+IF `v GE 2` THEN GO _plot_($dim) PBZN
+IF `v GE 2` THEN GO _plot_($dim) NDNCRESO2
+IF `v GE 2` THEN GO _plot_($dim) NCRES1O
+IF `v GE 2` THEN GO _plot_($dim) NCRES1O2
+IF `v GE 2` THEN GO _plot_($dim) DNCRES
+IF `v GE 2` THEN GO _plot_($dim) MNCPDKETENE
+IF `v GE 2` THEN GO _plot_($dim) NPTLQO2
+IF `v GE 2` THEN GO _plot_($dim) TOL1OHNO2
+IF `v GE 2` THEN GO _plot_($dim) C6H5CH2NO3
+IF `v GE 2` THEN GO _plot_($dim) MNCATECH
+IF `v GE 2` THEN GO _plot_($dim) NCRES1OOH
+IF `v GE 2` THEN GO _plot_($dim) NPTLQOOH
+IF `v GE 2` THEN GO _plot_($dim) TLEMUCPAN
+IF `v GE 2` THEN GO _plot_($dim) C6CO2OHPAN
+IF `v GE 2` THEN GO _plot_($dim) DNCRESO2
+IF `v GE 2` THEN GO _plot_($dim) MNNCATECO2
+IF `v GE 2` THEN GO _plot_($dim) NDNCRESOOH
+IF `v GE 2` THEN GO _plot_($dim) NCRESO2
+IF `v GE 2` THEN GO _plot_($dim) MNCATECO2
+IF `v GE 2` THEN GO _plot_($dim) DNCRESOOH
+IF `v GE 2` THEN GO _plot_($dim) MNNCATCOOH
+IF `v GE 2` THEN GO _plot_($dim) TLBIPERNO3
+IF `v GE 2` THEN GO _plot_($dim) TLEMUCNO3
+IF `v GE 2` THEN GO _plot_($dim) NCRESOH
+IF `v GE 2` THEN GO _plot_($dim) MNCATECOOH
+! 8C (CHO)
+IF `v GE 2` THEN GO _plot_($dim) C8BCO2
+IF `v GE 2` THEN GO _plot_($dim) C721CO3
+IF `v GE 2` THEN GO _plot_($dim) C8BCCO
+IF `v GE 2` THEN GO _plot_($dim) C8BCOOH
+IF `v GE 2` THEN GO _plot_($dim) C721CHO
+IF `v GE 2` THEN GO _plot_($dim) NORPINIC
+IF `v GE 2` THEN GO _plot_($dim) C721CO3H
+IF `v GE 2` THEN GO _plot_($dim) C85O2
+IF `v GE 2` THEN GO _plot_($dim) C89O2
+IF `v GE 2` THEN GO _plot_($dim) C811O2
+IF `v GE 2` THEN GO _plot_($dim) C86O2
+IF `v GE 2` THEN GO _plot_($dim) C812O2
+IF `v GE 2` THEN GO _plot_($dim) C813O2
+IF `v GE 2` THEN GO _plot_($dim) C8BC
+IF `v GE 2` THEN GO _plot_($dim) C85OOH
+IF `v GE 2` THEN GO _plot_($dim) C811OOH
+IF `v GE 2` THEN GO _plot_($dim) C86OOH
+IF `v GE 2` THEN GO _plot_($dim) C812OOH
+IF `v GE 2` THEN GO _plot_($dim) C813OOH
+IF `v GE 2` THEN GO _plot_($dim) C89OOH
+IF `v GE 2` THEN GO _plot_($dim) C810OOH
+IF `v GE 2` THEN GO _plot_($dim) C810O2
+! C8 (CHO) aromatics
+IF `v GE 2` THEN GO _plot_($dim) STYRENE
+IF `v GE 2` THEN GO _plot_($dim) STYRENO2
+IF `v GE 2` THEN GO _plot_($dim) LXYL
+IF `v GE 2` THEN GO _plot_($dim) EBENZ
+IF `v GE 2` THEN GO _plot_($dim) STYRENOOH
+! 8C (CHON)
+IF `v GE 2` THEN GO _plot_($dim) C8BCNO3
+IF `v GE 2` THEN GO _plot_($dim) C721PAN
+IF `v GE 2` THEN GO _plot_($dim) C89NO3
+IF `v GE 2` THEN GO _plot_($dim) C810NO3
+! C8 (CHON) aromatics
+IF `v GE 2` THEN GO _plot_($dim) NSTYRENO2
+IF `v GE 2` THEN GO _plot_($dim) NSTYRENOOH
+! 9C (CHO)
+IF `v GE 2` THEN GO _plot_($dim) C85CO3
+IF `v GE 2` THEN GO _plot_($dim) NOPINDCO
+IF `v GE 2` THEN GO _plot_($dim) C85CO3H
+IF `v GE 2` THEN GO _plot_($dim) NOPINDO2
+IF `v GE 2` THEN GO _plot_($dim) C89CO3
+IF `v GE 2` THEN GO _plot_($dim) C811CO3
+IF `v GE 2` THEN GO _plot_($dim) NOPINONE
+IF `v GE 2` THEN GO _plot_($dim) NOPINOO
+IF `v GE 2` THEN GO _plot_($dim) NORPINAL
+IF `v GE 2` THEN GO _plot_($dim) NORPINENOL
+IF `v GE 2` THEN GO _plot_($dim) C89CO2H
+IF `v GE 2` THEN GO _plot_($dim) NOPINDOOH
+IF `v GE 2` THEN GO _plot_($dim) RO6R3P
+IF `v GE 2` THEN GO _plot_($dim) C89CO3H
+IF `v GE 2` THEN GO _plot_($dim) PINIC
+IF `v GE 2` THEN GO _plot_($dim) C811CO3H
+IF `v GE 2` THEN GO _plot_($dim) C96O2
+IF `v GE 2` THEN GO _plot_($dim) C97O2
+IF `v GE 2` THEN GO _plot_($dim) C98O2
+IF `v GE 2` THEN GO _plot_($dim) C96OOH
+IF `v GE 2` THEN GO _plot_($dim) C97OOH
+IF `v GE 2` THEN GO _plot_($dim) C98OOH
+! 9C (CHON)
+IF `v GE 2` THEN GO _plot_($dim) C89PAN
+IF `v GE 2` THEN GO _plot_($dim) C9PAN2
+IF `v GE 2` THEN GO _plot_($dim) C811PAN
+IF `v GE 2` THEN GO _plot_($dim) C96NO3
+IF `v GE 2` THEN GO _plot_($dim) C98NO3
+! C9 aromatics (lumped)
+IF `v GE 2` THEN GO _plot_($dim) LTMB
+! 10C (CHO)
+IF `v GE 2` THEN GO _plot_($dim) C109CO
+IF `v GE 2` THEN GO _plot_($dim) PINALO2
+IF `v GE 2` THEN GO _plot_($dim) PINALOOH
+IF `v GE 2` THEN GO _plot_($dim) C109O2
+IF `v GE 2` THEN GO _plot_($dim) C96CO3
+IF `v GE 2` THEN GO _plot_($dim) C106O2
+IF `v GE 2` THEN GO _plot_($dim) APINENE
+IF `v GE 2` THEN GO _plot_($dim) BPINENE
+IF `v GE 2` THEN GO _plot_($dim) CARENE
+IF `v GE 2` THEN GO _plot_($dim) SABINENE
+IF `v GE 2` THEN GO _plot_($dim) CAMPHENE
+IF `v GE 2` THEN GO _plot_($dim) PINAL
+IF `v GE 2` THEN GO _plot_($dim) PINENOL
+IF `v GE 2` THEN GO _plot_($dim) APINAOO
+IF `v GE 2` THEN GO _plot_($dim) APINBOO
+IF `v GE 2` THEN GO _plot_($dim) MENTHEN6ONE
+IF `v GE 2` THEN GO _plot_($dim) PINONIC
+IF `v GE 2` THEN GO _plot_($dim) C109OOH
+IF `v GE 2` THEN GO _plot_($dim) PERPINONIC
+IF `v GE 2` THEN GO _plot_($dim) C106OOH
+IF `v GE 2` THEN GO _plot_($dim) BPINAO2
+IF `v GE 2` THEN GO _plot_($dim) OH2MENTHEN6ONE
+IF `v GE 2` THEN GO _plot_($dim) RO6R1O2
+IF `v GE 2` THEN GO _plot_($dim) ROO6R1O2
+IF `v GE 2` THEN GO _plot_($dim) RO6R3O2
+IF `v GE 2` THEN GO _plot_($dim) OHMENTHEN6ONEO2
+IF `v GE 2` THEN GO _plot_($dim) BPINAOOH
+IF `v GE 2` THEN GO _plot_($dim) RO6R1OOH
+IF `v GE 2` THEN GO _plot_($dim) RO6R3OOH
+IF `v GE 2` THEN GO _plot_($dim) ROO6R1OOH
+! 10C (CHON)
+IF `v GE 2` THEN GO _plot_($dim) PINALNO3
+IF `v GE 2` THEN GO _plot_($dim) C10PAN2
+IF `v GE 2` THEN GO _plot_($dim) C106NO3
+IF `v GE 2` THEN GO _plot_($dim) BPINANO3
+IF `v GE 2` THEN GO _plot_($dim) RO6R1NO3
+IF `v GE 2` THEN GO _plot_($dim) RO6R3NO3
+IF `v GE 2` THEN GO _plot_($dim) ROO6R1NO3
+! 10C (lumped)
+IF `v GE 2` THEN GO _plot_($dim) LAPINABO2
+IF `v GE 2` THEN GO _plot_($dim) LAPINABOOH
+IF `v GE 2` THEN GO _plot_($dim) LNAPINABO2
+IF `v GE 2` THEN GO _plot_($dim) LNBPINABO2
+IF `v GE 2` THEN GO _plot_($dim) LAPINABNO3
+IF `v GE 2` THEN GO _plot_($dim) LNAPINABOOH
+IF `v GE 2` THEN GO _plot_($dim) LNBPINABOOH
+! C10 aromatics (lumped)
+IF `v GE 2` THEN GO _plot_($dim) LHAROM
+! F
+! Cl
+IF `v GE 1` THEN GO _plot_($dim) Clx
+IF `v GE 1` THEN GO _plot_($dim) Cl
+IF `v GE 1` THEN GO _plot_($dim) Cl2
+IF `v GE 1` THEN GO _plot_($dim) ClO
+IF `v GE 1` THEN GO _plot_($dim) HCl
+IF `v GE 1` THEN GO _plot_($dim) HOCl
+IF `v GE 2` THEN GO _plot_($dim) Cl2O2
+IF `v GE 2` THEN GO _plot_($dim) OClO
+IF `v GE 2` THEN GO _plot_($dim) ClNO2
+IF `v GE 1` THEN GO _plot_($dim) ClNO3
+IF `v GE 2` THEN GO _plot_($dim) CCl4
+IF `v GE 2` THEN GO _plot_($dim) CH3Cl
+IF `v GE 2` THEN GO _plot_($dim) CH3CCl3
+IF `v GE 2` THEN GO _plot_($dim) CF2Cl2
+IF `v GE 2` THEN GO _plot_($dim) CFCl3
+! Br
+IF `v GE 1` THEN GO _plot_($dim) Brx
+IF `v GE 1` THEN GO _plot_($dim) Br
+IF `v GE 1` THEN GO _plot_($dim) Br2
+IF `v GE 1` THEN GO _plot_($dim) BrO
+IF `v GE 1` THEN GO _plot_($dim) HBr
+IF `v GE 1` THEN GO _plot_($dim) HOBr
+IF `v GE 2` THEN GO _plot_($dim) BrNO2
+IF `v GE 1` THEN GO _plot_($dim) BrNO3
+IF `v GE 1` THEN GO _plot_($dim) BrCl
+IF `v GE 4` THEN GO _plot_($dim) CH3Br
+IF `v GE 4` THEN GO _plot_($dim) CF3Br
+IF `v GE 4` THEN GO _plot_($dim) CF2ClBr
+IF `v GE 4` THEN GO _plot_($dim) CHCl2Br
+IF `v GE 4` THEN GO _plot_($dim) CHClBr2
+IF `v GE 4` THEN GO _plot_($dim) CH2ClBr
+IF `v GE 4` THEN GO _plot_($dim) CH2Br2
+IF `v GE 4` THEN GO _plot_($dim) CHBr3
+! I
+IF `v GE 1` THEN GO _plot_($dim) Ix
+! let iod = 'I' ! must be renamed because i is also longitude
+IF `v GE 1` THEN GO _plot_($dim) Iod
+IF `v GE 1` THEN GO _plot_($dim) I2
+IF `v GE 1` THEN GO _plot_($dim) IO
+IF `v GE 1` THEN GO _plot_($dim) OIO
+IF `v GE 1` THEN GO _plot_($dim) I2O2
+IF `v GE 1` THEN GO _plot_($dim) HI
+IF `v GE 1` THEN GO _plot_($dim) HOI
+IF `v GE 1` THEN GO _plot_($dim) HIO3
+IF `v GE 2` THEN GO _plot_($dim) INO2
+IF `v GE 1` THEN GO _plot_($dim) INO3
+IF `v GE 2` THEN GO _plot_($dim) CH3I
+IF `v GE 2` THEN GO _plot_($dim) CH2I2
+IF `v GE 2` THEN GO _plot_($dim) C3H7I
+IF `v GE 1` THEN GO _plot_($dim) ICl
+IF `v GE 2` THEN GO _plot_($dim) CH2ClI
+IF `v GE 1` THEN GO _plot_($dim) IBr
+IF `v GE 1` THEN GO _plot_($dim) IPART
+! S
+
+IF `v GE 4` THEN GO _plot_($dim) S
+IF `v GE 4` THEN GO _plot_($dim) SO
+IF `v GE 1` THEN GO _plot_($dim) SO2
+IF `v GE 4` THEN GO _plot_($dim) SH
+IF `v GE 1` THEN GO _plot_($dim) H2SO4
+IF `v GE 2` THEN GO _plot_($dim) CH3SO3H
+IF `v GE 1` THEN GO _plot_($dim) DMS
+IF `v GE 1` THEN GO _plot_($dim) DMSO
+IF `v GE 2` THEN GO _plot_($dim) CH3SO2
+IF `v GE 2` THEN GO _plot_($dim) CH3SO3
+IF `v GE 4` THEN GO _plot_($dim) OCS
+IF `v GE 4` THEN GO _plot_($dim) SF6
+
+! Hg
+IF `v GE 1` THEN GO _plot_($dim) Hg
+IF `v GE 1` THEN GO _plot_($dim) RGM
+IF `v GE 1` THEN GO _plot_($dim) HgO
+IF `v GE 1` THEN GO _plot_($dim) HgCl
+IF `v GE 1` THEN GO _plot_($dim) HgCl2
+IF `v GE 1` THEN GO _plot_($dim) HgBr
+IF `v GE 1` THEN GO _plot_($dim) HgBr2
+IF `v GE 1` THEN GO _plot_($dim) ClHgBr
+IF `v GE 1` THEN GO _plot_($dim) BrHgOBr
+IF `v GE 1` THEN GO _plot_($dim) ClHgOBr
+
+GO exitviewport
+
+EXIT

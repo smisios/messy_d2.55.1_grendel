@@ -1,0 +1,172 @@
+#! /bin/tcsh -f 
+# -*- Shell-script -*- Time-stamp: <2016-08-26 10:50:07 sander>
+# Author: Rolf Sander (2006)
+
+if ( "$3" == "" ) then
+  echo "mddiff = MESSy directory diff (recursive)"
+  if (! -e $HOME/.mddiff_skipfiles) then
+    echo "To exclude some files from the comparison, copy"
+    echo "/soft/bin/.mddiff_skipfiles to $HOME"
+    echo "and change it as needed."
+  endif
+  echo "usage:"
+  echo "  mddiff olddir newdir develdir"
+  echo "with:"
+  echo "  olddir   = directory on which the changes are based"
+  echo "  newdir   = directory with the new code that is checked in"
+  echo '  develdir = directory in which the code is developed'
+  exit
+endif
+
+# define olddir
+cd $1
+set olddir = $PWD # store absolute path in $olddir
+set shortolddir = `basename $olddir`
+cd -
+
+# define newdir
+cd $2
+set newdir = $PWD # store absolute path in $newdir
+set shortnewdir = `basename $newdir`
+cd -
+
+# define develdir
+cd $3
+set develdir = $PWD # store absolute path in $develdir
+set shortdeveldir  = `basename $develdir`
+cd -
+
+echo ""
+echo "olddir   = $olddir"
+echo "newdir   = $newdir"
+echo "develdir = $develdir"
+
+echo ""
+echo "Continue? [y/n/q, default=y]"
+set inputstring = "$<"
+if ( "$inputstring" == "q" ) exit
+if ( "$inputstring" == "n" ) exit
+
+# define some useful strings
+set separator = "---------------------------------"
+set filesep   = "---- mddiff $separator$separator"
+set separator = "------------$separator$separator"
+set qt        = '"' # quote
+
+# if $TMPDIR is undefined, use $HOME as a temporary directory
+if (! $?TMPDIR) setenv TMPDIR $HOME
+set tmpfile = $TMPDIR/tmpfile-`date +"%y%m%d%H%M%S"`
+set tmpfile2 = $TMPDIR/tmpfile2-`date +"%y%m%d%H%M%S"`
+
+# file for diff output
+set logfile = $TMPDIR/mddiff.log
+set outfile = $TMPDIR/mddiff.dif
+echo "writing diff output to: $outfile"
+echo $separator > $outfile
+echo $separator > $logfile
+
+echo 'alias ediff-files "diff -s"' >> $outfile
+echo "<   olddir   = $olddir"      >> $outfile
+echo ">   newdir   = $newdir"      >> $outfile
+echo "+++ develdir = $develdir"    >> $outfile
+
+#############################################################################
+
+#  mz_rs_20130214+
+# find option "-L": Follow symbolic links. When find examines or prints
+# information about files, the information used shall be taken from the
+# properties of the file to which the link points, not from the link itself
+#  op_pj_20130322+
+# this is not really feasible, because multiple links occur too many times
+#foreach oldfile (`find -L "$olddir" -type f -print|sort`)
+foreach oldfile (`find "$olddir" -type f -print|sort`)
+#  op_pj_20130322-
+#  mz_rs_20130214-
+  echo "oldfile = $oldfile" >> $logfile
+  if (-e $HOME/.mddiff_skipfiles) $HOME/.mddiff_skipfiles $oldfile
+  set skipfilestatus = "${status}"
+  if ($skipfilestatus == 1) continue # skip this file
+  echo "$oldfile is not skipped" >> $logfile
+  set basename = `echo $oldfile | sed "s|$olddir/||"`
+  set newfile = "$newdir/$basename"
+  set myfile  = "$develdir/$basename"
+  if (! -e $newfile) then
+    echo $filesep >> $outfile
+    if ($skipfilestatus == 2) then
+      echo "+++ $basename --> GENERATED AUTOMATICALLY\!" >> $outfile
+    endif
+    echo "+++ $basename --> existed in $shortolddir (but not in $shortnewdir)" >> $outfile
+    echo "--- rm $myfile" >> $outfile
+  else
+    diff -w $oldfile $newfile > $tmpfile
+    if ( -s $tmpfile != 0 ) then
+      echo $filesep >> $outfile
+      if ($skipfilestatus == 2) then
+        echo "+++ $basename --> GENERATED AUTOMATICALLY\!" >> $outfile
+      endif
+      # now check if the file was also changed in $develdir
+      if (! -e $myfile) then
+        echo "+++ $basename --> does not exist in $shortdeveldir anymore" >> $outfile
+      else
+        diff -w $oldfile $myfile > $tmpfile2
+        if ( -s $tmpfile2 != 0 ) then
+          echo "+++ $basename --> CHANGED EVERYWHERE\!" >> $outfile
+        else
+          echo "+++ $basename --> can probably be copied from ${shortnewdir}:" >> $outfile
+        endif
+        echo "--- diff -w $oldfile $myfile" >> $outfile
+        echo "--- cp $newfile $myfile" >> $outfile
+        rm $tmpfile2
+        echo "--- (ediff-files $qt$myfile$qt $qt$newfile$qt)" >> $outfile
+      endif
+      cat $tmpfile >> $outfile
+      rm $tmpfile
+    else
+      echo "$oldfile and $newfile are identical" >> $logfile
+    endif
+  endif
+end
+
+#############################################################################
+
+# and now in $newdir
+#  mz_rs_20130214+
+#  op_pj_20130322+
+#foreach newfile (`find -L "$newdir/" -type f -print|sort`)
+foreach newfile (`find "$newdir/" -type f -print|sort`)
+#  op_pj_20130322-
+#  mz_rs_20130214-
+  if (-e $HOME/.mddiff_skipfiles) $HOME/.mddiff_skipfiles $newfile
+  set skipfilestatus = "${status}"
+  if ($skipfilestatus == 1) continue # skip this file
+  set basename = `echo $newfile | sed "s|$newdir/||"`
+  set oldfile = "$olddir/$basename"
+  if (! -e $oldfile) then
+    echo $filesep >> $outfile
+    if ($skipfilestatus == 2) then
+      echo "+++ $basename --> GENERATED AUTOMATICALLY\!" >> $outfile
+    endif
+    echo "+++ $basename --> is new in $shortnewdir" >> $outfile
+    echo "--- cp $newfile $develdir/$basename" >> $outfile
+  endif
+end
+
+#############################################################################
+
+# changed links
+echo $separator >> $outfile
+echo "+++ checking for changed links" >> $outfile
+find "$olddir/" -type l -exec ls -la {} \; | sed "s|^.*$olddir/||g" | sort > $tmpfile
+find "$newdir/" -type l -exec ls -la {} \; | sed "s|^.*$newdir/||g" | sort > $tmpfile2
+diff $tmpfile $tmpfile2 >> $outfile
+rm $tmpfile $tmpfile2
+
+#############################################################################
+
+echo $separator >> $outfile
+echo "end of mddiff" >> $outfile
+echo $separator >> $outfile
+
+#############################################################################
+
+exit

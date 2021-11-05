@@ -1,0 +1,30 @@
+! -*- f90 -*-
+
+! #############################################################################
+!
+! UNIT CONVERSION
+! Species units in the NetCDF file are [kg(species) m-3 s-1]
+! Convert [kg m-3 s-1] to [molec m-3 s-1]: multiply by 1000*Navo/MW
+! No conversion required for aerosol number
+!
+! --------------------------------------------
+! | SPECIES  | MW        | CONVERSION FACTOR |
+! |          | [g mol-1] | [molec kg-1]      |
+! --------------------------------------------
+! | SO2      |    64.070 |       9.39932e+24 |
+! | SO4      |    96.060 |       6.26915e+24 |
+! --------------------------------------------
+!
+! #############################################################################
+&regrid
+infile    = '$INPUTDIR_MESSY/offemis/AEROCOM/AEROCOM_DLR1.0_X_volc_MISC_200001-200012.nc',
+i_latm    = 'lat',
+i_latr    = -90.0,90.0,
+i_lonm    = 'lon',
+i_lonr    = -180.0,180.0,
+i_timem   = 'time',
+i_hyai    = 'pressi',
+i_hyam    = 'lev',
+!var       = 'SO2=SO2_scaled_flux,9.39932e+24;SO4_ks=SO4_akn_flux,6.26915e+24;SO4_as=SO4_acc_flux,6.26915e+24;N_ks=NUM_akn_flux;N_as=NUM_acc_flux',
+var       = 'SO2=SO2_scaled_flux,9.39932e+24|units=molecules m-2 s-1| longname= emission flux of SO2;SO4_ks=SO4_akn_flux,6.26915e+24|units=molecules m-2 s-1| longname= emission flux of SO4_ks;SO4_as=SO4_acc_flux,6.26915e+24|units=molecules m-2 s-1| longname= emission flux of SO4_as;N_ks=NUM_akn_flux|units=molecules m-2 s-1| longname= emission flux of N_ks;N_as=NUM_acc_flux|units=molecules m-2 s-1| longname= emission flux of N_as;',
+/

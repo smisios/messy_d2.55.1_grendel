@@ -1,0 +1,81 @@
+! -*- f90 -*-
+
+&CPL
+L_GP       = T  ! EMISSIONS FOR GRIDPOINT TRACERS
+L_LG       = F  ! EMISSIONS FOR LAGRANGIAN TRACERS
+l_lg_tend  = F  ! LAGRANGIAN TRACER TENDENCY AS CHANNEL OBJECT ?
+! ### SYNTAX:
+!     (SPECIFIERS MUST BE UPPERCASE !)
+! ###         GP=    Gridpoint  Emission Method (0,1,2) (SURFACE ONLY)
+!                    1: 2D (SURFACE EM.) -> lowest layer
+!                       3D (VOLUME  EM.) -> emission ON
+!                       Nx2D (MULTI LEVEL EM.) -> internally converted to 3D
+!                    SURFACE EMISSIONS ONLY:
+!                    2: lower boundary condition for flux
+!                    3: 2D constant surface emission flux 
+!                    4: 2D surface emission flux with sinusoidal diurnal cycle  
+
+!NOTEs:  (1) Surface emission fluxes (2D) must be in  molecules m-2 s-1.
+!        (2) Volume emissions (3D)        must be in  molecules m-3 s-1.
+!        (3) Multi level emissions (Nx2D) must be in  molecules m-2 s-1.
+!        (4) For volume emissions (3D), the corresponding channel object 
+!            must be in the GP_3D_MID representation
+!        (5) The trigger for multi level emissions (Nx2D) is the presence
+!            of the channel object attribute heights
+!
+! EMISSION: TRACER NAME, TRACER SUBNAME, CHANNEL NAME, CHANNEL OBJECT, 
+!           EMISSION METHOD
+!
+! LOWER BOUNDARY CONDITIONS (SEE tnudge.nml)
+!
+! ###########################################
+! DIRECT EMISSIONS
+! ###########################################
+! ------------------------
+EMIS_IN(1)  = '#'       , '', 'import_ts', 'OC_point'   , 'GP=0',
+EMIS_IN(2)  = '#'       , '', 'import_ts', 'OC_area'    , 'GP=0',
+EMIS_IN(3)  = 'CO'      , '', 'import_ts', 'CO_point'   , 'GP=1', 
+EMIS_IN(4)  = 'CO'      , '', 'import_ts', 'CO_area'    , 'GP=1', 
+!EMIS_IN(5)  = 'NO'      , '', 'import_ts', 'NO_point'   , 'GP=1', 
+!EMIS_IN(6)  = 'NO'      , '', 'import_ts', 'NO_area'    , 'GP=1', 
+EMIS_IN(7)  = 'NO2'     , '', 'import_ts', 'NO2_point'  , 'GP=1', 
+EMIS_IN(8)  = 'NO2'     , '', 'import_ts', 'NO2_area'   , 'GP=1', 
+EMIS_IN(9)  = 'OLE1'    , '', 'import_ts', 'OLE1_point' , 'GP=1', 
+EMIS_IN(10) = 'OLE1'    , '', 'import_ts', 'OLE1_area'  , 'GP=1', 
+EMIS_IN(11) = 'OLE2'    , '', 'import_ts', 'OLE2_point' , 'GP=1', 
+EMIS_IN(12) = 'OLE2'    , '', 'import_ts', 'OLE2_area'  , 'GP=1', 
+EMIS_IN(13) = 'ALK4'    , '', 'import_ts', 'ALK4_point' , 'GP=1', 
+EMIS_IN(14) = 'ALK4'    , '', 'import_ts', 'ALK4_area'  , 'GP=1', 
+EMIS_IN(15) = 'ALK5'    , '', 'import_ts', 'ALK5_point' , 'GP=1', 
+EMIS_IN(16) = 'ALK5'    , '', 'import_ts', 'ALK5_area'  , 'GP=1', 
+EMIS_IN(17) = 'C5H8'    , '', 'import_ts', 'ISO_point'  , 'GP=1', 
+EMIS_IN(18) = 'C5H8'    , '', 'import_ts', 'ISO_area'   , 'GP=1', 
+EMIS_IN(19) = 'TERP'    , '', 'import_ts', 'TERP_point' , 'GP=1', 
+EMIS_IN(20) = 'TERP'    , '', 'import_ts', 'TERP_area'  , 'GP=1', 
+EMIS_IN(21) = 'HCHO'    , '', 'import_ts', 'HCHO_point' , 'GP=1', ! formaldehyde 
+EMIS_IN(22) = 'HCHO'    , '', 'import_ts', 'HCHO_area'  , 'GP=1', 
+EMIS_IN(23) = 'MEK'     , '', 'import_ts', 'MEK_point'  , 'GP=1', ! methyl ethyl ketone
+EMIS_IN(24) = 'MEK'     , '', 'import_ts', 'MEK_area'   , 'GP=1', 
+EMIS_IN(25) = 'CH4'     , '', 'import_ts', 'CH4_point'  , 'GP=1', 
+EMIS_IN(26) = 'CH4'     , '', 'import_ts', 'CH4_area'   , 'GP=1', 
+EMIS_IN(29) = 'CH3COCH3', '', 'import_ts', 'ACET_point' , 'GP=1', ! acetone
+EMIS_IN(30) = 'CH3COCH3', '', 'import_ts', 'ACET_area'  , 'GP=1', 
+EMIS_IN(31) = 'CH3CHO'  , '', 'import_ts', 'CCHO_point' , 'GP=1', ! acetaldehyde
+EMIS_IN(32) = 'CH3CHO'  , '', 'import_ts', 'CCHO_area'  , 'GP=1', 
+EMIS_IN(33) = 'CH3OH'   , '', 'import_ts', 'MEOH_point' , 'GP=1', ! methanol
+EMIS_IN(34) = 'CH3OH'   , '', 'import_ts', 'MEOH_area'  , 'GP=1', 
+EMIS_IN(35) = 'CH3CO2H' , '', 'import_ts', 'CO2H_point' , 'GP=1', ! acetic acid
+EMIS_IN(36) = 'CH3CO2H' , '', 'import_ts', 'CO2H_area'  , 'GP=1', 
+EMIS_IN(45) = 'ARO1'    , '', 'import_ts', 'ARO1_point' , 'GP=1', 
+EMIS_IN(46) = 'ARO1'    , '', 'import_ts', 'ARO1_area'  , 'GP=1', 
+EMIS_IN(47) = 'ARO2'    , '', 'import_ts', 'ARO2_point' , 'GP=1', 
+EMIS_IN(48) = 'ARO2'    , '', 'import_ts', 'ARO2_area'  , 'GP=1', 
+
+! still missing:
+! COOH methyl hydroperoxide
+! PROD organic product
+! RCHO higher aldehyde
+! BALD benzaldehyde
+! RC2H higher carboxylic acid
+/
+

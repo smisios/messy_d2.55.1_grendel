@@ -1,0 +1,5884 @@
+#!/bin/sh -e
+#############################################################################
+### xmessy_mmd: UNIVERSAL RUN-SCRIPT FOR MESSy models
+### (Author: Patrick Joeckel, DLR-IPA, 2009-2019) [version 2.54.0]
+###
+### TYPE xmessy_mmd -h for more information
+#############################################################################
+###
+### NOTES:
+###        * -e (first line): exit on error = (equivalent to "set -e")
+###        * run/submit this script from where you want to have the log-files
+###            - best with absolute path from WORKDIR
+###        * options:
+###          -h : print help and exit
+###          -c : clean up (run within WORKDIR)
+###               (e.g., after crash before init_restart)
+#############################################################################
+
+#SBATCH --job-name=fg04
+#SBATCH --partition=q48,q36
+#SBATCH --mem=0
+#SBATCH --exclusive
+#SBATCH --output=JobName-%j.out
+#SBATCH --error=JobName-%j.err
+#SBATCH --time=240:00:00
+##SBATCH --ntasks-per-node=48
+##SBATCH -N
+##SBATCH -N 9
+#SBATCH --ntasks=432
+
+#export OMP_NUM_THREADS=${SLURM_CPUS_PER_TASK:-1}
+
+# LOAD MODULES
+module purge
+module load intel/2020.1 openmpi/4.0.3
+
+ulimit -s unlimited
+
+echo Running on "$(hostname)"
+echo Available nodes: "$SLURM_NODELIST"
+echo Slurm_submit_dir: "$SLURM_SUBMIT_DIR"
+echo Start time: "$(date)"
+
+#############################################################################
+### USER DEFINED GLOBAL SETTINGS
+#############################################################################
+### NAME OF EXPERIMENT (max 14 characters)
+EXP_NAME=dcg2116
+
+### WORKING DIRECTORY
+### (default: $BASEDIR/workdir)
+### NOTE: xconfig will not work correctly if $WORKDIR is not $BASEDIR/workdir
+### (e.g. /scratch/users/$USER/${EXP_NAME} )
+# WORKDIR=
+WORKDIR=/home/stergios/sim/${EXP_NAME}
+
+### START INTEGRATION AT
+### NOTE: Initialisation files ${ECHAM5_HRES}${ECHAM5_VRES}_YYYYMMDD_spec.nc
+###                        and ${ECHAM5_HRES}_YYYYMMDD_surf.nc
+###       must be available in ${INPUTDIR_ECHAM5_SPEC}
+START_YEAR=1950
+START_MONTH=01
+START_DAY=01
+START_HOUR=00
+START_MINUTE=00
+
+### STOP INTEGRATION AT (ONLY IF ACTIVATED IN $NML_ECHAM !!!)
+STOP_YEAR=1980
+STOP_MONTH=01
+STOP_DAY=01
+STOP_HOUR=06
+STOP_MINUTE=00
+
+### INTERVAL FOR WRITING (REGULAR) RESTART FILES
+### Note: This has only an effect, if it is not explicitely overwritten
+###       in your timer.nml; i.e., make sure that in timer.nml
+###         IO_RERUN_EV = ${RESTART_INTERVAL},'${RESTART_UNIT}','last',0,
+###       is active!
+### RESTART_UNIT: steps, hours, days, months, years
+RESTART_INTERVAL=1
+RESTART_UNIT=years
+NO_CYCLES=9999
+
+### SET VARIABLES FOR OASIS3-MCT SETUPS
+### Note: this has only an effect, if they are used in the namelist files
+### TIME STEP LENGTHS OF BASEMODELS [s]
+#COSMO_DT[1]=120
+#CLM_DT[2]=600
+### INVERSE OASIS COUPLING FREQUENCY [s]
+#OASIS_CPL_DT=1200
+### settings for namcouple
+### Note: If CPL_MODE not equal INSTANT, then LAG's have to be set
+###       to time step of each instance and oasis restartfiles have
+###       to be provided in INPUTDIR_OASIS3MCT.
+#OASIS_CPL_MODE=INSTANT   # AVERAGE, INSTANT
+#OASIS_LAG_COSMO=+0       # ${COSMO_DT}, +0
+#OASIS_LAG_CLM=+0         # ${CLM_DT}, +0
+
+# Set number of COSMO output dirs for COSMO-CLM/MESSy simulations
+# COSMO_OUTDIR_NUM=7
+
+### CHOOSE SET OF NAMELIST FILES (one subdirectory for each instance)
+### (see messy/nml subdirectories)
+NML_SETUP=MMD/CCMI/RC1-base
+
+### OUTPUT FILE-TYPE (2: netCDF, 3: parallel-netCDF)
+### NOTES:
+###  - ONLY, IF PARALLEL-NETCDF IS AVAILABLE
+###  - THIS WILL REPLACE $OFT IN channel.nml, IF USED THERE
+OFT=2
+
+### AVAILABLE WALL-CLOCK HOURS IN QUEUE (for QTIMER)
+QWCH=240
+# q20: 720
+
+### =========================================================================
+### SELECT MODEL INSTANCES:
+###  - ECHAM5, mpiom, CESM1, ICON (always first, if used)
+###  - COSMO, CLM
+###  - other = MBM
+### =========================================================================
+MINSTANCE[1]=ECHAM5
+#MINSTANCE[1]=ICON
+#MINSTANCE[1]=COSMO
+#MINSTANCE[1]=blank
+#MINSTANCE[1]=caaba
+#MINSTANCE[1]=CESM1
+#MINSTANCE[1]=import_grid
+#MINSTANCE[1]=ncregrid
+#MINSTANCE[1]=mpiom
+MINSTANCE[2]=COSMO
+#MINSTANCE[3]=COSMO
+#MINSTANCE[2]=CLM
+
+### =========================================================================
+### SET MMD PARENT IDs (-1: PATRIARCH, -99: not coupled via MMD)
+### =========================================================================
+MMDPARENTID[1]=-1
+MMDPARENTID[2]=1
+#MMDPARENTID[3]=2
+#MMDPARENTID[2]=-99
+
+### =========================================================================
+### PARALLEL DECOMPOSITION AND VECTOR BLOCKING
+### =========================================================================
+
+NPY[1]=16   # => NPROCA for ECHAM5, MPIOM, (ICON: only dummy)
+NPX[1]=27    # => NPROCB for ECHAM5, MPIOM, (ICON: only dummy)
+#NPY[1]=2   # => NPROCA for ECHAM5, MPIOM
+#NPX[1]=1    # => NPROCB for ECHAM5, MPIOM
+NVL[1]=16   # => NPROMA for ECHAM5
+
+NPY[2]=3
+NPX[2]=8
+NVL[2]=1   # => meaningless for COSMO
+
+NPY[3]=4
+NPX[3]=4
+NVL[3]=1
+
+### =========================================================================
+### BASEMODEL SETTINGS (e.g. RESOLUTION)
+### =========================================================================
+
+### .........................................................................
+### ECHAM5
+### .........................................................................
+
+### HORIZONTAL AND VERTICAL RESOLUTION FOR ECHAM5
+### (L*MA SWITCHES ECHAM5_LMIDATM AUTOMATICALLY !!!)
+ECHAM5_HRES=T42    # T106 T85 T63 T42 T31 T21 T10
+ECHAM5_VRES=L47MA    # L19 L31ECMWF L41DLR L39MA L90MA
+
+### HORIZONTAL AND VERTICAL RESOLUTION FOR MPIOM (IF SUBMODEL IS USED)
+MPIOM_HRES=GR15   # GR60 GR30 Gr15 TP04 TP40
+MPIOM_VRES=L40    # L3 L20 L40
+
+### ECHAM5 NUDGING
+### DO NOT FORGET TO SET THE NUDGING COEFFICIENTS IN $NML_ECHAM !!!
+#ECHAM5_NUDGING=.TRUE.
+### NUDGING DATA FILE FORMAT (0: IEEE, 2: netCDF)
+#ECHAM5_NUDGING_DATA_FORMAT=2
+
+### ECHAM5 AMIP-TYPE SST/SEAICE FORCING ?
+#ECHAM5_LAMIP=.TRUE.
+
+### ECHAM5 MIXED LAYER OCEAN (do not use concurrently with MLOCEAN submodel!)
+#ECHAM5_MLO=.TRUE.
+
+### .........................................................................
+### ICON
+### .........................................................................
+
+### .........................................................................
+### CESM
+### .........................................................................
+
+### HORIZONTAL AND VERTICAL RESOLUTION FOR CESM1
+CESM1_HRES=ne16       # 1.9x2.5 4x5 ne16 ne30
+CESM1_VRES=L26        # L26 L51
+#OCN_HRES=gx1v6       # 1.9x2.5 => gx1v6; 4x5, ne16  => gx3v7
+CESM1_ATM_NTRAC=3
+#
+NML_CESM_ATM=cesm_atm_${CESM1_HRES}${CESM1_VRES}.nml
+
+### =========================================================================
+### NON-DEFAULT NAMELIST FILE SELECTION
+### =========================================================================
+
+### 5.3.01
+#NML_ECHAM=ECHAM5301_${ECHAM5_HRES}${ECHAM5_VRES}.nml
+### 5.3.02 (DO NOT CHANGE !)
+NML_ECHAM=ECHAM5302_${ECHAM5_HRES}${ECHAM5_VRES}.nml
+
+### user-defined, specific namelist files, e.g., resolution dependent
+### syntax: NML_<SUBMODEL>[INSTANCE NUMBER]=<namelist file>
+### (comment, if generic name should be used)
+#NML_LNOX[1]=lnox_${ECHAM5_HRES}${ECHAM5_VRES}.nml
+
+# EXAMPLE(S) 1: select namelists depending on start date
+NML_IMPORT[1]=import_s${START_YEAR}_gmxe.nml
+NML_TRACER[1]=tracer_s${START_YEAR}.nml
+#NML_D14CO[1]=d14co_s${START_YEAR}.nml
+
+# EXAMPLE(S) 2: select namelists dependinf on basemodel version
+#NML_INPUT_ORG[1]=INPUT_ORG_C5.0.nml
+#NML_INPUT_DYN[1]=INPUT_DYN_C5.0.nml
+#NML_INPUT_PHY[1]=INPUT_PHY_C5.0.nml
+#NML_INPUT_IO[1]=INPUT_IO_C5.0.nml
+#NML_PTRAC[1]=ptrac_C5.0.nml
+
+# EXAMPLE(S) 3: test mbm import_grid (with NML_SETUP=MBM/import_grid)
+#NML_SWITCH[1]=switch_import_grid.nml
+#NML_IMPORT_GRID[1]=test_3d_xy_ps_gt.nml
+NML_TIMER[1]=timer_${ECHAM5_HRES}${ECHAM5_VRES}.nml
+NML_CONVECT[1]=convect_${ECHAM5_HRES}${ECHAM5_VRES}.nml
+NML_LNOX[1]=lnox_${ECHAM5_HRES}${ECHAM5_VRES}.nml
+NML_TNUDGE[1]=tnudge_${ECHAM5_VRES}.nml
+#NML_IMPORT[1]=import_s${START_YEAR}_tslice_gmxe.nml
+#NML_TRACER[1]=tracer_s${START_YEAR}_tslice.nml
+NML_QBO[1]=qbo_${ECHAM5_VRES}.nml
+
+# EXAMPLE(S) 4: test mbm ncregrid (with NML_SETUP=MBM/ncregrid)
+#NML_SWITCH[1]=switch_ncregrid.nml
+#NML_NCREGRID[1]=test_3d_xy_ps_gt.nml
+
+# EXAMPLE(S) 5: non-standard python script for channel output with forpy
+#PYS_CHANNEL[1]=channel.py
+#YML_CHANNEL[1]=channel.yml
+
+### .........................................................................
+### COSMO (USE INSTANCE NUMBER)
+### .........................................................................
+
+### SUBDIRECTORY WITH EXTERNAL DATA
+### -> COSMO_EXTDIR = ${INPUTDIR_COSMO_EXT[.]}/${COSMO_SUBDIR[.]}
+
+COSMO_SUBDIR[2]=climatology
+COSMO_EXTNAME[2]=europe_0.36_124x124.nc
+COSMO_EXTGRID[2]="ie_ext=124, je_ext=124,"
+
+COSMO_SUBDIR[3]=external
+COSMO_EXTNAME[3]=lm_d5_07000_965x773.g1
+COSMO_EXTGRID[3]="ie_ext=965, je_ext=773,"
+
+
+### =========================================================================
+### DO NOT DELETE THE NEXT TWO LINES
+### =========================================================================
+eval "BASEMODEL_HRES=\${${MINSTANCE[1]}_HRES:-unknown}"
+eval "BASEMODEL_VRES=\${${MINSTANCE[1]}_VRES:-unknown}"
+
+### =========================================================================
+### SET THE FOLLOWING ONLY IF YOU DON'T WANT THE DEFAULT DIRECTORY STRUCTURE
+### =========================================================================
+
+### BASE DIRECTORY OF THE MODEL DISTRIBUTION
+### (default: auto-detected on most systems, except for LSF)
+### (e.g. /data1/$USER/MESSY/messy_?.?? )
+BASEDIR=/home/stergios/models/messy_d2.55.1_grendel
+
+### BASE DIRECTORY FOR MODEL INPUT DATA
+### (default: system / host specific)
+### (e.g. /datanb/users/joeckel/DATA )
+DATABASEDIR=/home/stergios/ini_data
+
+### -------------------------------------------------------------------------
+
+### -------------------------
+### INPUT DATA FOR ECHAM5 GCM
+### -------------------------
+### (default: ${DATABASEDIR}/ECHAM5/echam5.3.02/init )
+### (e.g. /datanb/users/joeckel/DATA/ECHAM5/echam5.3.02/init )
+INPUTDIR_ECHAM5_INI=${DATABASEDIR}/ECHAM5
+
+### INITIAL _spec AND _surf FILES FOR ECHAM5
+### default (checked in this order):
+###   1st: ${INPUTDIR_ECHAM5_INI}/${ECHAM5_HRES}
+###   2nd: ${DATABASEDIR}/ECHAM5/echam5.3.02/add_spec/${ECHAM5_HRES}${ECHAM5_VRES}
+### (e.g.: $HOME/my_own_echam5_initial_files)
+INPUTDIR_ECHAM5_SPEC=${DATABASEDIR}/ECHAM5/${ECHAM5_HRES}/
+### is start hour part of ini-filename (default: .FALSE.)?
+# INI_ECHAM5_HR=.TRUE.
+
+### NUDGING DATA FOR ECHAM5 GCM
+### (default:
+###  $DATABASEDIR/NUDGING/ECMWF/[ANALY,ERAI,...]/${ECHAM5_HRES}${ECHAM5_VRES})
+# INPUTDIR_NUDGE=
+#
+### FILENAME-BASE FOR NUDGING FILES
+#FNAME_NUDGE=ANALY_${ECHAM5_HRES}${ECHAM5_VRES}_%y4%m201
+FNAME_NUDGE=ERAI_${ECHAM5_HRES}${ECHAM5_VRES}_%y4%m201
+#FNAME_NUDGE=ERA05_${ECHAM5_HRES}${ECHAM5_VRES}_%y4%m201
+#FNAME_NUDGE=ANA_${ECHAM5_HRES}${ECHAM5_VRES}_%y4%m2%d2
+#FNAME_NUDGE=ERA40_${ECHAM5_HRES}${ECHAM5_VRES}_%y4%m201
+#
+
+### -------------------------------------------------------------------------
+
+### -------------------
+### INPUT DATA FOR ICON
+### --------------------
+### (default: INPUTDIR_ICON=$MSH_DATAROOT/ICON/icon2.0)
+# INPUTDIR_ICON=
+
+### -------------------------------------------------------------------------
+
+### -----------------------------------
+### DIRECTORY WITH SST and SEA-ICE DATA
+### -----------------------------------
+### (default: $INPUTDIR_ECHAM5_INI/${BASEMODEL_HRES}/amip2)
+# INPUTDIR_AMIP=${DATABASEDIR}/SST/AMIPIIb/${BASEMODEL_HRES}
+# INPUTDIR_AMIP=${DATABASEDIR}/SST/HADLEY/${BASEMODEL_HRES}
+# INPUTDIR_AMIP=${DATABASEDIR}/SST/Had/HadISST/${BASEMODEL_HRES}
+# INPUTDIR_AMIP=
+INPUTDIR_AMIP=${DATABASEDIR}/ECHAM5/CMIP6/SST/${BASEMODEL_HRES}
+
+### -------------------------------------------------------------------------
+
+### -------------------------
+### INITIAL FILES FOR MPIOM
+### -------------------------
+### (default: ${DATABASEDIR}/MPIOM)
+### (e.g. /datanb/users/joeckel/DATA/MPIOM )
+# INPUTDIR_MPIOM=
+INPUTDIR_MPIOM=${DATABASEDIR}/MPIOM
+
+### -------------------------------------------------------------------------
+
+### -------------------------
+### INPUT DATA FOR COSMO
+### -------------------------
+### (default: ${DATABASEDIR}/COSMO)
+### (e.g. /datanb/users/joeckel/DATA/COSMO )
+
+### FOR EXTERNAL DATA (COSMO is client); individual for each instance
+INPUTDIR_COSMO_EXT[1]=/home/stergios/ini_data/COSMO/EXTDATA
+INPUTDIR_COSMO_EXT[2]=/home/stergios/ini_data/COSMO/EXTDATA
+# INPUTDIR_COSMO_EXT[.]=
+
+### FOR BOUNDARY DATA (COSMO, per instance)
+# INPUTDIR_COSMO_BND[1]=
+# INPUTDIR_COSMO_BND[2]=
+# INPUTDIR_COSMO_BND[.]=
+
+### -------------------------------------------------
+### INPUT DATA FOR CLM (default: ${DATABASEDIR}/CLM)
+### -------------------------------------------------
+#INPUTDIR_CLM_FORCE[2]=
+#INPUTDIR_CLM_FORCE[4]=
+#INPUTDIR_CLM_FORCE[.]=
+
+### -------------------------------------------------------------------------
+### INPUT DIRECTORY FOR CESM1
+### (default: ${DATABASEDIR}/CESM1)
+### (e.g. /datanb/users/joeckel/DATA/CESM )
+# INPUTDIR_CESM1=
+### -------------------------------------------------------------------------
+
+### -------------------------------------------------------------------------
+### INPUT DATA (grids, weights, maps, etc.) FOR OASIS3MCT coupled simulations
+### (default: ${DATABASEDIR}/${NML_SETUP}   # = ${DATABASEDIR}/OASIS/...
+### -------------------------------------------------------------------------
+# INPUTDIR_OASIS3MCT=
+
+### -------------------------------------------------------------------------
+### MESSy BASE
+### activate for namelist setups using the old data structure
+### (default for new data structure is .)
+#MBASE=EVAL2.3/messy
+
+### INPUT DATA FOR MESSy SUBMODELS
+### (default: ${DATABASEDIR}/MESSy2/$MBASE)
+### NOTE: directory must contain subdirectories raw/.
+###       (and T*/. for USE_PREREGRID_MESSY=.TRUE.)
+### (e.g. /datanb/users/joeckel/DATA/MESSy2 )
+# INPUTDIR_MESSY=
+INPUTDIR_MESSY=${DATABASEDIR}/MESSy2
+
+### USE PRE-REGRIDDED INPUT DATA TO SPEED UP INITIALIZATION
+#USE_PREREGRID_MESSY=.TRUE.
+
+### -------------------------------------------------------------------------
+
+### =========================================================================
+### SPECIAL MODES
+### =========================================================================
+### SERIAL MODE (if compiled without MPI)
+#SERIALMODE=.TRUE.
+
+### -------------------------------------------------------------------------
+
+### TEST SCRIPT (EXIT BEFORE MODEL(S) IS/ARE EXECUTED)
+#TESTMODE=.TRUE.
+
+### -------------------------------------------------------------------------
+### MEASURE MEMORY USAGE
+### -------------------------------------------------------------------------
+
+#########################
+### pa2 @ DLR cluster ###
+#########################
+## Notes:
+## - configure/compile with openmpi/3.1.1/gfortran/4.9.4
+#
+#MEASUREMODE=.TRUE.
+#MEASUREEXEC="/export/opt/PA/prgs/valgrind/3.13.0/bin/valgrind --xml=yes --xml-file=${EXP_NAME}.%p.xml --suppressions=/export/opt/PA/prgs/openmpi/3.1.1/gfortran/4.9.4/share/openmpi/openmpi-valgrind.supp --leak-check=full --track-origins=yes --time-stamp=yes"
+
+############################################
+### mistral @ DKRZ: ARM FORGE (ddt, map) ###
+############################################
+#MEASUREMODE=.TRUE.
+#. /sw/rhel6-x64/etc/profile.mistral
+#module load arm-forge
+## activate only one at a time ...
+#MEASUREEXEC="map --profile"
+#MEASUREEXEC="ddt --connect"
+#MEASUREEXEC="ddt --offline --output=job.html --mem-debug=thorough"
+#MEASUREEXEC="ddt --offline --output=job.html --mem-debug=fast --check-bounds=off"
+
+################################
+### mistral @ DKRZ: valgrind ###
+################################
+## NOTEs:
+## - only, if compiled with gcc/6.4.0
+#
+#MEASUREMODE=.TRUE.
+#. /sw/rhel6-x64/etc/profile.mistral
+#module load valgrind/3.13.0-gcc64
+## activate only one at a time ...
+#MEASUREEXEC="/sw/rhel6-x64/devtools/valgrind-3.13.0-gcc64/bin/valgrind --xml=yes --xml-file=${EXP_NAME}.%p.xml --suppressions=/sw/rhel6-x64/mpi/openmpi-2.0.2p1_hpcx-gcc64/share/openmpi/openmpi-valgrind.supp --leak-check=full --track-origins=yes --time-stamp=yes"
+#MEASUREEXEC="/sw/rhel6-x64/devtools/valgrind-3.13.0-gcc64/bin/valgrind --tool=massif --suppressions=/sw/rhel6-x64/mpi/openmpi-2.0.2p1_hpcx-gcc64/share/openmpi/openmpi-valgrind.supp --depth=100 --threshold=0.1 --time-unit=ms --max-snapshots=1000"
+
+############################################
+### SuperMUC @ LRZ: ARM FORGE (ddt, map) ###
+############################################
+#MEASUREMODE=.TRUE.
+#module load ddt/18.1.3
+## activate only one at a time ...
+#MEASUREEXEC="map --profile"
+#MEASUREEXEC="ddt --connect"
+#MEASUREEXEC="ddt --offline --output=job.html --mem-debug=thorough"
+#MEASUREEXEC="ddt --offline --output=job.html --mem-debug=fast --check-bounds=off"
+
+################################
+### SuperMUC @ LRZ: valgrind ###
+################################
+#MEASUREMODE=.TRUE.
+#module load valgrind/3.13
+#MEASUREEXEC="/lrz/sys/tools/valgrind/3.13.0/bin/valgrind --xml=yes --xml-file=${EXP_NAME}.%p.xml --leak-check=full --track-origins=yes --time-stamp=yes"
+
+### -------------------------------------------------------------------------
+### SET PROFILING MODE
+### -------------------------------------------------------------------------
+
+### - tprof, max. 1 node (only IBM poe)
+#PROFMODE=TPROF
+#PROFCMD=/usr/bin/tprof64
+
+### - scalasca (additional -t for tracing, -f for filtering)
+#PROFMODE=SCALASCA
+#PROFCMD="scalasca -analyze"
+#PROFCMD="scalasca -analyze -t"
+#PROFCMD="scalasca -analyze -t -f <filter-file>"
+#export ESD_BUFFER_SIZE=500000
+#export ESD_PATHS=8192
+#export ELG_BUFFER_SIZE=200000000
+
+### - vampir
+#PROFMODE=VAMPIR
+#export VT_FILE_PREFIX="${EXP_NAME}"
+#export VT_BUFFER_SIZE="256M"
+#export VT_MAX_FLUSHES=0
+#export VT_MODE="STAT"
+#export VT_MODE="TRACE:STAT"
+#export VT_MODE="TRACE"
+#export VT_FILTER_SPEC=<filter file>
+
+### - THIS COULD POSSIBLY (!) WORK FOR MAP/DDT with IBM poe
+#PROFMODE=ALLINEA
+#PROFCMD="map --profile"
+#PROFCMD="ddt --connect"
+
+### -------------------------------------------------------------------------
+
+#############################################################################
+#############################################################################
+### =========================================================================
+#############################################################################
+### DO NOT CHANGE ANYTHING BELOW THIS LINE !!!
+#############################################################################
+### =========================================================================
+#############################################################################
+#############################################################################
+
+#############################################################################
+### INITISALISATION
+#############################################################################
+
+### DIAG
+hline="---------------------------------------"
+hline=$hline$hline
+
+### NUMBER OF MODEL INSTANCES
+MSH_INST=${#MINSTANCE[@]}
+
+### OPERATING SYSTEM
+MSH_SYSTEM=`uname`
+
+### HOST
+# allow user to set MSH_HOST in shell-environment
+if test -z "$MSH_HOST" ; then
+   MSH_HOST=`hostname`
+fi
+if test -z "$MSH_HOST" ; then
+  if test "${HOST:-unknown}" != "unknown" ; then
+     MSH_HOST=$HOST
+  fi
+fi
+
+### USER
+MSH_USER=$USER
+
+#############################################################################
+### FUNCTIONS
+#############################################################################
+
+### *************************************************************************
+### HELP MESSAGE
+### *************************************************************************
+f_help_message( )
+{
+scr=`basename $0`
+echo ' '
+echo ' '$scr': UNIVERSAL RUN-SCRIPT FOR MESSy-models'
+echo ' (Author: Patrick Joeckel, DLR-IPA, 2009-2016)'
+echo ' '
+echo ' USAGE:'
+echo ' 1) edit the BATCH/QUEUING SYSTEM environment for your HOST'
+echo ' 2) edit the model settings for the desired instances'
+echo ' 3) select a namelist setup (currently: '$NML_SETUP')'
+echo ' 4) check the namelist files in your setup (messy/nml/'$NML_SETUP')'
+echo ' 5) submit/start this script ('$scr')'
+echo '    from where you want to have the log-files'
+echo ' '
+echo ' +) You can also use this script with the option "-c" to clean up'
+echo '    a working directory before a restart (init_restart).'
+echo ' '
+echo ' AUTOMATIC RERUN FACILITY:'
+echo '  * If MSH_NO is in the working-directory, the model is started in'
+echo '    rerun-mode. MSH_NO contains the number of the last chain-element.'
+echo '  * All files needed for a rerun starting from a specific chain element'
+echo '    are saved in the subdirectory save/NNNN of the working directory.'
+echo '    NNNN is the 4-digit number of the last complete chain element.'
+echo '  * In order to start a rerun (chain element NNNN+1),'
+echo '    use the script messy/util/init_restart '
+echo '    and submit/start '$scr' again.'
+echo '  * To start a new integration chain from rerun files, MSH_NO must'
+echo '    contain "0".'
+echo '  * Implementation:'
+echo '    '$scr' starts itself over and over again'
+echo '    (automatic rerun chain), unless'
+echo '     # the model (or '$scr') writes a file END, because'
+echo '       - the model terminates at the end of the requested'
+echo '         simulation interval'
+echo '       - the model terminates due to an error'
+echo '       - labort = T in timer.nml'
+echo '         (test modus: break rerun chain after first chain element)'
+echo '     # the model terminates with a core-dump'
+echo ' '
+echo ' LIST OF KNOWN HOSTs:'
+echo ' ====================================================================='
+echo ' HOST      CENTRE ARCHITECTURE OS          CPUs      BATCH COMMAND    '
+echo ' ---------------------------------------------------------------------'
+echo ' saturn    MPI-C  Compaq-Alpha OSF1           4      SGE   qsub -q <Q>'
+echo ' merkur    MPI-C  Compaq-Alpha OSF1           1      SGE   qsub -q <Q>'
+echo ' helios    MPI-C  Compaq-Alpha OSF1           2      SGE   qsub -q <Q>'
+echo ' jupiter   MPI-C  Compaq-Alpha OSF1           2      SGE   qsub -q <Q>'
+echo ' octopus   MPI-C  PC-Cluster   Linux        6x2      SGE   qsub       '
+echo ' grand     MPI-C  PC-Cluster   Linux       24x2      SGE   qsub       '
+echo ' luna      MPI-C  PC           Linux          2      -                '
+echo ' mars      MPI-C  PC           Linux          4      -                '
+echo ' humanka   MPI-C  PC           Linux          2      -                '
+echo ' sputnik   MPI-C  PC           Linux          1      -                '
+echo ' orion     MPI-C  PC           Linux          2      -                '
+echo ' iodine    MPI-C  PC           Linux          1      -                '
+echo ' fluorine  MPI-C  PC           Linux          1      -                '
+echo ' chlorine  MPI-C  PC           Linux          1      -                '
+echo ' yetibaby  MPI-C  PC           Linux          1      -                '
+echo ' Getafix   MPI-C  PC           Linux          1      -                '
+echo ' monsoon   AUTH   PC           Linux          1      -                '
+echo ' lx???     DLR    PC           Linux          ?      -                '
+echo ' linux-oksn UBN   PC           Linux          ?      -                '
+echo ' c* / a*   RZG    PC-Cluster   Linux     2x14x2      SGE   qsub       '
+echo ' p5        RZG    IBM-Power5   AIX         18x8      LL    llsubmit   '
+echo ' psi       RZG    IBM-Power4   AIX        27x32      LL    llsubmit   '
+echo ' vip       RZG    IBM-Power6   AIX       205x32(x2)  LL    llsubmit   '
+echo ' hydra     RZG    IBM-Cluster  Linux64               LL    llsubmit   '
+echo ' rio*      RZG    Opteron-Cl.  Linux64               SGE   qsub       '
+echo ' mpc*      RZG    IBM HS22     Linux64   18x2x6      SGE   qsub       '
+echo ' hurrikan  DKRZ   NEC-SX6      SUPER-UX    24x8 V    NQS   qsub       '
+echo ' blizzard  DKRZ   IBM-Power6   AIX       264x32(x2)  LL    llsubmit   '
+echo ' tornado   DKRZ   Sun-CLuster  Linux64  256x2x2      SGE   qsub       '
+echo ' strat10   FUB    Sun          SunOS                                  '
+echo ' gwdu104   GWDG   PC-Cluster   Linux    151x2x2      LSF   bsub <     '
+echo ' hornet    UConn  Cray-Cluster Linux                 LSF   bsub <     '
+echo ' lc2master1 U-MZ  PC-Cluster   Linux64               LSF   bsub <     '
+echo ' SuperMUC  LRZ    IBM-CLuster  Linux64               LL    llsubmit   '
+echo ' SuperMUC-NG LRZ  Intel-CLuster Linux64              SLURM sbatch     '
+echo ' jj*       JSC    Cluster      Linux64 2208x2x4      MOAB  msub       '
+echo ' jr*       JSC    Cluster      Linux64               SLURM qsub       '
+echo ' *juwles.fzj.de JSC Cluster    Linux64               SLURM sbatch     '
+echo ' icg*      FZJ    Workstation                                         '
+echo ' *.pa.cluster DLR Cluster      Linux64   18x6x2      PBS   qsub       '
+echo ' *.central.bs.cluster DLR      Linux64  16x12x2      PBS   qsub       '
+echo ' CARA      DLR    Cluster      Linux64               SLURM sbatch     '
+echo ' buran     IGCE   Cluster      Linux64    8x2x2(x2)  SLURM sbatch     '
+echo ' *.bullx   DKRZ   Cluster      Linux64               SLURM sbatch     '
+echo ' mistral   DKRZ   Cluster      Linux64               SLURM sbatch     '
+echo ' thunder*  ZMAW   Cluster      Linux64               SLURM sbatch     '
+echo ' hpc12     TUD    Cluster      Linux64               PBS   qsub       '
+echo ' cartesius TUD    Cluster      Linux64               SLURM sbatch     '
+echo ' cyclone   CYI    Cluster      Linux64               SLURM sbatch     '
+echo ' ---------------------------------------------------------------------'
+echo ' ====================================================================='
+echo ' BATCH-SYSTEM                       CHECK STATUS       DELETE JOB     '
+echo ' ---------------------------------------------------------------------'
+echo ' SGE    : Sun Grid Engine           # qstat -u $USER   qdel <id>      '
+echo ' LL     : IBM Load Leveler          # llq -u $USER     llcancel <id>  '
+echo ' NQSII  : Network Queuing System II # qstat -u $USER   qdel <id>      '
+echo ' PBS Pro: Portable Batch System     # qstat -u $USER   qdel <id>      '
+echo ' LSF    : Load Sharing Facility     # bjobs -u $USER   bkill <id>     '
+echo ' MOAB   :                           # qstat -u $USER   qdel <id>      '
+echo ' SLURM  :                           # squeue -u $USER  scancel <id>   '
+echo ' ---------------------------------------------------------------------'
+echo ' NOTES:'
+echo '    V    : Vector Architecture'
+echo '    CPUs : CLUSTERS x NODES x CPUs or NODES x CPUs x COREs'
+echo '    <Q>  : Queue to submit to (must be specified)'
+echo '    <id> : Job-ID'
+echo ' ====================================================================='
+echo ' '
+}
+
+### *************************************************************************
+### CALCULATE NUMBER OF CPUs
+### *************************************************************************
+f_numcpus( )
+{
+### ..................................................
+### -> MSH_NCPUS
+### ..................................................
+i=1
+MSH_NCPUS=0
+while [ $i -le $MSH_INST ] ; do
+    let NCPUS[$i]=${NPX[$i]}*${NPY[$i]}
+    let N=${NPX[$i]}*${NPY[$i]}
+    i=`expr $i + 1`
+    MSH_NCPUS=`expr $MSH_NCPUS + $N`
+done
+}
+### *************************************************************************
+
+### *************************************************************************
+### DETECT QUEUING SYSTEM
+### *************************************************************************
+f_qsys( )
+{
+### ..................................................
+### -> MSH_QSYS  : QUEUING SYSTEM
+### -> MSH_QCMD  : COMMAND FOR QUEUING A SHELL SCRIPT
+### -> MSH_QUEUE : NAME OF QUEUE
+### ..................................................
+### DEFAULT: NO BATCH-SYSTEM
+MSH_QSYS=NONE
+MSH_QCMD=
+MSH_QUEUE=
+### SUN GRID ENGINE
+if test "${SGE_O_WORKDIR:-set}" != "set" ; then
+    MSH_QSYS=SGE
+    MSH_QCMD=qsub
+    MSH_QUEUE=$QUEUE
+fi
+### SCORE/NQSII/PBS-Pro
+if test "${PBS_O_WORKDIR:-set}" != "set" ; then
+    MSH_QSYS=PBS
+    MSH_QCMD=qsub
+    MSH_QSTAT=qstat
+    if ! type -P qsub 2> /dev/null 1>&2 ; then
+       MSH_QCMD=msub
+    fi
+    MSH_QUEUE=$PBS_QUEUE
+    ### sepcial+ for TU Delft
+    if test "`hostname -d`" = "hpc" ; then
+       MSH_QCMD="rsh hpc12 'qsub'"
+       MSH_QSTAT="rsh hpc12 'qstat'"
+    fi
+    ### sepcial-
+fi
+### NQS
+if test "${QSUB_WORKDIR:-set}" != "set" ; then
+    MSH_QSYS=NQS
+    MSH_QCMD=qsub
+    MSH_QUEUE=$QUEUENAME
+fi
+### LoadLeveler
+if test "${LOADLBATCH:-set}" != "set" ; then
+    MSH_QSYS=LL
+    MSH_QCMD=llsubmit
+    MSH_QUEUE=$LOADL_STEP_CLASS
+fi
+### Load Sharing Facility
+if test "${LSF_INVOKE_CMD:-set}" != "set" ; then
+   MSH_QSYS=LSF
+   MSH_QCMD="bsub <"
+   MSH_QUEUE=$LSB_QUEUE
+fi
+### SLURM
+if test "${SLURM_JOBID:-set}" != "set" ; then
+    MSH_QSYS=SLURM
+    MSH_QCMD=sbatch
+    MSH_QUEUE=
+    if test "${SLURM_PARTITION:-set}" != "set" ; then
+       MSH_QUEUE=${SLURM_PARTITION}
+    fi
+fi
+}
+### *************************************************************************
+
+### *************************************************************************
+### QUEING SYSTEM SETUP
+### *************************************************************************
+f_qsys_setup( )
+{
+### .................................................................
+### MSH_QPWD    : PATH FROM WHERE THIS SHELL SCRIPT WAS STARTED
+### MSH_QCALL   : HOW THIS SHELL SCRIPT WAS CALLED (WITH PATH)
+### MSH_QDIR    : ABSOLUTE PATH TO THIS SHELL SCRIPT
+### MSH_QNAME   : NAME OF THIS SHELL SCRIPT
+### MSH_QSCR    : PATH/NAME OF QUEUED SCRIPT
+### MSH_QCPSCR  : SCRIPT TO COPY FOR NEXT RUN
+### MSH_QNEXT   : COMMAND FOR SUBMITTING NEXT SCRIPT (FROM WORKDIR)
+### MSH_QNCPUS  : NUMBER OF REQUESTED CPUs (QUEING SYSTEM) ...
+### .................................................................
+case $MSH_QSYS in
+    NONE)
+      MSH_QPWD=`pwd`
+      MSH_QCALL=$0
+      MSH_QDIR=`dirname $MSH_QCALL`
+      MSH_QNAME=`basename $MSH_QCALL`
+      mshtmp=`echo $MSH_QDIR | awk '{print substr($1,1,1)}'`
+      if test $mshtmp = "/" ; then
+	  MSH_QDIR=`cd $MSH_QDIR; pwd`
+      else
+	  MSH_QDIR=`cd $MSH_QPWD/$MSH_QDIR; pwd`
+      fi
+      MSH_QSCR=
+      MSH_QCPSCR="$MSH_QDIR/$MSH_QNAME"
+      MSH_QNEXT="./$MSH_QNAME > LOGFILE 2>&1 &"
+      MSH_QNCPUS=-1
+      ;;
+    SGE)
+      MSH_QPWD=`pwd`
+      MSH_QCALL=`qstat -j $JOB_ID | grep 'script_file' | awk '{print $2}'`
+      MSH_QNAME=`basename $MSH_QCALL`
+      MSH_QDIR=`dirname $MSH_QCALL`
+      mshtmp=`echo $MSH_QDIR | awk '{print substr($1,1,1)}'`
+      if test $mshtmp = "/" ; then
+	  MSH_QDIR=`cd $MSH_QDIR; pwd`
+      else
+	  MSH_QDIR=`cd $MSH_QPWD/$MSH_QDIR; pwd`
+      fi
+      MSH_QSCR=$0
+      MSH_QCPSCR="$MSH_QDIR/$MSH_QNAME"
+      MSH_QNEXT="./$MSH_QNAME > LOGFILE 2>&1 &"
+      MSH_QNEXT="$MSH_QCMD $MSH_QNAME"
+      #MSH_QNEXT="$MSH_QCMD -q $MSH_QUEUE $MSH_QNAME"
+      MSH_QNCPUS=$NSLOTS
+      ;;
+    PBS)
+      cd $PBS_O_WORKDIR
+      MSH_QPWD=`pwd`
+      cd - 2> /dev/null 1>&2
+      #MSH_QCALL=`qstat -f -1 $PBS_JOBID | grep submit_args | awk '{print $NF}'`
+      MSH_QCALL=`$MSH_QSTAT -f -1 $PBS_JOBID | grep submit_args | awk '{print $NF}'`
+      #MSH_QNAME=`basename $MSH_QCALL`
+      MSH_QNAME=$PBS_JOBNAME
+      MSH_QDIR=`dirname $MSH_QCALL`
+      mshtmp=`echo $MSH_QDIR | awk '{print substr($0,1,1)}'`
+      if test "$mshtmp" = "/" ; then
+	 # absolute path
+	 MSH_QDIR=`cd $MSH_QDIR; pwd`
+      else
+	 # relative path
+	 MSH_QDIR=`cd $MSH_QPWD/$MSH_QDIR; pwd`
+      fi
+      #MSH_QCALL=   ### not available !!!
+      #MSH_QDIR=    ### not available !!!
+      MSH_QSCR=$0
+      MSH_QCPSCR=$0
+      # queue automatically chosen by 'resources'
+      MSH_QNEXT="$MSH_QCMD $MSH_QNAME"
+      ### NUMBER OF CPUs
+      if test "$PBS_NODEFILE" != "" ; then
+	  MSH_QNCPUS=`wc -l $PBS_NODEFILE | awk '{print $1}'`
+      else
+	  MSH_QNCPUS=-1
+	  echo 'WARNING: AUTOMATIC DETECTION OF #CPUs NOT POSSIBLE!'
+	  MSH_QNCPUS=$NCPUS
+      fi
+      ;;
+    NQS)
+      cd $QSUB_WORKDIR
+      MSH_QPWD=`pwd`
+      cd -
+      ### NOTE: MSH_QCALL contains here the starting directory,
+      ### not where the script is located!
+      MSH_QCALL=$QSUB_WORKDIR/$QSUB_REQNAME
+      MSH_QNAME=`basename $MSH_QCALL`
+      MSH_QDIR=`dirname $MSH_QCALL`
+      mshtmp=`echo $MSH_QDIR | awk '{print substr($1,1,1)}'`
+      if test $mshtmp = "/" ; then
+	 MSH_QDIR=`cd $MSH_QDIR; pwd`
+      else
+	 MSH_QDIR=`cd $MSH_QPWD/$MSH_QDIR; pwd`
+      fi
+      MSH_QSCR= ### not available !!!
+      MSH_QCPSCR="$MSH_QDIR/$MSH_QNAME"
+      MSH_QNEXT="$MSH_QCMD $MSH_QNAME"
+      #MSH_QNEXT="$MSH_QCMD -q $MSH_QUEUE $MSH_QNAME"
+      MSH_QNCPUS=-1
+      ;;
+    LL)
+      MSH_QPWD=$PWD
+      MSH_QCALL=$LOADL_STEP_COMMAND
+      MSH_QNAME=`basename $MSH_QCALL`
+      MSH_QDIR=`dirname $MSH_QCALL`
+      MSH_QDIR=`cd $MSH_QDIR; pwd`
+      MSH_QSCR=$0
+      MSH_QCPSCR="$MSH_QDIR/$MSH_QNAME"
+      MSH_QNEXT="$MSH_QCMD $MSH_QNAME"
+      MSH_QNCPUS=-1
+      if test "$LOADL_PROCESSOR_LIST" != "" ; then
+	  MSH_QNCPUS=`echo $LOADL_PROCESSOR_LIST | tr ' ' '\n' | wc -l`
+	  MSH_QNCPUS=`echo $MSH_QNCPUS | awk '{printf("%g",$1)}'`
+      else
+	  if test "$LOADL_HOSTFILE" != "" ; then
+	      MSH_QNCPUS=`wc -l $LOADL_HOSTFILE`
+	      MSH_QNCPUS=`echo $MSH_QNCPUS | awk '{printf("%g",$1)}'`
+	  fi
+      fi
+      ;;
+    LSF)
+      MSH_QPWD=$PWD
+      MSH_QCALL=             ### not available !!!
+      MSH_QNAME=$LSF_SCRIPT
+      MSH_QDIR=$BASEDIR/messy/util
+      MSH_QSCR=$0
+      MSH_QCPSCR="$MSH_QDIR/$MSH_QNAME"
+      MSH_QNEXT="$MSH_QCMD $MSH_QNAME"
+      MSH_QNCPUS=-1
+      if test "$LSB_HOSTS" != "" ; then
+	 MSH_QNCPUS=`echo $LSB_HOSTS | tr ' ' '\n' | wc -l`
+      fi
+      ;;
+    SLURM)
+      MSH_QPWD=`pwd`
+      MSH_QCALL=`scontrol --all show job ${SLURM_JOB_ID} | grep Command | cut -d"=" -f2`
+      MSH_QNAME=`basename $MSH_QCALL`
+      MSH_QDIR=`dirname $MSH_QCALL`
+      MSH_QDIR=`cd $MSH_QDIR; pwd`
+      MSH_QSCR=$0
+      MSH_QCPSCR="$MSH_QDIR/$MSH_QNAME"
+      # queue automatically chosen by 'resources'
+      MSH_QNEXT="$MSH_QCMD $MSH_QNAME"
+#      MSH_QNCPUS=`echo $SLURM_JOB_NUM_NODES $SLURM_JOB_CPUS_PER_NODE | awk '{print $1*$2}'`
+      MSH_QNCPUS=${SLURM_NTASKS}
+      ;;
+esac
+
+if test "$MSH_QNCPUS" = "-1" ; then
+   echo "${MSH_QNAME} WARNING (f_qsys_setup): AUTOMATIC DETECTION OF REQUESTED #CPUs NOT POSSIBLE"'!'
+fi
+
+}
+### *************************************************************************
+
+### *************************************************************************
+### DOMAIN
+### *************************************************************************
+f_get_domain( )
+{
+### ............................................................
+### -> MSH_DOMAIN (host.domain)
+### ............................................................
+MSH_DOMAIN=""
+n=5
+set +e
+
+i=1
+while [ $i -le $n ] ; do
+  case $i in
+    4)
+      if hostname 2> /dev/null 1>&2 ; then
+	 MSH_DOMAIN=`hostname -f 2> /dev/null` || MSH_DOMAIN=""
+	 status=$?
+      else
+	 status=-1
+      fi
+      ;;
+    2)
+      if which hostname 2> /dev/null 1>&2 ; then
+	 MSH_DOMAIN=`hostname`.`hostname -d 2> /dev/null` || MSH_DOMAIN=""
+	 status=$?
+      else
+	 status=-1
+      fi
+      ;;
+    3)
+      if which dnsdomainname 2> /dev/null 1>&2 ; then
+	 MSH_DOMAIN=`hostname`.`dnsdomainname -d 2> /dev/null` || MSH_DOMAIN=""
+	 status=$?
+      else
+	 status=-1
+      fi
+      ;;
+    1)
+      if which nslookup 2> /dev/null 1>&2 ; then
+	 MSH_DOMAIN=`nslookup -silent $MSH_HOST 2> /dev/null | grep Name | head -n 1 | awk '{print $2}'` || MSH_DOMAIN=""
+	 status=$?
+      else
+	 status=-1
+      fi
+      ;;
+    5)
+      if which host 2> /dev/null 1>&2 ; then
+	 MSH_DOMAIN=`host $MSH_HOST 2> /dev/null | grep -v "not found" | awk '{print $1}'` || MSH_DOMAIN=""
+	 status=$?
+      else
+	 status=-1
+      fi
+      ;;
+  esac
+  if test "$status" = "-1" ; then
+     echo "$MSH_QNAME (f_get_domain): test #$i not possible"
+  fi
+  if test -z "$MSH_DOMAIN" ;then
+     echo "$MSH_QNAME (f_get_domain): test #$i failed"
+     i=`expr $i + 1`
+  else
+     echo "$MSH_QNAME (f_get_domain): test #$i succeeded"
+     i=`expr $n + 1`
+  fi
+done
+
+set -e
+
+if test -z "$MSH_DOMAIN" ; then
+  MSH_DOMAIN=$MSH_HOST.unknown
+fi
+
+if test "${MSH_DOMAIN}" = $MSH_HOST.unknown ; then
+  echo "$MSH_QNAME WARNING (f_get_domain): DOMAIN COULD NOT BE DETERMINED ..."
+else
+  echo "$MSH_QNAME (f_get_domain): MSH_DOMAIN = $MSH_DOMAIN"
+fi
+
+}
+### *************************************************************************
+
+### *************************************************************************
+### SLURM SPECIFIC SETUP (CURRENTLY ONLY TESTED FOR MISTRAL and CARA)
+### *************************************************************************
+f_slurm_setup()
+{
+### ............................................................
+### <- SLURM_CPUS_ON_NODE    (system, depending on partition)
+### <- MSH_SL_CPUS_PER_CORE  (additional system info, set below
+### <- SLURM_NTASKS_PER_NODE (USER: --ntasks-per-node)
+### <- SLURM_CPUS_PER_TASK   (USER: --cpus-per-task)
+###
+### -> MSH_SL_BIND           (binding: core or thread)
+### -> MSH_THREADS_PER_TASK  (no. of threads per task)
+### ............................................................
+
+if test "${MSH_QSYS}" = SLURM ; then
+
+MSH_SL_CPUS_PER_CORE=2
+
+### for cara.dlr.de
+if test "${SLURM_NTASKS_PER_NODE:=0}" = "0" ; then
+   SLURM_NTASKS_PER_NODE=$SLURM_TASKS_PER_NODE
+fi
+
+echo "-------------------------------------------------------------------------"
+echo "SLURM_SETUP"
+echo "-------------------------------------------------------------------------"
+echo "machine                 : SLURM_CPUS_ON_NODE    = $SLURM_CPUS_ON_NODE"
+echo "machine                 : MSH_SL_CPUS_PER_CORE  = $MSH_SL_CPUS_PER_CORE"
+echo "user (--ntasks-per-node): SLURM_NTASKS_PER_NODE = $SLURM_NTASKS_PER_NODE"
+echo "user (--cpus-per-task  ): SLURM_CPUS_PER_TASK   = $SLURM_CPUS_PER_TASK"
+
+
+MSH_SL_CPUS_PER_TASK=`echo $SLURM_CPUS_ON_NODE $SLURM_NTASKS_PER_NODE | awk '{print $1/$2}'`
+
+echo "available CPU(s)/task   : "$MSH_SL_CPUS_PER_TASK
+
+stat=`echo $MSH_SL_CPUS_PER_TASK | awk '{if ($1 != int($1)) {print 1} else {print 0}}'`
+if [ $stat -ne 0 ] ; then
+   echo "ERROR: non-integer number of available CPUs per task"
+   exit 1
+fi
+MSH_SL_CPUS_PER_TASK=`echo $MSH_SL_CPUS_PER_TASK | awk '{print int($1)}'`
+echo "                (int)   : MSH_SL_CPUS_PER_TASK  = "$MSH_SL_CPUS_PER_TASK
+
+
+if [ $MSH_SL_CPUS_PER_TASK -eq $MSH_SL_CPUS_PER_CORE ] ; then
+   case  $SLURM_CPUS_PER_TASK in
+	 1)
+	   MSH_SL_BIND=threads
+	   echo "HyperThreading          : ON  (bind=$MSH_SL_BIND)"
+	   ;;
+	 2)
+	   MSH_SL_BIND=core
+	   echo "HyperThreading          : OFF (bind=$MSH_SL_BIND)"
+	   ;;
+	 *)
+	   echo "ERROR: too many CPUS PER TASK REQUESTED"
+	   exit 1
+	   ;;
+   esac
+   MSH_THREADS_PER_TASK=1
+
+else
+
+   MSH_SL_HYTH=`echo $MSH_SL_CPUS_PER_TASK $SLURM_CPUS_PER_TASK | awk '{print $1/$2}'`
+   echo "avail/user CPUs per TASK: MSH_SL_HYTH           = $MSH_SL_HYTH"
+   stat=`echo $MSH_SL_HYTH | awk '{if ($1 != int($1)) {print 1} else {print 0}}'`
+   if [ $stat -ne 0 ] ; then
+      echo "ERROR: non-integer ratio (available / user requested) of CPUs"
+      exit 1
+   fi
+   MSH_SL_HYTH=`echo $MSH_SL_HYTH= | awk '{print int($1)}'`
+   echo "                (int)   : MSH_SL_HYTH           = "$MSH_SL_HYTH
+
+   case $MSH_SL_HYTH in
+	0)
+	  echo "ERROR: too many tasks*threads_per_task per core:"
+	  echo "        SLURM_CPUS_PER_TASK   = $SLURM_CPUS_PER_TASK"
+	  echo "        SLURM_NTASKS_PER_NODE = $SLURM_NTASKS_PER_NODE"
+	  echo "        SLURM_CPUS_ON_NODE    = $SLURM_CPUS_ON_NODE"
+	  exit 1
+	  ;;
+	1)
+	  MSH_SL_BIND=threads
+	  echo "HyperThreading          : ON  (bind=$MSH_SL_BIND)"
+	  ;;
+	2)
+	  MSH_SL_BIND=cores
+	  echo "HyperThreading          : OFF (bind=$MSH_SL_BIND)"
+	  ;;
+	*)
+	  echo "ERROR: too few tasks*threads_per_task per core:"
+	  echo "        SLURM_CPUS_PER_TASK   = $SLURM_CPUS_PER_TASK"
+	  echo "        SLURM_NTASKS_PER_NODE = $SLURM_NTASKS_PER_NODE"
+	  echo "        SLURM_CPUS_ON_NODE    = $SLURM_CPUS_ON_NODE"
+	  exit 1
+	  ;;
+   esac
+
+   MSH_THREADS_PER_TASK=`echo $SLURM_CPUS_ON_NODE $MSH_SL_HYTH $SLURM_NTASKS_PER_NODE | awk '{print int($1/$2/$3)}'`
+
+fi
+
+echo "#THREADS/TASK           : MSH_THREADS_PER_TASK  = $MSH_THREADS_PER_TASK"
+echo "-------------------------------------------------------------------------"
+
+fi
+
+}
+
+### *************************************************************************
+### measurement mode
+### *************************************************************************
+f_measuremode( )
+{
+### ............................................................
+### -> MEASUREEXEC, MEASUREMODE
+### <- MSH_MEASURE
+### <- MSH_MEASMODE
+### ............................................................
+
+### COPY USER DEFINED MEASURE COMMAND
+if ! test "${MEASUREEXEC:-set}" = set ; then
+   MSH_MEASURE=$MEASUREEXEC
+   # mode: valgrind, ddt, ...
+   MSH_MEASMODE=`echo $MEASUREEXEC | awk '{print $1}'`
+   MSH_MEASMODE=`basename $MSH_MEASMODE`
+else
+   MSH_MEASMODE=none
+fi
+### RESET MEASURE MODE
+if test "${MEASUREMODE:=.FALSE.}" = ".FALSE." ; then
+   ### re-set
+   MSH_MEASURE=
+   MSH_MEASMODE=none
+fi
+}
+
+### *************************************************************************
+### HOST SPECIFIC SETUP
+### *************************************************************************
+f_host( )
+{
+### ............................................................
+### $1 <- shell option (-c, -t, -h)
+### -> MSH_PENV    : PARALLEL ENVIRONMENT (MPIRUN, POE)
+### -> MSH_E5PINP  : INPUT REDIRECTION (FOR ECHAM5)
+### -> MSH_MACH    : AUTOMATICALLY GENERATED LIST OF MACHINES
+###                  FOR PARALLEL ENVIRONMENT
+### -> MSH_UHO     : USE HOST LIST 'HOST.LIST'
+### -> MSH_DATAROOT: MODEL INPUT DATA ROOT DIRECTORY
+### -> MPI_ROOT    : PATH OF PARALLEL ENVIRONMENT
+### -> MPI_OPT     : ADDITIONAL OPTIONS FOR PARALLEL ENVIRONMENT
+### ............................................................
+case $MSH_SYSTEM in
+    OSF1)
+	MSH_PENV=mpirun
+	MSH_E5PINP="< ECHAM5.nml"
+	MSH_MACH=
+	MSH_UHO="-machinefile host.list"
+	MSH_DATAROOT=/datanb/users/joeckel/DATA
+	case $MSH_HOST in
+	    helios.mpch-mainz.mpg.de)
+		ulimit -d 1269531 # datasize
+		ulimit -s 585937  # stacksize
+		;;
+	    jupiter.mpch-mainz.mpg.de)
+		ulimit -d 2929687 # datasize
+		ulimit -s 585937  # stacksize
+		;;
+	    merkur.mpch-mainz.mpg.de)
+		ulimit -d 1269531 # datasize
+		ulimit -s 585937  # stacksize
+		;;
+	    saturn.mpch-mainz.mpg.de)
+		ulimit -d 2929687 # datasize
+		ulimit -s 585937  # stacksize
+		;;
+	    *)
+		echo "$MSH_QNAME ERROR 1 (f_host): UNRECOGNIZED HOST $MSH_HOST"
+		echo "WITH OPERATING SYSTEM $MSH_SYSTEM"
+		exit 1
+		;;
+	esac
+	;;
+    Linux)
+	case $MSH_HOST in
+	    luna|pirate|sputnik|orion|iodine|yetibaby|goedel|fluorine|chlorine|Getafix)
+		MSH_PENV=mpirun
+		MSH_E5PINP="< ECHAM5.nml"
+		MSH_MACH=
+		MSH_UHO=
+		MSH_DATAROOT=
+		;;
+	    etosha|lusaka|windhoek)
+		MSH_PENV=mpiexec
+		MSH_E5PINP="< ECHAM5.nml"
+		MSH_MACH=
+		MSH_UHO=
+		MSH_DATAROOT=/data/modelle/MESSy
+		;;
+	      *.grendel.cscaa.dk)
+               #GRENDEL
+                MSH_PENV=srun
+                MSH_E5PINP="< ECHAM5.nml"
+                MSH_MACH=
+                MSH_UHO=
+                MSH_DATAROOT=/home/stergios/ini_data
+                MSH_MEASURE=
+                ;;
+
+              nid*|bxcmom*)
+		 MSH_PENV=aprun
+		 MPI_OPT="-N 24"
+		 MSH_NOMPI=no
+		 MSH_MACH=
+		 MSH_UHO=
+		 MSH_E5PINP="< ECHAM5.nml"
+		 MSH_DATAROOT=${WORK}/messy/data
+		 ;;
+	    hal)
+		MSH_PENV=mpiexec
+		MSH_E5PINP="< ECHAM5.nml"
+		MSH_MACH=
+		MSH_UHO=
+		MSH_DATAROOT=/home/pozzer/data/pool
+		;;
+	    mars)
+		MSH_PENV=mpiexec
+		MSH_E5PINP="< /dev/null"
+		MSH_MACH=
+		MSH_UHO=
+		MSH_DATAROOT=
+		#MSH_DATAROOT=/data1/tost/MESSY/INPUT
+		;;
+	    ab-*)
+		MSH_PENV=openmpi
+		MSH_E5PINP="< ECHAM5.nml"
+		MSH_MACH=
+		MSH_UHO=
+		MSH_DATAROOT=/DATA
+		#
+		MPI_ROOT=
+		MPI_OPT=
+		;;
+	    monsoon)
+		### Kleareti Tourpali, Aristoteles University Thessaloniki
+		MSH_PENV=mpirun
+		MSH_E5PINP="< ECHAM5.nml"
+		MSH_MACH=
+		MSH_UHO=
+		MSH_DATAROOT=/home/kleareth/ECHAM5
+		;;
+	    lx*)
+		### DLR, openmpi/v1.3.3_lf62e
+		MSH_PENV=openmpi
+		MSH_E5PINP="< ECHAM5.nml"
+		MSH_MACH=
+		MSH_UHO=
+		MSH_DATAROOT=/data/joec_pa/DATA
+		#
+		MPI_ROOT=
+		MPI_OPT="--tag-output"
+		#MPI_OPT=
+		;;
+	    linux-oksn*)
+		### UBN, openmpi/v1.3.3_lf62e
+		MSH_PENV=openmpi
+		MSH_E5PINP="< ECHAM5.nml"
+		MSH_MACH=
+		MSH_UHO=
+		MSH_DATAROOT=/home/kerkweg/MESSYINPUT
+		#
+		MPI_ROOT=
+		MPI_OPT="--tag-output"
+		#MPI_OPT=
+		;;
+	    tonnerre*)
+		### openmpi/v1.6.5_gf
+		MSH_PENV=openmpi
+		MSH_E5PINP="< ECHAM5.nml"
+		MSH_MACH=
+		MSH_UHO="-hostfile host.list"
+		MSH_DATAROOT=/mnt/airsat/data/projects/messy/DATA
+		#
+		MPI_ROOT=
+		MPI_OPT=
+		;;
+	    buran*)
+		### using OSL15 slurm+openmpi(no PMI)/impi(pmi) ###
+		#
+		# potential performance issue, do not set to unlimited
+		#MAXSTACKSIZE=512000
+		MAXSTACKSIZE=unlimited
+		#
+		# limits
+		ulimit -s $MAXSTACKSIZE
+		ulimit -c unlimited
+		ulimit -d unlimited
+		ulimit -Sv unlimited
+		ulimit -a
+		#
+		# detect hypethreading (keys for openmpi:srun)
+		case $SLURM_CPUS_PER_TASK in
+		    1) # with HT
+			bind=hwthread:threads
+			;;
+		    2) # no HT
+			bind=core:cores
+			;;
+		    *) # cannot detect
+			echo "$0: using hyperthreading by default (couldn't detect via SLURM)"
+			bind=hwthread:threads
+			;;
+		esac
+		#
+		MSH_E5PINP="< ECHAM5.nml"
+		MSH_MACH=
+		MSH_UHO=
+		MPI_ROOT=
+		#
+		# select MPI depending on the environment loaded via lmod
+		case $LMOD_FAMILY_MPI in
+		    openmpi)
+			# OSL gnu7/openmpi3 stack is built --with-slurm but without --with-pmix, so we can't use srun, fall back to openmpi native
+			MSH_PENV=openmpi
+			bind=`echo ${bind}|cut -d: -f1`
+			MPI_OPT="--bind-to ${bind}"
+			MPI_OPT="$MPI_OPT --tag-output --report-bindings --mca plm_base_verbose 10"
+			MPI_OPT="$MPI_OPT --display-map --display-allocation"
+			;;
+		    impi)
+			# working OSL impi-slurm integration
+			MSH_PENV=srun
+			bind=`echo ${bind}|cut -d: -f2`
+			MPI_OPT="--propagate=ALL --resv-port --distribution=block:cyclic --cpu_bind=verbose,${bind}"
+			MPI_OPT="--verbose --label"
+			#export I_MPI_PMI_LIBRARY=/usr/lib64/libpmi.so.0
+			#export I_MPI_JOB_RESPECT_PROCESS_PLACEMENT=disable
+			# older settings without slurm/impi integration
+			#mpd &
+			#MPI_OPT="-l -wdir ${WORKDIR}"
+			#MPI_OPT="$MPI_OPT -binding \"pin=enable,map=spread,domain=socket,cell=$bind_impi\""
+			#MPI_OPT="$MPI_OPT -print-rank-map -prepend-rank -ordered-output"
+			#MSH_UHO="-hostfile host.list"
+			# check mapping/binding (4 or higher)
+			export I_MPI_DEBUG=4
+			;;
+		esac
+		#
+		# further tuning
+		case $MSH_HOST in
+		    buran-cu*)
+			#MPI_OPT="$MPI_OPT -mca plm rsh"
+			# add this to explicitly use IB fabric for transport (buran-cu1&2)
+			#MPI_OPT="$MPI_OPT -genv I_MPI_DEVICE rdma"
+			;;
+		    buran|buran-lu)
+			# exclude openib BTL component on buran-master
+			#MPI_OPT="$MPI_OPT -mca btl ^openib"
+			;;
+		    *)
+			echo "$MSH_QNAME ERROR 1 (f_host): UNRECOGNIZED HOST $MSH_HOST"
+			echo "WITH OPERATING SYSTEM $MSH_SYSTEM"
+			exit 1
+			;;
+		esac
+		#
+		# OMP cfg. adopted from similar cfgs.
+		export OMP_NUM_THREADS=$MSH_THREADS_PER_TASK
+		export OMP_STACKSIZE=64m
+		export KMP_STACKSIZE=64m
+		#export OMP_STACKSIZE=120m
+		#export KMP_STACKSIZE=120m
+		#export OMP_STACKSIZE=`echo $MAXSTACKSIZE | awk -v NT=$OMP_NUM_THREADS '{print int($1/1024/NT)}'`m
+		#export KMP_STACKSIZE=$OMP_STACKSIZE
+		export KMP_AFFINITY=verbose,granularity=core,compact,1
+		#
+		# local data repository
+		MSH_DATAROOT=/p/MESSy/DATA
+		;;
+	    strat*|calc*)
+		### FU Berlin
+		mpd &
+		MSH_PENV=mpirun
+		MSH_E5PINP="< ECHAM5.nml"
+		MSH_NOMPI=no
+		MSH_MACH=
+		MSH_UHO=
+		MSH_DATAROOT=${WORK}/messy/DATA
+		;;
+	    octopus*|grand*)
+		### openmpi/v1.3_lf
+		MSH_PENV=openmpi
+		MSH_E5PINP="< ECHAM5.nml"
+		if test "${PE_HOSTFILE:-set}" = set ; then
+		   MSH_MACH=
+		else
+		   MSH_MACH=$PE_HOSTFILE
+		fi
+		#
+		MSH_UHO="-hostfile host.list"
+		MSH_DATAROOT=/datanb/users/joeckel/DATA
+		#
+		MPI_ROOT=
+		MPI_OPT=
+		#
+		if test "$1" != "-c" ; then
+		   # ALLOW RUNS ON ONLY VIA SGE
+		   if test "${MSH_QSYS}" = NONE ; then
+		      echo "$MSH_QNAME ERROR 2 (f_host): Please submit job with: qsub $0"
+		      exit 1
+		   fi
+		   # CHECK FOR '-pe mpi NCPUS' option
+		   if test "${PE_HOSTFILE:-set}" = set ; then
+		      echo "$MSH_QNAME ERROR 3 (f_host): Please specify '-pe mpi NCPUS'"
+		      echo "option in $MSH_CALL"
+		      exit 1
+		   fi
+		fi
+		;;
+	    rio*|pia*)
+		MSH_PENV=mpiexec
+		MSH_E5PINP="< ECHAM5.nml"
+		if test "${PE_HOSTFILE:-set}" = set ; then
+		    MSH_MACH=
+		    MSH_UHO="-machinefile host.list"
+		else
+		    MSH_MACH=$PE_HOSTFILE
+		    MSH_UHO=
+		fi
+		MSH_DATAROOT=
+		;;
+	    mpc*)
+		###
+		MSH_PENV=mpiexec
+		MSH_E5PINP="< ECHAM5.nml"
+		if test "${PE_HOSTFILE:-set}" = set ; then
+		    MSH_MACH=
+		    MSH_UHO=
+		else
+		    export PATH=${PATH}:${SGE_O_PATH}
+		    MSH_MACH=$PE_HOSTFILE
+		    MSH_UHO=
+		fi
+		MSH_DATAROOT=/mpcdata/projects/modeldata/DATA
+		#
+		MPI_ROOT=
+		MPI_OPT=
+		;;
+	    co*)
+		MSH_PENV=srun
+		MPI_OPT="--mpi=pmi2"
+		MSH_E5PINP="< ECHAM5.nml"
+		MSH_MACH=
+		MSH_UHO=
+		MSH_DATAROOT=/cobra/ptmp/mpcdata/modeldata/MESSY/DATA
+		#ulimit -s unlimited
+		#ulimit -c unlimited
+		#ulimit -d unlimited
+		#ulimit -v unlimited
+		#ulimit -a
+		;;
+	    gaia*)
+		MSH_PENV=srun
+		MSH_E5PINP="< ECHAM5.nml"
+		MSH_MACH=
+		MSH_UHO=
+		MSH_DATAROOT=/gaia/modeldata/MESSY/DATA
+		ulimit -s unlimited
+		ulimit -c unlimited
+		ulimit -d unlimited
+		ulimit -v unlimited
+		ulimit -a
+		source /etc/profile.d/modules.sh
+		module purge
+		module load impi
+		;;
+	    *mogon*)
+		### MOGON - Cluster @ Uni Mainz
+		### This should stand above a* nodes, since
+		### the login nodes are named loginXX.mogon and
+		### the compute nodes aXXXX.mogon
+		### This way always the correct HOSt should be found
+		MSH_UHO=
+		MSH_DATAROOT=/project/esm/tools/DATA
+		### for old MOGON I and gfortran
+		### MSH_PENV=mpirun
+		### for new MOGON I and MOGON II and intelmpi
+		MSH_PENV=srun
+		if test "$SLURM_CPUS_PER_TASK" = "1" ; then
+		# HyperThreading
+		  bind=threads
+		  tpc=1
+		else
+		# no HyperThreading
+		  bind=cores
+		  tpc=2
+		fi
+		bind=cores
+		tpc=2
+		MPI_OPT="-l --propagate=ALL --resv-port -m block:cyclic --cpu_bind=verbose,$bind"
+		#required to use intelmpi as mpi environment
+		export I_MPI_PMI_LIBRARY=/usr/lib64/libpmi.so
+
+		export OMP_NUM_THREADS=`echo $SLURM_NNODES $SLURM_CPUS_ON_NODE $tpc $MSH_NCPUS | awk '{print int($1*($2/$3)/$4)}'`
+		export OMP_STACKSIZE=64m
+		export KMP_AFFINITY=verbose,granularity=core,compact,1
+		export KMP_STACKSIZE=64m
+		# should be default on Mogon...just to make sure
+		ulimit -s unlimited
+		ulimit -c unlimited #this is not default
+		ulimit -d unlimited
+		ulimit -a unlimited
+		;;
+
+	    c*|a*|hlrb2i|i*|hy*|login*|*.bullx)
+		case $MSH_DOMAIN in
+
+		  *.cartesius.surfsara.nl)
+		    ### Cartesius @ Surfsara
+		    #
+		    MSH_PENV=srun
+		    MSH_E5PINP="< ECHAM5.nml"
+		    MSH_MACH=
+		    MSH_UHO=
+		    MSH_DATAROOT=/projects/0/einf441/MESSY_DATA
+		    #
+		    f_slurm_setup
+		    #
+		    #export OMP_NUM_THREADS=$MSH_THREADS_PER_TASK
+		    #export OMP_STACKSIZE=500m #was at 64m
+		    #export KMP_STACKSIZE=500m #was at 64m
+		    #export KMP_AFFINITY=verbose,granularity=core,compact,1
+		    #
+		    #MPI_OPT="-l --propagate=STACK,CORE --cpu_bind=verbose,$MSH_SL_BIND"
+		    #
+		    # memory tuning according to BULL
+		    export MALLOC_MMAP_MAX_=0
+		    export MALLOC_TRIM_THRESHOLD_=-1
+		    #
+		    ## sets the point-to-point management layer
+		    #export OMPI_MCA_pml=cm
+		    ## sets the matching transport layer
+		    ## (MPI-2 one-sided comm.)
+		    #export OMPI_MCA_mtl=mxm
+		    #export OMPI_MCA_mtl_mxm_np=0
+		    #export MXM_RDMA_PORTS=mlx5_0:1
+		    #export MXM_LOG_LEVEL=ERROR
+		    #
+		    ulimit -s unlimited
+		    ;;
+
+		  a*.bc.rzg.mpg.de|c*.bc.rzg.mpg.de)
+		    MSH_PENV=mpiexec
+		    MSH_E5PINP="< ECHAM5.nml"
+		    if test "${PE_HOSTFILE:-set}" = set ; then
+		       MSH_MACH=
+		       MSH_UHO="-machinefile host.list"
+		    else
+		       MSH_MACH=$PE_HOSTFILE
+		       MSH_UHO=
+		    fi
+		    MSH_DATAROOT=
+		    ;;
+
+		  *.cara.dlr.de)
+		     ### CARA @ DLR
+		     #
+		     MSH_PENV=srun
+		     MSH_E5PINP="< ECHAM5.nml"
+		     MSH_MACH=
+		     MSH_UHO=
+		     MSH_DATAROOT=/storage/PA/MESSY/
+		     ;;
+
+		  *.cm.cluster*)
+		    MSH_PENV=mpirun
+		    MSH_UHO=
+		    MSH_DATAROOT=/scratch/bikfh/forrest/MESSy-data/DATA/
+		    OMP_NUM_THREADS=1
+		    module rm netcdf-cxx4/gcc/4.2
+		    module rm netcdf/gcc/4.2
+		    module rm hdf5/gcc-4.4.5/1.8.9
+		    module load intel/compiler/64/12.1/2011_sp1.11.339
+		    module load openmpi/intel-12.1/1.6
+		    module load hdf5/intel-12.1/1.8.9
+		    module load netcdf/intel-12.1/4.2
+		    module load netcdf-cxx4/intel-12.1/4.2
+		    module load netcdf-fortran/intel-12.1/4.2
+		    ###  module load hdf5/gcc-4.4.5/1.8.9
+		    ###  module load netcdf/gcc/4.2
+		    ###  module load netcdf-cxx4/gcc/4.2
+		    module load slurm/2.6.3
+		    ;;
+
+		  hy*.rzg.mpg.de)
+		    MSH_PENV=poe
+		    export MP_LABELIO="yes"
+		    export MP_STDOUTMODE="unordered"
+		    #export MP_SHARED_MEMORY=yes
+		    export MP_SINGLE_THREAD=yes
+		    export OMP_NUM_THREADS=1
+		    MSH_E5PINP="< ECHAM5.nml"
+		    MSH_MACH=
+		    MSH_UHO=
+		    #MSH_DATAROOT=/ptmp/mpcdata/modeldata/DATA
+		    MSH_DATAROOT=/hydra/ptmp/mpcdata/modeldata/MESSY/DATA
+		    ulimit -c unlimited
+		    ulimit -s unlimited
+		    ulimit -v unlimited
+		    ulimit -a
+		    ;;
+
+		  *.sm.lrz.de)
+		    ### SuperMUC at LRZ
+		    #MSH_DATAROOT=/gpfs/work/h1112/lu28dap/DATA
+		    MSH_DATAROOT=/gpfs/work/pr94ri/lu28dap2/DATA
+#qqq+ switch automatically to INTEL MPI instead of IBM POE
+		    if test "$LOADL_STEP_TYPE" = "MPICH PARALLEL" ; then
+		       MSH_PENV=intelmpi
+		       # . /etc/profile.d/modules.sh
+		       module use -a /lrz/sys/share/modules/extfiles
+		       module unload mpi.ibm
+		       module load mpi.intel
+		       MPI_OPT="-prepend-rank"
+		    else
+		       MSH_PENV=poe
+		    fi
+#qqq-
+		    export MP_BUFFER_MEM=64M,256M
+		    export MP_LABELIO="yes"
+		    export MP_INFOLEVEL=0
+		    export MP_STDOUTMODE="unordered"
+		    #export MP_SHARED_MEMORY=yes
+		    export MP_SINGLE_THREAD=yes
+		    export OMP_NUM_THREADS=1
+		    MSH_E5PINP="< ECHAM5.nml"
+		    MSH_MACH=
+		    MSH_UHO=
+		    ### The maximum size of core files created:
+		    ulimit -c unlimited
+		    ulimit -v unlimited
+		    ulimit -s unlimited
+		    ulimit -a
+		    ;;
+
+		 *.sng.lrz.de)
+		    ### SuperMUC-NG at LRZ
+		    MSH_DATAROOT=/hppfs/work/pr94ri/lu28dap3/DATA
+		    MSH_PENV=intelmpi
+		    set +e
+		    . /etc/profile.d/modules.sh
+		    set -e
+		    module load slurm_setup
+		    #
+		    MPI_OPT="-prepend-rank"
+		    #
+		    #export MP_BUFFER_MEM=64M,256M
+		    #export MP_LABELIO="yes"
+		    #export MP_INFOLEVEL=0
+		    #export MP_STDOUTMODE="unordered"
+		    export MP_SHARED_MEMORY=yes
+		    #export MP_SINGLE_THREAD=yes
+		    #export OMP_NUM_THREADS=1
+		    #
+		    MSH_E5PINP="< ECHAM5.nml"
+		    MSH_MACH=
+		    MSH_UHO=
+		    ### The maximum size of core files created:
+		    #ulimit -c unlimited
+		    ulimit -v unlimited
+		    ulimit -s unlimited
+		    ulimit -a
+		    ;;
+
+		  cn*)
+		    ### hornet at U-Conn
+		    MSH_DATAROOT=/gpfs/gpfs2/shared/messylab/DATA
+		    MSH_PENV=openmpi
+		    MSH_E5PINP=
+		    if test "${LSB_DJOB_HOSTFILE:-set}" = set ; then
+		       MSH_MACH=
+		    else
+		       MSH_MACH=$LSB_DJOB_HOSTFILE
+		    fi
+		    MSH_UHO="-hostfile host.list"
+		    #
+		    MPI_ROOT=
+		    MPI_OPT="-v"
+		    #
+		    ulimit -s unlimited
+		    ulimit -c unlimited
+		    #ulimit -q unlimited
+		    #ulimit -n unlimited
+		    #ulimit -p unlimited
+		    #ulimit -u unlimited
+		    ulimit -a
+		    ;;
+		esac
+		;;
+
+	    ys*|geyser*)
+		# yellowstone @ UCAR
+		MSH_PENV=mpirun_lsf
+		MSH_E5PINP="< ECHAM5.nml"
+		#if test "${PE_HOSTFILE:-set}" = set ; then
+		#    MSH_MACH=
+		#    MSH_UHO="-machinefile host.list"
+		#else
+		#    MSH_MACH=$PE_HOSTFILE
+		#    MSH_UHO=
+		#fi
+		export MP_LABELIO="yes"
+		    #export MP_SHARED_MEMORY=yes
+		export MP_SINGLE_THREAD=yes
+		export OMP_NUM_THREADS=1
+		MSH_E5PINP="< ECHAM5.nml"
+		MSH_MACH=
+		MSH_UHO=
+		MSH_DATAROOT=/glade/p/work/andreasb/DATA
+		;;
+
+	    n*|r*|m*|lc2*|node*|koma*|pa*|soroban*|jr*|icg*|front*)
+
+		case $MSH_DOMAIN in
+		  *.cara.dlr.de)
+		   ### CARA @ DLR
+		   #
+		   MSH_PENV=srun
+		   MSH_E5PINP="< ECHAM5.nml"
+		   MSH_MACH=
+		   MSH_UHO=
+		   MSH_DATAROOT=/storage/PA/MESSY/
+		   #
+		   ### potential performance issue, do not set to unlimited
+		   # kByte
+		   #MAXSTACKSIZE=512000
+		   MAXSTACKSIZE=unlimited
+		   #
+		   f_slurm_setup
+		   #
+		   export OMP_NUM_THREADS=$MSH_THREADS_PER_TASK
+		   export OMP_STACKSIZE=64m
+		   export KMP_STACKSIZE=64m
+		   #export OMP_STACKSIZE=120m
+		   #export KMP_STACKSIZE=120m
+		   #export OMP_STACKSIZE=`echo $MAXSTACKSIZE | awk -v NT=$OMP_NUM_THREADS '{print int($1/1024/NT)}'`m
+		   #export KMP_STACKSIZE=$OMP_STACKSIZE
+		   export KMP_AFFINITY=verbose,granularity=core,compact,1
+		   #
+		   MPI_OPT="-l --propagate=STACK,CORE --cpu_bind=verbose,$MSH_SL_BIND"
+		   #
+		   #
+		   CENV=`echo $LOADEDMODULES | tr ':' '\n' | grep -i mpi | awk -F '/' '{print $1}'`
+		   case $CENV in
+		     OpenMPI)
+			ENVOPT=1
+			;;
+		     impi)
+			ENVOPT=2
+			;;
+		     gompi)
+			ENVOPT=3
+			;;
+		     *)
+			echo "$MSH_QNAME ERROR (f_host): unknown runtime environment on CARA @ DLR!"
+			exit 1
+			;;
+		   esac
+		   #
+		   case $ENVOPT in
+		     1)
+			##
+			;;
+		     2)
+			##
+			;;
+		     3)
+			##
+			;;
+		   esac
+		   #
+		   ### potential performance issue, do NOT set to unlimited
+		   #ulimit -s unlimited
+		   ulimit -s $MAXSTACKSIZE
+		   ulimit -c unlimited
+		   #ulimit -d unlimited
+		   #ulimit -v unlimited
+		   ulimit -a
+		   ;;
+
+		  *.zdv.uni-mainz.de)
+		     ### openmpi/v1.3
+		     MSH_PENV=openmpi
+		     MSH_E5PINP=
+		     if test "${LSB_DJOB_HOSTFILE:-set}" = set ; then
+			MSH_MACH=
+		     else
+			MSH_MACH=$LSB_DJOB_HOSTFILE
+		     fi
+		     #
+		     MSH_UHO="-hostfile host.list"
+		     #MSH_DATAROOT=/data/met_tramok/modeldata/DATA
+		     MSH_DATAROOT=/data/esm/tosth/DATA
+		     #
+		     MPI_ROOT=
+		     MPI_OPT="-v"
+		     #
+		     ulimit -a
+		     export LD_LIBRARY_PATH="/usr/local/intel/suse_es10_64/11.0/083/lib/intel64:${LD_LIBRARY_PATH}"
+		     ;;
+
+		  *.cyi.ac.cy)
+		     MSH_PENV=mpirun
+		     MSH_E5PINP=
+		     MSH_MACH=
+		     MSH_UHO=
+		     MSH_DATAROOT=/onyx/clim/datasets/MESSy/DATA
+		     ;;
+
+		  *.cm.cluster)
+		     ### HPC CLUSTER AT ZEDAT FU BERLIN
+		     MSH_PENV=mpirun
+		     MSH_E5PINP="< ECHAM5.nml"
+		     MSH_NOMPI=no
+		     MSH_MACH=
+		     MSH_UHO=
+		     MSH_DATAROOT=${WORK}/messy/DATA
+		     ;;
+
+		  *.pa.cluster|*.central.bs.cluster)
+		   ### DLR Linux Cluster
+		   MSH_PENV=openmpi
+		   MSH_E5PINP="< ECHAM5.nml"
+		   if test "${PBS_O_PATH:-set}" != set ; then
+		      #export PATH=${PATH}:${PBS_O_PATH}
+		      export PATH=${PBS_O_PATH}
+		   fi
+		   MSH_MACH=$PBS_NODEFILE
+		   MSH_UHO=
+		   MSH_DATAROOT=/export/pa_data01/MESSy
+		   #
+		   MPI_ROOT=
+		   #
+		   MPI_OPT="--tag-output -report-bindings --display-map --display-allocation -mca btl vader,tcp,self"
+		   #MPI_OPT="--tag-output -report-bindings --display-map --display-allocation -mca orte_forward_job_control 1 -mca orte_abort_on_non_zero_status 1"
+#
+#                   MPI_OPT="--tag-output --bind-to hwthread -report-bindings"
+#                   MPI_OPT="--tag-output --bind-to socket -report-bindings"
+#                   MPI_OPT="--tag-output --map-by node -report-bindings"
+### qqq
+#                   export OMP_NUM_THREADS=1
+		   export OMP_NUM_THREADS=`echo $PBS_NUM_NODES 24 $MSH_NCPUS | awk '{print int($1*24/$3)}'`
+		   export OMP_STACKSIZE=64m
+		   ###
+		   ulimit -s unlimited
+		   ulimit -c unlimited
+		   ulimit -d unlimited
+		   ulimit -v unlimited
+		   ulimit -a
+#export OMPI_MCA_orte_abort_on_non_zero_status=1
+#export OMPI_MCA_orte_forward_job_control=1
+		   ;;
+
+		  *.hpc)
+		   ### TU Delft Linux Cluster
+		   MSH_PENV=openmpi
+		   MSH_E5PINP="< ECHAM5.nml"
+		   if test "${PBS_O_PATH:-set}" != set ; then
+		      #export PATH=${PATH}:${PBS_O_PATH}
+		      export PATH=${PBS_O_PATH}
+		   fi
+		   MSH_MACH=
+		   MSH_UHO=
+		   MSH_DATAROOT=/home/vgrewe/MESSY_DATA
+		   #
+		   MPI_ROOT=
+		   #MPI_OPT="-machinefile $PBS_NODEFILE --tag-output"
+		   MPI_OPT="--tag-output"
+		   export OMP_NUM_THREADS=1
+		   ###
+		   ulimit -s unlimited
+		   ulimit -c unlimited
+		   ulimit -d unlimited
+		   ulimit -v unlimited
+		   ulimit -a
+		   ;;
+
+		  m*.hpc.dkrz.de)
+		   ### mistral @ DKRZ
+		   #
+		   MSH_PENV=srun
+		   MSH_E5PINP="< ECHAM5.nml"
+		   MSH_MACH=
+		   MSH_UHO=
+		   MSH_DATAROOT=/pool/data/MESSY/DATA
+		   #
+		   ### performance issue on mistral, do not set to unlimited
+		   # kByte
+		   MAXSTACKSIZE=512000
+		   #
+		   f_slurm_setup
+		   #
+		   export OMP_NUM_THREADS=$MSH_THREADS_PER_TASK
+		   export OMP_STACKSIZE=64m
+		   export KMP_STACKSIZE=64m
+		   #export OMP_STACKSIZE=120m
+		   #export KMP_STACKSIZE=120m
+		   #export OMP_STACKSIZE=`echo $MAXSTACKSIZE | awk -v NT=$OMP_NUM_THREADS '{print int($1/1024/NT)}'`m
+		   #export KMP_STACKSIZE=$OMP_STACKSIZE
+		   export KMP_AFFINITY=verbose,granularity=core,compact,1
+		   #
+		   MPI_OPT="-l --propagate=STACK,CORE --cpu_bind=verbose,$MSH_SL_BIND"
+		   #
+		   # memory tuning according to BULL
+		   export MALLOC_MMAP_MAX_=0
+		   export MALLOC_TRIM_THRESHOLD_=-1
+		   #
+		   # +++ always, according to DKRZ:
+		   ## sets the point-to-point management layer
+		   export OMPI_MCA_pml=cm
+		   ## sets the matching transport layer
+		   ## (MPI-2 one-sided comm.)
+		   export OMPI_MCA_mtl=mxm
+		   export OMPI_MCA_mtl_mxm_np=0
+		   export MXM_RDMA_PORTS=mlx5_0:1
+		   export MXM_LOG_LEVEL=ERROR
+		   # ---
+		   #
+		   CENV=`echo $LOADEDMODULES | tr ':' '\n' | grep mpi | awk -F '/' '{print $1}'`
+		   case $CENV in
+		     bullxmpi_mlx*)
+			ENVOPT=1
+			;;
+		     openmpi)
+			ENVOPT=2
+			;;
+		     intelmpi)
+			ENVOPT=3
+			;;
+		     *)
+			echo "$MSH_QNAME ERROR (f_host): unknown runtime environment for mistral @ DKRZ!"
+			exit 1
+			;;
+		   esac
+		   #
+		   case $ENVOPT in
+		     1)
+			### settings for
+			#      mxm/3.4.3082 fca/2.5.2431
+			#      bullxmpi_mlx/bullxmpi_mlx-1.2.9.2
+			#
+			## disable BULLs GHC algorithm for collectives
+			export OMPI_MCA_coll=^ghc
+			##
+			;;
+		     2)
+			### settings for
+			#      - openmpi/2.0.2p2_hpcx-intel14
+			#      - openmpi/2.0.2p2_hpcx-nag62
+			#      - openmpi/2.0.2p1_hpcx-gcc64
+			#
+			# Disable GHC algorithm for collective communication
+			export OMPI_MCA_coll=^ghc,fca,hcoll
+			##
+			export MXM_HANDLE_ERRORS=bt
+			export UCX_HANDLE_ERRORS=bt
+			#
+			;;
+		     3)
+			### settings for
+			#      intel intelmpi
+			export I_MPI_FABRICS=shm:dapl
+			export I_MPI_FALLBACK=disable
+			export I_MPI_SLURM_EXT=1
+			### set to a value larger than the number of
+			### MPI-tasks used !!!:
+			export I_MPI_LARGE_SCALE_THRESHOLD=8192
+			export I_MPI_DYNAMIC_CONNECTION=1
+			export I_MPI_CHECK_DAPL_PROVIDER_COMPATIBILITY=0
+			export I_MPI_HARD_FINALIZE=1
+			#export I_MPI_ADJUST_ALLTOALLV=1
+			;;
+		   esac
+		   #
+		   ### performance issue on mistral, do NOT set to unlimited
+		   #ulimit -s unlimited
+		   ulimit -s $MAXSTACKSIZE
+		   ulimit -c unlimited
+		   #ulimit -d unlimited
+		   #ulimit -v unlimited
+		   ulimit -a
+		   ;;
+
+		  jr*)
+		   ### jureca @ JSC
+		   #
+		   MSH_PENV=srun
+		   MSH_E5PINP="< ECHAM5.nml"
+		   MSH_MACH=
+		   MSH_UHO=
+		   MSH_DATAROOT=/homea/jicg23/jicg2326/MESSy/DATA
+		   #MSH_DATAROOT=/lustre/jhome4/icg1/icg112/messy_data/windfiles
+		   #MPI_OPT=-l --cpu-freq=2501000 --cpu_bind=v,core --distribution=block:cyclic
+		   #MPI_OPT="-l --cpu-freq=2501000"
+		   #MPI_OPT="-l --cpu_bind=verbose,cores"
+		   #MPI_OPT="-l -m block --cpu_bind=verbose,threads"
+		   #MPI_OPT="-l --propagate=STACK,CORE -m block:cyclic"
+		   MPI_OPT=
+#                   # qqq+
+		   #export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/sw/rhel6-x64/netcdf/netcdf_fortran-4.4.2-intel14/lib:/sw/rhel6-x64/netcdf/netcdf_c-4.3.2-intel14/lib:/sw/rhel6-x64/netcdf/parallel_netcdf-1.6.0-bullxmpi-intel14/lib:/sw/rhel6-x64/sys/bullxlib-1.0.0/lib
+		   export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/software/jureca/Stages/2016a/software/netCDF-Fortran/4.4.3-iimpi-8.2.5-GCC-4.9.3-2.25/lib:/usr/local/software/jureca/Stages/2016a/software/icc/2016.2.181-GCC-4.9.3-2.25/lib/intel64:/usr/local/software/jureca/Stages/2016a/software/netCDF/4.4.0-iimpi-8.2.5-GCC-4.9.3-2.25/lib64
+#                   export I_MPI_PMI_LIBRARY=/usr/lib64/libpmi.so
+#                   # qqq-
+		   #
+		   # memory tuning according to BULL
+		   export MALLOC_MMAP_MAX=0
+		   export MALLOC_TRIM_THRESHOLD_=-1
+		   # MPI-library tuning according to BULL
+		   export OMPI_MCA_coll=^ghc
+		   export OMPI_MCA_coll_tunded_use_dynamic_rules=1
+		   export OMPI_MCA_coll_tuned_bcast_algorithm=2
+		   #
+		   #export OMPI_MCA_btl_openib_cq_size=10000
+		   #export OMPI_MCA_btl_sm_use_knem=0
+		   #export OMPI_MCA_io_romio_optimize_stripe_count=0
+		   #
+		   #export OMPI_MCA_ess=^pmi
+		   #export OMPI_MCA_pubsub=^pmi
+		   # others
+		   export OMP_NUM_THREADS=1
+		   #
+		   ulimit -s 102400 #unlimited
+		   #ulimit -s 512000
+		   ulimit -c unlimited
+		   #ulimit -d unlimited
+		   #ulimit -v unlimited
+		   ulimit -a
+		   ;;
+
+		   icg1*)
+		    ### ICG workstations at FZJ
+		    MSH_PENV=mpirun
+		    MSH_DATAROOT=/private/icg112/messy_data/DATA
+		    ulimit -s unlimited
+		    MSH_E5PINP="< ECHAM5.nml"
+		   ;;
+
+		esac
+		# case MSH_DOMAIN
+		;;
+
+	    p*)
+		### SARA, DEISA-ENVIRONMENT (IBM power6, Linux)
+		MSH_PENV=poe
+		MSH_E5PINP="< ECHAM5.nml"
+		MSH_MACH=
+		export MP_LABELIO="yes"
+		export MP_STDOUTMODE="unordered"
+		case $MSH_QSYS in
+		  NONE)
+		       MSH_UHO=anything_but_not_empty
+		       ;;
+		  LL)
+		       MSH_UHO=
+		       ;;
+		esac
+		MSH_DATAROOT=$DEISA_DATA/DATA
+		;;
+	    jj*)
+		### JUROPA @ JSC
+		MSH_PENV=mpiexec
+		MSH_E5PINP="< ECHAM5.nml"
+		MSH_MACH=
+		MSH_UHO=
+		MSH_DATAROOT=/lustre/jhome4/slmet/slmet007/DATA
+		#
+		MPI_ROOT=
+		MPI_OPT=
+		;;
+
+	    jwc*juwels*)
+		### JUWELS Cluster @ JSC
+		#
+		MSH_PENV=srun
+		MSH_E5PINP="< ECHAM5.nml"
+		MSH_MACH=
+		MSH_UHO=
+		MSH_DATAROOT=/p/fastdata/slmet/slmet111/model_data/MESSy/DATA
+		MSH_MEASURE=
+		#MPI_OPT=-l --cpu-freq=2501000 --cpu_bind=v,core --distribution=block:cyclic
+		#MPI_OPT="-l --cpu-freq=2501000"
+		#MPI_OPT="-l --cpu_bind=verbose,cores"
+		#MPI_OPT="-l -m block --cpu_bind=verbose,threads"
+		MPI_OPT="-l --propagate=STACK,CORE -m block:cyclic"
+		#MPI_OPT=
+		#
+		# memory tuning according to BULL
+		export MALLOC_MMAP_MAX=0
+		export MALLOC_TRIM_THRESHOLD_=-1
+		# MPI-library tuning according to BULL
+		export OMPI_MCA_coll=^ghc
+		export OMPI_MCA_coll_tunded_use_dynamic_rules=1
+		export OMPI_MCA_coll_tuned_bcast_algorithm=2
+		#
+		#export OMPI_MCA_btl_openib_cq_size=10000
+		#export OMPI_MCA_btl_sm_use_knem=0
+		#export OMPI_MCA_io_romio_optimize_stripe_count=0
+		#
+		#export OMPI_MCA_ess=^pmi
+		#export OMPI_MCA_pubsub=^pmi
+		# others
+		export OMP_NUM_THREADS=1
+		#
+		#CUDA_MPS settings
+		#value shouldn't be set to ratio larger then 100/(ntask/ngpus)
+		#ntask = number of task per node     ngpus=number of gpus per node
+		#can also be set to a smaller value to reduce memory requirements
+		export CUDA_MPS_ACTIVE_THREAD_PERCENTAGE=10
+		#
+		module list
+		#
+		#ulimit -s 102400 #unlimited
+		#ulimit -s 512000
+		ulimit -s unlimited
+		ulimit -c unlimited
+		ulimit -d unlimited
+		ulimit -v unlimited
+		ulimit -a
+		;;
+
+	    jwb*juwels*)
+		### JUWELS Booster @ JSC
+		#
+		MSH_PENV=srun
+		MSH_E5PINP="< ECHAM5.nml"
+		MSH_MACH=
+		MSH_UHO=
+		MSH_DATAROOT=/p/fastdata/slmet/slmet111/model_data/MESSy/DATA
+		MSH_MEASURE=
+		#MPI_OPT=-l --cpu-freq=2501000 --cpu_bind=v,core --distribution=block:cyclic
+		#MPI_OPT="-l --cpu-freq=2501000"
+		#MPI_OPT="-l --cpu_bind=verbose,cores"
+		#MPI_OPT="-l -m block --cpu_bind=verbose,threads"
+		MPI_OPT="-l --propagate=STACK,CORE -m block:cyclic --cpu_bind=verbose,map_ldoms:3,1,7,5"
+		#MPI_OPT=
+		#
+		# memory tuning according to BULL
+		export MALLOC_MMAP_MAX=0
+		export MALLOC_TRIM_THRESHOLD_=-1
+		# MPI-library tuning according to BULL
+		export OMPI_MCA_coll=^ghc
+		export OMPI_MCA_coll_tunded_use_dynamic_rules=1
+		export OMPI_MCA_coll_tuned_bcast_algorithm=2
+		#
+		#export OMPI_MCA_btl_openib_cq_size=10000
+		#export OMPI_MCA_btl_sm_use_knem=0
+		#export OMPI_MCA_io_romio_optimize_stripe_count=0
+		#
+		#export OMPI_MCA_ess=^pmi
+		#export OMPI_MCA_pubsub=^pmi
+		# others
+		export OMP_NUM_THREADS=1
+		#
+		#CUDA_MPS settings
+		#value shouldn't be set to ratio larger then 100/(ntask/ngpus)
+		#ntask = number of task per node     ngpus=number of gpus per node
+		#can also be set to a smaller value to reduce memory requirements
+		export CUDA_MPS_ACTIVE_THREAD_PERCENTAGE=10
+		#
+		module list
+		#
+		#ulimit -s 102400 #unlimited
+		#ulimit -s 512000
+		ulimit -s unlimited
+		ulimit -c unlimited
+		ulimit -d unlimited
+		ulimit -v unlimited
+		ulimit -a
+		;;
+
+	    louhi*)
+		### LOUHI @ CSC
+		if test "${PBS_O_PATH:-set}" != set ; then
+		   export PATH=${PATH}:${PBS_O_PATH}
+		fi
+		MSH_PENV=aprun
+		MSH_E5PINP=""
+		MSH_MACH=
+		MSH_UHO=
+		MSH_DATAROOT=/v/users/lrz102ap/DATA
+		#
+		MPI_ROOT=
+		MPI_OPT=
+		;;
+
+	    *)
+		echo "$MSH_QNAME ERROR 5 (f_host): UNRECOGNIZED HOST $MSH_HOST"
+		echo "WITH OPERATING SYSTEM $MSH_SYSTEM"
+		exit 1
+		;;
+	esac
+	;;
+    AIX)
+	MSH_PENV=poe
+	MSH_E5PINP="< ECHAM5.nml"
+	MSH_MACH=
+	export MP_LABELIO="yes"
+	export MP_STDOUTMODE="unordered"
+	case $MSH_QSYS in
+	     NONE)
+		  MSH_UHO=anything_but_not_empty
+		  ;;
+	     LL)
+		  MSH_UHO=
+		  ;;
+	esac
+	#
+	case $MSH_HOST in
+	   psi*|p5*)
+	      MSH_DATAROOT=
+	      case $MSH_NCPUS in
+		2|4|8|16)
+		;;
+	      *)
+		export MP_EUILIB=us
+		export MP_EUIDEVICE=sn_all
+		export MP_SHARED_MEMORY=yes
+		export MP_SINGLE_THREAD=yes
+		export MEMORY_AFFINITY=MCM
+		export MP_TASK_AFFINITY=MCM
+		export MP_EAGER_LIMIT=32K
+		;;
+	      esac
+	      ;;
+	   vip*)
+	      # VIP @ RZG
+	      if test "${DEISA_DATA:-set}" = set ; then
+		 #MSH_DATAROOT=/u/joeckel/DATA
+		 MSH_DATAROOT=/mpcdata/projects/modeldata/DATA
+	      else
+		 MSH_DATAROOT=$DEISA_DATA/DATA
+	      fi
+	      #export MP_EUILIB=us
+	      #export MP_EUIDEVICE=sn_all
+	      #export MP_SHARED_MEMORY=yes
+#              export MP_SINGLE_THREAD=yes
+	      export MP_SINGLE_THREAD=no
+	      export MEMORY_AFFINITY=MCM
+	      export MP_EAGER_LIMIT=64K
+	      ;;
+	   sp*)
+	      # SP @ CINECA
+	      if test "${DEISA_DATA:-set}" = set ; then
+		 MSH_DATAROOT=
+	      else
+		 MSH_DATAROOT=$DEISA_DATA/DATA
+	      fi
+	      #export MP_EUILIB=us
+	      #export MP_EUIDEVICE=sn_all
+	      #export MP_SHARED_MEMORY=yes
+#              export MP_SINGLE_THREAD=yes
+	      export MP_SINGLE_THREAD=no
+	      export MEMORY_AFFINITY=MCM
+	      export MP_EAGER_LIMIT=64K
+	      ;;
+	   blizzard*|p*)
+	      # BLIZZARD @ DKRZ
+	      if test "${DEISA_DATA:-set}" = set ; then
+		 MSH_DATAROOT=/pool/data/MESSY/DATA
+	      else
+		 MSH_DATAROOT=$DEISA_DATA/DATA
+	      fi
+	      #export MP_EUILIB=us
+	      #export MP_EUIDEVICE=sn_all
+	      #export MP_SHARED_MEMORY=yes
+	      #export MP_SINGLE_THREAD=yes
+	      export MP_SINGLE_THREAD=no
+	      export MEMORY_AFFINITY=MCM
+	      export MP_EAGER_LIMIT=64K
+	      #
+	      export MP_PRINTENV=YES
+	      #export MP_LABELIO=YES
+	      export MP_INFOLEVEL=2
+	      export MP_BUFFER_MEM=64M,256M
+	      export MP_USE_BULK_XFER=NO
+	      export MP_BULK_MIN_MSG_SIZE=128k
+	      export MP_RFIFO_SIZE=4M
+	      export MP_SHM_ATTACH_THRESH=500000
+	      export LAPI_DEBUG_STRIPE_SEND_FLIP=8
+	      #
+	      export XLFRTEOPTS=""
+	      ;;
+	  *)
+	      echo "$MSH_QNAME ERROR 6 (f_host): UNRECOGNIZED HOST $MSH_HOST"
+	      echo "WITH OPERATING SYSTEM $MSH_SYSTEM"
+	      exit 1
+	      ;;
+	esac
+	;;
+    SUPER-UX)
+#         ### NEC-SX6 at DKRZ (obsolete)
+#         MSH_PENV=mpisx
+#         MSH_E5PINP=
+#         MSH_MACH="./host.conf"
+#         MSH_UHO="-v -f ./host.list"
+#         MSH_DATAROOT=/pool/data/MESSY/DATA
+#         MSH_SX_CPUSPERNODE=8
+#         #
+#         F_ERRCNT=0           # stop execution after the first run time error
+#         export F_ERRCNT
+#         #F_PROGINF='DETAIL'   # program information about speed, vectorization
+#         #export F_PROGINF     #   {NO|YES|DETAIL}
+#         F_FTRACE='YES'       # analysis list from compile option -ftrace
+#         export F_FTRACE      #   {NO|YES}
+#         F_SYSLEN=1024        # maximum length of formatted string output
+#         export F_SYSLEN
+#         ###
+#         MPIPROGINF=DETAIL
+#         export MPIPROGINF
+#         ### export shell variables for mpisx ...
+#         MPIEXPORT="MPIPROGINF F_FTRACE F_SYSLEN F_ERRCNT"
+#         export MPIEXPORT
+#         ###
+#         # F_RECLUNIT="BYTE" ; export F_RECLUNIT
+#         # MPIPROGINF="ALL_DETAIL"; export MPIPROGINF
+#         ###
+#         F_ABORT='YES' ; export F_ABORT  # create core file on runtime error
+
+	### NEC-SX9 at HLRS
+	MSH_PENV=mpisx
+	MSH_E5PINP=
+	MSH_MACH="./host.conf"
+	MSH_UHO="-v -f ./host.list"
+	MSH_DATAROOT=$DEISA_HOME/DATA
+	MSH_SX_CPUSPERNODE=16
+	#
+	export MPIPROGINF=DETAIL
+
+	;;
+    SunOS)
+	MSH_PENV=mpirun
+	MSH_E5PINP="< ECHAM5.nml"
+	MSH_MACH=
+	MSH_UHO=
+	case $MSH_HOST in
+	   strat10)
+	    MSH_DATAROOT=/net/strat25/export/model/messy/modeldata/ECHAM5
+	     ;;
+	   *)
+	     echo "$MSH_QNAME ERROR 7 (f_host): UNRECOGNIZED HOST $MSH_HOST"
+	     echo "WITH OPERATING SYSTEM $MSH_SYSTEM"
+	     exit 1
+	     ;;
+	esac
+	;;
+    Darwin)
+	MSH_PENV=mpirun
+	MSH_E5PINP="< ECHAM5.nml"
+	MSH_MACH=
+	MSH_UHO="-machinefile host.list"
+	MSH_DATAROOT=/usr/local/ECHAM5
+	#
+	ulimit -d unlimited     # datasize
+	# ulimit -c unlimited # The maximum size of core files created
+	# ulimit -s unlimited   # stacksize
+	;;
+    *)
+	echo "$MSH_QNAME ERROR 8 (f_host): UNRECOGNIZED OPERATING SYSTEM $MSH_SYSTEM"
+	echo "ON HOST $MSH_HOST"
+	exit 1
+	;;
+esac
+
+### CHECK SERIAL MODE
+if test ! "${SERIALMODE:=.FALSE.}" = ".FALSE." ; then
+   MSH_PENV=serial
+   if [ $MSH_NCPUS -gt 1 ] ; then
+      echo "$MSH_QNAME ERROR 9 (f_host): $MSH_NCPUS CPUs REQUESTED IN SERIAL MODE"
+      exit 1
+   fi
+fi
+
+# ### OVERWRITE WITH USER DEFINED MEASURE COMMAND
+# if ! test "${MEASUREEXEC:-set}" = set ; then
+#    MSH_MEASURE=$MEASUREEXEC
+#    # op_pj_20180809+
+#    # valgrind, ddt, ...
+#    MSH_MEASMODE=`echo $MEASUREEXEC | awk '{print $1}'`
+#    MSH_MEASMODE=`basename $MSH_MEASMODE`
+# else
+#    MSH_MEASMODE=none
+#    # op_pj_20180809-
+# fi
+# ### RESET MEASURE MODE
+# if test "${MEASUREMODE:=.FALSE.}" = ".FALSE." ; then
+#    ### re-set
+#    MSH_MEASURE=
+#    MSH_MEASMODE=none
+# fi
+}
+### *************************************************************************
+
+### *************************************************************************
+### CHECK DATA DIRECTORY
+### *************************************************************************
+f_set_datadirs( )
+{
+### ............................................
+### -> DATABASEDIR
+### -> INPUTDIR_MESSY
+### -> INPUTDIR_ECHAM5_INI
+### -> INPUTDIR_ECHAM5_SPEC
+### -> INPUTDIR_AMIP
+### -> INPUTDIR_MPIOM
+### -> INPUTDIR_COSMO_EXT
+### -> INPUTDIR_COSMO_BND
+### -> INPUTDIR_CESM1
+### <- BASEMODEL_HRES
+### <- BASEMODEL_VRES
+### ............................................
+if test ! "${DATABASEDIR:-set}" = set ; then
+   MSH_DATAROOT=$DATABASEDIR
+else
+   if test "${MSH_DATAROOT:-set}" = set ; then
+      echo "$MSH_QNAME ERROR 1 (f_set_datadirs): NO DEFAULT DATA BASE DIRECTORY SET."
+      echo "-> SPECIFY DATABASEDIR AND START AGAIN"
+      exit 1
+   else
+      DATABASEDIR=$MSH_DATAROOT
+   fi
+fi
+
+# set default subdirectory (new data structure)
+if test -z "$MBASE" ; then
+   MBASE=.
+fi
+
+#  op_pj_20150709+
+# (re)set BASEMODEL resolution
+eval "BASEMODEL_HRES=\${${MINSTANCE[1]}_HRES}"
+eval "BASEMODEL_VRES=\${${MINSTANCE[1]}_VRES}"
+#  op_pj_20150709-
+
+### MESSy ... CHECK PRE-REGRIDDING
+if test "${USE_PREREGRID_MESSY:=.FALSE.}" = ".TRUE." ; then
+   # USE_PREREGRID_MESSY:=.TRUE.
+    if test "${INPUTDIR_MESSY:-set}" = set ; then
+	INPUTDIR_MESSY_TMP=$MSH_DATAROOT/MESSy2/${MBASE}
+    else
+	INPUTDIR_MESSY_TMP=$INPUTDIR_MESSY
+    fi
+    if test ! -d  "$INPUTDIR_MESSY_TMP/$BASEMODEL_HRES" ; then
+	echo "$MSH_QNAME ERROR 2 (f_set_datadirs): DATA DIRECTORY DOES NOT EXIST:"
+	echo "$INPUTDIR_MESSY_TMP/$BASEMODEL_HRES"
+	echo "-> COMMENT OUT 'USE_PREREGRID_MESSY=.TRUE.' AND START AGAIN"
+	exit 1
+    fi
+    PRENCDIR_MESSY=$BASEMODEL_HRES
+else
+    # USE_PREREGRID_MESSY:=.FALSE.
+    PRENCDIR_MESSY=raw
+fi
+### ... SET FINAL DIRECTORY
+if test "${INPUTDIR_MESSY:-set}" = set ; then
+    INPUTDIR_MESSY=$MSH_DATAROOT/MESSy2/${MBASE}/$PRENCDIR_MESSY
+else
+    INPUTDIR_MESSY=$INPUTDIR_MESSY/$PRENCDIR_MESSY
+fi
+
+### ECHAM5
+if test "${MINSTANCE[1]}" = ECHAM5 ; then
+
+   if test "${INPUTDIR_ECHAM5_INI:-set}" = set ; then
+       INPUTDIR_ECHAM5_INI=$MSH_DATAROOT/ECHAM5/echam5.3.02/init
+   fi
+   INI_HRES=$INPUTDIR_ECHAM5_INI/${ECHAM5_HRES}
+   ### ... specific initial files (resolution, date)
+   IFILE=${ECHAM5_HRES}${ECHAM5_VRES}_${START_YEAR}${START_MONTH}${START_DAY}_spec.nc
+   if test "${INPUTDIR_ECHAM5_SPEC:-set}" = set ; then
+       # 1st try
+      INPUTDIR_ECHAM5_SPEC=$INI_HRES
+      # check, if initial file is present
+      if test ! -r ${INPUTDIR_ECHAM5_SPEC}/${IFILE} ; then
+	 echo "$MSH_QNAME WARNING (f_set_datadirs): ECHAM5 INITIAL FILE ${INPUTDIR_ECHAM5_SPEC}/${IFILE} IS NOT AVAILABLE ..."
+	 # 2nd try (to be checked in f_setup_echam5)
+	 INPUTDIR_ECHAM5_SPEC=${DATABASEDIR}/ECHAM5/echam5.3.02/add_spec/${ECHAM5_HRES}${ECHAM5_VRES}
+	 echo "... SEARCHING IN $INPUTDIR_ECHAM5_SPEC ..."
+      fi
+   fi
+
+   ### NUDGING ---
+   # op_pj_20140515+
+   # set default nudging data format to IEEE
+   if test "${ECHAM5_NUDGING_DATA_FORMAT:-set}" = set ; then
+      ECHAM5_NUDGING_DATA_FORMAT=0
+   fi
+   # construct default path, if not explicitly set by user
+   if test "${INPUTDIR_NUDGE:-set}" = set ; then
+     case ${ECHAM5_NUDGING_DATA_FORMAT} in
+       0)
+	 NDGPATHSEG=NUDGING
+	 ;;
+       2)
+	 NDGPATHSEG=NUDGING_NC
+	 ;;
+       *)
+	 echo "$MSH_QNAME ERROR 3 (f_set_datadirs): UNKNOWN ECHAM5_NUDGING_DATA_FORMAT: "$ECHAM5_NUDGING_DATA_FORMAT" (must be 0 (IEEE) or 2 (netCDF))"
+	 exit 1
+	 ;;
+     esac
+     # op_pj_20140515-
+     E5NDGDAT=`echo $FNAME_NUDGE | awk -F '_' '{print $1}'`
+     INPUTDIR_NUDGE=${MSH_DATAROOT}/${NDGPATHSEG}/ECMWF/${E5NDGDAT}/${ECHAM5_HRES}${ECHAM5_VRES}
+   fi
+
+   ### AMIP ---
+   if test "${INPUTDIR_AMIP:-set}" = set ; then
+       INPUTDIR_AMIP=$INPUTDIR_ECHAM5_INI/${ECHAM5_HRES}/amip2
+   fi
+
+fi
+### ... only for ECHAM5
+
+### MPIOM
+if test "${INPUTDIR_MPIOM:-set}" = set ; then
+    INPUTDIR_MPIOM=$MSH_DATAROOT/MPIOM
+fi
+
+### COSMO
+i=1
+while [ $i -le $MSH_INST ] ; do
+  if test "${INPUTDIR_COSMO_EXT[$i]:-set}" = set ; then
+      INPUTDIR_COSMO_EXT[$i]=$MSH_DATAROOT/COSMO/EXTDATA
+  fi
+  i=`expr $i + 1`
+done
+#
+i=1
+while [ $i -le $MSH_INST ] ; do
+  if test "${INPUTDIR_COSMO_BND[$i]:-set}" = set ; then
+      INPUTDIR_COSMO_BND[$i]=$MSH_DATAROOT/COSMO/BNDDATA
+  fi
+  i=`expr $i + 1`
+done
+
+### CESM1
+if test "${INPUTDIR_CESM1:-set}" = set ; then
+    INPUTDIR_CESM1=$MSH_DATAROOT/CESM1
+fi
+
+### ICON
+if test "${INPUTDIR_ICON:-set}" = set ; then
+    INPUTDIR_ICON=$MSH_DATAROOT/ICON/icon2.0
+fi
+
+}
+### *************************************************************************
+
+### *************************************************************************
+### CHECK / SET BASEDIR
+### *************************************************************************
+f_set_basedir( )
+{
+### .............................
+### -> BASEDIR
+### .............................
+if test "${BASEDIR:-set}" = set ; then
+    if test "${MSH_QDIR:-set}" = set ; then
+       ### $MSH_QDIR is undefined
+       ### this shell-script MUST be submitted from ./workdir subdirectory
+       cd $MSH_QPWD
+       BASEDIR=`pwd`                   # basedir/workdir
+       BASEDIR=`dirname ${BASEDIR}`    # basedir
+    else
+       ### $MSH_QDIR is defined
+       ### default: first instance of this shell-script is
+       ###          located in ./messy/util - subdirectory
+       cd $MSH_QDIR
+       endpath=`echo $MSH_QDIR | awk '{l=length($0); print substr($0,l-9,l);}'`
+       if [ "$endpath" = "messy/util" ]
+       then
+	  cd ../..
+       else
+	  cd ..
+       fi
+       BASEDIR=`pwd`
+    fi
+fi
+}
+### *************************************************************************
+
+### *************************************************************************
+### SET / CHECK WORKDIR
+### *************************************************************************
+f_set_workdir( )
+{
+### ...........................................
+### -> WORKDIR
+### ...........................................
+if test "${WORKDIR:-set}" = set ; then
+    WORKDIR=$BASEDIR/workdir
+fi
+if test ! -d $WORKDIR ; then
+   echo "$MSH_QNAME ERROR 1 (f_set_workdir): WORKING DIRECTORY DOES NOT EXIST: "$WORKDIR
+   exit 1
+fi
+}
+### *************************************************************************
+
+### *************************************************************************
+### SET / CHECK NMLDIR
+### *************************************************************************
+f_set_nmldir( )
+{
+### ...............................................
+### -> NMLDIR
+### ...............................................
+if test "${NML_SETUP:-set}" = set ; then
+    NMLDIR=$BASEDIR/messy/nml/DEFAULT
+else
+    NMLDIR=$BASEDIR/messy/nml/$NML_SETUP
+fi
+
+### set to local directory for chain elements > 1
+if [ ${MSH_NR_MIN} -gt 1 ] ; then
+   NMLDIR=$WORKDIR/nml
+fi
+
+### check, if directory is present
+if test ! -d $NMLDIR ; then
+   echo "$MSH_QNAME ERROR 1 (f_set_nmldir): NAMELIST DIRECTORY DOES NOT EXIST: "$NMLDIR
+   exit 1
+fi
+### check, if subdirectory for each instance is present
+if [ $MSH_INST -gt 1 ] ; then
+  i=1
+  while [ $i -le $MSH_INST ] ; do
+    istr=`echo $i | awk '{printf("%2.2i\n",$1)}'`
+    if test ! -d $NMLDIR/$istr ; then
+       echo "$MSH_QNAME ERROR 2 (f_set_nmldir): NAMELIST SUBDIRECTORY DOES NOT EXIST: "$NMLDIR/$istr
+       exit 1
+    fi
+    i=`expr $i + 1`
+  done
+fi
+}
+### *************************************************************************
+
+### *************************************************************************
+### SAVE RESTART FILES IN SUBDIRECTORY SAVE
+### *************************************************************************
+f_save_restart( )
+{
+### ........................................
+### $1 <- CHAIN ELEMENT NUMBER (4 DIGITS)
+### ........................................
+   echo "$MSH_QNAME (f_save_restart): CURRENT DIRECTORY IS "`pwd`
+   echo "$MSH_QNAME (f_save_restart): SAVING RESTART FILES OF CHAIN ELEMENT $1 ..."
+###ub_ch_20190128+
+##   if test -r `echo *restart* | awk '{print $1}'` ; then
+## in case of CLM/OASIS there are no *restart*-files ...
+  if (test -r `echo *restart* | awk '{print $1}'`) || (test -r `echo *.r.* | awk '{print $1}'`) ; then
+###ub_ch_20190128-
+
+   ### DIRECTORY STRUCTURE
+   if test ! -d save ; then
+      echo ... creating directory save
+      mkdir save
+   fi
+   if test ! -d save/$1 ; then
+      echo ... creating subdirectory save/$1
+      mkdir save/$1
+   fi
+   ### NO IN CHAIN
+   if test -r MSH_NO ; then
+      echo ... copying file MSH_NO
+      cp -f MSH_NO save/$1/.
+   fi
+   ### NAMELIST DIRECTORY
+   if [ $MSH_INST -gt 1 ] ; then
+      # ... in case of more than one instance
+      if test -d ../nml ; then
+	 echo "... copying namelist directory (more than one instance)"
+	 cp -fR ../nml save/$1/.
+      fi
+   else
+      # ... in case of one instance only
+      if test -d nml ; then
+	 echo "... copying namelist directory (one instance)"
+	 cp -fR nml save/$1/.
+      fi
+   fi
+   ### RUNSCRIPT
+   if [ $MSH_INST -gt 1 ] ; then
+      # ... in case of more than one instance
+      if test -r ../$MSH_QNAME ; then
+	 echo ... copying runscript $MSH_QNAME
+	 cp -f ../$MSH_QNAME save/$1/.
+      fi
+   else
+      # ... in case of one instance only
+      if test -r $MSH_QNAME ; then
+	 echo ... copying runscript $MSH_QNAME
+	 cp -f $MSH_QNAME save/$1/.
+      fi
+   fi
+   ### EXECUTABLE
+   if test -d bin ; then
+      echo ... copying directory bin
+      cp -fR bin save/$1/.
+   fi
+   ### RERUN FILES (ECHAM5)
+   if test -r `echo rerun* | awk '{print $1}'` ; then
+      echo ... copying ECHAM5 rerun files
+      cp -f rerun* save/$1/.
+   fi
+   ### RERUN FILES (CESM1,CLM)
+   if test -r `echo *.r.* | awk '{print $1}'` ; then
+      #ub_ch+
+      # echo ... copying CESM1 restart files
+      # cp -f *.r.* *.rh0.* *.rs*.* save/$1/.
+       for rfile in *.r.* *.rh* *.rs*  rpointer*
+       do
+	   if test ! -L $rfile ; then
+	   # do not mv links
+	       echo ... moving file $rfile to save/$1/.
+	       mv -f $rfile save/$1/.
+	   fi
+       done
+      #ub_ch-
+   fi
+   ### RESTART FILES (MESSy)  (includes also ICON restart files)
+   ###ub_ch: in case of CLM/OASIS there are no *restart*-files ... if added
+   if test -r `echo *restart* | awk '{print $1}'` ; then
+       for rfile in *restart*
+       do
+	   echo ... moving file $rfile to save/$1/.
+	   mv -f $rfile save/$1/.
+       done
+   fi ###ub_ch
+
+   ### RESTART FILES (GUESS)
+   if test -d GUESS; then
+       if test ! -d save/$1/GUESS ; then
+	   echo ... creating subdirectory save/$1/GUESS
+	   mkdir save/$1/GUESS
+       fi
+       mv -f ./GUESS/*_*.state save/$1/GUESS/.
+       mv -f ./GUESS/*_meta.bin save/$1/GUESS/.
+       for rfile in ./GUESS/*.out.*
+       do
+	   echo ... copying $rfile to save/$1/GUESS/.
+	   cp -f $rfile save/$1/GUESS/.
+       done
+   fi
+
+   ### DIAGNOSTIC OUTPUT (COSMO)
+   if test -r YUSPECIF ; then
+      mv -f YUSPECIF save/$1/.
+   fi
+   if test -r YUCHKDAT ; then
+      mv -f YUCHKDAT save/$1/.
+   fi
+   if test -r YUDEBUG ; then
+      mv -f YUDEBUG save/$1/.
+   fi
+   if test -r YUPRHUMI ; then
+      mv -f YUPRHUMI save/$1/.
+   fi
+   if test -r YUPRMASS ; then
+      mv -f YUPRMASS save/$1/.
+   fi
+   if test -r YUTIMING ; then
+      mv -f YUTIMING save/$1/.
+   fi
+   if test -r YUDEBUG_i2cinc ; then
+      mv -f YUDEBUG_i2cinc save/$1/.
+   fi
+
+   # RERUN FILES OASIS
+   if test -r oasis_restart*.nc ; then
+      mv -f oasis_restart*.nc rmp*.nc save/$1/.
+      cp -f ../masks.nc ../grids.nc ../areas.nc save/$1/.
+   fi
+
+   # WRAPPER SCRIPT ICON
+   if test -r icon.sh ; then
+      echo ... copying wrapper script icon.sh
+      cp -f icon.sh    save/$1/.
+   fi
+
+   ### GET CYCLE NUMBER OF LAST RESTART FILE
+   dir=`pwd`
+   cd save/$1
+   maxnum=`echo restart* | tr ' ' '\n' | awk -F '_' '{print $2}' | sort -r | uniq | awk '{ if (NR==1) print}'`
+   cd $dir
+   echo "$MSH_QNAME (f_save_restart): ... RECENT RESTART CYCLE IS ${maxnum}"
+   ### SET LOCAL LINKS
+## ub_ch+ in case of CLM/OASIS there are noch *restart*-files ...
+   if test -r `echo save/$1/*restart* | awk '{print $1}'` ; then
+## ub_ch
+   for rfile in save/$1/*restart_${maxnum}*
+   do
+       link=`echo $rfile | awk -F '/' '{print "restart_"substr($3,14)}'`
+       echo ... creating link  $link ' -> ' $rfile
+       ln -fs $rfile $link
+   done
+   fi  ##ub_ch-
+#  op_ab_20150709+
+   ### SET LOCAL LINKS FOR CESM1 / CLM
+   if test -r `echo save/$1/*.r.* | awk '{print $1}'` ; then
+#ub_ch       for rfile in save/$1/*.r.* save/$1/*.rh0.* save/$1/*.rs*.*
+       for rfile in save/$1/*.r.* save/$1/*.rh* save/$1/*.rs*.*
+       do
+	   link=`basename $rfile`
+	   echo ... creating link  $link ' -> ' $rfile
+	   ln -fs $rfile $link
+       done
+       # ub_ch+
+       #cp also rpointer-files because they are changed
+       for rfile in save/$1/rpointer*
+       do
+	   link=`basename $rfile`
+	   echo ... copying  $link ' -> ' $rfile
+	   cp -f $rfile .
+       done
+       # ub_ch-
+   fi
+#  op_ab_20150709-
+
+   ### SET LOCAL LINKS FOR OASIS
+   if test -r `echo save/$1/grids.nc | awk '{print $1}'` ; then
+       for rfile in save/$1/areas.nc save/$1/masks.nc save/$1/grids.nc
+       do
+	 link=`basename $rfile`
+	 echo ... copying $link ' -> ' $rfile
+	 cp -f $rfile ..
+       done
+       for rfile in save/$1/rmp*.nc
+       do
+	 link=`basename $rfile`
+	 echo ... copying $link ' -> ' $rfile
+	 cp -f $rfile .
+       done
+   fi
+   ### OASIS RESTART FILES
+   if test -r `echo save/$1/oasis_restart*.nc | awk '{print $1}'` ; then
+   for rfile in save/$1/oasis_restart*.nc
+   do
+       link=`basename $rfile`
+       echo ... copying $link ' -> ' $rfile
+       cp -f $rfile .
+   done
+   fi
+
+   ### FOR GUESS
+   if test -d GUESS; then
+       cd save/$1/GUESS
+       guessnum=`echo ${maxnum}| awk '{print $1-0}'`
+       cd $dir
+       for rfile in save/$1/GUESS/${guessnum}*.state
+       do
+	   link=`echo $rfile | awk -F '/' '{print $4}' | awk -F '_' '{print $2}'`
+	   ln -fs ../$rfile GUESS/$link
+       done
+       ln -fs ../save/$1/GUESS/${guessnum}_meta.bin GUESS/meta.bin
+   fi
+   ### END GUESS
+
+   ### SET LOCAL LINKS FOR ICON
+   if test -r `echo save/$1/icon* | awk '{print $1}'` ; then
+      cp -f save/$1/icon.sh .
+      dir=`pwd`
+      cd save/$1
+      restart_date=`ncdump -h restart_${maxnum}_tracer_gp_D01.nc | grep restart_date_time | sed 's|"||g;s|\..*||g' | awk '{print $3"T"$4"Z"}'`
+#      restart_date=`ncdump -h restart_${maxnum}_ICON_D01.nc | grep restart_date_time | sed 's|"||g;s|\..*||g' | awk '{print $3"T"$4"Z"}'`
+      cd $dir
+      ### SET LOCAL LINKS FOR ICON
+      if test -r `echo save/$1/*_restart_atm_${restart_date}* | awk '{print $1}'` ; then
+	 grid_list=(`grep dynamics_grid_filename NAMELIST* | sed "s|.*=||g;s|[',\,]||g ; s| ||g; s|.nc| |g; s| $$||g"`)
+	 grid_numbers=(`grep dynamics_parent_grid_id NAMELIST* | sed "s|.*=||g;s|[',]||g ;s| *| |g;s|^ ||g;s| $$||g"`)
+	 for rfile in save/$1/*_restart_atm_${restart_date}*
+	 do
+	    grid_name=`echo $rfile | awk -F '/' '{print $3};' | sed 's|_restart_atm_.*||g'`
+	    domain=0
+	    for gnr in "${!grid_list[@]}"
+	    do
+	       if [ "${grid_list[$gnr]}" == "${grid_name}" ]; then
+		  dom_nr=`expr ${grid_numbers[$gnr]} + 1`
+		  printf -v domain "%02d" ${dom_nr}
+	       fi
+	    done
+	   link=restart_atm_DOM${domain}.nc
+	   echo ... creating link  $link ' -> ' $rfile
+	   ln -fs $rfile $link
+	 done
+      fi
+   fi
+
+   ### CONTINUE SAVELY
+   CONTREST=.TRUE.
+   echo "$MSH_QNAME (f_save_restart): ... DONE."
+else
+   echo "$MSH_QNAME (f_save_restart): ... NO RESTART FILES PRESENT."
+fi
+}
+### *************************************************************************
+
+### *************************************************************************
+### CLEANUP RESTART FILES
+### *************************************************************************
+f_del_restart( )
+{
+if test -r `echo *restart* | awk '{print $1}'` ; then
+    for rfile in *restart*
+    do
+      if test -L $rfile ; then
+	 # LINK
+	 echo ... removing link $rfile
+	 rm -f $rfile
+      fi
+    done
+fi
+# ub_ch+
+ ### REMOVING LOCAL LINKS FOR CESM1/CLM
+if test -r `echo *.r.* | awk '{print $1}'` ; then
+    for rfile in *.r.* *.rh* *.rs*
+    do
+	if test -L $rfile ; then
+	# LINK
+	    echo ... removing link $rfile
+	    rm -f $rfile
+	fi
+    done
+    #echo ... removing $rfile
+    #for rfile in rpointer*
+    #do
+    #rm -f $rfile
+    #done
+fi
+# ub_ch-
+}
+### *************************************************************************
+
+### *************************************************************************
+### CHECK / CREATE WORKDIR SUBDIRECTORIES FOR DIFFERENT INSTANCES
+### *************************************************************************
+f_make_worksubdirs( )
+{
+if [ $MSH_INST -gt 1 ] ; then
+  i=1
+  while [ $i -le $MSH_INST ] ; do
+    istr=`echo $i | awk '{printf("%2.2i\n",$1)}'`
+    if test ! -d $WORKDIR/$istr ; then
+       echo "$MSH_QNAME (f_make_worksubdirs): CREATING $WORKDIR/$istr"
+       mkdir $WORKDIR/$istr
+    fi
+    i=`expr $i + 1`
+  done
+fi
+}
+
+f_make_cosmo_outdirs( )
+{
+if test ! "${COSMO_OUTDIR_NUM:-set}" = set ; then
+   echo "f_make_cosmo_outdirs ${COSMO_OUTDIR_NUM}"
+   if [ $COSMO_OUTDIR_NUM -gt 0 ] ; then
+      i=1
+      while [ $i -le $COSMO_OUTDIR_NUM ] ; do
+	 istr=`echo $i | awk '{printf("%2.2i\n",$1)}'`
+	 if test ! -d $WORKDIR/out${istr} ; then
+	    echo "$MSH_QNAME (f_make_cosmo_outdirs): CREATING $WORKDIR/OUT${istr}"
+	    mkdir $WORKDIR/out${istr}
+	 fi
+	 i=`expr $i + 1`
+      done
+   fi
+fi
+}
+### *************************************************************************
+
+### *************************************************************************
+### CHECK RESTART
+### *************************************************************************
+f_check_restart( )
+{
+### ..................................................
+### $1 <- INSTANCE NUMBER
+### $2 <- DIRECTORY (WORKDIR OR INSTANCE SUBDIRECTORY)
+### $3 <- NUMBER OF ALL INSTANCES = MSH_INST
+### ..................................................
+cd $2
+echo "$MSH_QNAME (f_check_restart): CHECKING FOR RESTART IN $2"
+
+if test -r MSH_NO ; then
+ ###ub_ch+ in case of CLM/OASIS there are no *restart*-files ...
+   if test ! -r `echo *restart_* | awk '{print $1}'` && (test ! -r `echo *.r.* | awk '{print $1}'`) ; then
+##   if test ! -r `echo *restart_* | awk '{print $1}'` ; then
+      echo ' A PROBLEM (POSSIBLY) OCCURRED:'
+      if [ $MSH_INST -gt 1 ] ; then
+	 echo '   THE FILE MSH_NO IS PRESENT IN '$2/$1'.'
+	 echo '   THIS WILL TRIGGER A RESTART, HOWEVER,'
+	 echo '   THERE ARE NO restart_* FILES IN '$2/$1'.'
+      else
+	 echo '   THE FILE MSH_NO IS PRESENT IN '$2'.'
+	 echo '   THIS WILL TRIGGER A RESTART, HOWEVER,'
+	 echo '   THERE ARE NO restart_* FILES IN '$2'.'
+      fi
+      echo '   '
+      echo ' IF YOU RUN A MBM WITHOUT RESTART FACIITY, EVERYTHING IS OK!'
+      echo '   '
+      echo ' IF NOT, SOMETHING WENT WRONG AND YOU HAVE TWO OPTIONS NOW:'
+      echo '   1) REMOVE MSH_NO FROM THIS DIRECTORY AND'
+      echo '      START THIS SCRIPT AGAIN. THIS WILL START'
+      echo '      WITH ELEMENT 1 OF A NEW RESTART-CHAIN.'
+      echo '   2) PUT THE REQUIRED RESTART FILES INTO THIS'
+      echo '      DIRECTORY AND START THIS SCRIPT AGAIN.'
+      echo '      THIS WILL CONTINUE AN EXISTING RESTART-CHAIN.'
+      echo '      NOTE: use messy/util/init_restart -h'
+      echo ' '
+      exit 1
+   else
+      echo "$MSH_QNAME (f_check_restart): OK."
+   fi
+
+   MSH_NR[$1]=`cat MSH_NO`
+   MSH_SNO[$1]=`echo ${MSH_NR[$1]} | awk '{printf("%04g\n",$1)}'`
+   if test -d  save/${MSH_SNO[$1]} ; then
+      echo "$MSH_QNAME (f_check_restart): RESTART NUMBER ${MSH_SNO[$1]} FINISHED SUCCESSFULLY"
+   else
+      echo "$MSH_QNAME (f_check_restart): RESTART NUMBER ${MSH_SNO[$1]} NOT PRESENT ..."
+      echo "$MSH_QNAME (f_check_restart): LOOKING FOR NEW RESTART-FILES ..."
+      maxnum=`echo *restart* | tr ' ' '\n' | awk -F '_' '{print $2}' | sort -r | uniq | grep -E '[0-9][0-9][0-9][0-9]' | awk '{ if (NR==1) print}'`
+      if test "${maxnum:-set}" = set ; then
+	echo ' ... NONE FOUND!'
+      else
+	echo ' ... CLEANING DIRECTORY!'
+	f_del_restart
+	f_save_restart ${MSH_SNO[$1]}
+      fi
+      ### save/remove END files
+      if test -r `echo END?* | awk '{print $1}'` ; then
+	 cat END?* > END
+	 \ls END?* | xargs rm -f
+      fi
+      ###
+      if test -r END ; then
+	 echo "... PREVIOUS JOB CREATED END:"
+	 cat END
+	 echo "... --> MOVING TO end.${MSH_SNO[$1]}"
+	 mv -f END end.${MSH_SNO[$1]}
+      fi
+      echo "$MSH_QNAME (f_check_restart): SOMETHING WENT WRONG!"
+      echo " -> use messy/util/init_restart -h to clean the directory and"
+      echo "    submit the job again."
+      ### assume that all instances went wrong when one instance went wrong
+      if [ $3 -eq $1 ] ; then
+	  exit 1
+      fi
+   fi
+
+   rm -f MSH_NO
+   MSH_NR[$1]=`expr ${MSH_NR[$1]} + 1`
+   MSH_LRESUME[$1]=.TRUE.
+   HSTART[$1]=1.0
+else
+   echo "$MSH_QNAME (f_check_restart): FIRST CHAIN ELEMENT."
+   MSH_NR[$1]=1
+   MSH_LRESUME[$1]=.FALSE.
+   HSTART[$1]=0.0
+fi
+
+echo ${MSH_NR[$1]} > MSH_NO
+cd -
+}
+### *************************************************************************
+
+### *************************************************************************
+### SET CHAIN ELEMENT NUMBER AND RESTART FLAG
+### *************************************************************************
+f_set_chain( )
+{
+### ...............................................
+### -> MSH_NR
+### -> MSH_SNR
+### -> MSH_LRESUME
+### -> MSH_QNEXT
+### ...............................................
+# NOTE: the chain number, but not necessarily the cycle number
+#       must be the same for all instances
+
+if [ $MSH_INST -gt 1 ] ; then
+  # more than one instance
+  i=1
+  while [ $i -le $MSH_INST ] ; do
+    istr=`echo $i | awk '{printf("%2.2i\n",$1)}'`
+    MSH_NR[$i]=`cat $istr/MSH_NO`
+    echo "$MSH_QNAME (f_set_chain): RESTART NUMBER ${MSH_NR[$i]} FOR INSTANCE $istr"
+    if test "${MSH_NR[$i]}" = "1" ; then
+       MSH_LRESUME[$i]=.FALSE.
+    else
+       MSH_LRESUME[$i]=.TRUE.
+    fi
+
+    MSH_SNR[$i]=`echo ${MSH_NR[$i]} | awk '{printf("%04g\n",$1)}'`
+    i=`expr $i + 1`
+  done
+else
+  MSH_NR[1]=`cat MSH_NO`
+
+  if test "${MSH_NR[1]}" = "1" ; then
+      MSH_LRESUME[1]=.FALSE.
+  else
+      MSH_LRESUME[1]=.TRUE.
+  fi
+
+  MSH_SNR[1]=`echo ${MSH_NR[1]} | awk '{printf("%04g\n",$1)}'`
+fi
+
+MSH_QNEXT=`echo ${MSH_QNEXT} | sed "s|LOGFILE|$MSH_QNAME.${MSH_SNR[1]}.log|g"`
+MSH_QNEXT=`echo ${MSH_QNEXT} | sed "s|WORKDIR|$WORKDIR|g"`
+}
+### *************************************************************************
+
+### *************************************************************************
+### COPY SETUP TO MAIN WORKING DIRECTORY
+### *************************************************************************
+f_copy_main_setup( )
+{
+### ......................................................
+### -> BASEDIR
+### -> NMLDIR
+### ......................................................
+
+if [ ${MSH_NR_MIN} -eq 1 ] ; then
+   ### run script
+   if test ! -r $MSH_QNAME ; then
+      cp -f $MSH_QCPSCR $MSH_QNAME
+   fi
+   if test ! -d nml ; then
+      mkdir nml
+   fi
+   ### namelists
+   cp -frL $NMLDIR/* nml/.
+   ### save original paths
+   BASEDIR_SRC=$BASEDIR
+   NMLDIR_SRC=$NMLDIR
+else
+   BASEDIR=
+#   NMLDIR=$WORKDIR/nml
+fi
+}
+### *************************************************************************
+
+### *************************************************************************
+### COPY NAMELIST (REMOVE F90 COMMENTS, SUBSTITUTE SHELL VARIABLES)
+### *************************************************************************
+f_copynml( )
+{
+### .............................................
+### $1 <- .TRUE. / .FALSE.
+### $2 <- namelist file (original)
+### $3 <- namelist file (copied)
+### $4 <- stop, if not available ?
+### .............................................
+  if test "$1" = ".TRUE." ; then
+	echo "using namelist file $2 as $3"
+	if test ! -r ${NML_DIR0}/$2 ; then
+	   echo '... namelist file missing'
+	   if test "$4" = ".TRUE." ; then
+	      exit 1
+	   else
+	      return 0
+	   fi
+	fi
+
+#  op_pj_20130219+
+	# create subdirectories
+	dlist="`echo $3 | sed 's|\/| |g'`"
+	# number of subdirectories; last part of path is file name
+	nd=`echo $3 | awk '{print split($0,a,"/")}'`
+	d='.'
+	for dn in $dlist ; do
+	    if [ ${nd} -gt 0 ] ; then
+	       if test ! -d $d ; then
+		  #echo mkdir $d
+		  mkdir $d
+	       #else
+	       #   echo $d exists
+	       fi
+	       d=$d/$dn
+	    fi
+	    set +e
+	    nd=`expr ${nd} - 1`
+	    set -e
+	done
+#  op_pj_20130219-
+
+	echo 'cat > $3 << EOF' >  temporaryfile
+      echo '! This file was created automatically by $MSH_QNAME, do not edit' \
+						    >> temporaryfile
+	if test "${USE_PREREGRID_MESSY:=.FALSE.}" = ".TRUE." ; then
+	   ### MANIPULATE REGRID-NAMELISTS IN CASE OF PRE-REGRIDDED INPUT DATA
+	   cat ${NML_DIR0}/$2 | sed 's|i_latr|!i_latr|g' \
+			  | sed 's|i_lonr|!i_lonr|g' \
+			  | sed 's|:IXF|:INT|g'      \
+			  | awk '{if (toupper($1) == "&REGRID") \
+				  { print "&regrid \n i_latr = -90.0,90.0,"} \
+				  else {print} }'\
+			  | sed 's|!.*||g' \
+			  | sed 's|( *\([0-9]*\) *)|(\1)|g' \
+			  | grep -Ev '^ *$' >> temporaryfile
+	else
+	   cat ${NML_DIR0}/$2 | sed 's|!.*||g' \
+			  | sed 's|( *\([0-9]*\) *)|(\1)|g' \
+			  | grep -Ev '^ *$' >> temporaryfile
+	fi
+	echo 'EOF'                                     >> temporaryfile
+	# "." = "source"
+	. ./temporaryfile
+	rm -f temporaryfile
+	echo '................................................................'
+	cat  $3
+	echo '................................................................'
+  fi
+}
+### *************************************************************************
+
+### *************************************************************************
+### COPY ALL MESSy SUBMODEL NAMELIST FILES AND SET USE_* SHELL VARIABLES
+### *************************************************************************
+f_copy_smnmls( )
+{
+### ............................................................
+### USE_* (for all submodels) (.TRUE. OR .FALSE.)
+### $1 <- NUMBER OF INSTANCE
+### ............................................................
+grep USE_ switch.nml | sed 's| ||g' > MESSy.cmd
+. ./MESSy.cmd
+for sm in `awk -F '=' '{print $1}' MESSy.cmd`
+do
+  nmlfile=`echo $sm | awk '{print substr(tolower($1),5,length($1))".nml"}'`
+  eval "val=\$$sm"
+  # convert T to .TRUE.
+  if test "$val" = "T" ; then
+     eval "val=.TRUE."
+  fi
+  # check for specific, user defined namelist file, e.g. resolution dependent
+  nmlspec=`echo $sm | sed 's|USE_|NML_|g'`[$1]
+  eval "nmlspec2=\${$nmlspec}"
+  if test "${nmlspec2:-set}" = set ; then
+     name=$nmlfile
+  else
+     name=${nmlspec2}
+  fi
+  #
+  f_copynml $val $name $nmlfile .TRUE.
+done
+rm -f MESSy.cmd
+
+### SPECIAL CASES
+
+## IMPORT
+if test -r import.nml ; then
+   if test ! -d import ; then
+      mkdir import
+   fi
+   list=`sed 's|!.*||g' import.nml | grep 'NML=' | sed 's|.*NML=||g' | sed 's|.nml.*|.nml|g'`
+   for name in ${list}
+   do
+     f_copynml .TRUE. ${name} ${name} .TRUE.
+   done
+fi
+
+## CHANNEL
+if test -r channel.nml ; then
+   py_script=${NML_DIR0}/${PYS_CHANNEL[$1]:-channel.py}
+   if test -r $py_script ; then
+      cp -f $py_script channel.py
+   fi
+   ym_script=${NML_DIR0}/${YML_CHANNEL[$1]:-channel.yml}
+   if test -r $ym_script ; then
+      cp -f $ym_script channel.yml
+   fi
+fi
+
+}
+### *************************************************************************
+
+### *************************************************************************
+### MPIOM (SUBMODEL) SETUP
+### *************************************************************************
+f_cleanup_mpiom( )
+{
+   rm -f arcgri
+   rm -f topo
+   rm -f anta
+   rm -f BEK
+   rm -f GIWIX
+   rm -f GIWIY
+   rm -f GITEM
+   rm -f GIPREC
+   rm -f GISWRAD
+   rm -f GITDEW
+   rm -f GIU10
+   rm -f GICLOUD
+   rm -f GIRIV
+   rm -f INITEM
+   rm -f INISAL
+   rm -f SURSAL
+   rm -f runoff_obs
+   rm -f runoff_pos
+}
+
+f_setup_mpiom( )
+{
+### .................................................................
+### two optional paramters (none for submodel, 2 for basemodel):
+### $1 <- WORKING DIRECTORY
+### $2 <- NUMBER OF INSTANCE (SPECIAL CASE: 0 FOR ONE INSTANCE ONLY)
+### .................................................................
+f_cleanup_mpiom
+
+# copy / link files required for MPIOM
+ln -s  ${INPUTDIR_MPIOM}/${MPIOM_HRES}/${MPIOM_HRES}_arcgri             arcgri
+ln -s  ${INPUTDIR_MPIOM}/${MPIOM_HRES}/${MPIOM_HRES}_topo_jj            topo
+ln -s  ${INPUTDIR_MPIOM}/${MPIOM_HRES}/${MPIOM_HRES}_anta               anta
+ln -s  ${INPUTDIR_MPIOM}/${MPIOM_HRES}/${MPIOM_HRES}_BEK                BEK
+ln -s  ${INPUTDIR_MPIOM}/${MPIOM_HRES}/${MPIOM_HRES}_GIWIX_OMIP365      GIWIX
+ln -s  ${INPUTDIR_MPIOM}/${MPIOM_HRES}/${MPIOM_HRES}_GIWIY_OMIP365      GIWIY
+ln -s  ${INPUTDIR_MPIOM}/${MPIOM_HRES}/${MPIOM_HRES}_GITEM_OMIP365      GITEM
+ln -s  ${INPUTDIR_MPIOM}/${MPIOM_HRES}/${MPIOM_HRES}_GIPREC_OMIP365     GIPREC
+ln -s  ${INPUTDIR_MPIOM}/${MPIOM_HRES}/${MPIOM_HRES}_GISWRAD_OMIP365    GISWRAD
+ln -s  ${INPUTDIR_MPIOM}/${MPIOM_HRES}/${MPIOM_HRES}_GITDEW_OMIP365     GITDEW
+ln -s  ${INPUTDIR_MPIOM}/${MPIOM_HRES}/${MPIOM_HRES}_GIU10_OMIP365      GIU10
+ln -s  ${INPUTDIR_MPIOM}/${MPIOM_HRES}/${MPIOM_HRES}_GICLOUD_OMIP365    GICLOUD
+ln -s  ${INPUTDIR_MPIOM}/${MPIOM_HRES}/${MPIOM_HRES}_GIRIV_OMIP365      GIRIV
+ln -s  ${INPUTDIR_MPIOM}/${MPIOM_HRES}/${MPIOM_HRES}${MPIOM_VRES}_INITEM_PHC INITEM
+ln -s  ${INPUTDIR_MPIOM}/${MPIOM_HRES}/${MPIOM_HRES}${MPIOM_VRES}_INISAL_PHC INISAL
+ln -s  ${INPUTDIR_MPIOM}/${MPIOM_HRES}/${MPIOM_HRES}${MPIOM_VRES}_SURSAL_PHC SURSAL
+ln -s  ${INPUTDIR_MPIOM}/runoff_obs runoff_obs
+ln -s  ${INPUTDIR_MPIOM}/runoff_pos runoff_pos
+
+### PARALLELIZATION PARAMETERS; INSTANCE NUMBER CAN ONLY BE 1
+nr=1
+if [ $MSH_NCPUS -gt 0 ] ; then
+   if test "${NPY[$nr]:-set}" = set ; then
+      NPROCA=$MSH_NCPUS
+   else
+      NPROCA=${NPY[$nr]}
+   fi
+   if test "${NPX[$nr]:-set}" = set ; then
+      NPROCB=1
+   else
+      NPROCB=${NPX[$nr]}
+   fi
+else
+   NPROCA=1
+   NPROCB=1
+fi
+
+### for MPIOM as basemodel only: WORKDIR AND INSTANCE NUMBER SPECIFIED
+if test "${#}" == "2" ; then
+
+  if test "$2" = "0" ; then
+     NML_DIR0=$NMLDIR
+     nr=1
+  else
+     istr=`echo $2 | awk '{printf("%2.2i\n",$1)}'`
+     NML_DIR0=$NMLDIR/$istr
+     nr=$2
+  fi
+
+  # SELECT CORRECT SHELL VAIABLES FOR NAMELIST COPY
+  #MSH_LRESUME=${MSH_LRESUME[$nr]}
+
+  echo $hline | sed 's|-|=|g'
+  echo "SETUP FOR MPIOM (INSTANCE $nr):"
+  echo $hline | sed 's|-|=|g'
+
+  if [ ${MSH_NR[$nr]} -eq 1 ] ; then
+     if test ! -d bin ; then
+	 mkdir bin
+     fi
+#     cp -f $BASEDIR/bin/mpiom.exe bin/.
+     cp -f $BASEDIR/$EXECUTABLE bin/.
+  fi
+
+  f_get_checksum $EXECUTABLE
+
+  ### remove old namelist files first
+  rm -f *.nml
+
+  ### set timing information from START/STOP DATES
+  t0=`echo $START_YEAR $START_MONTH $START_DAY $START_HOUR $START_MINUTE 0 | awk '{print mktime($0)}'`
+  t1=`echo $STOP_YEAR $STOP_MONTH $STOP_DAY $STOP_HOUR $STOP_MINUTE 0 | awk '{print mktime($0)}'`
+  qdt=`echo $t0 $t1 | awk '{print $2-$1}'`
+  MPIOM_NDAYS=`expr ${qdt} / 86400`
+  MPIOM_NYEARS=0
+  MPIOM_NMONTHS=0
+
+  ### copy required namelists
+  ### MPIOM
+  f_copynml .TRUE. MPIOM_${MPIOM_HRES}${MPIOM_VRES}.nml OCECTL.nml .TRUE.
+
+  ### HAMOCC
+  ### calculate HAMOCC_DT
+  MPIOM_DT=`grep -i DT OCECTL.nml | awk -F '=' '{print $2}'`
+  HAMOCC_DT=`expr 86400 / ${MPIOM_DT}`
+  f_copynml .TRUE. NAMELIST_BGC.nml NAMELIST_BGC.nml .TRUE.
+
+fi
+}
+### *************************************************************************
+### GUESS setup
+### *************************************************************************
+f_setup_guess( )
+{
+###    insfile0=`grep -i insfile nml/veg.nml | awk -F '=' '{print $2}' | sed 's/"//g'`
+    insfile0=`grep -i insfile $NML_DIR0/veg.nml | awk -F '=' '{print $2}' | sed 's/"//g'`
+    insfile1=`echo $insfile0 | awk -F '/' '{print $2}'|sed -e 's/^ *//g' -e 's/ *$//g'`
+    cp -f $NML_DIR0/guess/$insfile1 .
+    # insfile2=`grep -i "\.ins" ./$insfile1 | sed 's/import //g' | sed 's/"//g' |sed -e 's/^ *//g' -e 's/ *$//g'`
+    # cp -f nml/guess/$insfile2 .
+    # NPFT=`grep -i "include 1" ./$insfile2 | wc -l`
+    # list1=(`grep -n "pft\ " ./$insfile2 | awk -F ":" '{printf "%i \n",$1 }'`)
+    # list2=(`grep -n "include 1" ./$insfile2 | awk -F ":" '{printf "%i \n",$1 }'`)
+    # list3=(`grep -n "pft\ " ./$insfile2 | awk -F '"' '{printf "%s \n",$2 }'`)
+    NPFT=`grep -i "include 1" ./$insfile1 | wc -l`
+    list1=(`grep -n "pft\ " ./$insfile1 | awk -F ":" '{printf "%i \n",$1 }'`)
+    list2=(`grep -n "include 1" ./$insfile1 | awk -F ":" '{printf "%i \n",$1 }'`)
+    list3=(`grep -n "pft\ " ./$insfile1 | awk -F '"' '{printf "%s \n",$2 }'`)
+
+    ###echo ${list1[*]}
+    ###echo ${list2[*]}
+    ###echo ${list3[*]}
+    i_pft=0
+    nmax=${#list1[*]}
+    amax=${#list2[*]}
+    ###echo $nmax, $amax
+    shf=0
+    while [ $i_pft -lt $nmax ]
+    do
+	###echo $i
+	val=`echo ${list1[i_pft+1+shf]} ${list2[i_pft]} | awk -F " " '{print $2-$1}'`
+	###echo ${list1[i_pft+1+shf]} ${list2[i_pft]}
+	###echo $val
+	if [ $val -gt 0 ]
+	then
+	    ###echo ${list3[i_pft+shf]}
+	    unset list3[i_pft+shf]
+	    shf=$shf+1
+	else
+	    if [ ${list1[i_pft]} -lt ${list2[$amax-1]} ]
+	    then
+		###echo setting
+		list4[i_pft]=${list3[i_pft]}
+	    fi
+	    true $(( i_pft++ ))
+	fi
+    done
+    ###echo ${list4[*]}
+    PFTNAME=`echo ${list4[*]}`
+    f_copynml .TRUE. veg.nml veg.nml .TRUE.
+    if test ! -d GUESS ; then
+	 mkdir GUESS
+    fi
+}
+### *************************************************************************
+
+### *************************************************************************
+### ECHAM5 SETUP
+### *************************************************************************
+f_cleanup_echam5( )
+{
+rm -f unit.?? sst* ice* rrtadata
+}
+
+f_setup_echam5( )
+{
+### .................................................................
+### $1 <- WORKING DIRECTORY
+### $2 <- NUMBER OF INSTANCE (SPECIAL CASE: 0 FOR ONE INSTANCE ONLY)
+### -> ECHAM5_LMIDATM
+### -> START
+### -> NPROCA
+### -> NPROCB
+### -> NPROMA
+### .................................................................
+cd $1
+
+if test "$2" = "0" ; then
+   NML_DIR0=$NMLDIR
+   nr=1
+else
+   istr=`echo $2 | awk '{printf("%2.2i\n",$1)}'`
+   NML_DIR0=$NMLDIR/$istr
+   nr=$2
+fi
+
+# SELECT CORRECT SHELL VAIABLES FOR NAMELIST COPY
+MSH_LRESUME=${MSH_LRESUME[$nr]}
+
+echo $hline | sed 's|-|=|g'
+echo "SETUP FOR ECHAM5 (INSTANCE $nr):"
+echo $hline | sed 's|-|=|g'
+
+if [ ${MSH_NR[$nr]} -eq 1 ] ; then
+   if test ! -d bin ; then
+       mkdir bin
+   fi
+#   cp -f $BASEDIR/bin/echam5.exe bin/.
+   cp -f $BASEDIR/$EXECUTABLE bin/.
+fi
+
+f_get_checksum $EXECUTABLE
+
+### NUDGING AND LNMI
+if test "${ECHAM5_NUDGING:=.FALSE.}" = .FALSE. ; then
+   LNUDGE=.FALSE.
+   LNMI=.FALSE.
+else
+   LNUDGE=.TRUE.
+   LNMI=.TRUE.
+fi
+
+### ECHAM5 MIXED LAYER OCEAN
+if test "${ECHAM5_MLO:=.FALSE.}" = .FALSE. ; then
+   LMLO=.FALSE.
+else
+   LMLO=.TRUE.
+fi
+
+### CHECK, IF MIDDLE ATMOSPHERE SETUP
+MA=`echo $ECHAM5_VRES | awk '{print substr($1,length($1)-1)}'`
+if test "$MA" = "MA" ; then
+   ECHAM5_LMIDATM=.TRUE.
+else
+   ECHAM5_LMIDATM=.FALSE.
+fi
+
+### START DATE (for initial files)
+if test "${INI_ECHAM5_HR:=.FALSE.}" = .TRUE. ; then
+   START=${START_YEAR}${START_MONTH}${START_DAY}${START_HOUR}
+else
+   START=${START_YEAR}${START_MONTH}${START_DAY}
+fi
+
+### PARALLELIZATION PARAMETERS
+if [ $MSH_NCPUS -gt 0 ] ; then
+
+   if test "${NPY[$nr]:-set}" = set ; then
+      NPROCA=$MSH_NCPUS
+   else
+      NPROCA=${NPY[$nr]}
+   fi
+
+   if test "${NPX[$nr]:-set}" = set ; then
+      NPROCB=1
+   else
+      NPROCB=${NPX[$nr]}
+   fi
+
+else
+
+   NPROCA=1
+   NPROCB=1
+
+fi
+
+### VECTORISATION PARAMETER
+if test "${NVL[$nr]:-set}" = set ; then
+   NPROMA=101
+else
+   NPROMA=${NVL[$nr]}
+fi
+
+### RESTART SETUP
+if test "${MSH_LRESUME[$nr]}" = ".TRUE." ; then
+
+  if test ! -r rerun_${EXP_NAME}_echam ; then
+    # remove old links
+    rrecham=`echo rerun_*_echam`
+    for rr in ${rrecham}
+    do
+      if test -L $rr ; then
+	 # LINK
+	 echo ... removing link $rr
+	 rm -f $rr
+      fi
+    done
+    # COUNT REAL FILES
+    rrecham=`echo rerun_*_echam`
+    i=0
+    for rr in ${rrecham}
+    do
+       i=`expr $i + 1`
+    done
+    if [ $i -eq 1 ] ; then
+      oldexp=`echo $rrecham | awk '{print substr($0,7,length($0)-12)}'`
+      if [ ! $oldexp = $EXP_NAME ] ; then
+	 ln -s $rrecham rerun_${EXP_NAME}_echam
+      fi
+    else
+      echo "$MSH_QNAME ERROR 1 (f_setup_echam5): rerun_*_echam IS NOT PRESENT OR NOT UNIQUE."
+      exit 1
+    fi
+  fi
+
+  # NUDGING
+  if test "$ECHAM5_NUDGING" = ".TRUE." ; then
+    if test ! -r rerun_${EXP_NAME}_nudg ; then
+      # remove old links
+      rrnudg=`echo rerun_*_nudg`
+      for rr in ${rrnudg}
+      do
+	if test -L $rr ; then
+	 # LINK
+	 echo ... removing link $rr
+	 rm -f $rr
+	fi
+      done
+      # COUNT REAL FILES
+      rrnudg=`echo rerun_*_nudg`
+      i=0
+      for rr in ${rrnudg}
+      do
+	i=`expr $i + 1`
+      done
+      if [ $i -eq 1 ] ; then
+	 oldexp=`echo $rrnudg | awk '{print substr($0,7,length($0)-11)}'`
+	 if [ ! $oldexp = $EXP_NAME ] ; then
+	    ln -s $rrnudg rerun_${EXP_NAME}_nudg
+	 fi
+      else
+	 echo "$MSH_QNAME ERROR 2 (f_setup_echam5): rerun_*_nudg IS NOT PRESENT OR NOT UNIQUE."
+	 exit 1
+      fi
+    fi
+  fi
+fi
+
+### COPY/LINK FILES REQUIRED FOR ECHAM5
+f_cleanup_echam5
+
+# check, if initial file is present
+IFILE=${INPUTDIR_ECHAM5_SPEC}/${ECHAM5_HRES}${ECHAM5_VRES}_${START}_spec.nc
+if test ! -r ${IFILE} ; then
+   echo "$MSH_QNAME ERROR 3 (f_setup_echam5): ECHAM5 INITIAL FILE ${IFILE} IS NOT AVAILABLE"'!'
+   echo "-> SPECIFY INPUTDIR_ECHAM5_SPEC AND START AGAIN"
+   exit 1
+fi
+
+ln -s  ${INPUTDIR_ECHAM5_SPEC}/${ECHAM5_HRES}${ECHAM5_VRES}_${START}_spec.nc unit.23
+ln -s  ${INPUTDIR_ECHAM5_SPEC}/${ECHAM5_HRES}_${START}_surf.nc unit.24
+
+#  op_pj_20100420+
+#ln -s  ${INPUTDIR_AMIP}/${ECHAM5_HRES}_amip2sst_clim.nc      unit.20
+#ln -s  ${INPUTDIR_AMIP}/${ECHAM5_HRES}_amip2sic_clim.nc      unit.96
+ln -s  ${INPUTDIR_AMIP}/${ECHAM5_HRES}_*sst_climatology.nc      unit.20
+ln -s  ${INPUTDIR_AMIP}/${ECHAM5_HRES}_*sic_climatology.nc      unit.96
+#  op_pj_20100420-
+
+# op_pj_20160831+ OBSOLETE, needs to be reactivated for ECHAM5.3.02 (without _c)
+#!ln -s  ${INI_HRES}/${ECHAM5_HRES}_O3clim2.nc                 unit.21
+# op_pj_20160831-
+ln -s  ${INI_HRES}/${ECHAM5_HRES}_VLTCLIM.nc                 unit.90
+ln -s  ${INI_HRES}/${ECHAM5_HRES}_VGRATCLIM.nc               unit.91
+ln -s  ${INI_HRES}/${ECHAM5_HRES}_TSLCLIM2.nc                unit.92
+
+### data file for setup of modules mo_rrtaN (N=1:16)
+ln -s  ${INI_HRES}/surrta_data                        rrtadata
+
+### AMIP2-files
+if test "${ECHAM5_LAMIP:=.FALSE.}" = ".TRUE." ; then
+  echo $hline
+
+  ### SST:
+  echo "$MSH_QNAME (f_setup_echam5): creating links to transient SST data"
+#  op_pj_20100420+
+#  list_sst=`find ${INPUTDIR_AMIP} -name "${ECHAM5_HRES}_amip2sst_*.nc" -print`
+  list_sst=`find ${INPUTDIR_AMIP} -name "${ECHAM5_HRES}_*sst_*.nc" -print`
+#  op_pj_20100420-
+  for file in ${list_sst}
+  do
+     amipfile=`basename $file`
+     year=`echo $amipfile | sed 's|.nc||g' | awk -F '_' '{print $NF}'`
+     echo ln -s $file sst${year}
+     ln -s $file sst${year}
+  done
+
+  ### Sea Ice:
+  echo "$MSH_QNAME (f_setup_echam5): creating links to transient SIC data"
+#  op_pj_20100420+
+#  list_sic=`find ${INPUTDIR_AMIP} -name "${ECHAM5_HRES}_amip2sic_*.nc" -print`
+  list_sic=`find ${INPUTDIR_AMIP} -name "${ECHAM5_HRES}_*sic_*.nc" -print`
+#  op_pj_20100420-
+  for file in ${list_sic}
+  do
+     sicfile=`basename $file`
+     year=`echo $sicfile | sed 's|.nc||g' | awk -F '_' '{print $NF}'`
+     echo ln -s $file ice${year}
+     ln -s $file ice${year}
+  done
+
+  echo $hline
+fi
+
+### remove old namelist files first
+rm -f *.nml
+
+### COPY REQUIRED NAMELISTS
+
+### MESSy AND GENERIC SUBMODELS
+f_copynml .TRUE. ${NML_SWITCH[$nr]:-switch.nml}    switch.nml   .TRUE.
+f_copynml .TRUE. ${NML_TRACER[$nr]:-tracer.nml}    tracer.nml   .TRUE.
+f_copynml .TRUE. ${NML_CHANNEL[$nr]:-channel.nml}  channel.nml  .TRUE.
+f_copynml .TRUE. ${NML_QTIMER[$nr]:-qtimer.nml}    qtimer.nml   .TRUE.
+f_copynml .TRUE. ${NML_TIMER[$nr]:-timer.nml}      timer.nml    .TRUE.
+f_copynml .TRUE. ${NML_IMPORT[$nr]:-import.nml}    import.nml   .TRUE.
+f_copynml .TRUE. ${NML_TENDENCY[$nr]:-tendency.nml} tendency.nml .FALSE.
+f_copynml .TRUE. ${NML_BLATHER[$nr]:-blather.nml}  blather.nml  .FALSE.
+#f_copynml .TRUE. ${NML_DECOMP[$nr]:-decomp.nml}   decomp.nml   .TRUE.
+
+### SUBMODELS
+f_copy_smnmls $nr
+
+### setup MPIOM, if required
+ECHAM5_LCOUPLE=F
+if test "$USE_MPIOM" = ".TRUE." ; then
+   f_setup_mpiom
+   ECHAM5_LCOUPLE=T
+fi
+
+### setup LPJ-GUESS, if required
+if test "$USE_VEG" = ".TRUE."; then
+   f_setup_guess
+fi
+
+### ECHAM5
+f_copynml .TRUE. $NML_ECHAM ECHAM5.nml .TRUE.
+
+### CREATE LINK FOR NAMELIST TO MAKE THIS SCRIPT APPLICABLE TO
+### ./configure --disable-MESSY
+ln -sf ECHAM5.nml namelist.echam
+
+# make MMD_layout.nml available
+if [ $MSH_INST -gt 1 ] ; then
+    ln -s ../MMD_layout.nml .
+fi
+
+echo $hline | sed 's|-|=|g'
+cd -
+}
+### *************************************************************************
+
+### *************************************************************************
+### ICON HELPER ROUTINES
+### *************************************************************************
+f_is_dir( )
+{
+### .................................................................
+### check, if destination (for ln or cp) is a directory
+##  if so, set target to basename of destination
+### .................................................................
+### $1 <- source      / link
+### $2 <- destination / target
+### -> target
+### .................................................................
+
+ if test -d $2 ; then
+    target=`basename $1`
+ else
+    target=$2
+ fi
+}
+
+f_add_link( )
+{
+### .................................................................
+### $1 <- link
+### $2 <- target
+### .................................................................
+
+  MSH_NO_LINKS=`expr ${MSH_NO_LINKS:-0} + 1`
+
+  ## ln -s <target> <link>
+  # target
+  LIST_TARG[$MSH_NO_LINKS]="$1"
+  # link
+  f_is_dir $1 $2
+  LIST_LINK[$MSH_NO_LINKS]="$target"
+
+  echo 'link ('${MSH_NO_LINKS}') '${LIST_LINK[$MSH_NO_LINKS]}' --> ' ${LIST_TARG[$MSH_NO_LINKS]}
+}
+
+f_set_links( )
+{
+  echo '------------------------------------------------------'
+  echo 'setting links ...'
+  echo '------------------------------------------------------'
+  i=1
+  while [ $i -le $MSH_NO_LINKS ]
+  do
+   # remove old link in order to replace the link if necessary
+#   if test -e ${LIST_LINK[${i}]} ; then
+### qqq be careful with rmoving links: what if link is '.'!!!
+#      echo rm -f ${LIST_LINK[${i}]}
+#           rm -f ${LIST_LINK[${i}]}
+#   fi
+   if test ! -e ${LIST_TARG[${i}]} ; then
+      echo "$MSH_QNAME ERROR (f_set_links): TARGET ${LIST_TARG[${i}]} not available"
+      exit 1
+   fi
+   echo ln -sf ${LIST_TARG[${i}]} ${LIST_LINK[${i}]}
+	ln -sf ${LIST_TARG[${i}]} ${LIST_LINK[${i}]}
+   i=`expr $i + 1`
+  done
+}
+
+f_del_links( )
+{
+  echo '------------------------------------------------------'
+  echo 'deleting links ...'
+  echo '------------------------------------------------------'
+  i=1
+  while [ $i -le $MSH_NO_LINKS ]
+  do
+   # remove link
+#   if test -e ${LIST_LINK[${i}]} ; then
+### qqq be careful with rmoving links: what if link is '.'!!!
+#      echo rm -f ${LIST_LINK[${i}]}
+#           rm -f ${LIST_LINK[${i}]}
+#   fi
+   i=`expr $i + 1`
+  done
+}
+
+f_add_copy( )
+{
+### .................................................................
+### $1 <- source
+### $2 <- destination
+### .................................................................
+
+  MSH_NO_COPY=`expr ${MSH_NO_COPY:-0} + 1`
+
+  ## cp <source> <destination>
+  # source
+  LIST_SRCE[$MSH_NO_COPY]="$1"
+  # destination
+  f_is_dir $1 $2
+  LIST_DEST[$MSH_NO_COPY]="$target"
+
+  echo 'copy ('${MSH_NO_COPY}') '${LIST_SRCE[$MSH_NO_COPY]}' --> ' ${LIST_DEST[$MSH_NO_COPY]}
+
+}
+
+f_set_copies( )
+{
+  echo '------------------------------------------------------'
+  echo 'copying files ...'
+  echo '------------------------------------------------------'
+  i=1
+  while [ $i -le $MSH_NO_COPY ]
+  do
+   # remove old file in order to replace it
+#   if test -e ${LIST_DEST[${i}]} ; then
+### qqq be careful with rmoving dest: what if destination is '.'!!!
+#      echo rm -f ${LIST_DEST[${i}]}
+#           rm -f ${LIST_DEST[${i}]}
+#   fi
+   if test ! -e ${LIST_SRCE[${i}]} ; then
+      echo "$MSH_QNAME ERROR (f_set_copies): SOURCE ${LIST_SRCE[${i}]} not available"
+      exit 1
+   fi
+   echo cp -f ${LIST_SRCE[${i}]} ${LIST_DEST[${i}]}
+	cp -f ${LIST_SRCE[${i}]} ${LIST_DEST[${i}]}
+   i=`expr $i + 1`
+  done
+}
+
+f_icon_depfiles( )
+{
+### .................................................................
+### $1 <- namelist file name
+### .................................................................
+
+for var in ana_varnames_map_file latbc_varnames_map_file output_nml_dict netcdf_dict
+do
+ list=`sed 's|!.*||g' $1 | grep -i $var | sed 's|.*=||g' | sed 's|\"||g' | sed 's|'\''||g' | tr ' ' '\n' | sort | uniq`
+ for fname in ${list}
+ do
+   f_add_copy  $NML_DIR0/${fname} ${fname}
+ done
+done
+}
+
+### *************************************************************************
+### ICON SETUP
+### *************************************************************************
+f_cleanup_icon( )
+{
+echo
+#f_del_links
+}
+
+f_setup_icon( )
+{
+### .................................................................
+### $1 <- WORKING DIRECTORY
+### $2 <- NUMBER OF INSTANCE (SPECIAL CASE: 0 FOR ONE INSTANCE ONLY)
+### -> NPROMA
+### .................................................................
+#
+cd $1
+if test "$2" = "0" ; then
+   NML_DIR0=$NMLDIR
+   nr=1
+else
+   istr=`echo $2 | awk '{printf("%2.2i\n",$1)}'`
+   NML_DIR0=$NMLDIR/$istr
+   nr=$2
+fi
+
+# SELECT CORRECT SHELL VAIABLES FOR NAMELIST COPY
+MSH_LRESUME=${MSH_LRESUME[$nr]}
+
+echo $hline | sed 's|-|=|g'
+echo "SETUP FOR ICON (INSTANCE $nr):"
+echo $hline | sed 's|-|=|g'
+
+if [ ${MSH_NR[$nr]} -eq 1 ] ; then
+   if test ! -d bin ; then
+       mkdir bin
+   fi
+#   cp -f $BASEDIR/bin/cesm1.exe bin/.
+   cp -f $BASEDIR/$EXECUTABLE bin/.
+fi
+
+f_get_checksum $EXECUTABLE
+
+### VECTORISATION PARAMETER
+if test "${NVL[$nr]:-set}" = set ; then
+   NPROMA=101
+else
+   NPROMA=${NVL[$nr]}
+fi
+
+### RESTART SETUP
+#qqq
+
+### COPY/LINK FILES REQUIRED FOR ICON
+f_cleanup_icon
+#qqq
+
+### remove old namelist files first
+rm -f *.nml
+
+### MESSy AND GENERIC SUBMODELS
+f_copynml .TRUE. ${NML_SWITCH[$nr]:-switch.nml}    switch.nml   .TRUE.
+f_copynml .TRUE. ${NML_TRACER[$nr]:-tracer.nml}    tracer.nml   .TRUE.
+f_copynml .TRUE. ${NML_CHANNEL[$nr]:-channel.nml}  channel.nml  .TRUE.
+f_copynml .TRUE. ${NML_QTIMER[$nr]:-qtimer.nml}    qtimer.nml   .TRUE.
+f_copynml .TRUE. ${NML_TIMER[$nr]:-timer.nml}      timer.nml    .TRUE.
+f_copynml .TRUE. ${NML_IMPORT[$nr]:-import.nml}    import.nml   .TRUE.
+f_copynml .TRUE. ${NML_TENDENCY[$nr]:-tendency.nml} tendency.nml .FALSE.
+f_copynml .TRUE. ${NML_BLATHER[$nr]:-blather.nml}  blather.nml  .FALSE.
+#f_copynml .TRUE. ${NML_DECOMP[$nr]:-decomp.nml}   decomp.nml   .TRUE.
+
+### SUBMODELS
+f_copy_smnmls $nr
+
+### INIT
+MSH_NO_COPY=0
+MSH_NO_LINKS=0
+
+### ICON
+# master namelist
+f_copynml .TRUE. ${NML_ICON:-icon_master.namelist} icon_master.namelist .TRUE.
+# model namelists
+#list=`sed 's|!.*||g' icon_master.namelist | grep -i 'modelNamelistFilename' | sed 's|.*=||g' | sed 's|\"||g' | sed 's|'\''||g' | tr ' ' '\n' | sort | uniq`
+list=`sed 's|!.*||g' icon_master.namelist | grep -i 'model_namelist_filename' | sed 's|.*=||g' | sed 's|\"||g' | sed 's|'\''||g' | tr ' ' '\n' | sort | uniq`
+for name in ${list}
+do
+   f_copynml .TRUE. ${name} ${name} .TRUE.
+done
+
+# copy dependent (see in various namelists) files
+for name in ${list}
+do
+   f_icon_depfiles ${name}
+done
+
+# only for first cylce in restart chain (cold start)
+if [ ${MSH_NR[$nr]} -eq 1 ] ; then
+   cp -f $NML_DIR0/icon.sh .
+fi
+
+# sleep to give lustre some time to access the file
+#sleep 10
+#cat ./icon.sh
+
+echo '------------------------------------------------------'
+echo 'SOURCING WRAPPER ...'
+echo '------------------------------------------------------'
+. ./icon.sh
+echo '------------------------------------------------------'
+echo ' ... DONE'
+echo '------------------------------------------------------'
+
+# copy files
+f_set_copies
+
+# set required links
+f_set_links
+
+echo $hline | sed 's|-|=|g'
+cd -
+} # f_setup_icon
+
+### *************************************************************************
+### CESM1 SETUP
+### *************************************************************************
+#  op_ab_20150709+
+f_cleanup_cesm1( )
+{
+rm -f rrtadata
+}
+#  op_ab_20150709-
+
+f_setup_cesm( )
+{
+cd $1
+if test "$2" = "0" ; then
+   NML_DIR0=$NMLDIR
+   nr=1
+else
+   istr=`echo $2 | awk '{printf("%2.2i\n",$1)}'`
+   NML_DIR0=$NMLDIR/$istr
+   nr=$2
+fi
+
+# SELECT CORRECT SHELL VAIABLES FOR NAMELIST COPY
+MSH_LRESUME=${MSH_LRESUME[$nr]}
+
+echo $hline | sed 's|-|=|g'
+echo "SETUP FOR CESM1 (INSTANCE $nr):"
+echo $hline | sed 's|-|=|g'
+
+if [ ${MSH_NR[$nr]} -eq 1 ] ; then
+   if test ! -d bin ; then
+       mkdir bin
+   fi
+#   cp -f $BASEDIR/bin/cesm1.exe bin/.
+   cp -f $BASEDIR/$EXECUTABLE bin/.
+fi
+
+f_get_checksum $EXECUTABLE
+
+### START DATE (for initial files)
+START=${START_YEAR}${START_MONTH}${START_DAY}
+
+### PARALLELIZATION PARAMETERS
+if [ $MSH_NCPUS -gt 0 ] ; then
+
+   if test "${NPY[$nr]:-set}" = set ; then
+      NPROCA=$MSH_NCPUS
+   else
+      NPROCA=${NPY[$nr]}
+   fi
+
+   if test "${NPX[$nr]:-set}" = set ; then
+      NPROCB=1
+   else
+      NPROCB=${NPX[$nr]}
+   fi
+
+else
+
+   NPROCA=1
+   NPROCB=1
+
+fi
+
+### VECTORISATION PARAMETER
+if test "${NVL[$nr]:-set}" = set ; then
+   NPROMA=101
+else
+   NPROMA=${NVL[$nr]}
+fi
+
+### RESTART SETUP
+if test "${MSH_LRESUME[$nr]}" = ".TRUE." ; then
+  MSH_LRESUME_CESM="continue"
+else
+  MSH_LRESUME_CESM="startup"
+fi
+
+### COPY/LINK FILES REQUIRED FOR CESM1
+f_cleanup_cesm1
+
+### data file for setup of modules mo_rrtaN (N=1:16)
+# needed by rad
+ln -s  ${INPUTDIR_CESM1}/surrta_data                         rrtadata
+
+### remove old namelist files first
+rm -f *.nml
+
+### COPY REQUIRED NAMELISTS
+
+### MESSy AND GENERIC SUBMODELS
+f_copynml .TRUE. ${NML_SWITCH[$nr]:-switch.nml}    switch.nml   .TRUE.
+f_copynml .TRUE. ${NML_TRACER[$nr]:-tracer.nml}    tracer.nml   .TRUE.
+f_copynml .TRUE. ${NML_CHANNEL[$nr]:-channel.nml}  channel.nml  .TRUE.
+f_copynml .TRUE. ${NML_QTIMER[$nr]:-qtimer.nml}    qtimer.nml   .TRUE.
+f_copynml .TRUE. ${NML_TIMER[$nr]:-timer.nml}      timer.nml    .TRUE.
+f_copynml .TRUE. ${NML_IMPORT[$nr]:-import.nml}    import.nml   .TRUE.
+f_copynml .TRUE. ${NML_TENDENCY[$nr]:-tendency.nml} tendency.nml .FALSE.
+f_copynml .TRUE. ${NML_BLATHER[$nr]:-blather.nml}  blather.nml  .FALSE.
+f_copynml .TRUE. ${NML_DECOMP[$nr]:-decomp.nml}   decomp.nml   .TRUE.
+
+### SUBMODELS
+f_copy_smnmls $nr
+
+### CESM1
+#f_copynml .TRUE. $NML_CESM CESM1.nml .TRUE.
+f_copynml .TRUE. $NML_CESM_ATM cesm_atm.nml .TRUE.
+
+### CREATE LINK FOR NAMELIST TO MAKE THIS SCRIPT APPLICABLE TO
+### ./configure --disable-MESSY
+#ln -sf ECHAM5.nml namelist.echam
+f_copynml .TRUE. cesm_atm_modelio.nml cesm_atm_modelio.nml .TRUE.
+f_copynml .TRUE. cesm_drv.nml         cesm_drv.nml         .TRUE.
+f_copynml .TRUE. cesm_drv_flds.nml    cesm_drv_flds.nml    .TRUE.
+f_copynml .TRUE. cesm_lnd.nml         cesm_lnd.nml         .TRUE.
+f_copynml .TRUE. cesm_lnd_modelio.nml cesm_lnd_modelio.nml .TRUE.
+f_copynml .TRUE. cesm_rof.nml         cesm_rof.nml         .TRUE.
+f_copynml .TRUE. cesm_rof_modelio.nml cesm_rof_modelio.nml .TRUE.
+f_copynml .TRUE. cesm_ice.nml         cesm_ice.nml         .TRUE.
+f_copynml .TRUE. cesm_ice_modelio.nml cesm_ice_modelio.nml .TRUE.
+f_copynml .TRUE. cesm_docn.nml        cesm_docn.nml        .TRUE.
+f_copynml .TRUE. cesm_docn_ocn.nml    cesm_docn_ocn.nml    .TRUE.
+f_copynml .TRUE. cesm_ocn_modelio.nml cesm_ocn_modelio.nml .TRUE.
+f_copynml .TRUE. cesm_docn_streams_prescribed.xml cesm_docn_streams_prescribed.xml .TRUE.
+f_copynml .TRUE. cesm_glc_modelio.nml cesm_glc_modelio.nml .TRUE.
+f_copynml .TRUE. seq_maps.rc         seq_maps.rc .TRUE.
+f_copynml .TRUE. cesm_cpl_modelio.nml cesm_cpl_modelio.nml .TRUE.
+f_copynml .TRUE. cesm_wav_modelio.nml cesm_wav_modelio.nml .TRUE.
+
+echo $hline | sed 's|-|=|g'
+cd -
+} # f_setup_cesm
+
+### *************************************************************************
+### COSMO SETUP
+### *************************************************************************
+f_setup_cosmo( )
+{
+### .................................................................
+### $1 <- WORKING DIRECTORY
+### $2 <- NUMBER OF INSTANCE (SPECIAL CASE: 0 FOR ONE INSTANCE ONLY)
+### .................................................................
+cd $1
+
+if test "$2" = "0" ; then
+   NML_DIR0=$NMLDIR
+   nr=1
+else
+   istr=`echo $2 | awk '{printf("%2.2i\n",$1)}'`
+   NML_DIR0=$NMLDIR/$istr
+   nr=$2
+fi
+
+# SELECT CORRECT SHELL VAIABLES FOR NAMELIST COPY
+MSH_LRESUME=${MSH_LRESUME[$nr]}
+HSTART=${HSTART[$nr]}
+
+# START DATE AND HOUR
+CSTART=${START_YEAR}${START_MONTH}${START_DAY}${START_HOUR}${START_MINUTE}00
+
+echo $hline | sed 's|-|=|g'
+echo "SETUP FOR COSMO (INSTANCE $nr):"
+echo $hline | sed 's|-|=|g'
+
+if [ ${MSH_NR[$nr]} -eq 1 ] ; then
+   if test ! -d bin ; then
+       mkdir bin
+   fi
+#   cp -f $BASEDIR/bin/cosmo.exe bin/.
+   cp -f $BASEDIR/$EXECUTABLE bin/.
+fi
+
+f_get_checksum $EXECUTABLE
+
+### RESTART SETUP
+if test "${MSH_LRESUME[$nr]}" = ".TRUE." ; then
+   # move old ASCII output files
+   if test -r YUSPECIF ; then
+       mv -f YUSPECIF YUSPECIF.${MSH_SNO[$nr]}
+   fi
+   if test -r YUCHKDAT ; then
+       mv -f YUCHKDAT YUCHKDAT.${MSH_SNO[$nr]}
+   fi
+   if test -r YUDEBUG ; then
+       mv -f YUDEBUG YUDEBUG.${MSH_SNO[$nr]}
+   fi
+   if test -r YUDEBUG_i2cinc ; then
+       mv -f YUDEBUG_i2cinc YUDEBUG_i2cinc.${MSH_SNO[$nr]}
+   fi
+   if test -r YUPRHUMI ; then
+       mv -f YUPRHUMI YUPRHUMI.${MSH_SNO[$nr]}
+   fi
+   if test -r YUPRMASS ; then
+       mv -f YUPRMASS YUPRMASS.${MSH_SNO[$nr]}
+   fi
+fi
+
+# PREPARE int2cosmo NAMELIST
+V1=${EXTNAME_COSMO%nc}
+V2=${EXTNAME_COSMO#$V1}
+
+if test "$V2" = "nc" ; then
+  FORM=ncdf
+else
+  FORM=grb1
+fi
+
+### remove old namelist files first
+rm -f *.nml
+
+### COPY REQUIRED NAMELISTS
+
+### INT2COSMO namelist
+if [ ${nr} -ne 1 ] ; then
+   f_copynml .TRUE. ${NML_INPUT[$nr]:-INPUT.nml} INPUT  .TRUE.
+fi
+
+### main COSMO namelists
+f_copynml .TRUE. ${NML_INPUT_IO[$nr]:-INPUT_IO.nml} INPUT_IO .TRUE.
+f_copynml .TRUE. ${NML_INPUT_DYN[$nr]:-INPUT_DYN.nml} INPUT_DYN .TRUE.
+f_copynml .TRUE. ${NML_INPUT_ORG[$nr]:-INPUT_ORG.nml} INPUT_ORG .TRUE.
+f_copynml .TRUE. ${NML_INPUT_PHY[$nr]:-INPUT_PHY.nml} INPUT_PHY .TRUE.
+f_copynml .TRUE. ${NML_INPUT_DIA[$nr]:-INPUT_DIA.nml} INPUT_DIA .TRUE.
+f_copynml .TRUE. ${NML_INPUT_INI[$nr]:-INPUT_INI.nml} INPUT_INI .TRUE.
+f_copynml .TRUE. ${NML_INPUT_ASS[$nr]:-INPUT_ASS.nml} INPUT_ASS .TRUE.
+
+### MESSy AND GENERIC SUBMODELS
+f_copynml .TRUE. ${NML_SWITCH[$nr]:-switch.nml}    switch.nml   .TRUE.
+f_copynml .TRUE. ${NML_TRACER[$nr]:-tracer.nml}    tracer.nml   .TRUE.
+f_copynml .TRUE. ${NML_CHANNEL[$nr]:-channel.nml}  channel.nml  .TRUE.
+f_copynml .TRUE. ${NML_QTIMER[$nr]:-qtimer.nml}    qtimer.nml   .TRUE.
+f_copynml .TRUE. ${NML_TIMER[$nr]:-timer.nml}      timer.nml    .TRUE.
+f_copynml .TRUE. ${NML_IMPORT[$nr]:-import.nml}    import.nml   .TRUE.
+f_copynml .TRUE. ${NML_TENDENCY[$nr]:-tendency.nml} tendency.nml .FALSE.
+f_copynml .TRUE. ${NML_BLATHER[$nr]:-blather.nml}  blather.nml  .FALSE.
+#f_copynml .TRUE. ${NML_DECOMP[$nr]:-decomp.nml}   decomp.nml   .TRUE.
+
+### SUBMODELS
+f_copy_smnmls $nr
+
+# make MMD_layout.nml available
+if [ $MSH_INST -gt 1 ] ; then
+    ln -s ../MMD_layout.nml .
+fi
+
+### setup LPJ-GUESS, if required
+if test "$USE_VEG" = ".TRUE."; then
+    f_setup_guess
+fi
+
+#um_ak_20150922+
+# force all instances to use the same MSH_NO
+rm -f MSH_NO
+echo ${MSH_NR_MAX} > MSH_NO
+#um_ak_20150922-
+echo $hline | sed 's|-|=|g'
+cd -
+}
+
+### *************************************************************************
+### CLM SETUP
+### *************************************************************************
+f_setup_clm( )
+{
+### .................................................................
+### $1 <- WORKING DIRECTORY
+### $2 <- NUMBER OF INSTANCE (SPECIAL CASE: 0 FOR ONE INSTANCE ONLY)
+### .................................................................
+cd $1
+
+if test "$2" = "0" ; then
+   NML_DIR0=$NMLDIR
+   nr=1
+else
+   istr=`echo $2 | awk '{printf("%2.2i\n",$1)}'`
+   NML_DIR0=$NMLDIR/$istr
+   nr=$2
+fi
+
+# SELECT CORRECT SHELL VAIABLES FOR NAMELIST COPY
+MSH_LRESUME=${MSH_LRESUME[$nr]}
+HSTART=${HSTART[$nr]}
+
+# START / STOP DATE AND HOUR
+CSTART=${START_YEAR}${START_MONTH}${START_DAY}${START_HOUR}${START_MINUTE}00
+CLMSTOP=${STOP_YEAR}${STOP_MONTH}${STOP_DAY}${STOP_HOUR}${STOP_MINUTE}00
+CLM_TOD=$((${START_HOUR}*3600))
+CLM_YYYYMMDD=${START_YEAR}${START_MONTH}${START_DAY}
+# START and STOP HOUR
+CLM_START_TOD=$((${START_HOUR}*3600 + ${START_MINUTE}*60))
+CLM_STOP_TOD=$((${STOP_HOUR}*3600 + ${STOP_MINUTE}*60))
+
+echo $hline | sed 's|-|=|g'
+echo "SETUP FOR CLM (INSTANCE $nr):"
+echo $hline | sed 's|-|=|g'
+
+if [ ${MSH_NR[$nr]} -eq 1 ] ; then
+   if test ! -d bin ; then
+       mkdir bin
+   fi
+#   cp -f $BASEDIR/bin/cosmo.exe bin/.
+   cp -f $BASEDIR/$EXECUTABLE bin/.
+fi
+
+f_get_checksum $EXECUTABLE
+
+### RESTART SETUP
+if test "${MSH_LRESUME[$nr]}" = ".TRUE." ; then
+  MSH_LRESUME_CLM="continue"
+else
+  MSH_LRESUME_CLM="startup"
+fi
+
+# ### main CLM namelists
+ f_copynml .TRUE. ${NML_DATM_ATM_IN[$nr]:-datm_atm_in.nml} datm_atm_in .TRUE.
+ f_copynml .TRUE. ${NML_DATM_IN[$nr]:-datm_in.nml} datm_in .TRUE.
+#qqq this should only be done, if it is part of an OASIS setup and
+#    NOT stand-alone ...:
+ f_copynml .TRUE. ${NML_OASIS_STREAM[$nr]:-OASIS.stream.txt} OASIS.stream.txt .TRUE.
+# f_copynml .TRUE. ${NML_DATM_STREAMS_USRDAT[$nr]:-datm.streams.txt.CLM1PT.CLM_USRDAT} datm.streams.txt.CLM1PT.CLM_USRDAT .TRUE.
+## f_copynml .TRUE. ${NML_DATM_STREAMS_CLIMM[$nr]:-datm.streams.txt.presaero.clim_2000} datm.streams.txt.presaero.clim_2000 .TRUE.
+ f_copynml .TRUE. ${NML_PRESAERO_STREAM[$nr]:-presaero.stream.txt} presaero.stream.txt .TRUE.
+ f_copynml .TRUE. ${NML_DRV_IN[$nr]:-drv_in.nml}           drv_in      .TRUE.
+ f_copynml .TRUE. ${NML_DRV_FLDS_IN[$nr]:-drv_flds_in.nml} drv_flds_in .TRUE.
+ f_copynml .TRUE. ${NML_LND_IN[$nr]:-lnd_in.nml}           lnd_in      .TRUE.
+ f_copynml .TRUE. ${NML_ROF_IN[$nr]:-rof_in.nml}           rof_in      .TRUE.
+ #f_copynml .TRUE. ${NML_SEQ_MAPS_RC[$nr]:-seq_maps.rc.nml} seq_maps.rc .TRUE.
+# f_copynml .TRUE. ${NML_OCN_IN[$nr]:-docn_in.nml}          docn_in     .TRUE.
+# f_copynml .TRUE. ${NML_OCN[$nr]:-docn_ocn.nml}            docn_ocn    .TRUE.
+#### f_copynml .TRUE. ${NML_OCN_IO[$nr]:-ocn_modelio.nml}      ocn_modelio .TRUE.
+# f_copynml .TRUE. ${NML_ICE_IN[$nr]:-dice_in.nml}          dice_in     .TRUE.
+ f_copynml .TRUE. ${NML_ATM_IO[$nr]:-atm_modelio.nml}      atm_modelio.nml .TRUE.
+ f_copynml .TRUE. ${NML_CPL_IO[$nr]:-cpl_modelio.nml}      cpl_modelio.nml .TRUE.
+ f_copynml .TRUE. ${NML_GLC_IO[$nr]:-glc_modelio.nml}      glc_modelio.nml .TRUE.
+ f_copynml .TRUE. ${NML_ICE_IO[$nr]:-ice_modelio.nml}      ice_modelio.nml .TRUE.
+ f_copynml .TRUE. ${NML_LND_IO[$nr]:-lnd_modelio.nml}      lnd_modelio.nml .TRUE.
+ f_copynml .TRUE. ${NML_OCN_IO[$nr]:-ocn_modelio.nml}      ocn_modelio.nml .TRUE.
+ f_copynml .TRUE. ${NML_ROF_IO[$nr]:-rof_modelio.nml}      rof_modelio.nml .TRUE.
+ f_copynml .TRUE. ${NML_WAV_IO[$nr]:-wav_modelio.nml}      wav_modelio.nml .TRUE.
+
+# ### MESSy AND GENERIC SUBMODELS
+# f_copynml .TRUE. ${NML_SWITCH[$nr]:-switch.nml}    switch.nml   .TRUE.
+# f_copynml .TRUE. ${NML_TRACER[$nr]:-tracer.nml}    tracer.nml   .TRUE.
+# f_copynml .TRUE. ${NML_CHANNEL[$nr]:-channel.nml}  channel.nml  .TRUE.
+# f_copynml .TRUE. ${NML_QTIMER[$nr]:-qtimer.nml}    qtimer.nml   .TRUE.
+# f_copynml .TRUE. ${NML_TIMER[$nr]:-timer.nml}      timer.nml    .TRUE.
+# f_copynml .TRUE. ${NML_IMPORT[$nr]:-import.nml}    import.nml   .TRUE.
+# f_copynml .TRUE. ${NML_TENDENCY[$nr]:-tendency.nml} tendency.nml .FALSE.
+# f_copynml .TRUE. ${NML_BLATHER[$nr]:-blather.nml}  blather.nml  .FALSE.
+# f_copynml .TRUE. ${NML_DECOMP[$nr]:-decomp.nml}   decomp.nml   .TRUE.
+
+### SUBMODELS
+# f_copy_smnmls $nr
+
+# make MMD_layout.nml available
+if [ $MSH_INST -gt 1 ] ; then
+    ln -s ../MMD_layout.nml .
+fi
+
+#um_ak_20150922+
+# force all instances to use the same MSH_NO
+rm -f MSH_NO
+echo ${MSH_NR_MAX} > MSH_NO
+#um_ak_20150922-
+echo $hline | sed 's|-|=|g'
+cd -
+}
+### *************************************************************************
+
+### *************************************************************************
+### MBM SETUP
+### *************************************************************************
+f_setup_mbm( )
+{
+### .................................................................
+### $1 <- WORKING DIRECTORY
+### $2 <- NUMBER OF INSTANCE (SPECIAL CASE: 0 FOR ONE INSTANCE ONLY)
+### $3 <- MBM (MESSy BaseModel)
+### .................................................................
+cd $1
+
+if test "$2" = "0" ; then
+   NML_DIR0=$NMLDIR
+   nr=1
+else
+   istr=`echo $2 | awk '{printf("%2.2i\n",$1)}'`
+   NML_DIR0=$NMLDIR/$istr
+   nr=$2
+fi
+
+# SELECT CORRECT SHELL VAIABLES FOR NAMELIST COPY
+MSH_LRESUME=${MSH_LRESUME[$nr]}
+
+echo $hline | sed 's|-|=|g'
+echo "SETUP FOR $3 (INSTANCE $nr):"
+echo $hline | sed 's|-|=|g'
+
+if [ ${MSH_NR[$nr]} -eq 1 ] ; then
+   if test ! -d bin ; then
+       mkdir bin
+   fi
+   cp -f $BASEDIR/bin/${3}.exe bin/.
+fi
+
+f_get_checksum $EXECUTABLE
+
+### SPECIAL
+### MBM rad
+if test "${3}" = "rad" ; then
+  ### remove old rrtadata first
+  rm -f rrtadata
+  ### data file for setup of modules mo_rrtaN (N=1:16)
+  if test "${INPUTDIR_ECHAM5_INI:-set}" = set ; then
+      INPUTDIR_ECHAM5_INI=$MSH_DATAROOT/ECHAM5/echam5.3.02/init
+  fi
+  INI_HRES=$INPUTDIR_ECHAM5_INI/${ECHAM5_HRES}
+  ln -s  ${INI_HRES}/surrta_data                        rrtadata
+fi
+
+### remove old namelist files first
+rm -f *.nml
+
+### COPY REQUIRED NAMELISTS
+
+### MESSy AND GENERIC SUBMODELS
+f_copynml .TRUE. ${NML_SWITCH[$nr]:-switch.nml}    switch.nml   .FALSE.
+f_copynml .TRUE. ${NML_TRACER[$nr]:-tracer.nml}    tracer.nml   .FALSE.
+f_copynml .TRUE. ${NML_CHANNEL[$nr]:-channel.nml}  channel.nml  .FALSE.
+f_copynml .TRUE. ${NML_QTIMER[$nr]:-qtimer.nml}    qtimer.nml   .FALSE.
+f_copynml .TRUE. ${NML_TIMER[$nr]:-timer.nml}      timer.nml    .FALSE.
+f_copynml .TRUE. ${NML_IMPORT[$nr]:-import.nml}    import.nml   .FALSE.
+#f_copynml .TRUE. ${NML_TENDENCY[$nr]:-tendency.nml} tendency.nml .FALSE.
+f_copynml .TRUE. ${NML_BLATHER[$nr]:-blather.nml}  blather.nml  .FALSE.
+
+### QQQ standard MBM namelist (temporary workaround for CAABA)
+f_copynml .TRUE. ${3}.nml     ${3}.nml    .FALSE.
+if test ! -e switch.nml ; then
+  ln -s ${3}.nml switch.nml
+fi
+
+### SUBMODELS
+f_copy_smnmls $nr
+
+echo $hline | sed 's|-|=|g'
+cd -
+}
+### *************************************************************************
+
+
+### *************************************************************************
+### save current environment in separate log-file
+### *************************************************************************
+f_save_env( )
+{
+echo $hline >  $WORKDIR/environment.${MSH_SNR[1]}.log
+echo "env:" >> $WORKDIR/environment.${MSH_SNR[1]}.log
+env         >> $WORKDIR/environment.${MSH_SNR[1]}.log
+echo $hline >> $WORKDIR/environment.${MSH_SNR[1]}.log
+echo "set:" >> $WORKDIR/environment.${MSH_SNR[1]}.log
+set         >> $WORKDIR/environment.${MSH_SNR[1]}.log
+echo $hline >> $WORKDIR/environment.${MSH_SNR[1]}.log
+}
+### *************************************************************************
+
+### *************************************************************************
+### save current modules in separate log-file
+### *************************************************************************
+f_save_modules( )
+{
+if test "${MODULESHOME:-set}" != set ; then
+ if test -r $MODULESHOME/init/sh ; then
+     . $MODULESHOME/init/sh
+     module list 2> $WORKDIR/modules.${MSH_SNR[1]}.log 1>&2
+ fi
+fi
+}
+
+### *************************************************************************
+### calculate checksum of executable
+### *************************************************************************
+### .................................................................
+### $1 <- executable
+### -> EXEC_CHECKSUM  : md5sum of executable
+### .................................................................
+f_get_checksum( )
+{
+set +e
+
+if which md5sum 2> /dev/null 1>&2 ; then
+   EXEC_CHECKSUM="`md5sum $1 2> /dev/null` (md5sum)" || EXEC_CHECKSUM=""
+   status=$?
+else
+   status=-1
+fi
+
+if test "$status" = "-1" ; then
+   echo "$MSH_QNAME (f_get_checksum): md5sum not available"
+   EXEC_CHECKSUM="unknown"
+fi
+
+set +e
+
+#echo $EXEC_CHECKSUM
+}
+#### *************************************************************************
+
+### *************************************************************************
+### CREATE WRAPPER SCRIPT FOR MMD
+### *************************************************************************
+f_make_wrap( )
+{
+### ......................................
+### $1 <- INSTANCE NUMBER (string)
+### $2 <- EXECUTABLE
+### ......................................
+
+model=`basename $2 .exe`
+
+case $model in
+   echam*)
+     pinp="$MSH_E5PINP"
+     ;;
+   *)
+     pinp=
+     ;;
+esac
+
+### limit stacksize
+if test "${MAXSTACKSIZE:-set}" = set ; then
+   MAXSTACKSIZE=unlimited
+fi
+
+cat > start.$1.sh <<EOF
+#!/bin/sh
+
+cd $1
+ulimit -Sc ${MAXSTACKSIZE}
+## $2 $pinp > $model.${MSH_NR[$1]}.log 2>&1
+## $2 $pinp
+## $MSH_MEASURE $2 $pinp
+$2 $pinp
+EOF
+
+chmod 700 start.$1.sh
+}
+### *************************************************************************
+
+### *************************************************************************
+### create command-file for poe environment
+### *************************************************************************
+f_make_poe_cmdfile( )
+{
+fname=cmdfile.poe
+
+if test -r $fname ; then
+   rm -f $fname
+fi
+
+touch $fname
+
+i=1
+while [ $i -le $MSH_INST ] ; do
+  istr=`echo $i | awk '{printf("%2.2i\n",$1)}'`
+
+  for j in `seq ${NCPUS[$i]}` ; do
+     echo "./start.$istr.sh" >> $fname
+  done
+
+  i=`expr $i + 1`
+done
+
+# setup poe environment
+MP_LABELIO="yes"    ; export MP_LABELIO
+MP_STDOUTMODE="unordered" ; export MP_STDOUTMODE
+MP_CMDFILE=$fname   ; export MP_CMDFILE
+MP_PGMMODEL=mpmd    ; export MP_PGMMODEL
+}
+### *************************************************************************
+
+### *************************************************************************
+### create command-file for srun environment
+### *************************************************************************
+f_make_srun_cmdfile( )
+{
+fname=cmdfile.srun
+
+if test -r $fname ; then
+   rm -f $fname
+fi
+
+touch $fname
+
+i=1
+p=0
+while [ $i -le $MSH_INST ] ; do
+  istr=`echo $i | awk '{printf("%2.2i\n",$1)}'`
+
+  for j in `seq ${NCPUS[$i]}` ; do
+     echo "$p ./start.$istr.sh" >> $fname
+     p=`expr $p + 1`
+  done
+
+  i=`expr $i + 1`
+done
+}
+### *************************************************************************
+
+### *************************************************************************
+### CREATE MMD COUPLING LAYOUT
+### *************************************************************************
+f_mmd_layout( )
+{
+fname=MMD_layout.nml
+
+if test -r $fname ; then
+   rm -f $fname
+fi
+
+touch $fname
+echo \&CPL >> $fname
+
+i=1
+while [ $i -le $MSH_INST ] ; do
+  istr=`echo $i | awk '{printf("%2.2i\n",$1)}'`
+  case ${MINSTANCE[$i]} in
+     ECHAM5)
+       model=echam
+       ;;
+     ICON)
+       model=icon
+       ;;
+     mpiom)
+       model=mpiom
+       ;;
+     COSMO)
+	  if test $IS_OASIS_SETUP = yes ; then
+	      model=cosmo$istr #otherwise infiles for oasis cannot be produced
+	  else
+	      model=cosmo
+	  fi
+       ;;
+     CLM)
+	  if test $IS_OASIS_SETUP = yes ; then
+	      model=clm$istr #otherwise infiles for oasis cannot be produced
+	  else
+	      model=clm
+	  fi
+       ;;
+     *)
+       model=${MINSTANCE[$i]}
+       ;;
+  esac
+
+  echo "m_couplers($i)="\'$model\', ${MMDPARENTID[$i]}, ${NCPUS[$i]}  >> $fname
+
+  i=`expr $i + 1`
+done
+
+echo \/ >> $fname
+
+}
+### *************************************************************************
+
+### *************************************************************************
+### SETUP OASIS3MCT
+### *************************************************************************
+f_setup_oasis3mct( )
+{
+### ..................
+### -> OASIS_RUN_DT
+### <- IS_OASIS_SETUP
+### ..................
+
+# count instances with USE_OASIS3MCT switched on
+c=0
+i=1
+while [ $i -le $MSH_INST ] ; do
+  istr=`echo $i | awk '{printf("%2.2i\n",$1)}'`
+  # check required, as switch.nml does not exist in non-MESSyfied legacy models
+  if test -r $istr/switch.nml ; then
+      sw=`grep USE_OASIS3MCT $istr/switch.nml | awk -F '=' '{print toupper($2)}' | sed 's|.TRUE.|T|g'`
+      if test "$sw" = "T" ; then
+	  c=`expr $c + 1`
+      fi
+  fi
+  i=`expr $i + 1`
+done
+
+# if at least one instance requests OASIS3MCT, all instances need to
+# read the namcouple(.nml)
+if [ $c -gt 0 ] ; then
+
+   echo "${MSH_QNAME} INFO (f_setup_oasis3mct): OASIS3MCT SETUP DETECTED"'!'
+
+   IS_OASIS_SETUP=yes
+
+  #  ### determine oasis runtime
+  #  t0=`echo $START_YEAR $START_MONTH $START_DAY $START_HOUR $START_MINUTE 0 | awk '{print mktime($0)}'`
+  # t1=`echo $STOP_YEAR $STOP_MONTH $STOP_DAY $STOP_HOUR $STOP_MINUTE 0 | awk '{print mktime($0)}'`
+  #  OASIS_RUN_DT=`echo $t0 $t1 | awk '{print $2-$1}'`
+  #  echo "${MSH_QNAME} INFO (f_setup_oasis3mct): OASIS3MCT RUNTIME [s]: $OASIS_RUN_DT"
+
+   case $RESTART_UNIT in
+       seconds)
+	   sc=1
+	   ;;
+       minutes)
+	   sc=60
+	   ;;
+       hours)
+	   sc=3600
+	   ;;
+       days)
+	   sc=86400
+	   ;;
+       months)
+	   echo "${MSH_QNAME} ERROR (f_setup_oasis3mct): RUNTIME [s] CANNOT BE DETERMINED BASED ON RESTART_UNIT = $RESTART_UNIT"
+	   exit 1
+	   ;;
+       *)
+	   echo "${MSH_QNAME} ERROR (f_setup_oasis3mct): UNKNOWN RESTART_UNIT: $RESTART_UNIT"
+	   exit 1
+	   ;;
+   esac
+   #echo ${MSH_NR[1]}
+   OASIS_RUN_DT=`echo $NO_CYCLES $RESTART_INTERVAL $sc ${MSH_NR[1]} | awk '{print $1*$2*$3*$4}'`
+   echo "${MSH_QNAME} INFO (f_setup_oasis3mct): OASIS3MCT RUNTIME [s]: $OASIS_RUN_DT"
+
+   # set the path for OASIS3MCT input data
+   if test "${INPUTDIR_OASIS3MCT:-set}" = set ; then
+       # note that NML_SETUP is OASIS/...
+       INPUTDIR_OASIS3MCT=$MSH_DATAROOT/${NML_SETUP}
+#   else
+#       # append in any case the namelist setup
+#       INPUTDIR_OASIS3MCT=$INPUTDIR_OASIS3MCT/${NML_SETUP}
+   fi
+   echo "${MSH_QNAME} INFO (f_setup_oasis3mct): INPUTDIR_OASIS3MCT   : $INPUTDIR_OASIS3MCT"
+
+   # copy the namcouple
+   NML_DIR0=$NMLDIR
+   f_copynml .TRUE. ${NML_NAMCOUPLE:-namcouple.nml} namcouple .TRUE.
+
+   # link namcouple et al. to all instance subdirectories
+    i=1
+    while [ $i -le $MSH_INST ] ; do
+	istr=`echo $i | awk '{printf("%2.2i\n",$1)}'`
+	cd $istr
+	ln -s ../namcouple .
+
+	# the following links are necessary (OASIS will modify the targets!)
+	ln -s ../grids.nc .
+	ln -s ../areas.nc .
+	ln -s ../masks.nc .
+
+	cd ..
+
+	i=`expr $i + 1`
+    done
+
+### qqq+ # op_pj_20190814: The following block has been heavily
+###                        modified, basically with special cases only
+###                        for CLM ...? Isn't it simply possible to
+###                        force the user to prepare INPUTDIR_OASIS3MCT
+###                        for the specific setup and leave the special
+###                        cases out of this script?
+
+    if [ ${MSH_NR[1]} -eq 1 ] ; then
+    # copy netcdf files to workdir (linked to instances already above) in case
+    # they have been produced earlier and exist in INPUTDIR_OASIS3MCT
+    if test ! -d $INPUTDIR_OASIS3MCT; then
+	echo "$INPUTDIR_OASIS3MCT DOES NOT EXIST ..."
+	i=1
+	while [ $i -le $MSH_INST ] ; do
+	    istr=`echo $i | awk '{printf("%2.2i\n",$1)}'`
+	    if test -r $istr/drv_in ; then
+		sw=`grep atm_ntasks $istr/drv_in | awk -F '=' '{print toupper($2)}' | sed 's|1|1|g'`
+		if [ $sw -eq 1 ]; then
+		    echo "... CLM DOES NOT RUN IN PARALLEL => OASIS-INPUTFILES"
+		    echo "CAN BE CREATED DURING THE SIMULATION!"
+		else
+		    echo "${MSH_QNAME} ERROR (f_setup_oasis3mct): $INPUTDIR_OASIS3MCT NOT FOUND AND INFILES CANNOT BE PRODUCED IF CLM RUNS PARALLEL"
+		    exit 1
+		fi
+	    fi
+	    i=`expr $i + 1`
+	done
+    else #INPUTDIR_OASIS3MCT exist, check for infiles
+	list_oa=`find $INPUTDIR_OASIS3MCT -maxdepth 1 -name "*.nc" -print`
+	if [ ${#list_oa} -eq 0 ] ; then
+	    i=1
+	    while [ $i -le $MSH_INST ] ; do
+		istr=`echo $i | awk '{printf("%2.2i\n",$1)}'`
+		if test -r $istr/drv_in ; then
+		    sw=`grep atm_ntasks $istr/drv_in | awk -F '=' '{print toupper($2)}' | sed 's|1|1|g'`
+		    if [ $sw -eq 1 ]; then
+			echo "CLM DOES NOT RUN IN PARALLEL => OASIS-INPUTFILES"
+			echo "CAN BE CREATED DURING THE SIMULATION!"
+		    else
+			echo "${MSH_QNAME} ERROR (f_setup_oasis3mct): NO .nc FILES FOUND IN $INPUTDIR_OASIS3MCT AND INFILES CANNOT BE PRODUCED IF CLM RUNS PARALLEL"
+			exit 1
+		    fi
+		fi
+		i=`expr $i + 1`
+	    done
+	else #files exist in INPUTDIR_OASIS3MCT
+	    for file in ${list_oa}; do
+		cp -f $file . #better to cp instead of link, because in case clm runs not parallel, they are overwritten
+	    done
+	fi
+### qqq-
+
+	# cp files from subdirs in every case
+	# (this might be only restart files for OASIS)
+	i=1
+	while [ $i -le $MSH_INST ] ; do
+	    istr=`echo $i | awk '{printf("%2.2i\n",$1)}'`
+	    list_oa=`find $INPUTDIR_OASIS3MCT/$istr -name "*.nc" -print`
+	    cd $istr
+	    for file in ${list_oa}; do
+		cp -f $file .
+	    done
+	    cd ..
+	    i=`expr $i + 1`
+	done
+
+    fi
+    fi
+else
+   echo "${MSH_QNAME} INFO (f_setup_oasis3mct): NO OASIS3MCT SETUP DETECTED"'!'
+   IS_OASIS_SETUP=no
+fi
+}
+### *************************************************************************
+
+### *************************************************************************
+### CLEANUP OASIS3MCT SETUP
+### *************************************************************************
+f_cleanup_oasis3mct( )
+{
+if test $IS_OASIS_SETUP = yes ; then
+   #f_del_links
+   find . -name grids.nc -type l -print | xargs rm -f
+   find . -name masks.nc -type l -print | xargs rm -f
+   find . -name areas.nc -type l -print | xargs rm -f
+   #find . -name rmp_*.nc -tpye l -print | xargs rm -f
+fi
+}
+### *************************************************************************
+
+### *************************************************************************
+### DIAGNOSTIC OUTPUT
+### *************************************************************************
+f_diagout_echam( )
+{
+### ..................
+### $1 <- INSTANCE NR
+### ..................
+echo "      MODEL                = ECHAM5"
+echo "      NPROCA               = $NPROCA"
+echo "      NPROCB               = $NPROCB"
+echo "      NPROMA               = $NPROMA"
+echo "      START                = $START"
+echo "      ECHAM5_HRES          = $ECHAM5_HRES"
+echo "      ECHAM5_VRES          = $ECHAM5_VRES"
+echo "      ECHAM5_LMIDATM       = $ECHAM5_LMIDATM"
+echo "      ECHAM5_NUDGING       = $ECHAM5_NUDGING"
+echo "      INPUTDIR_NUDGE       = $INPUTDIR_NUDGE"
+echo "      ECHAM5_MLO           = $ECHAM5_MLO"
+echo "      BASEDIR              = $BASEDIR"
+if [ ${MSH_NR[$1]} -eq 1 ] ; then
+echo "                         ( = $BASEDIR_SRC )"
+fi
+echo "      DATABASEDIR          = $DATABASEDIR"
+echo "      INPUTDIR_MESSY       = $INPUTDIR_MESSY"
+echo "      INPUTDIR_MPIOM       = $INPUTDIR_MPIOM"
+echo "      INPUTDIR_ECHAM5_INI  = $INPUTDIR_ECHAM5_INI"
+echo "      INPUTDIR_ECHAM5_SPEC = $INPUTDIR_ECHAM5_SPEC"
+echo "      INI_HRES             = $INI_HRES"
+echo "      ECHAM5_LAMIP         = $ECHAM5_LAMIP"
+echo "      INPUTDIR_AMIP        = $INPUTDIR_AMIP"
+echo "      MSH_LRESUME          = ${MSH_LRESUME[$1]}"
+echo "      MSH_NR               = ${MSH_NR[$1]}"
+echo "      MSH_SNR              = ${MSH_SNR[$1]}"
+}
+
+f_diagout_icon( )
+{
+### ..................
+### $1 <- INSTANCE NR
+### ..................
+echo "      MODEL                = ICON"
+echo "      NCPUS                = $MSH_NCPUS"
+echo "      DATABASEDIR          = $DATABASEDIR"
+echo "      INPUTDIR_MESSY       = $INPUTDIR_MESSY"
+echo "      MSH_LRESUME          = ${MSH_LRESUME[$1]}"
+echo "      MSH_NR               = ${MSH_NR[$1]}"
+}
+
+f_diagout_cosmo( )
+{
+### ..................
+### $1 <- INSTANCE NR
+### ..................
+echo "      MODEL                = COSMO"
+echo "      NPX                  = ${NPX[$1]}"
+echo "      NPY                  = ${NPY[$1]}"
+echo "      HSTART               = ${HSTART[$1]}"
+echo "      INPUTDIR_COSMO_EXTDIR= ${INPUTDIR_COSMO_EXTDIR[$1]}"
+echo "      MSH_LRESUME          = ${MSH_LRESUME[$1]}"
+echo "      MSH_NR               = ${MSH_NR[$1]}"
+echo "      MSH_SNR              = ${MSH_SNR[$1]}"
+}
+
+f_diagout_mbm( )
+{
+### ..................
+### $1 <- INSTANCE NR
+### ..................
+echo "      MBM                  = ${MINSTANCE[$1]}"
+echo "      MSH_LRESUME          = ${MSH_LRESUME[$1]}"
+}
+
+f_diagout_mpiom( )
+{
+### ..................
+### $1 <- INSTANCE NR
+### ..................
+echo "      INPUTDIR_MPIOM       = $INPUTDIR_MPIOM"
+echo "      MPIOM_HRES           = $MPIOM_HRES"
+echo "      MPIOM_VRES           = $MPIOM_VRES"
+echo "      NPROCA               = $NPROCA"
+echo "      NPROCB               = $NPROCB"
+}
+
+f_diagout_cesm( )
+{
+echo "      MODEL                = CESM1"
+echo "      NCPUS                = $MSH_NCPUS"
+echo "      START                = $START"
+echo "      BASEDIR              = $BASEDIR"
+echo "      DATABASEDIR          = $DATABASEDIR"
+echo "      INPUTDIR_MESSY       = $INPUTDIR_MESSY"
+echo "      INPUTDIR_MPIOM       = $INPUTDIR_MPIOM"
+echo "      INPUTDIR_CESM1       = $INPUTDIR_CESM1"
+echo "      INI_HRES             = $INI_HRES"
+echo "      MSH_LRESUME          = ${MSH_LRESUME[$1]}"
+echo "      MSH_NR               = ${MSH_NR[$1]}"
+echo "      MSH_SNR              = ${MSH_SNR[$1]}"
+}
+
+f_diagout_system( )
+{
+echo "RESOURCE LIMITS ON $MSH_HOST ($MSH_SYSTEM):"
+case $MSH_SYSTEM in
+    OSF1)
+	ulimit -h         # show limits (OSF1 style parameter...)
+	;;
+    Linux)
+	ulimit -a         # show limits (normal syntax)
+	;;
+    SUPER-UX)
+	ulimit
+	;;
+    AIX)
+	ulimit -a         # show limits (normal syntax)
+	;;
+    Darwin)
+	ulimit -a         # show limits (normal syntax)
+	;;
+    *)
+	echo "ERROR 13: UNRECOGNIZED OPERATING SYSTEM $MSH_SYSTEM"
+	echo "          ON HOST $MSH_HOST"
+	exit 1
+	;;
+esac
+}
+
+f_diagout( )
+{
+echo $hline
+
+echo "SYSTEM:"
+echo "   DATE/TIME    = `date`"
+echo "   MSH_HOST     = $MSH_HOST"
+echo "   MSH_DOMAIN   = $MSH_DOMAIN"
+echo "   MSH_SYSTEM   = $MSH_SYSTEM"
+echo "   MSH_USER     = $MSH_USER"
+
+echo "SCRIPT:"
+echo "   \$0           = $0"
+echo "   MSH_QPWD     = $MSH_QPWD"
+echo "   MSH_QCALL    = $MSH_QCALL"
+echo "   MSH_QDIR     = $MSH_QDIR"
+echo "   MSH_QNAME    = $MSH_QNAME"
+
+echo "QUEUE:"
+echo "   MSH_QSYS     = $MSH_QSYS"
+echo "   MSH_QNCPUS   = $MSH_QNCPUS"
+echo "   MSH_QSCR     = $MSH_QSCR"
+echo "   MSH_QCMD     = $MSH_QCMD"
+echo "   MSH_QUEUE    = $MSH_QUEUE"
+echo "   MSH_QCPSCR   = $MSH_QCPSCR"
+echo "   MSH_QNEXT    = $MSH_QNEXT"
+
+echo "PARALLEL ENVIRONMENT:"
+echo "   MSH_PENV     = $MSH_PENV"
+echo "   MPI_OPT      = $MPI_OPT"
+echo "   MSH_MACH     = $MSH_MACH"
+echo "   MSH_UHO      = $MSH_UHO"
+echo "   MSH_NCPUS    = $MSH_NCPUS"
+if test -r host.list ; then
+   echo "   LIST OF NODES (host.list):"
+   echo '   ->'
+   cat host.list
+   echo '   <-'
+fi
+if test ! "$MSH_MACH" = "" ; then
+   echo "   LIST OF NODES:"
+   echo '   ->'
+   cat $MSH_MACH
+   echo '   <-'
+fi
+
+echo "SPECIAL:"
+echo "   SERIALMODE   = $SERIALMODE"
+echo "   MEASUREMODE  = $MEASUREMODE"
+echo "   MSH_MEASURE  = $MSH_MEASURE"
+echo "   MSH_MEASMODE = $MSH_MEASMODE"
+echo "   TESTMODE     = ${TESTMODE:=.FALSE.}"
+echo "   PROFMODE     = ${PROFMODE:=.FALSE.}"
+echo "   PROFCMD      = $PROFCMD"
+
+echo "SETUP:"
+echo "   MSH_DATAROOT = $MSH_DATAROOT"
+echo "   NML_SETUP    = $NML_SETUP"
+echo "   NMLDIR       = $NMLDIR"
+if [ $MSH_NR_MIN -eq 1 ] ; then
+echo "              ( = $NMLDIR_SRC )"
+fi
+echo "   WORKDIR      = $WORKDIR"
+echo "   MSH_RUN      = $MSH_RUN"
+
+echo "MMD SETUP:"
+echo "   MSH_INST     = $MSH_INST"
+   if test -r MMD_layout.nml ; then
+      echo "   MMD Layout:"
+      echo '   ->'
+      cat MMD_layout.nml
+      echo '   <-'
+   fi
+
+i=1
+while [ $i -le $MSH_INST ] ; do
+echo "   INSTANCE $i:"
+  case ${MINSTANCE[$i]} in
+     ECHAM5)
+       f_diagout_echam  01
+       ;;
+     ICON)
+       f_diagout_icon 01
+       ;;
+     mpiom)
+       f_diagout_mpiom  01
+       f_diagout_mbm   $i
+       ;;
+     COSMO)
+       f_diagout_cosmo $i
+       ;;
+     CESM1)
+       f_diagout_cesm $i
+       ;;
+     *)
+	f_diagout_mbm $i
+       ;;
+  esac
+  i=`expr $i + 1`
+done
+
+f_diagout_system
+
+echo $hline
+}
+### *************************************************************************
+
+### *************************************************************************
+### CHECK FOR CORE FILES
+### *************************************************************************
+f_check_core_end( )
+{
+### ..................................................
+### $1 <- DIRECTORY (WORKDIR OR INSTANCE SUBDIRECTORY)
+### -> MSH_EXIT
+### ..................................................
+cd $1
+
+echo "$MSH_QNAME (f_check_core_end): CHECKING FOR CORE FILES IN $1"
+
+if [ "`ls core* CORE* 2>/dev/null`" != "" ]; then
+   echo "$MSH_QNAME (f_check_core_end): CORE FILE FOUND --> BREAKING CHAIN: EXIT (1)"
+   #exit 1
+   MSH_EXIT=1
+fi
+
+echo "$MSH_QNAME (f_check_core_end): CHECKING FOR END\* FILES IN $1"
+
+# LAST ECHAM SIMULATION IN JOB-CHAIN REACHED
+# USER-GENERATED OR OLD END-FILE
+if test -r END ; then
+    echo "$MSH_QNAME (f_check_core_end): END OF CHAIN REACHED"
+    echo "END (USER GENERATED OR OLD):"
+    cat END
+    echo "$MSH_QNAME (f_check_core_end): --> STOPPING CHAIN: EXIT (0)"
+    #exit 0
+    MSH_EXIT=0
+fi
+
+### ICON-GENERATED END FILE (finish.status)
+if test -r finish.status ; then
+    finish_status=`cat finish.status | sed 's| ||g'`
+    if [ "$finish_status" = "OK" ]; then
+       cat finish.status
+#        mv -f finish.status END0
+    fi
+    if [ "$finish_status" = "RESTART" ]; then
+	cat finish.status
+    fi
+fi
+
+### MESSy-GENERATED END FILE(S)
+if [ "`ls END?* 2>/dev/null`" != "" ]; then
+    cat END?* > END
+    \ls END?* | xargs rm -f
+    echo "$MSH_QNAME (f_check_core_end): END OF CHAIN REACHED"
+    echo "END (MODEL GENERATED):"
+    cat END
+    echo "$MSH_QNAME (f_check_core_end): --> STOPPING CHAIN: EXIT (0)"
+    #exit 0
+    MSH_EXIT=0
+fi
+
+cd -
+}
+### *************************************************************************
+
+### *************************************************************************
+### SUBMIT NEXT CHAIN ELEMENT ?
+### *************************************************************************
+f_set_do_next( )
+{
+### ........................
+### -> MSH_DONEXT
+### ........................
+
+# INIT
+MSH_DONEXT=.TRUE.
+
+# LoadLeveler MULTI-STEP-JOBS: DO NOT SUBMIT NEXT CHAIN ELEMENT, IF
+#             STEPS OF SAME JOB ARE STILL QUEUED
+if test "$MSH_QSYS" = "LL" ; then
+   if test "$LOADL_STEP_NAME" = "0" ; then
+      MSH_DONEXT=.TRUE.
+   else
+      #qqq+
+      mshtmprs=`llq -j $LOADL_JOB_NAME | grep NQ | wc -l`
+      if [ $mshtmprs -eq 0 ] ; then
+	 MSH_DONEXT=.TRUE.
+      else
+	 MSH_DONEXT=.FALSE.
+	 echo " ... finishing step $LOADL_STEP_NAME ..."
+	 llq -u $USER
+      fi
+      #qqq-
+      #MSH_DONEXT=.FALSE.
+      #echo " ... finishing step $LOADL_STEP_NAME ..."
+      #llq -u $USER
+   fi
+fi
+}
+### *************************************************************************
+
+### *************************************************************************
+### SETUP RUN COMMAND FOR
+### *************************************************************************
+f_run( )
+{
+### ..........................
+### -> MSH_RUN
+### ..........................
+
+### PROFILING / TRACING
+if test "${PROFMODE:=.FALSE.}" = "TPROF" ; then
+   if test -r a.lst ; then
+      ### compile with -qipa=level=0:list -qlist -qreport
+      ### and link a.lst to $WORKDIR
+      MSH_PROF="$PROFCMD -usz -L a.lst -p $EXECUTABLE -x"
+   else
+      MSH_PROF="$PROFCMD -usz -p $EXECUTABLE -x"
+   fi
+else
+   MSH_PROF="$PROFCMD"
+fi
+
+### ONLY ONE INSTANCE
+if [ $MSH_INST -eq 1 ] ; then
+
+case $MSH_PENV in
+    poe)
+	if test "$MSH_QSYS" = "NONE" ; then
+	    MSH_RUN="$MSH_PROF poe $MSH_MEASURE $EXECUTABLE $MSH_PINP -procs $MSH_NCPUS"
+	else
+	    MSH_RUN="$MSH_PROF poe $MSH_MEASURE $EXECUTABLE $MSH_PINP"
+	fi
+	;;
+    mpirun)
+	MSH_RUN="$MSH_MEASURE $MSH_PROF mpirun $MPI_OPT -np $MSH_NCPUS $MSH_UHO $EXECUTABLE $MSH_PINP"
+	;;
+    mpisx)
+	############################################################
+	### _MPINNODES SET BY PBS
+	if test "${_MPINNODES:=1}" = "1" ; then
+	  CPUS_PER_NODE=$MSH_NCPUS
+	  CPUS_REST=0
+	  MAXCPUS=$MSH_SX_CPUSPERNODE
+	else
+	  set +e
+	  CPUS_PER_NODE=`expr $MSH_NCPUS / ${_MPINNODES}`
+	  CPUS_REST=`expr $MSH_NCPUS % ${_MPINNODES}`
+	  MAXCPUS=`expr ${_MPINNODES} \* $MSH_SX_CPUSPERNODE`
+	  set -e
+	fi
+	###
+	if [ $MSH_NCPUS -gt $MAXCPUS ] ; then
+	   echo "$MSH_QNAME ERROR 1 (f_run): MSH_NCPUS ($MSH_NCPUS) > MAXCPUS ($MAXCPUS)"
+	   exit 1
+	fi
+	###
+	if test -r host.conf ; then
+	   rm -f host.conf
+	fi
+	###
+	if [ ${_MPINNODES} -eq 1 ] ; then
+	  # SINGLE NODE JOB
+	  #if test "$MSH_HOST" = "cs24" ; then
+	  #  echo "-h $MSH_HOST -p $MSH_NCPUS -e ${EXECUTABLE}" > host.conf
+	  #else
+	    echo "-h 0 -p $MSH_NCPUS -e ${EXECUTABLE}" > host.conf
+	  #fi
+	else
+	  x=0
+	  y=`expr ${_MPINNODES} - 1`
+	  while [ $x -lt $y ] ; do
+	    echo "-h $x -p $CPUS_PER_NODE -e ${EXECUTABLE}" >>  host.conf
+	    x=`expr $x + 1`
+	  done
+	  y=`expr $CPUS_PER_NODE + $CPUS_REST`
+	  echo "-h $x -p $y -e ${EXECUTABLE}" >>  host.conf
+	fi
+	############################################################
+	MSH_RUN="$MSH_MEASURE $MSH_PROF mpirun $MSH_UHO"
+	;;
+    mpiexec)
+	MSH_RUN="$MSH_MEASURE $MSH_PROF mpiexec $MSH_UHO -l -s all -n $MSH_NCPUS  $EXECUTABLE $MSH_PINP"
+	;;
+    mpiexec_hlrb2)
+	MSH_RUN="$MSH_MEASURE $MSH_PROF mpiexec $MSH_UHO $EXECUTABLE $MSH_PINP"
+	;;
+    mpirun_lsf)
+	MSH_RUN="$MSH_PROF mpirun.lsf $EXECUTABLE $MSH_PINP"
+	;;
+    mpiexec_bonn)
+	MSH_RUN="$MSH_PROF /home/omgfort/bin/mpiexec -np $MSH_NCPUS $MSH_UHO $EXECUTABLE $MSH_PINP"
+	;;
+    mpiexec_spec)
+	MSH_RUN="$MSH_MEASURE $MSH_PROF $MPI_ROOT/bin/mpiexec $MPI_OPT -np $MSH_NCPUS $MSH_UHO $EXECUTABLE $MSH_PINP"
+	;;
+    intelmpi)
+	if test "$MSH_MEASMODE" = "valgrind" ; then
+	   MSH_RUN="$MSH_PROF mpiexec $MPI_OPT $MSH_UHO -n $MSH_NCPUS $MSH_MEASURE  $EXECUTABLE $MSH_PINP"
+	else
+	   MSH_RUN="$MSH_MEASURE $MSH_PROF mpiexec $MPI_OPT $MSH_UHO -n $MSH_NCPUS $EXECUTABLE $MSH_PINP"
+	fi
+	;;
+    openmpi)
+	if test "$MSH_MEASMODE" = "valgrind" ; then
+	   MSH_RUN="$MSH_PROF mpiexec $MPI_OPT -np $MSH_NCPUS $MSH_UHO $MSH_MEASURE $EXECUTABLE $MSH_PINP"
+	else
+	   MSH_RUN="$MSH_MEASURE $MSH_PROF mpiexec $MPI_OPT -np $MSH_NCPUS $MSH_UHO $EXECUTABLE $MSH_PINP"
+	fi
+	;;
+    srun)
+	if test "$MSH_MEASMODE" = "valgrind" ; then
+	   MSH_RUN="srun $MPI_OPT -n $MSH_NCPUS $MSH_MEASURE $EXECUTABLE $MSH_PINP"
+	else
+	   MSH_RUN="$MSH_MEASURE srun $MPI_OPT -n $MSH_NCPUS $EXECUTABLE $MSH_PINP"
+	fi
+	;;
+    aprun)
+	MSH_RUN="$MSH_MEASURE $MSH_PROF aprun -n $MSH_NCPUS $MPI_OPT $EXECUTABLE $MSH_PINP"
+	;;
+    serial)
+	MSH_RUN="$MSH_MEASURE $MSH_PROF $EXECUTABLE $MSH_PINP"
+	;;
+    *)
+	echo "$MSH_QNAME ERROR 1 (f_run): UNKNOWN PARALLEL ENVIRONMENT"'!'
+	exit 1
+esac
+
+### MORE THAN ONE INSTANCE
+else
+
+case $MSH_PENV in
+    poe)
+	f_make_poe_cmdfile
+
+	if test "$MSH_QSYS" = "NONE" ; then
+	    MSH_RUN="$MSH_PROF poe -procs $MSH_NCPUS"
+	else
+	   MSH_RUN="$MSH_PROF poe"
+	fi
+	;;
+
+    srun)
+	f_make_srun_cmdfile
+	MSH_RUN="$MSH_MEASURE srun $MPI_OPT -n $MSH_NCPUS --multi-prog cmdfile.srun"
+	;;
+
+    mpiexec)
+	MSH_RUN="$MSH_MEASURE $MSH_PROF mpiexec $MSH_UHO -l -s all -n ${NCPUS[1]} ./start.01.sh"
+	i=2
+	while [ $i -le $MSH_INST ] ; do
+	    istr=`echo $i | awk '{printf("%2.2i\n",$1)}'`
+	    MSH_RUN="$MSH_RUN : -n ${NCPUS[$i]} ./start.${istr}.sh"
+	    i=`expr $i + 1`
+	done
+	;;
+
+    openmpi)
+	MSH_RUN="$MSH_MEASURE $MSH_PROF mpiexec $MPI_OPT -np ${NCPUS[1]} $MSH_UHO ./start.01.sh"
+	i=2
+	while [ $i -le $MSH_INST ] ; do
+	    istr=`echo $i | awk '{printf("%2.2i\n",$1)}'`
+	    MSH_RUN="$MSH_RUN : -np ${NCPUS[$i]} ./start.${istr}.sh"
+	    i=`expr $i + 1`
+	done
+	;;
+
+     intelmpi)
+	#-l -s all
+	MSH_RUN="$MSH_MEASURE $MSH_PROF mpiexec $MPI_OPT $MSH_UHO -n ${NCPUS[1]} ./start.01.sh"
+	i=2
+	while [ $i -le $MSH_INST ] ; do
+	    istr=`echo $i | awk '{printf("%2.2i\n",$1)}'`
+	    MSH_RUN="$MSH_RUN : -n ${NCPUS[$i]} ./start.${istr}.sh"
+	    i=`expr $i + 1`
+	done
+	;;
+     mpirun)
+	#-l -s all
+	MSH_RUN="$MSH_MEASURE $MSH_PROF mpirun $MPI_OPT $MSH_UHO -n ${NCPUS[1]} ./start.01.sh"
+	i=2
+	while [ $i -le $MSH_INST ] ; do
+	    istr=`echo $i | awk '{printf("%2.2i\n",$1)}'`
+	    MSH_RUN="$MSH_RUN : -n ${NCPUS[$i]} ./start.${istr}.sh"
+	    i=`expr $i + 1`
+	done
+	;;
+     aprun)
+	i=1
+	istr=`echo $i | awk '{printf("%2.2i\n",$1)}'`
+	MSH_RUN="${MSH_PENV} -n ${NCPUS[1]} ${MPI_OPT} ./start.${istr}.sh "
+	i=2
+	while [ $i -le $MSH_INST ] ; do
+	    istr=`echo $i | awk '{printf("%2.2i\n",$1)}'`
+	    MSH_RUN="${MSH_RUN} : -n ${NCPUS[$i]} ${MPI_OPT} ./start.${istr}.sh"
+	    i=`expr $i + 1`
+	done
+	;;
+     mpiexec_hlrb2|mpirun_lsf|mpiexec_bonn|mpiexec_spec)
+	echo "$MSH_QNAME ERROR 2 (f_run): multi instance start not implemented for parallel environment $MSH_PENV"
+	exit 1
+	;;
+
+    serial)
+	echo "$MSH_QNAME ERROR 3 (f_run): multi instance start not possible in serial mode"
+	exit 1
+	;;
+
+    *)
+	echo "$MSH_QNAME ERROR 3 (f_run): UNKNOWN PARALLEL ENVIRONMENT"'!'
+	exit 1
+esac
+
+### ONE OR MORE THAN ONE INSTANCE
+fi
+
+### GET/WRITE HOSTFILE, IF REQUIRED
+if test ! "$MSH_UHO" = "" ; then
+    if test ! "$MSH_MACH" = "" ; then
+	case $MSH_HOST in
+	    octopus*|grand*)
+		### for MPICH2
+		#cat $MSH_MACH | awk '{print $1":"$2}' > host.list
+		### for OpenMPI
+		cat $MSH_MACH | awk '{print $1" slots="$2}' > host.list
+		;;
+	    *)
+		cp -f $MSH_MACH ./host.list
+		;;
+	esac
+    else
+	if [ $MSH_NCPUS -gt 0 ] ; then
+	    if test -r host.list ; then
+		rm -f host.list
+	    fi
+	    echo $MSH_HOST > host.list
+	    x=$MSH_NCPUS
+	    while [ $x -gt 1 ] ; do
+		echo $MSH_HOST >>  host.list
+		x=`expr $x - 1`
+	    done
+	fi
+    fi
+fi
+}
+### *************************************************************************
+
+### *************************************************************************
+### START POST PROCESSING
+### *************************************************************************
+f_start_postproc( )
+{
+MSH_POST_PROC=my_postproc
+
+if test -r $MSH_POST_PROC ; then
+   if test "$MSH_QSYS" = "NONE" ; then
+      timestamp=`date +"%Y%m%d%H%M%S"`
+      eval ./$MSH_POST_PROC > ${MSH_POST_PROC}.${timestamp}.log 2>&1 &
+   else
+      eval $MSH_QCMD $MSH_POST_PROC
+   fi
+else
+  echo "$MSH_QNAME WARNING (f_start_postproc): $MSH_POST_PROC not present"'!'
+fi
+
+}
+### *************************************************************************
+
+#############################################################################
+#############################################################################
+###==========================================================================
+#############################################################################
+### PROGRAM SEQUENCE
+#############################################################################
+###==========================================================================
+#############################################################################
+#############################################################################
+
+echo $hline | sed 's|-|#|g'
+echo "### RUN-SCRIPT FOR MESSy MULTI-MODEL DRIVER (MMD)"
+echo "### (C) Patrick Joeckel, DLR-IPA, Dec 2009-2016"
+echo $hline | sed 's|-|#|g'
+echo "DATE/TIME: `date`"
+echo $hline | sed 's|-|#|g'
+
+if test "$1" = "-h" ; then
+   echo $hline
+   f_help_message
+   echo $hline
+   exit 0
+fi
+
+### calculate NUMBER OF CPUs
+f_numcpus
+
+### check QUEUING SYSTEM
+f_qsys
+
+### set up for QUEING SYSTEM
+f_qsys_setup
+
+if test "$MSH_QNCPUS" != "-1" ; then
+ if [ $MSH_QNCPUS -ne $MSH_NCPUS ] ; then
+    echo "ERROR: $MSH_QNCPUS TASKS REQUESTED, BUT $MSH_NCPUS USED"'!'
+    exit 1
+ fi
+fi
+
+### HOST specific setup
+### Let user set domain. / Work-around for CARA@DLR.
+if test -z "$MSH_DOMAIN" ; then
+  f_get_domain
+else
+  MSH_DOMAIN=${MSH_HOST}.${MSH_DOMAIN}
+fi
+#echo MSH_HOST   = $MSH_HOST
+#echo MSH_DOMAIN = $MSH_DOMAIN
+f_measuremode
+f_host $1
+
+### setupt DATA (INPUT) directories
+f_set_datadirs
+
+### check / set BASEDIR of distribution
+f_set_basedir
+
+### check / set NMLDIR
+#f_set_nmldir
+
+### check / set WORKDIR
+f_set_workdir
+
+cd $WORKDIR
+
+### check / create subdirectories for different instances
+f_make_worksubdirs
+
+f_make_cosmo_outdirs
+
+### check for restart
+if [ $MSH_INST -gt 1 ] ; then
+  # more than one instance
+  i=1
+  while [ $i -le $MSH_INST ] ; do
+    istr=`echo $i | awk '{printf("%2.2i\n",$1)}'`
+    echo $hline
+    f_check_restart  $istr $WORKDIR/$istr $MSH_INST
+    echo $hline
+    i=`expr $i + 1`
+  done
+else
+  # only one instance
+  echo $hline
+  f_check_restart 01 $WORKDIR $MSH_INST
+  echo $hline
+fi
+
+### set chain number and check instances
+f_set_chain
+
+# calculate minimum MSH_NR (copy nml or not ?)
+if [ $MSH_INST -gt 1 ] ; then
+   MSH_NR_MIN=${MSH_NR[1]}
+# um_ak_20150922+
+   MSH_NR_MAX=${MSH_NR[1]}
+# um_ak_20150922-
+   i=2
+   while [ $i -le $MSH_INST ] ; do
+     if [ ${MSH_NR[$i]} -lt $MSH_NR_MIN ] ; then
+	MSH_NR_MIN=${MSH_NR[$i]}
+     fi
+# um_ak_20150922+
+     if [ ${MSH_NR[$i]} -gt $MSH_NR_MAX ] ; then
+	MSH_NR_MAX=${MSH_NR[$i]}
+     fi
+# um_ak_20150922-
+     i=`expr $i + 1`
+    done
+else
+    MSH_NR_MIN=${MSH_NR[1]}
+# um_ak_20150922+
+    MSH_NR_MAX=${MSH_NR[1]}
+# um_ak_20150922-
+fi
+
+### check / set NMLDIR
+f_set_nmldir
+
+### create main setup into WORKDIR
+f_copy_main_setup
+
+### create setups for different instances
+i=1
+while [ $i -le $MSH_INST ] ; do
+  istr=`echo $i | awk '{printf("%2.2i\n",$1)}'`
+  WDIR=$WORKDIR/$istr
+  j=$i
+  if test "$i" = "1" ; then
+     if test "$MSH_INST" = "1" ; then
+	WDIR=$WORKDIR
+	j=0
+     fi
+  fi
+  case ${MINSTANCE[$i]} in
+     ECHAM5)
+       EXECUTABLE=bin/echam5.exe
+       MSH_PINP=$MSH_E5PINP
+       echo $hline
+       f_setup_echam5 $WDIR $j
+       echo $hline
+       ;;
+     ICON)
+       EXECUTABLE=bin/icon.exe
+       echo $hline
+       f_setup_icon $WDIR $j
+       echo $hline
+       ;;
+     mpiom)
+       EXECUTABLE=bin/mpiom.exe
+       MSH_PINP=
+       echo $hline
+       f_setup_mpiom
+       echo $hline
+       f_setup_mbm $WDIR $j ${MINSTANCE[$i]}
+       echo $hline
+       ;;
+     COSMO)
+       EXECUTABLE=bin/cosmo.exe
+       MSH_PINP=
+       echo $hline
+       f_setup_cosmo $WDIR $j
+       echo $hline
+       ;;
+     CLM)
+       EXECUTABLE=bin/clm.exe
+       MSH_PINP=
+       echo $hline
+       f_setup_clm $WDIR $j
+       echo $hline
+       ;;
+     CESM1)
+       EXECUTABLE=bin/cesm1.exe
+       MSH_PINP=
+       echo $hline
+       f_setup_cesm $WDIR $j
+       echo $hline
+       ;;
+     *)
+       EXECUTABLE=bin/${MINSTANCE[$i]}.exe
+       # this has been tested to work also for CAABA, BLANK, ...
+       # MSH_PINP=
+       MSH_PINP=${MINSTANCE[$i]}.nml
+       echo $hline
+       f_setup_mbm $WDIR $j ${MINSTANCE[$i]}
+       echo $hline
+       ;;
+  esac
+  # create wrapper script for MMD
+  if [ $MSH_INST -gt 1 ] ; then
+     # more than one instance: create wrapper script
+     f_make_wrap $istr $EXECUTABLE
+     EXECUTABLE=
+     MSH_PINP=
+  fi
+
+  i=`expr $i + 1`
+done
+
+### namcouple(.nml) for OASIS3MCT (IS_OASIS_SETUP already used in f_mmd_layout)
+if [ $MSH_INST -gt 1 ] ; then
+   f_setup_oasis3mct
+fi
+
+### coupling layout for MMD
+if [ $MSH_INST -gt 1 ] ; then
+   f_mmd_layout
+fi
+
+### set MSH_RUN for poe and other parallel environments (incl. command files)
+f_run
+
+### save environment and shell settings to special log-file
+f_save_env
+f_save_modules
+
+### echo diagnostic output
+echo $hline | sed 's|-|#|g'
+f_diagout
+echo $hline | sed 's|-|#|g'
+echo "$MSH_QNAME DATE/TIME           : `date`"
+echo "$MSH_QNAME SETUP COMPLETED"
+echo $hline | sed 's|-|#|g'
+
+### exit if test only
+if test "${TESTMODE:=.FALSE.}" = ".TRUE." ; then
+   exit 0
+fi
+
+### run the model(s)
+echo $hline | sed 's|-|#|g'
+echo "$MSH_QNAME DATE/TIME           : `date`"
+echo "$MSH_QNAME CURRENT DIRECTORY   : `pwd`"
+if test "$1" = "-c" ; then
+   echo "$MSH_QNAME CLEANING CURRENT WORKING DIRECTORY ..."
+else
+   if test ! "$1" = "-t" ; then
+      echo "$MSH_QNAME RUNNING THE MODEL(S): $MSH_RUN"
+      echo $hline | sed 's|-|#|g'
+      $MSH_RUN
+   else
+      echo "$MSH_QNAME RUNNING THE MODEL(S): $MSH_RUN"
+      echo "$MSH_QNAME RUNNING THE MODEL(S): (SKIPPED: -t OPTION)"
+   fi
+fi
+
+### diagnostic output
+echo $hline | sed 's|-|#|g'
+echo "$MSH_QNAME DATE/TIME = `date`"
+echo "$MSH_QNAME CHAIN ELEMENT COMPLETED, CHECKING ..."
+echo $hline | sed 's|-|#|g'
+
+### check for corefiles and for END files
+MSH_EXIT=-1
+if test ! "$1" = "-c" ; then
+   echo $hline
+   if [ $MSH_INST -gt 1 ] ; then
+      # more than one instance
+      i=1
+      while [ $i -le $MSH_INST ] ; do
+	istr=`echo $i | awk '{printf("%2.2i\n",$1)}'`
+	f_check_core_end $WORKDIR/$istr
+	i=`expr $i + 1`
+      done
+   else
+      # only one instance
+      f_check_core_end $WORKDIR
+   fi
+   echo $hline
+fi
+
+echo $hline | sed 's|-|#|g'
+echo "$MSH_QNAME DATE/TIME = `date`"
+echo "$MSH_QNAME CHECKING COMPLETED, SAVING RESTART FILES ..."
+echo $hline | sed 's|-|#|g'
+
+### clean up (save restart)
+i=1
+while [ $i -le $MSH_INST ] ; do
+  istr=`echo $i | awk '{printf("%2.2i\n",$1)}'`
+  WDIR=$WORKDIR/$istr
+  j=$i
+  if test "$i" = "1" ; then
+     if test "$MSH_INST" = "1" ; then
+	WDIR=$WORKDIR
+	j=0
+     fi
+  fi
+
+  cd $WDIR
+  if [ $MSH_INST -gt 1 ] ; then
+    rm -f MMD_layout.nml
+    # OASIS3MCT+
+    f_cleanup_oasis3mct
+    find . -type l -name namcouple | xargs rm -f
+    rm -f namcouple
+    # OASIS3MCT-
+  fi
+  echo $hline
+  f_del_restart
+  nr=`cat $WDIR/MSH_NO`
+  nrstr=`echo $nr | awk '{printf("%04g\n",$1)}'`
+  f_save_restart $nrstr
+  case ${MINSTANCE[$i]} in
+     ECHAM5)
+       f_cleanup_echam5
+       ;;
+     ICON)
+       f_cleanup_icon
+       ;;
+     mpiom)
+       f_cleanup_mpiom
+       ;;
+     COSMO)
+       ### no specific cleanup required
+       ;;
+     CESM1)
+       ### no specific cleanup required
+       ;;
+     *)
+       ### no specific cleanup required for MBMs
+       ;;
+  esac
+  echo $hline
+  cd $WDIR
+  i=`expr $i + 1`
+done
+
+### GO BACK TO MAIN WORKDIR
+cd $WORKDIR
+
+### general cleanup for MMD / OASIS3MCT runs
+if [ $MSH_INST -gt 1 ] ; then
+    rm -f MMD_layout.nml
+    rm -f cmdfile.poe
+    # OASIS3MCT+
+    f_cleanup_oasis3mct
+    find . -type l -name namcouple | xargs rm -f
+    rm -f namcouple
+    # OASIS3MCT-
+fi
+
+### diagnostic output
+echo $hline | sed 's|-|#|g'
+echo "$MSH_QNAME DATE/TIME = `date`"
+echo "$MSH_QNAME SAVING RESTART FILES COMPLETED, CONTINUE ..."
+echo $hline | sed 's|-|#|g'
+
+#  op_pj_20120322+
+# submit post-processing job
+if [ $MSH_EXIT -le 0 ] ; then
+   f_start_postproc
+fi
+#  op_pj_20120322-
+
+### exit or submit next chain element
+case ${MSH_EXIT} in
+   0)
+     # END reached
+     echo "$MSH_QNAME STOPPING BECAUSE END-FILE FOUND. SEE ABOVE."
+     echo $hline | sed 's|-|#|g'
+     exit 0
+     ;;
+   1)
+     # core file found
+     echo "$MSH_QNAME STOPPING BECAUSE CORE-FILE FOUND. SEE ABOVE."
+     echo $hline | sed 's|-|#|g'
+     exit 1
+     ;;
+esac
+
+### exit here, if test only
+if test "$1" = "-t" ; then
+   exit 0
+fi
+
+### check restart
+# i=1
+# while [ $i -le $MSH_INST ] ; do
+#   istr=`echo $i | awk '{printf("%2.2i\n",$1)}'`
+#   WDIR=$WORKDIR/$istr
+#   j=$i
+#   if test "$i" = "1" ; then
+#      if test "$MSH_INST" = "1" ; then
+#         WDIR=$WORKDIR
+#         j=0
+#      fi
+#   fi
+#   echo $hline
+#   f_check_restart $WDIR
+#   echo $hline
+#   i=`expr $i + 1`
+# done
+
+# submit next chain element ?
+# qqq how to select, without a list of specific rules, if restart is
+#     reasonable? (blank: yes; ncregrid, import_grid: no; ... ???)
+f_set_do_next
+
+if test ! "$1" = "-c" ; then
+
+   if test "$MSH_DONEXT" = ".TRUE." ; then
+      echo "$MSH_QNAME SUBMITTING NEXT CHAIN ELEMENT: $MSH_QNEXT"
+      eval $MSH_QNEXT
+   fi
+
+#  op_pj_20120322+
+## submit post-processing job
+#f_start_postproc
+#  op_pj_20120322-
+
+else
+
+   echo "$MSH_QNAME CLEANUP FINISHED."
+   echo " -> INITIALIZE RESTART WITH init_restart"
+
+fi
+
+echo "$MSH_QNAME END OF SCRIPT: EXIT (0)"
+echo $hline | sed 's|-|#|g'
+exit 0
+#############################################################################

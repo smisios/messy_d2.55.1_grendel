@@ -1,0 +1,52 @@
+&CTRL
+ltimesim  = .false.  ! do a simulation with fixed time
+lexternal = .false. ! read in an external file
+lsteady   = .true. ! calculate steady state only 
+/
+
+&CONDI
+temp = 278.15 ! K
+rh   = 38.0   ! %
+constart(1) = 0.000
+constart(2) = 0.000
+/
+
+&TIMER
+time  = 7200.0 ! total simulation time
+tstep = 60.0   ! length of time step in seconds
+/
+
+!! use &SRCES, &IONS in casees where lexternal is .false.
+&SRCES
+! production rates for nucleating species, order given by nucleation.nml vapour_names(:)
+! production rates are initialised with zero in the box model
+production(1) = 2.0e5 ! H2SO4 production 
+production(2) = 0 ! NH3 production/sources
+/
+
+&LOSS
+! condensation sink or wall loss or other time independent first order wall loss, order given by nucleation.nml vapour_names(:)
+cs(1) = 0.002 ! H2SO4
+cs(2) = 0.001 ! NH3
+
+! Second Order Losses
+sol(1)=0.0
+sol(2)=0.0
+/ 
+
+&IONS
+qion=70.0    ! ion pair production rate
+klion=0.002 ! first order loss
+krec=1.6e-6 ! recombination rate constat
+/
+
+&EXT
+!! external input files
+!! only if lexternal is .true.
+
+! outsuf = 'dat'  ! choose an outputfilename here
+
+!! data table input. Up to 100 input files are allowed in the form FILENAME.END, the box model will write the result into
+!! a file named FILENAME // . // outsuf.  
+! exfile(1) = 'h2so4_variation_278K_beam.txt' 
+/

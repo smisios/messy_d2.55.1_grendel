@@ -1,0 +1,69 @@
+! -*- f90 -*-
+&CPL_EXTDATA
+slf_file='${EXTDIR_COSMO}/${EXTNAME_COSMO}'
+slf_name='FR_LAND'
+lon_name='rlon'
+lat_name='rlat'
+/ 
+! LOCCOUPLE(:)='component name','send location', 'receive location','mask'
+!   'send location' = 'subroutine name : B / E : order send/receive'
+!  B:= begin of entry point calls
+!  E:=   end of entry point calls
+!  1 / 2 order of send /receive 
+!  mask: mask for coupling e.g. land model => land mask
+!        0: all point are taken into account (default)
+!        1: land mask
+!        2:  sea mask
+!
+&CPL
+LOCCOUPLE(1)='cosmo02','messy_global_start:B:2','messy_global_start:B:1',0,
+LOCCOUPLE(2)='echam01','messy_init_loop:B:1','messy_init_loop:B:2',0,
+!LOCCOUPLE(2)='clm05','messy_convec:B:1','messy_convec:B:2',1,
+! location in organize_physics
+! LOCCOUPLE(4)='clmXX','messy_init_loop:B:2','messy_init_loop:B:1'
+
+! SOURCE FIELDS
+! SFIELD(:) = 'oasisnamcouple name', 'channel name', 'object name', 'oasaxis','levelstr'
+! - oasaxis: string: DEFINES HOW TO INTERPRET THE OASIS MULTI-LEVEL INFORMATION
+!             FORMAT:  'Z;N:nnum;T:tlev' => respective order is important !
+!                      'Z' can be without specifier => nlev
+! - levelstr: SPECIFIES LEVELs of variable , enables rank reduction
+!             FORMAT: 'Z:zn;N:nn;T:tn'
+!             specific: T:  nnow: tn= -1 ; nnew: tn=-2 
+!             specific: Z:  top: zn = -1 , zsurface: n= 0 
+SFIELD(1) = 'EMACLON' ,'geoloc',   'philon', ' ', ' ',
+SFIELD(2) = 'EMACLAT' ,'geoloc',   'philat', ' ', ' ',
+SFIELD(3) = 'COSMOLON' ,'grid_def',   'philon_2d', ' ', ' ',
+SFIELD(4) = 'COSMOLAT' ,'grid_def',   'philat_2d', ' ', ' ',
+
+!SFIELD(19)  = 'COSCO2PP', 'tracer_gp','CO2',' ', 'Z:0',
+
+!
+!
+! - 'OASIS' as channel name indicates, that the submodel should create the
+!     channel object. In this case the representation is required.
+! - lcreate = T => create if channel object does not exist, in this case the 
+!     representation is required.
+! - mask field: 0 use all points, 1 use only landpoint, 2 only sea points
+! - postproc: postprocessing string: non-empty variable needs specific treatment
+!    - ABS      use absolute value
+!    - x:fac    multiply by "fac", e.g. "-1"
+!    - +:const  add constant 
+!    - GT:limit=number  ie. if (x > limit) x = number
+!    - GE, LT,LE similar
+! - oasaxis: string: DEFINES HOW TO INTERPRET THE OASIS MULTI-LEVEL INFORMATION
+!             FORMAT:  'Z;N:nnum;T:tlev' => respective order is important !
+!                      'Z' can be without specifier => nlev
+! - levelstr: SPECIFIES LEVELs of variable , enables rank reduction
+!             FORMAT: 'Z:zn;N:nn;T:tn'
+!             specific: T:  nnow: tn= -1 ; nnew: tn=-2 
+!             specific: Z:  lower most model layer : zn= 0 
+! - representation string for channel object creation 
+
+!
+
+RFIELD(17)  = 'REMACLON', 'oasis3mct','EMACLON',T,0,'',' ',' ','GP_2D_HORIZONTAL' 
+RFIELD(18)  = 'REMACLAT', 'oasis3mct','EMACLAT',T,0,'',' ',' ','GP_2D_HORIZONTAL' 
+RFIELD(19)  = 'RCOSMOLAT', 'oasis3mct','COSMOLAT',T,0,'',' ',' ','GP_2D_HORIZONTAL' 
+RFIELD(20)  = 'RCOSMOLON', 'oasis3mct','COSMOLON',T,0,'',' ',' ','GP_2D_HORIZONTAL' 
+/

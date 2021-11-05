@@ -1,0 +1,267 @@
+#! @PERL@
+
+##############################################################################
+#
+#  geometry.pl
+#
+#	$Id: geometry.pl,v 1.12 2008/09/30 19:53:18 cp Exp $
+#
+#  Generates #@task_geometry entries or host files with task layout
+#  optimized for nearest neighbor exchange.
+#
+#  C. Pospiech
+#
+##############################################################################
+
+sub get_options() {
+    use Getopt::Std;
+    my($opt_string) = 'hdb:fs:i:';
+    my(@save_ARGV) = @ARGV;
+    my($opt);
+    my(%opt) = ();
+
+    getopts( "$opt_string", \%opt ) or print_syntax();
+
+    $d = 1   if ( $opt{"d"} );
+    $f = 1   if ( $opt{"f"} );
+    $h = 1   if ( $opt{"h"} );
+    $s = 2;
+    $s = $opt{"s"} if ($opt{"s"} =~ /\d+/ );
+    if ( $opt{"b"} ) {
+	$b = $opt{"b"};
+    } else {
+	$b = shift @ARGV;
+    }
+    $npio = 0;
+    $npio = $opt{"i"}  if ($opt{"i"} =~ /\d+/ );
+}
+
+
+sub product {
+    local($result) = 1;
+    local($i);
+    for $i (@_) {
+	$result *= $i;
+    }
+    $result;
+}
+
+
+sub next_inx {
+    local($i);
+    for ($i=0; $i<=$#_; $i++) {
+	$_[$i] += $step_size[$i];
+	if ( $_[$i] < $upper_bound[$i] ) { return (1);}
+	$_[$i] = $lower_bound[$i];
+    }
+    return (0);
+}
+
+
+sub position {
+    local ($i);
+    local ($pos) = $_[0];
+    for ($i=1; $i<=$#_; $i++) {
+	$pos = $pos*$np[$i] + $_[$i];
+    }
+    $pos;
+}
+
+
+sub actual_size {
+    local(@base) = @_;
+    local(@top)  = @base;
+    local(@diff);
+    local($i);
+    for ($i=0; $i <= $#base; $i++) {
+	$top[$i] += $ts[$i];
+	$top[$i] = $np[$i] if ( $top[$i] > $np[$i]);
+	$diff[$i] = $top[$i] - $base[$i];
+    }
+    return (&product (@diff) );
+}
+
+
+sub bucket_number {
+    local($inx) = $_[0];
+    local($act_size) = $_[1];
+    return (-1) if ( $inx > 512 );
+    local($free) = $tpn;
+    push (@free_places, $free) if ( $inx > $#free_places);
+    $free_places[$inx] -= $act_size, return($inx)
+	if ( $act_size <= $free_places[$inx] );
+    return (&bucket_number($inx+1, $act_size));
+}
+
+
+sub copy_tile2bucket {
+    local(@base)  = @_;
+    local(@top)   = @base;
+    local($label) = join('-',@base);
+    local($i,@loc_inx);
+    for ($i=0; $i <= $#base; $i++) {
+	$top[$i] += $ts[$i];
+	$top[$i] = $np[$i] if ( $top[$i] > $np[$i]);
+    }
+    local($act_size) = $size{$label};
+    return (-1) if ( $act_size <= 0 );
+    local($inx) = &bucket_number(0, $act_size);
+    return (-2) if ( $inx < 0 );
+    printf  ("%s size %d -> %d\n",$label,$act_size,$inx) if ( $d );
+    @lower_bound = @base;
+    @upper_bound = @top;
+    @step_size   = (1) x @top;
+    @loc_inx     = @lower_bound;
+    $loc_inx[0] -= $step_size[0];
+    while (&next_inx (@loc_inx)) {
+	if ( $bucket{$inx} eq "" ) {
+	    $bucket{$inx} = &position (@loc_inx);
+	} else {
+	    $bucket{$inx} = join('-',$bucket{$inx},&position (@loc_inx));
+	}
+    }
+    return (0);
+}
+
+
+sub copy_io2bucket {
+    local($taskid) = $_[0];
+    local($act_size) = 1;
+    local($inx) = &bucket_number(0, $act_size);
+    return (-2) if ( $inx < 0 );
+    printf  ("I/O size 1 -> %d\n",$inx) if ( $d );
+    if ( $bucket{$inx} eq "" ) {
+	$bucket{$inx} = $taskid;
+    } else {
+	$bucket{$inx} = join('-',$bucket{$inx},$taskid);
+    }
+    return (0);
+}
+
+
+sub print_syntax {
+    local($help_text);
+    $help_text  = "\n";
+    $help_text .= "Perl-script for generating LoadL task_geometries or ";
+    $help_text .= "MPI host files.\n";
+    $help_text .= "\n";
+    $help_text .= "Syntax:\n";
+    $help_text .= "\n";
+    $help_text .= "    geometry.pl <options> proc_and_tile_grid ";
+    $help_text .= "<file <file...>>,\n";
+    $help_text .= "\n";
+    $help_text .= "where options are the following.\n";
+    $help_text .= "  -h printing this help text.\n";
+    $help_text .= "  -s (='shape') number of dimensions of the ";
+    $help_text .= "processor grid.\n";
+    $help_text .= "     This option has to be followed by a blank and an ";
+    $help_text .= "integer number\n";
+    $help_text .= "     specifying the shape. The default value is 2.\n";
+    $help_text .= "     This option has to be the last option.\n";
+    $help_text .= "  -f generate host file rather than task geometry.\n";
+    $help_text .= "     The names of the hosts has to be specified either\n";
+    $help_text .= "     via stdin or in a file, which is given as ";
+    $help_text .= "last argument\n";
+    $help_text .= "  -d debuging information. This generates additional ";
+    $help_text .= "output.\n";
+    $help_text .= "  -i number of I/O tasks. This generates an extra node\n";
+    $help_text .= "     designated for I/O tasks.\n";
+    $help_text .= "\n";
+    $help_text .= "The argument proc_and_tile_grid has the form\n";
+    $help_text .= "   number-number-number-number-...-number ";
+    $help_text .= "(2*s+1 numbers),\n";
+    $help_text .= "where the first s numbers specify the processor grid,\n";
+    $help_text .= "the last s numbers the tile subgrid and the number ";
+    $help_text .= "in the middle\n";
+    $help_text .= "denotes the number of tasks per node.\n";
+    $help_text .= "The results are printed to stdout.\n";
+    $help_text;
+}
+
+#-------------------------------------------------------------------------
+#  main program
+#-------------------------------------------------------------------------
+
+# get options
+&get_options();
+
+# default values for global variables
+@lower_bound = (1) x $s;
+@upper_bound = (1) x $s;
+@step_size   = (1) x $s;
+
+# split argument $b and set default values.
+@barg = split ("-",$b);
+die &print_syntax if ( $barg[0] == 0 || $h );
+
+@np       = (1) x $s; # number of processors
+@ts       = @np;      # tile size
+$tpn      = $ppn;     # tasks per node
+$tpn      = $barg[$s] if $barg[$s] != 0;
+$ts[0]    = $tpn;     # default value for tile size
+
+# interpret values of @barg and do some elementary checks
+for ($i=0; $i<$s; $i++) {
+    $np[$i] = $barg[$i]          if $barg[$i] != 0;
+    $ts[$i] = $barg[$i + $s + 1] if $barg[$i + $s + 1] != 0;
+}
+$np       = &product (@np);
+$ts       = &product (@ts);
+die "ts $ts > tpn $tpn"     if ( $ts > $tpn );
+die "ts $ts > np $np"  if ( $ts > $np );
+for ($i=0; $i<$s; $i++) {
+    die "ts[$i] $ts[$i] > np[$i] $np[$i]" if ( $ts[$i] > $np[$i] );
+}
+$ntot = $np + $npio;
+
+# determine sizes
+
+@lower_bound = (0) x $s;
+@upper_bound = @np;
+@step_size   = @ts;
+@loc_inx     = @lower_bound;
+$loc_inx[0] -= $step_size[0];
+while ( &next_inx(@loc_inx) ) {
+    local($label) = join('-',@loc_inx);
+    $size{$label} = &actual_size(@loc_inx);
+    die ("%s has size %d\n",$label,$size{$label}) if ( $size{$label} <= 0 );
+}
+
+# put chunks into buckets
+
+for $k (sort ({$size{$b} <=> $size{$a};} keys %size )) {
+    $copy_return = &copy_tile2bucket(split ("-",$k) );
+    die "copy $k: $copy_return\n" if ( $copy_return < 0 );
+}
+
+# add I/O nodes
+
+for ( $i=$np; $i<$ntot; $i++) {
+    $copy_return = &copy_io2bucket($i);
+    die "copy $i: $copy_return\n" if ( $copy_return < 0 );
+}
+
+if ( ! $f ) {
+    print "{";
+    for ($i=0;$i<=$#free_places;$i++) {
+	if ( $i == 0 ) {print "(";}
+	else {print "# (";}
+	$tasks = join(',',  split ('-', $bucket{$i} ));
+	print "$tasks";
+	print ") \\\n";
+    }
+    print "# }";
+} else {
+    for ($i=0;$i<=$#free_places;$i++) {
+	for $j ( split ('-', $bucket{$i} )) {
+	    $inv_bucket{$j} = $i;
+	}
+    }
+
+    @host_list= <> ;
+    die "host_list too small" if ( $#host_list < $#free_places );
+
+    for $i ( sort ({$a <=> $b;} keys %inv_bucket )) {
+	print "$host_list[$inv_bucket{$i}]";
+    }
+}

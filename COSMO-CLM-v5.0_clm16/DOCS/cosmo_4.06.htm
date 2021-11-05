@@ -1,0 +1,741 @@
+<!DOCTYPE html 
+     PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+     "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xml:lang="en" lang="en">
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="GENERATOR" content="Mozilla/4.7C-SGI [en] (X11; I; IRIX64 6.5 IP27) [Netscape]">
+   <title>New COSMO-Model Versions 4.5 / 4.6</title>
+<style type="text/css">
+  body { font-family:       Arial;
+         font-size:         12pt;
+         background-repeat: no-repeat; 
+         margin:            1em; }
+
+  tt   { font-size:         12pt;}
+
+  li   { margin-top:         5pt;
+         margin-bottom:      5pt }
+
+  th   { border:           1px solid black;
+         padding:          3pt;
+         vertical-align:   top;
+         background-color: lightblue;}
+
+  td   { border:           1px solid black;
+         padding:          3pt;
+         vertical-align:   top;}
+
+  td.hilit       { border:           1px solid black;
+                   padding:          1pt;
+                   vertical-align:   top;
+                   background-color: lightblue;}
+
+  td.clean       { padding:          0pt;
+                   border-style:     none;
+                   vertical-align:   top;}
+
+  td.notes       { padding:          3pt;
+                   border-style:     none;
+                   vertical-align:   top;}
+
+  table.note     { border-width:     0pt;
+                   border-style:     none;
+                   margin-left:      5pt;
+                   margin-top:       1pt;
+                   margin-bottom:    1pt;
+                   cell-padding:     5pt;
+                   vertical-align:   top;
+                   text-align:       left;}
+  
+  table.atte     { border-width:     0pt;
+                   border-style:     none;
+                   margin-left:      5pt;
+                   margin-top:       1pt;
+                   margin-bottom:    1pt;
+                   cell-padding:     5pt;
+                   vertical-align:   top;
+                   text-align:       left;
+                   background-color: red;}
+  
+  table.namelist { border-width:  2pt;
+                   border-style:  groove;
+                   border-color:  black;
+                   width:         90%;
+                   text-align:    left;
+                   margin-top:    1pt;
+                   margin-bottom: 1pt;
+                   padding:       3pt;
+                   align:         center;}
+  
+  tr.headings    { text-align:       left;
+                   vertical-align:   top;
+                   border-width:     1pt;
+                   border-style:     groove;
+                   border-color:     grey;
+                   padding:          2pt;
+                   font-weight:      bold;}
+
+</style>
+
+</head>
+  <body text="#000000" bgcolor="#FFFFFF" link="#0000EE" vlink="#551A8B" alink="#FF0000">
+
+<center>
+<h1>
+<a NAME="begin">Documentation of the Changes in COSMO-Model 4.5 / 4.6</a></h1></center>
+
+<p>
+The biggest change to the COSMO-Model has been in Version 4.5, where the input
+of observation data from NetCDF files has been implemented. More optimizations
+for vector processors have been performed, which improve the performance of
+the model on the NEC. There were other modifications, which are described in 
+detail below. Version 4.6 just was a fix of a bug, introduced with 4.5.
+</p>
+
+<h4><a NAME="content">Contents:</a></h4>
+
+<ol>
+<li><a href="#changes">Documentation of the Changes</a></li>
+  <ul>
+    <li><a href="#OBS">Reading observation data from NetCDF files</a></li>
+    <li><a href="#VEC">Further optimizations for vector processors</a></li>
+    <li><a href="#RKD">Modifications of Runge-Kutta Dynamics</a></li>
+    <li><a href="#SSO">Additional namelist parameter for SSO scheme</a></li>
+    <li><a href="#REF">New (alternative) reference atmosphere</a></li>
+    <li><a href="#IDE">Modifications / Alternatives for idealized cases</a></li>
+    <li><a href="#ENS">More Namelist Input for Ensemble Mode</a></li>
+  </ul>
+<li><a href="#namelis">Summary of new and changed Namelist Variables</a></li>
+<li><a href="#results">Changes of Results</a></li>
+</ol>
+<p>
+<hr>
+
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="changes">1. Documentation of the Changes</a></h3>
+
+<!---------------------------------------------------------------------------->
+
+<h4><a NAME="OBS">Reading observation data from NetCDF files
+                  (by Christoph Schraff)</i></a></h4>
+
+<p>
+A new interface has been introduced to read and pre-process observation
+data from NetCDF files instead of an AOF file.
+These NetCDF files are obtained by simple conversion from BUFR files
+which contain BUFR reports according to Table Driven Code Formats (TDCF)
+of WMO (see
+<tt>http://www.wmo.int/pages/prog/www/WMOCodes/OperationalCodes.html</tt>,
+<tt>http://www.wmo.int/pages/prog/www/WMOCodes/TemplateExamples.html</tt>)
+for those data types where TDCF have been defined, namely for
+SYNOP, SHIP, PILOT and TEMP types, but also for BUOY and AMDAR.
+For ACARS, BUFR from ARINC Centre 56 (USA) and from UK Met Office
+can be read, or alternatively, a combined format.
+For wind profiler, RASS, and VAD radar wind, a format defined by
+DWD is read, since there is no standard format defined by WMO yet.
+The names of the input files, that can already be used, are:
+</p>
+
+<ul>
+  <li><tt>cdfin_temp</tt></li>
+  <li><tt>cdfin_tempship</tt></li>
+  <li><tt>cdfin_pilot</tt></li>
+  <li><tt>cdfin_pilot_p</tt></li>
+  <li><tt>cdfin_amdar_ml</tt></li>
+  <li><tt>cdfin_amdar</tt></li>
+  <li><tt>cdfin_acars:</tt> ACARS combined format from DWD</li>
+  <li><tt>cdfin_wprof</tt></li>
+  <li><tt>cdfin_rass</tt></li>
+  <li><tt>cdfin_radar_vad</tt></li>
+  <li><tt>cdfin_synop</tt></li>
+  <li><tt>cdfin_synop_mob</tt></li>
+  <li><tt>cdfin_ship</tt></li>
+  <li><tt>cdfin_buoy</tt></li>
+  <li><tt>cdfin_acars_uk:</tt> ACARS BUFR from UK Met Office</li>
+  <li><tt>cdfin_acars_us:</tt> ACARS BUFR from ARINC Centre 56 (USA)</li>
+</ul>
+
+<p>
+Other input files cannot yet be used. If a file is empty, it should be removed.
+</p>
+
+<p>
+From which files the observations are read is controlled by the 2 Namelist variables
+(in the group <tt>NUDGING</tt>):
+</p>
+
+<p>
+<center>
+<table border="1" cellspacing="3" class="namelist">
+ <tbody>
+   <tr>
+     <th>Name</th>
+     <th>Meaning</th>
+     <th align="center">Default</th>
+   </tr>
+   <tr>
+     <td><tt>itype_obfile</tt></td>
+     <td>to determine, from which file(s) the observations are read
+         <ul>
+           <li><tt>1</tt>: read observations from AOF</li>
+           <li><tt>2</tt>: read observations from NetCDF files</li>
+         </ul>
+       </td>
+     <td align="center"><tt>1</tt></td>
+   </tr>
+   <tr>
+     <td><tt>ycdfdir</tt></td>
+     <td>directory in which the NetCDF input observation files reside</td>
+     <td align="center"><tt>./</tt></td>
+   </tr>
+ </tbody>
+</table>
+</center>
+</p>
+
+<p align="right"><a href="#content">Back to Contents</a>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+
+<h4><a NAME="VEC">Further optimizations for vector processors<i>
+ (by Uli Sch&auml;ttler and Jens-Olaf Beismann, Christian Bollmann (NEC))</i></a></h4>
+
+<p>Some more routines have been optimized for vectorization:</p>
+
+<ul>
+ <li>Subroutines <tt>hydci_pp</tt> and <tt>hydci_pp_gr</tt> of module 
+     <tt>src_gscp</tt> (Microphysics)<br />
+     In the routines for the microphysics there are several IF-clauses, to
+     check, which conditions are valid. Up to now, all these IF-clauses have
+     been in a big loop. For vector processors it is better, first to collect
+     all indices, for which a certain condition holds, and then to loop only
+     over these indices. <br />
+     On scalar machines, this organization takes more or less the same time
+     (perhaps slightly slower).
+ </li>
+ <li><tt>numeric_utilities_rk</tt>: (Runge-Kutta dynamics)<br />
+     The coefficients for the Bott advection routines have been modified to
+     save several divisions during the forecast.
+     <p>
+ <p><table class="note">
+   <tr><td class="notes">Note:</td>
+   <td class="notes">
+     Although these changes are mathematically neutral, they change the
+     results of the Runge-Kutta dynamics, because the numerical 
+     calculations are different.
+   </td></tr>
+  </table></p>
+ </li>
+ <li>Synthetic satellite images (Use of RTTOV7-library)<br />
+     The dimensions of several variables from the RTTOV-library have been
+     changed, to enable vectorization over the profiles. The routine 
+     <tt>org_sat_tbs</tt> (in the module <tt>src_sat_tbs</tt>) and the call in 
+     <tt>organize_satellites</tt> have been adapted accordingly. 
+     Now the RTTOV-library is called for a whole vector (a latitude) of grid points.
+
+ <p><table class="atte">
+   <tr><td class="notes">Note:</td>
+   <td class="notes">
+       Because of the changes in dimensions, the COSMO-model from Version 4.5
+       onwardsd definitely needs the modified RTTOV7-library, named
+       <tt>RTTOV7_synsat_vector</tt>. It will not work with the old version
+       any more.
+   </td></tr>
+  </table></p>
+ </li>
+
+ <li><tt>src_lheat_nudge</tt>: (Latent Heat Nudging))<br />
+     The definition and allocation of the global field <tt>blacklist_tot</tt> has
+     been moved outside the subroutine <tt>lhn_obs_prep</tt>, because the values
+     are also needed after this routine has finished.
+ </li>
+</ul>
+
+<p align="right"><a href="#content">Back to Contents</a>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+
+<h4><a NAME="RKD">Modifications for Runge-Kutta Dynamics</a></h4>
+
+<p>Incorporation of modified Tiedtke scheme (by Michael Baldauf, 
+   Dmitrii Mironov):<br/>
+   This is the same as in Version 4.4 for the Leapfrog-scheme: The 
+   tendencies of <tt>qi</tt> and <tt>qc</tt> of the modified convection scheme
+   are now also delivered to the Runge-Kutta dynamics.
+</p>
+
+<p>An additional flux calculation method (Lax-Wendroff) has been implemented
+   in <tt>src_integrals.f90</tt> (by Ronny Petrik, MPI Hamburg).
+</p>
+
+<p>Optimized horizontal advection routines are now also used for the field 
+   <tt>wcon</tt> in <tt>advection_pd</tt> in module <tt>src_advection_rk.f90</tt>.
+   (by Michael Baldauf).
+</p>
+
+<p>A more efficient implementation of a lower boundary condition for <tt>w</tt>
+   has been implemented in <tt>fast_waves_rk.f90</tt>
+   (by G&uuml;nther Z&auml;ngl).
+ <p><table class="note">
+   <tr><td class="notes">Note:</td>
+   <td class="notes">
+   This changes the results of the Runge-Kutta applications slightly!
+   </td></tr>
+  </table></p>
+
+<p align="right"><a href="#content">Back to Contents</a>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+
+<h4><a NAME="SSO">Additional namelist parameter for SSO scheme
+                  <i>(by Jan-Peter Schulz, Ulrich Sch&auml;ttler)</i></a></h4>
+
+<p>
+An additional namelist variable has been implemented in group <tt>/PHYCTL/</tt>
+to modify the calling frequency of the SSO scheme 
+(Introduction of SSO-scheme: see Version 4.4):
+</p>
+
+<p>
+<center>
+<table border="1" cellspacing="3" class="namelist">
+ <tbody>
+   <tr>
+     <th>Name</th>
+     <th>Meaning</th>
+     <th align="center">Default</th>
+   </tr>
+   <tr>
+     <td><tt>nincsso</tt></td>
+     <td>time step increment for running the SSO scheme</td>
+     <td align="center"><tt>5</tt></td>
+   </tr>
+ </tbody>
+</table>
+</center>
+</p>
+
+<p align="right"><a href="#content">Back to Contents</a>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+
+<h4><a NAME="REF">New (alternative) reference atmosphere
+   (by G&uuml;nther Z&auml;ngl)</a></h4>
+
+<p>A new (alternative) reference atmosphere has been introduced, which
+   is based on the temperature profile<br />
+   <center><tt>T0(z) = T00 + delta_t EXP(-z/h_scal),</tt></center><br />
+   with default values of <tt>T00 = 213.15 K</tt>, <tt>delta_t = 75 K</tt> 
+   and <tt>h_scal = 10 km</tt>; (in the model code, <tt>T00 = t0sl - delta_t</tt>).
+</p>
+
+<p>Thus, the reference atmosphere approaches an isothermal profile in the
+   stratosphere, whereas the existing reference profile has an increasingly
+   negative vertical temperature gradient in the stratosphere. The vertical
+   extent of the model domain is no longer limited with the new reference
+   atmosphere.
+</p>
+
+<p>Except for idealized simulations, the reference atmosphere can only be
+   chosen in INT2LM (from Version 1.9 on). All parameters of the reference
+   atmosphere are coded in the GRIB files, and the COSMO-Model determines
+   the type of reference atmosphere by encoding the GRIBs.
+</p>
+
+<p>The following holds in Version 4.5 and 4.6 (might be changed in the future
+to account for additional vertical coordinate types):</p>
+
+<ul>
+ <li>For the old reference atmosphere the vertical coordinate type (<tt>ivctype</tt>)
+     in Grib is: 1 - 3.<br />
+     The internal model variable <tt>irefatm</tt> is set to 1.</li>
+ <li>For the new reference atmosphere the vertical coordinate type (<tt>ivctype</tt>)
+     in Grib is: 4 - 6.<br />
+     The internal model variable <tt>irefatm</tt> is set to 2.</li>
+ <li>It is: <tt>ivctype = </tt>:<br />
+       <tt>1, 4</tt>:   Pressure-based vertical coordinate on input<br />
+       <tt>2, 5</tt>:   Heigt based verical coordinate on input<br />
+       <tt>3, 6</tt>:   SLEVE coordinate</li>
+</ul>
+
+<p>The new reference atmosphere needs 2 additional parameters, which
+   are also coded in the GRIBs:</p>
+
+<ul>
+ <li><tt>delta_t</tt>: temperature difference between sea level and stratosphere</li>
+ <li><tt>h_scal</tt>: scale height</li>
+</ul>
+
+<p>For the old style of coding (ldwd_grib_use=.TRUE.), it is</p>
+<ul>
+ <li><tt>delta_t = igds (29 + ke1 + 5)</tt>
+ <li><tt>h_scal  = igds (29 + ke1 + 6)</tt>
+</ul>
+
+<p>For the new style of coding (ldwd_grib_use=.FALSE.), it is</p>
+<ul>
+ <li><tt>delta_t = igds (31 + ke1 + 4)</tt>
+ <li><tt>h_scal  = igds (31 + ke1 + 5)</tt>
+</ul>
+
+<p align="right"><a href="#content">Back to Contents</a>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+
+<h4><a NAME="IDE">Modifications / Alternatives for idealized cases
+   (by G&uuml;nther Z&auml;ngl)</a></h4>
+
+<ul>
+  <li>Implementation of a new sponge layer near upper model boundary
+      (according to Klemp et al., MWR 2008):<br />
+      Modifications have been done in <tt>fast_waves_rk</tt> and 
+      <tt>organize_dynamics</tt>. A new value for the Namelist parameter 
+      <tt>itype_spubc = 3</tt> in group <tt>/DYNCTL/</tt> has been implemented.</li>
+
+  <li>Finish the implementation of the radiative lateral boundary condition.
+      (Modifications have been done in <tt>fast_waves_rk</tt>, 
+      <tt>src_relaxation</tt>, <tt>src_setup</tt> and <tt>organize_data</tt>):<br />
+      Two new Namelist parameters have been added to group <tt>/DYNCTL/</tt>:
+
+      <p>
+      <center>
+      <table border="1" cellspacing="3" class="namelist">
+       <tbody>
+         <tr>
+           <th>Name</th>
+           <th>Meaning</th>
+           <th align="center">Default</th>
+         </tr>
+         <tr>
+           <td><tt>lradlbc</tt></td>
+           <td>to switch on/off the radiative lateral boundary condition.
+               This parameter can be used only in connection with idealized cases
+               (<tt>lgen=.TRUE.</tt>)</td>
+           <td align="center"><tt>.FALSE.</tt></td>
+         </tr>
+         <tr>
+           <td><tt>relax_fac</tt></td>
+           <td>Reduction factor for the lateral relaxation zone (effective only if 
+               <tt>lradlbc = .TRUE.</tt>; it allows to combine the radiative lateral 
+               boundary condition with a weak Davies relaxation.</td>
+           <td align="center"><tt>0.01</tt></td>
+         </tr>
+       </tbody>
+      </table>
+      </center>
+      </p>
+    </li>
+
+  <li>Possibility to switch off surface momentum fluxes in the Runge-Kutta
+      dynamics for idealized cases, even if the turbulence scheme is used.
+      A new Namelist parameter <tt>lfreeslip_sfc</tt> has been implemented.
+      Default is <tt>.FALSE.</tt>.</li>
+</ul>
+
+<p align="right"><a href="#content">Back to Contents</a>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+
+<h4><a NAME="ENS">More Namelist Input for Ensemble Mode
+   (by Christoph Gebhardt)</a></h4>
+
+<p>Three more Namelist parameters have been introduced in the Namelist 
+   group <tt>/TUNING/</tt>:</p>
+
+      <p>
+      <center>
+      <table border="1" cellspacing="3" class="namelist">
+       <tbody>
+         <tr>
+           <th>Name</th>
+           <th>Meaning</th>
+           <th align="center">Default</th>
+         </tr>
+         <tr>
+           <td><tt>entr_sc</tt></td>
+           <td>mean entrainment rate for shallow convection</td>
+           <td align="center"><tt>0.0003</tt></td>
+         </tr>
+         <tr>
+           <td><tt>mu_rain</tt></td>
+           <td>shape parameter of the rain drop size distribution</td>
+           <td align="center"><tt>0.5</tt></td>
+         </tr>
+         <tr>
+           <td><tt>cloud_num</tt></td>
+           <td>cloud droplet number concentration</td>
+           <td align="center"><tt>5.00E+08</tt></td>
+         </tr>
+       </tbody>
+      </table>
+      </center>
+      </p>
+
+<p>Before, these were parameters in the convection or the microphysics, resp.
+   As namelist parameters they are used by the ensemble group, but are considered
+   to be of general interest.</p>
+
+<p>More Namelist parameters have been included in the Namelist
+   group <tt>/EPSCTL/</tt>:
+
+      <p>
+      <center>
+      <table border="1" cellspacing="3" class="namelist">
+       <tbody>
+         <tr>
+           <th>Name</th>
+           <th>Meaning</th>
+           <th align="center">Default</th>
+         </tr>
+         <tr>
+           <td><tt>fac_lai</tt></td>
+           <td>a factor to modify values of the leaf area index. Values
+               should stay in the interval <tt>[rmin_lai, rmax_lai]</tt>
+               (see below).</td>
+           <td align="center"><tt>1.0</tt></td>
+         </tr>
+         <tr>
+           <td><tt>rmin_lai</tt></td>
+           <td>Minimum value for leaf area index modification value.</td>
+           <td align="center"><tt>0.0</tt></td>
+         </tr>
+         <tr>
+           <td><tt>rmax_lai</tt></td>
+           <td>Maximum value for leaf area index modification value.</td>
+           <td align="center"><tt>8.0</tt></td>
+         </tr>
+
+         <tr>
+           <td><tt>fac_plcov</tt></td>
+           <td>a factor to modify values of the plant cover. Values
+               should stay in the interval <tt>[rmin_plcov, rmax_plcov]</tt>
+               (see below).</td>
+           <td align="center"><tt>1.0</tt></td>
+         </tr>
+         <tr>
+           <td><tt>rmin_plcov</tt></td>
+           <td>Minimum value for plant cover modification value.</td>
+           <td align="center"><tt>0.0</tt></td>
+         </tr>
+         <tr>
+           <td><tt>rmax_plcov</tt></td>
+           <td>Maximum value for plant cover modification value.</td>
+           <td align="center"><tt>1.0</tt></td>
+         </tr>
+
+         <tr>
+           <td><tt>fac_rootdp</tt></td>
+           <td>a factor to modify values of the root depth. Values
+               should stay in the interval <tt>[rmin_rootdp, rmax_rootdp]</tt>
+               (see below).</td>
+           <td align="center"><tt>1.0</tt></td>
+         </tr>
+         <tr>
+           <td><tt>rmin_rootdp</tt></td>
+           <td>Minimum value for root depth modification value.</td>
+           <td align="center"><tt>0.0</tt></td>
+         </tr>
+         <tr>
+           <td><tt>rmax_rootdp</tt></td>
+           <td>Maximum value for root depth modification value.</td>
+           <td align="center"><tt>2.0</tt></td>
+         </tr>
+       </tbody>
+      </table>
+      </center>
+      </p>
+
+<p>These parameters are considered to be of interest only for ensemble runs
+   and therefore are available only in the EPS namelist group.</p>
+
+<p align="right"><a href="#content">Back to Contents</a>
+
+<!---------------------------------------------------------------------------->
+
+<hr>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="namelis">2. Summary of new and changed Namelist Variables</a></h3>
+
+<p>There are the following new Namelist variables:</p>
+
+<center>
+<table border="1" cellspacing="3" class="namelist">
+ <tbody>
+   <tr>
+     <th>Group</th>
+     <th>Name</th>
+     <th>Meaning</th>
+     <th align="center">Default</th>
+   </tr>
+   <tr>
+     <td class="hilit" rowspan="2"><tt>/NUDGING/</tt></td>
+     <td><tt>itype_obfile</tt></td>
+     <td>to determine, from which file(s) the observations are read
+         <ol>
+           <li>read observations from AOF</li>
+           <li>read observations from NetCDF files</li>
+         </ol>
+       </td>
+     <td align="center"><tt>1</tt></td>
+   </tr>
+   <tr>
+     <td><tt>ycdfdir</tt></td>
+     <td>directory in which the NetCDF input observation files reside</td>
+     <td align="center"><tt>./</tt></td>
+   </tr>
+   <tr>
+     <td class="hilit" rowspan="2"><tt>/PHYCTL/</tt></td>
+     <td><tt>nincsso</tt></td>
+     <td>time step increment for running the SSO scheme</td>
+     <td align="center"><tt>5</tt></td>
+   </tr>
+   <tr>
+     <td><tt>lfreeslip_sfc</tt></td>
+     <td>switch on/off surface momentum fluxes even if turbulence
+         scheme is used</td>
+     <td align="center"><tt>.FALSE.</tt></td>
+   </tr>
+   <tr>
+     <td class="hilit" rowspan="3"><tt>/DYNCTL/</tt></td>
+     <td><tt>itype_spubc</tt></td>
+     <td>Type of Rayleigh damping in the upper levels. 
+         Implemented new option 3.
+       <ol>
+        <li>chooses the damping against boundary fields</li>
+        <li>chooses the damping against filtered forecast fields;
+            can be chosen, if the boundary data is only available on frames</li>
+        <li>(NEW) Sponge layer near upper model boundary
+            according to Klemp et al. (MWR 2008)</li>
+       </ol></td>
+     <td align="center"><tt>1</tt></td>
+   </tr>
+   <tr>
+     <td><tt>lradlbc</tt></td>
+     <td>to switch on/off the radiative lateral boundary condition.
+         This parameter can be used only in connection with idealized cases
+         (<tt>lgen=.TRUE.</tt>)</td>
+     <td align="center"><tt>.FALSE.</tt></td>
+   </tr>
+   <tr>
+     <td><tt>relax_fac</tt></td>
+     <td>Reduction factor for the lateral relaxation zone (effective only if
+         <tt>lradlbc = .TRUE.</tt>; it allows to combine the radiative lateral
+         boundary condition with a weak Davies relaxation.</td>
+     <td align="center"><tt>0.01</tt></td>
+   </tr>
+   <tr>
+     <td class="hilit" rowspan="3"><tt>/TUNING/</tt></td>
+     <td><tt>entr_sc</tt></td>
+     <td>mean entrainment rate for shallow convection</td>
+     <td align="center"><tt>0.0003</tt></td>
+   </tr>
+   <tr>
+     <td><tt>mu_rain</tt></td>
+     <td>shape parameter of the rain drop size distribution</td>
+     <td align="center"><tt>0.5</tt></td>
+   </tr>
+   <tr>
+     <td><tt>cloud_num</tt></td>
+     <td>cloud droplet number concentration</td>
+     <td align="center"><tt>5.00E+08</tt></td>
+   </tr>
+   <tr>
+     <td class="hilit" rowspan="9"><tt>/EPSCTL/</tt></td>
+     <td><tt>fac_lai</tt></td>
+     <td>a factor to modify values of the leaf area index. Values
+         should stay in the interval <tt>[rmin_lai, rmax_lai]</tt>
+         (see below).</td>
+     <td align="center"><tt>1.0</tt></td>
+   </tr>
+   <tr>
+     <td><tt>rmin_lai</tt></td>
+     <td>Minimum value for leaf area index modification value.</td>
+     <td align="center"><tt>0.0</tt></td>
+   </tr>
+   <tr>
+     <td><tt>rmax_lai</tt></td>
+     <td>Maximum value for leaf area index modification value.</td>
+     <td align="center"><tt>8.0</tt></td>
+   </tr>
+
+   <tr>
+     <td><tt>fac_plcov</tt></td>
+     <td>a factor to modify values of the plant cover. Values
+         should stay in the interval <tt>[rmin_plcov, rmax_plcov]</tt>
+         (see below).</td>
+     <td align="center"><tt>1.0</tt></td>
+   </tr>
+   <tr>
+     <td><tt>rmin_plcov</tt></td>
+     <td>Minimum value for plant cover modification value.</td>
+     <td align="center"><tt>0.0</tt></td>
+   </tr>
+   <tr>
+     <td><tt>rmax_plcov</tt></td>
+     <td>Maximum value for plant cover modification value.</td>
+     <td align="center"><tt>1.0</tt></td>
+   </tr>
+
+   <tr>
+     <td><tt>fac_rootdp</tt></td>
+     <td>a factor to modify values of the root depth. Values
+         should stay in the interval <tt>[rmin_rootdp, rmax_rootdp]</tt>
+         (see below).</td>
+     <td align="center"><tt>1.0</tt></td>
+   </tr>
+   <tr>
+     <td><tt>rmin_rootdp</tt></td>
+     <td>Minimum value for root depth modification value.</td>
+     <td align="center"><tt>0.0</tt></td>
+   </tr>
+   <tr>
+     <td><tt>rmax_rootdp</tt></td>
+     <td>Maximum value for root depth modification value.</td>
+     <td align="center"><tt>2.0</tt></td>
+   </tr>
+ </tbody>
+</table>
+</center>
+
+<p align="right"><a href="#content">Back to Contents</a>
+<spacer type=vertical size=10>
+<hr>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="results">3. Changes of Results</a></h3>
+
+<p>The results of the Runge-Kutta applications change because of the 
+   following modifications:</p>
+
+<ul>
+ <li>Changes in the coefficients of the Bott advection routines
+     (Only numerical changes).
+     </li>
+ <li>Consideration of tendencies for cloud water and cloud ice from the
+     Tiedtke convection.
+     </li>
+ <li>Changes in the lower boundary condition for the vertical velocity.
+     </li>
+</ul>
+
+<p align="right"><a href="#content">Back to Contents</a>
+
+</body>
+</html>

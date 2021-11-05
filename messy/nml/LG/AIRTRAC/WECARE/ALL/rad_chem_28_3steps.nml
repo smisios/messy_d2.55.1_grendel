@@ -1,0 +1,778 @@
+! -*- f90 -*-
+
+&CPL
+!
+l_feedback = T  ! default: T, switch off for testing purposes only
+!
+lfubrad = F
+!
+! Frequency of radiation calculation.
+trigrad = 3,'steps','first',0
+!
+rset_solc = F, 1366.04,
+!
+! ### SCALING FACTORS ### (modify only, if you know what you do!)
+! ### 0.25 - 0.69, 0.69 - 1.19, 1.19 - 2.38, 2.38 - 4.00 Microns
+!rsun_scale = 0.459760, 0.326158, 0.180608, 0.033474
+!
+! TRUE for calulating radiation, max. 31 times;
+! first call always provides temperature feedback (!!!)
+!
+l_switch(1) = T,        ! O3 Klim (QCTM)
+l_switch(2) = T,        ! scalc O3 
+l_switch(3) = T,        ! O3+airO3_001 
+l_switch(4) = T,        ! O3+airO3_002
+l_switch(5) = T,        ! O3+airO3_003
+l_switch(6) = T,        ! O3+airO3_004
+l_switch(7) = T,        ! O3+airO3_005
+l_switch(8) = T,        ! O3+airO3_006
+l_switch(9) = T,        ! O3+airO3_007
+l_switch(10) = T,       ! O3+airO3_008
+l_switch(11) = T,       ! O3+airO3_009
+l_switch(12) = T,       ! O3+airO3_010
+l_switch(13) = T,       ! O3+airO3_011
+l_switch(14) = T,       ! O3+airO3_012
+l_switch(15) = T,       ! O3+airO3_013
+l_switch(16) = T,       ! O3+airO3_014
+l_switch(17) = T,       ! O3+airO3_015
+l_switch(18) = T,       ! O3+airO3_016
+l_switch(19) = T,       ! O3+airO3_017
+l_switch(20) = T,       ! O3+airO3_018
+l_switch(21) = T,       ! O3+airO3_019
+l_switch(22) = T,       ! O3+airO3_020
+l_switch(23) = T,       ! O3+airO3_021
+l_switch(24) = T,       ! O3+airO3_022
+l_switch(25) = T,       ! O3+airO3_023
+l_switch(26) = T,       ! O3+airO3_024
+l_switch(27) = T,       ! O3+airO3_025
+l_switch(28) = T,       ! O3+airO3_026
+l_switch(29) = T,       ! O3+airO3_027
+l_switch(30) = T,       ! O3+airO3_028
+!
+!  1: reference (call 1) or instantaneous RF diagnostic
+!  2: adj. RF diagnostic --
+!
+i_rad(1) = 1,
+i_rad(2) = 1,
+i_rad(3) = 1,
+i_rad(4) = 1,
+i_rad(5) = 1,
+i_rad(6) = 1,
+i_rad(7) = 1,
+i_rad(8) = 1,
+i_rad(9) = 1,
+i_rad(10) = 1,
+i_rad(11) = 1,
+i_rad(12) = 1,
+i_rad(13) = 1,
+i_rad(14) = 1,
+i_rad(15) = 1,
+i_rad(16) = 1,
+i_rad(17) = 1,
+i_rad(18) = 1,
+i_rad(19) = 1,
+i_rad(20) = 1,
+i_rad(21) = 1,
+i_rad(22) = 1,
+i_rad(23) = 1,
+i_rad(24) = 1,
+i_rad(25) = 1,
+i_rad(26) = 1,
+i_rad(27) = 1,
+i_rad(28) = 1,
+i_rad(29) = 1,
+i_rad(30) = 1,
+
+!  2: modified according to ECHAM5.5 and modified DELTA-EDDINGTON
+!
+i_sw(1) = 2,
+i_sw(2) = 2,
+i_sw(3) = 2,
+i_sw(4) = 2,
+i_sw(5) = 2,
+i_sw(6) = 2,
+i_sw(7) = 2,
+i_sw(8) = 2,
+i_sw(9) = 2,
+i_sw(10) = 2,
+i_sw(11) = 2,
+i_sw(12) = 2,
+i_sw(13) = 2,
+i_sw(14) = 2,
+i_sw(15) = 2,
+i_sw(16) = 2,
+i_sw(17) = 2,
+i_sw(18) = 2,
+i_sw(19) = 2,
+i_sw(20) = 2,
+i_sw(21) = 2,
+i_sw(22) = 2,
+i_sw(23) = 2,
+i_sw(24) = 2,
+i_sw(25) = 2,
+i_sw(26) = 2,
+i_sw(27) = 2,
+i_sw(28) = 2,
+i_sw(29) = 2,
+i_sw(30) = 2,
+!
+! 1. call of radiation (always required)
+!
+r_inp(1,1)  = 'ECHAM5', 'qm1',                  ! H2O [mol/mol] or [kg/kg]
+! 2014
+r_inp(2,1)  = '#const', 'CO2=398.6E-06',         ! CO2 [mol/mol]
+r_inp(3,1)  = '#vgrad', 'CH4=1.84E-06',         ! CH4 [mol/mol]
+r_inp(4,1)  = 'import_grid', 'RADO3_O3',        ! O3  [mol/mol]
+r_inp(5,1)  = '#vgrad', 'N2O=327.5E-09',         ! N2O [mol/mol]
+r_inp(6,1)  = '#vgrad', 'CFC11=235.E-12',       ! CFC11 [mol/mol]
+r_inp(7,1)  = '#vgrad', 'CFC12=527.E-12',       ! CFC12 [mol/mol]
+r_inp(8,1)  = 'aeropt_TANRE_STD', 'aot_lw',     ! lw aerosol optical thickness
+r_inp(9,1)  = 'aeropt_TANRE_STD', 'aot_sw',     ! sw aerosol optical thickness
+r_inp(10,1) = 'aeropt_TANRE_STD', 'gamma_sw',   ! aerosol asymmerty factor
+r_inp(11,1) = 'aeropt_TANRE_STD', 'omega_sw',   ! aerosol single scat. albedo
+r_inp(12,1) = 'cloudopt01',    'sum_cov',          ! cloudcover (nat+pert)
+r_inp(13,1) = 'cloudopt01',    'tau_cld_lw',       ! lw optical depth clouds
+r_inp(14,1) = 'cloudopt01',    'tau_cld_sw',       ! sw optical depth clouds
+r_inp(15,1) = 'cloudopt01',    'gamma_cld_sw',     ! cloud asymmerty factor
+r_inp(16,1) = 'cloudopt01',    'omega_cld_sw',     ! cloud single scattering albedo
+r_inp(17,1) = 'cloudopt01',    'clcv',             ! total cloud cover
+r_inp(18,1) = 'cloudopt01',    'idx_cld',          ! clear/cloudy index
+!
+! 2. call of radiation
+! (empty strings in calls 2 - 9 will be replaced by corresponding entries of
+!  1st call)
+!
+r_inp(1,2)  = '', '',   
+r_inp(2,2)  = '', '',
+r_inp(3,2)  = '', '',           
+r_inp(4,2)  = 'scalc', 'O3_scalc',          
+r_inp(5,2)  = '', '',          
+r_inp(6,2)  = '', '',           
+r_inp(7,2)  = '', '',             
+r_inp(8,2)  = '', '',          
+r_inp(9,2)  = '', '',          
+r_inp(10,2) = '', '',            
+r_inp(11,2) = '', '',
+r_inp(12,2) = '', '',
+r_inp(13,2) = '', '',
+r_inp(14,2) = '', '',
+r_inp(15,2) = '', '',
+r_inp(16,2) = '', '',
+r_inp(17,2) = '', '',
+r_inp(18,2) = '', '',
+!
+! 3. call of radiation
+!
+r_inp(1,3)  = '', '',
+r_inp(2,3)  = '', '',
+r_inp(3,3)  = '', '',
+r_inp(4,3)  = 'scalc', 'O3_airO3_001',
+r_inp(5,3)  = '', '',    
+r_inp(6,3)  = '', '',
+r_inp(7,3)  = '', '',
+r_inp(8,3)  = '', '',
+r_inp(9,3)  = '', '',
+r_inp(10,3) = '', '',
+r_inp(11,3) = '', '',
+r_inp(12,3) = '', '',
+r_inp(13,3) = '', '',       
+r_inp(14,3) = '', '',       
+r_inp(15,3) = '', '',     
+r_inp(16,3) = '', '',     
+r_inp(17,3) = '', '',             
+r_inp(18,3) = '', '',          
+!
+! 4. call of radiation
+!
+r_inp(1,4)  = '', '',
+r_inp(2,4)  = '', '',
+r_inp(3,4)  = '', '',
+r_inp(4,4)  = 'scalc', 'O3_airO3_002',
+r_inp(5,4)  = '', '',
+r_inp(6,4)  = '', '',
+r_inp(7,4)  = '', '',
+r_inp(8,4)  = '', '',
+r_inp(9,4)  = '', '',
+r_inp(10,4) = '', '',
+r_inp(11,4) = '', '',
+r_inp(12,4) = '', '',
+r_inp(13,4) = '', '',
+r_inp(14,4) = '', '',
+r_inp(15,4) = '', '',
+r_inp(16,4) = '', '',
+r_inp(17,4) = '', '',
+r_inp(18,4) = '', '',
+!
+! 5. call of radiation
+!
+r_inp(1,5)  = '', '',
+r_inp(2,5)  = '', '',
+r_inp(3,5)  = '', '',
+r_inp(4,5)  = 'scalc', 'O3_airO3_003',
+r_inp(5,5)  = '', '',
+r_inp(6,5)  = '', '',
+r_inp(7,5)  = '', '',
+r_inp(8,5)  = '', '',
+r_inp(9,5)  = '', '',
+r_inp(10,5) = '', '',
+r_inp(11,5) = '', '',
+r_inp(12,5) = '', '',
+r_inp(13,5) = '', '',
+r_inp(14,5) = '', '',
+r_inp(15,5) = '', '',
+r_inp(16,5) = '', '',
+r_inp(17,5) = '', '',
+r_inp(18,5) = '', '',
+!
+! 6. call of radiation
+!
+r_inp(1,6)  = '', '',
+r_inp(2,6)  = '', '',
+r_inp(3,6)  = '', '',
+r_inp(4,6)  = 'scalc', 'O3_airO3_004',
+r_inp(5,6)  = '', '',
+r_inp(6,6)  = '', '',
+r_inp(7,6)  = '', '',
+r_inp(8,6)  = '', '',
+r_inp(9,6)  = '', '',
+r_inp(10,6) = '', '',
+r_inp(11,6) = '', '',
+r_inp(12,6) = '', '',
+r_inp(13,6) = '', '',
+r_inp(14,6) = '', '',
+r_inp(15,6) = '', '',
+r_inp(16,6) = '', '',
+r_inp(17,6) = '', '',
+r_inp(18,6) = '', '',
+!
+! 7. call of radiation
+!
+r_inp(1,7)  = '', '',
+r_inp(2,7)  = '', '',
+r_inp(3,7)  = '', '',
+r_inp(4,7)  = 'scalc', 'O3_airO3_005',
+r_inp(5,7)  = '', '',
+r_inp(6,7)  = '', '',
+r_inp(7,7)  = '', '',
+r_inp(8,7)  = '', '',
+r_inp(9,7)  = '', '',
+r_inp(10,7) = '', '',
+r_inp(11,7) = '', '',
+r_inp(12,7) = '', '',
+r_inp(13,7) = '', '',
+r_inp(14,7) = '', '',
+r_inp(15,7) = '', '',
+r_inp(16,7) = '', '',
+r_inp(17,7) = '', '',
+r_inp(18,7) = '', '',
+!
+! 8. call of radiation
+!
+r_inp(1,8)  = '', '',
+r_inp(2,8)  = '', '',
+r_inp(3,8)  = '', '',
+r_inp(4,8)  = 'scalc', 'O3_airO3_006',
+r_inp(5,8)  = '', '',
+r_inp(6,8)  = '', '',
+r_inp(7,8)  = '', '',
+r_inp(8,8)  = '', '',
+r_inp(9,8)  = '', '',
+r_inp(10,8) = '', '',
+r_inp(11,8) = '', '',
+r_inp(12,8) = '', '',
+r_inp(13,8) = '', '',
+r_inp(14,8) = '', '',
+r_inp(15,8) = '', '',
+r_inp(16,8) = '', '',
+r_inp(17,8) = '', '',
+r_inp(18,8) = '', '',
+!
+! 9. call of radiation
+!
+r_inp(1,9)  = '', '',
+r_inp(2,9)  = '', '',
+r_inp(3,9)  = '', '',
+r_inp(4,9)  = 'scalc', 'O3_airO3_007',
+r_inp(5,9)  = '', '',
+r_inp(6,9)  = '', '',
+r_inp(7,9)  = '', '',
+r_inp(8,9)  = '', '',
+r_inp(9,9)  = '', '',
+r_inp(10,9) = '', '',
+r_inp(11,9) = '', '',
+r_inp(12,9) = '', '',
+r_inp(13,9) = '', '',
+r_inp(14,9) = '', '',
+r_inp(15,9) = '', '',
+r_inp(16,9) = '', '',
+r_inp(17,9) = '', '',
+r_inp(18,9) = '', '',
+!
+! 10. call of radiation
+!
+r_inp(1,10)  = '', '',
+r_inp(2,10)  = '', '',
+r_inp(3,10)  = '', '',
+r_inp(4,10)  = 'scalc', 'O3_airO3_008',
+r_inp(5,10)  = '', '',
+r_inp(6,10)  = '', '',
+r_inp(7,10)  = '', '',
+r_inp(8,10)  = '', '',
+r_inp(9,10)  = '', '',
+r_inp(10,10) = '', '',
+r_inp(11,10) = '', '',
+r_inp(12,10) = '', '',
+r_inp(13,10) = '', '',
+r_inp(14,10) = '', '',
+r_inp(15,10) = '', '',
+r_inp(16,10) = '', '',
+r_inp(17,10) = '', '',
+r_inp(18,10) = '', '',
+!
+! 11. call of radiation
+!
+r_inp(1,11)  = '', '',
+r_inp(2,11)  = '', '',
+r_inp(3,11)  = '', '',
+r_inp(4,11)  = 'scalc', 'O3_airO3_009',
+r_inp(5,11)  = '', '',
+r_inp(6,11)  = '', '',
+r_inp(7,11)  = '', '',
+r_inp(8,11)  = '', '',
+r_inp(9,11)  = '', '',
+r_inp(10,11) = '', '',
+r_inp(11,11) = '', '',
+r_inp(12,11) = '', '',
+r_inp(13,11) = '', '',
+r_inp(14,11) = '', '',
+r_inp(15,11) = '', '',
+r_inp(16,11) = '', '',
+r_inp(17,11) = '', '',
+r_inp(18,11) = '', '',
+!
+! 12. call of radiation
+!
+r_inp(1,12)  = '', '',
+r_inp(2,12)  = '', '',
+r_inp(3,12)  = '', '',
+r_inp(4,12)  = 'scalc', 'O3_airO3_010',
+r_inp(5,12)  = '', '',
+r_inp(6,12)  = '', '',
+r_inp(7,12)  = '', '',
+r_inp(8,12)  = '', '',
+r_inp(9,12)  = '', '',
+r_inp(10,12) = '', '',
+r_inp(11,12) = '', '',
+r_inp(12,12) = '', '',
+r_inp(13,12) = '', '',
+r_inp(14,12) = '', '',
+r_inp(15,12) = '', '',
+r_inp(16,12) = '', '',
+r_inp(17,12) = '', '',
+r_inp(18,12) = '', '',
+!
+! 13. call of radiation
+!
+r_inp(1,13)  = '', '',
+r_inp(2,13)  = '', '',
+r_inp(3,13)  = '', '',
+r_inp(4,13)  = 'scalc', 'O3_airO3_011',
+r_inp(5,13)  = '', '',
+r_inp(6,13)  = '', '',
+r_inp(7,13)  = '', '',
+r_inp(8,13)  = '', '',
+r_inp(9,13)  = '', '',
+r_inp(10,13) = '', '',
+r_inp(11,13) = '', '',
+r_inp(12,13) = '', '',
+r_inp(13,13) = '', '',
+r_inp(14,13) = '', '',
+r_inp(15,13) = '', '',
+r_inp(16,13) = '', '',
+r_inp(17,13) = '', '',
+r_inp(18,13) = '', '',
+!
+! 14. call of radiation
+!
+r_inp(1,14)  = '', '',
+r_inp(2,14)  = '', '',
+r_inp(3,14)  = '', '',
+r_inp(4,14)  = 'scalc', 'O3_airO3_012',
+r_inp(5,14)  = '', '',
+r_inp(6,14)  = '', '',
+r_inp(7,14)  = '', '',
+r_inp(8,14)  = '', '',
+r_inp(9,14)  = '', '',
+r_inp(10,14) = '', '',
+r_inp(11,14) = '', '',
+r_inp(12,14) = '', '',
+r_inp(13,14) = '', '',
+r_inp(14,14) = '', '',
+r_inp(15,14) = '', '',
+r_inp(16,14) = '', '',
+r_inp(17,14) = '', '',
+r_inp(18,14) = '', '',
+!
+! 15. call of radiation
+!
+r_inp(1,15)  = '', '',
+r_inp(2,15)  = '', '',
+r_inp(3,15)  = '', '',
+r_inp(4,15)  = 'scalc', 'O3_airO3_013',
+r_inp(5,15)  = '', '',
+r_inp(6,15)  = '', '',
+r_inp(7,15)  = '', '',
+r_inp(8,15)  = '', '',
+r_inp(9,15)  = '', '',
+r_inp(10,15) = '', '',
+r_inp(11,15) = '', '',
+r_inp(12,15) = '', '',
+r_inp(13,15) = '', '',
+r_inp(14,15) = '', '',
+r_inp(15,15) = '', '',
+r_inp(16,15) = '', '',
+r_inp(17,15) = '', '',
+r_inp(18,15) = '', '',
+!
+! 16. call of radiation
+!
+r_inp(1,16)  = '', '',
+r_inp(2,16)  = '', '',
+r_inp(3,16)  = '', '',
+r_inp(4,16)  = 'scalc', 'O3_airO3_014',
+r_inp(5,16)  = '', '',
+r_inp(6,16)  = '', '',
+r_inp(7,16)  = '', '',
+r_inp(8,16)  = '', '',
+r_inp(9,16)  = '', '',
+r_inp(10,16) = '', '',
+r_inp(11,16) = '', '',
+r_inp(12,16) = '', '',
+r_inp(13,16) = '', '',
+r_inp(14,16) = '', '',
+r_inp(15,16) = '', '',
+r_inp(16,16) = '', '',
+r_inp(17,16) = '', '',
+r_inp(18,16) = '', '',
+!
+! 17. call of radiation
+!
+r_inp(1,17)  = '', '',
+r_inp(2,17)  = '', '',
+r_inp(3,17)  = '', '',
+r_inp(4,17)  = 'scalc', 'O3_airO3_015',
+r_inp(5,17)  = '', '',
+r_inp(6,17)  = '', '',
+r_inp(7,17)  = '', '',
+r_inp(8,17)  = '', '',
+r_inp(9,17)  = '', '',
+r_inp(10,17) = '', '',
+r_inp(11,17) = '', '',
+r_inp(12,17) = '', '',
+r_inp(13,17) = '', '',
+r_inp(14,17) = '', '',
+r_inp(15,17) = '', '',
+r_inp(16,17) = '', '',
+r_inp(17,17) = '', '',
+r_inp(18,17) = '', '',
+!
+! 18. call of radiation
+!
+r_inp(1,18)  = '', '',
+r_inp(2,18)  = '', '',
+r_inp(3,18)  = '', '',
+r_inp(4,18)  = 'scalc', 'O3_airO3_016',
+r_inp(5,18)  = '', '',
+r_inp(6,18)  = '', '',
+r_inp(7,18)  = '', '',
+r_inp(8,18)  = '', '',
+r_inp(9,18)  = '', '',
+r_inp(10,18) = '', '',
+r_inp(11,18) = '', '',
+r_inp(12,18) = '', '',
+r_inp(13,18) = '', '',
+r_inp(14,18) = '', '',
+r_inp(15,18) = '', '',
+r_inp(16,18) = '', '',
+r_inp(17,18) = '', '',
+r_inp(18,18) = '', '',
+!
+
+! 19. call of radiation
+!
+r_inp(1,19)  = '', '',
+r_inp(2,19)  = '', '',
+r_inp(3,19)  = '', '',
+r_inp(4,19)  = 'scalc', 'O3_airO3_017',
+r_inp(5,19)  = '', '',
+r_inp(6,19)  = '', '',
+r_inp(7,19)  = '', '',
+r_inp(8,19)  = '', '',
+r_inp(9,19)  = '', '',
+r_inp(10,19) = '', '',
+r_inp(11,19) = '', '',
+r_inp(12,19) = '', '',
+r_inp(13,19) = '', '',
+r_inp(14,19) = '', '',
+r_inp(15,19) = '', '',
+r_inp(16,19) = '', '',
+r_inp(17,19) = '', '',
+r_inp(18,19) = '', '',
+!
+! 20. call of radiation
+!
+r_inp(1,20)  = '', '',
+r_inp(2,20)  = '', '',
+r_inp(3,20)  = '', '',
+r_inp(4,20)  = 'scalc', 'O3_airO3_018',
+r_inp(5,20)  = '', '',
+r_inp(6,20)  = '', '',
+r_inp(7,20)  = '', '',
+r_inp(8,20)  = '', '',
+r_inp(9,20)  = '', '',
+r_inp(10,20) = '', '',
+r_inp(11,20) = '', '',
+r_inp(12,20) = '', '',
+r_inp(13,20) = '', '',
+r_inp(14,20) = '', '',
+r_inp(15,20) = '', '',
+r_inp(16,20) = '', '',
+r_inp(17,20) = '', '',
+r_inp(18,20) = '', '',
+!
+! 21. call of radiation
+!
+r_inp(1,21)  = '', '',
+r_inp(2,21)  = '', '',
+r_inp(3,21)  = '', '',
+r_inp(4,21)  = 'scalc', 'O3_airO3_019',
+r_inp(5,21)  = '', '',
+r_inp(6,21)  = '', '',
+r_inp(7,21)  = '', '',
+r_inp(8,21)  = '', '',
+r_inp(9,21)  = '', '',
+r_inp(10,21) = '', '',
+r_inp(11,21) = '', '',
+r_inp(12,21) = '', '',
+r_inp(13,21) = '', '',
+r_inp(14,21) = '', '',
+r_inp(15,21) = '', '',
+r_inp(16,21) = '', '',
+r_inp(17,21) = '', '',
+r_inp(18,21) = '', '',
+!
+! 22. call of radiation
+!
+r_inp(1,22)  = '', '',
+r_inp(2,22)  = '', '',
+r_inp(3,22)  = '', '',
+r_inp(4,22)  = 'scalc', 'O3_airO3_020',
+r_inp(5,22)  = '', '',
+r_inp(6,22)  = '', '',
+r_inp(7,22)  = '', '',
+r_inp(8,22)  = '', '',
+r_inp(9,22)  = '', '',
+r_inp(10,22) = '', '',
+r_inp(11,22) = '', '',
+r_inp(12,22) = '', '',
+r_inp(13,22) = '', '',
+r_inp(14,22) = '', '',
+r_inp(15,22) = '', '',
+r_inp(16,22) = '', '',
+r_inp(17,22) = '', '',
+r_inp(18,22) = '', '',
+!
+! 23. call of radiation
+!
+r_inp(1,23)  = '', '',
+r_inp(2,23)  = '', '',
+r_inp(3,23)  = '', '',
+r_inp(4,23)  = 'scalc', 'O3_airO3_021',
+r_inp(5,23)  = '', '',
+r_inp(6,23)  = '', '',
+r_inp(7,23)  = '', '',
+r_inp(8,23)  = '', '',
+r_inp(9,23)  = '', '',
+r_inp(10,23) = '', '',
+r_inp(11,23) = '', '',
+r_inp(12,23) = '', '',
+r_inp(13,23) = '', '',
+r_inp(14,23) = '', '',
+r_inp(15,23) = '', '',
+r_inp(16,23) = '', '',
+r_inp(17,23) = '', '',
+r_inp(18,23) = '', '',
+!
+! 24. call of radiation
+!
+r_inp(1,24)  = '', '',
+r_inp(2,24)  = '', '',
+r_inp(3,24)  = '', '',
+r_inp(4,24)  = 'scalc', 'O3_airO3_022',
+r_inp(5,24)  = '', '',
+r_inp(6,24)  = '', '',
+r_inp(7,24)  = '', '',
+r_inp(8,24)  = '', '',
+r_inp(9,24)  = '', '',
+r_inp(10,24) = '', '',
+r_inp(11,24) = '', '',
+r_inp(12,24) = '', '',
+r_inp(13,24) = '', '',
+r_inp(14,24) = '', '',
+r_inp(15,24) = '', '',
+r_inp(16,24) = '', '',
+r_inp(17,24) = '', '',
+r_inp(18,24) = '', '',
+!
+! 25. call of radiation
+!
+r_inp(1,25)  = '', '',
+r_inp(2,25)  = '', '',
+r_inp(3,25)  = '', '',
+r_inp(4,25)  = 'scalc', 'O3_airO3_023',
+r_inp(5,25)  = '', '',
+r_inp(6,25)  = '', '',
+r_inp(7,25)  = '', '',
+r_inp(8,25)  = '', '',
+r_inp(9,25)  = '', '',
+r_inp(10,25) = '', '',
+r_inp(11,25) = '', '',
+r_inp(12,25) = '', '',
+r_inp(13,25) = '', '',
+r_inp(14,25) = '', '',
+r_inp(15,25) = '', '',
+r_inp(16,25) = '', '',
+r_inp(17,25) = '', '',
+r_inp(18,25) = '', '',
+!
+! 26. call of radiation
+!
+r_inp(1,26)  = '', '',
+r_inp(2,26)  = '', '',
+r_inp(3,26)  = '', '',
+r_inp(4,26)  = 'scalc', 'O3_airO3_024',
+r_inp(5,26)  = '', '',
+r_inp(6,26)  = '', '',
+r_inp(7,26)  = '', '',
+r_inp(8,26)  = '', '',
+r_inp(9,26)  = '', '',
+r_inp(10,26) = '', '',
+r_inp(11,26) = '', '',
+r_inp(12,26) = '', '',
+r_inp(13,26) = '', '',
+r_inp(14,26) = '', '',
+r_inp(15,26) = '', '',
+r_inp(16,26) = '', '',
+r_inp(17,26) = '', '',
+r_inp(18,26) = '', '',
+!
+! 27. call of radiation
+!
+r_inp(1,27)  = '', '',
+r_inp(2,27)  = '', '',
+r_inp(3,27)  = '', '',
+r_inp(4,27)  = 'scalc', 'O3_airO3_025',
+r_inp(5,27)  = '', '',
+r_inp(6,27)  = '', '',
+r_inp(7,27)  = '', '',
+r_inp(8,27)  = '', '',
+r_inp(9,27)  = '', '',
+r_inp(10,27) = '', '',
+r_inp(11,27) = '', '',
+r_inp(12,27) = '', '',
+r_inp(13,27) = '', '',
+r_inp(14,27) = '', '',
+r_inp(15,27) = '', '',
+r_inp(16,27) = '', '',
+r_inp(17,27) = '', '',
+r_inp(18,27) = '', '',
+!
+! 28. call of radiation
+!
+r_inp(1,28)  = '', '',
+r_inp(2,28)  = '', '',
+r_inp(3,28)  = '', '',
+r_inp(4,28)  = 'scalc', 'O3_airO3_026',
+r_inp(5,28)  = '', '',
+r_inp(6,28)  = '', '',
+r_inp(7,28)  = '', '',
+r_inp(8,28)  = '', '',
+r_inp(9,28)  = '', '',
+r_inp(10,28) = '', '',
+r_inp(11,28) = '', '',
+r_inp(12,28) = '', '',
+r_inp(13,28) = '', '',
+r_inp(14,28) = '', '',
+r_inp(15,28) = '', '',
+r_inp(16,28) = '', '',
+r_inp(17,28) = '', '',
+r_inp(18,28) = '', '',
+!
+! 29. call of radiation
+!
+r_inp(1,29)  = '', '',
+r_inp(2,29)  = '', '',
+r_inp(3,29)  = '', '',
+r_inp(4,29)  = 'scalc', 'O3_airO3_027',
+r_inp(5,29)  = '', '',
+r_inp(6,29)  = '', '',
+r_inp(7,29)  = '', '',
+r_inp(8,29)  = '', '',
+r_inp(9,29)  = '', '',
+r_inp(10,29) = '', '',
+r_inp(11,29) = '', '',
+r_inp(12,29) = '', '',
+r_inp(13,29) = '', '',
+r_inp(14,29) = '', '',
+r_inp(15,29) = '', '',
+r_inp(16,29) = '', '',
+r_inp(17,29) = '', '',
+r_inp(18,29) = '', '',
+!
+! 30. call of radiation
+!
+r_inp(1,30)  = '', '',
+r_inp(2,30)  = '', '',
+r_inp(3,30)  = '', '',
+r_inp(4,30)  = 'scalc', 'O3_airO3_028',
+r_inp(5,30)  = '', '',
+r_inp(6,30)  = '', '',
+r_inp(7,30)  = '', '',
+r_inp(8,30)  = '', '',
+r_inp(9,30)  = '', '',
+r_inp(10,30) = '', '',
+r_inp(11,30) = '', '',
+r_inp(12,30) = '', '',
+r_inp(13,30) = '', '',
+r_inp(14,30) = '', '',
+r_inp(15,30) = '', '',
+r_inp(16,30) = '', '',
+r_inp(17,30) = '', '',
+r_inp(18,30) = '', '',
+!
+/
+!! ------------------------------
+&CTRL_FUBRAD
+!
+!# FOR SOLAR CYCLE
+solfac = 0.5        ! 0: solar minimum, 1: solar maximum
+!                 !!! this is obsolete, if fubrad_solar in CPL is active
+!
+!! fb_mk_20120116+
+! set the spectral resolution of FUBRAD
+! Possible are 55 (default), 106, and 49 (old version, not recommended as it
+! leads to an inconsistent flux profile and misleading flux diagnostics)
+nbands = 55,    ! 55 (default)
+! fb_mk_20120116-
+/
+
+&CPL_FUBRAD
+!
+!# ! SOLAR CYCLE TIME SERIES; if commented, solfac in CTRL is used instead
+!# (see &CTRL_TS in import.nml)
+!
+!fubrad_solar = 'import_ts', 'solact',  ! F10.7 cm (1 parameter)
+fubrad_solar = 'import_ts', 'solspec', ! solar spectrum (50 parameters)
+!                                       ! (50, 56 or 107 parameters; number must
+!                                       ! equal nbands + 1 (see CTRL_FUBRAD))
+/

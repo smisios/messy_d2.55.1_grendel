@@ -1,0 +1,50 @@
+! -*- f90 -*-
+!
+! ###############################################################################
+!
+! NMHC SPECIATION (for CMIP6 use only C2H2 emission from this file;
+!                  other emissions stay with CCMI speciation,)
+!                  as the global mean carbon fluxes, derived from the)
+!                  CMIP6 individual species, do not fit to observed fluxes.)
+! In the NetCDF file the individual species and the total NMHC (NMVOC_flux) 
+! is provided, in units of [kg(species) m-2 s-1] or [kg(NMHC) m-2 s-1]. 
+! Conversion to kg(C) is done with an individual conversion factor for each
+! species FRAC_C = (MW(C)*#C(species))/MW(species). For lumped species the 
+! #C and MW are calculated from all individual species contained in the lumped
+! species.
+!
+! -------------------------------------------------------------------------------
+! | SPECIES  | FRAC_C  | FRAC                |  #C  | CONVERSION FACTOR         |
+! |          |         | [g(C) g-1(NMHC)]    |      | FRAC*1000*Navo/(MW(C)*#C) |
+! |          |         | [g(C) g-1(species)] |      | [molec kg-1(species)]     |
+! -------------------------------------------------------------------------------
+! | C2H2     | 0.92250 |             0.92250 | 2    |               2.31265e+25 |
+! | C2H4     | 0.85640 |             0.85640 | 2    |               2.14693e+25 |
+! | C2H6     | 0.79887 |             0.79887 | 2    |               2.00271e+25 |
+! | C3H6     | 0.85630 |             0.85630 | 3    |               1.43112e+25 |
+! | C3H8     | 0.81707 |             0.81707 | 3    |               1.36556e+25 |
+! | C5H8     | 0.88161 |             0.88161 | 5    |               8.84049e+24 |
+! | NC4H10   | 0.68786 |             0.16191 | 3.22 |               2.51979e+24 |
+! | CH3CHO   | 0.54533 |             0.54533 | 2    |               1.36711e+25 |
+! | CH3COCH3 | 0.62040 |             0.62040 | 3    |               1.03687e+25 |
+! | CH3CO2H  | 0.40003 |             0.40003 | 2    |               1.00285e+25 |
+! | CH3OH    | 0.37488 |             0.37488 | 1    |               1.87957e+25 |
+! | HCHO     | 0.39997 |             0.39997 | 1    |               2.00537e+25 |
+! | HCOOH    | 0.25544 |             0.25544 | 1    |               1.28076e+25 |
+! | MEK      | 0.66626 |             0.66626 | 4    |               8.35133e+24 |
+! ------------------------------------------------------------------------------
+! |   W. AVE = 0.57265
+! ------------------------------------------------------------------------------
+
+! ##############################################################################
+
+&regrid
+infile    = "$INPUTDIR_MESSY/offemis/CCMI2/CCMI2_DLR1.0_REFD1_bb_C2H2_195001-201912.nc",
+i_latm    = "lat",
+i_latr    = -90.0,90.0,
+i_lonm    = "lon",
+i_lonr    = -180.0,180.0,
+i_timem   = "time",
+var       = "C2H2=C2H2_flux,2.31265e+25|units=molecules m-2 s-1| longname= emission flux of C2H2;"
+!!$ var       = "C2H2=C2H2_flux,2.31265e+25;C2H4=C2H4_flux,2.14693e+25;C2H6=C2H6_flux,2.00271e+25;C3H6=C3H6_flux,1.43112e+25;C3H8=C3H8_flux,1.36556e+25;C5H8=C5H8_flux,8.84049e+24;NC4H10=NMVOC_flux,2.51979e+24;CH3CHO=C2H4O_flux,1.36711e+25;CH3COCH3=C3H6O_flux,1.03687e+25;CH3CO2H=CH3COOH_flux,1.00285e+25;CH3OH=CH3OH_flux,1.87957e+25;HCHO=CH2O_flux,2.00537e+25;HCOOH=HCOOH_flux,1.28076e+25;MEK=MEK_flux,8.35133e+24;"
+/

@@ -1,0 +1,54 @@
+! -*- f90 -*-
+&CTRL
+ GRID    = '$MPIOM_HRES' ! change value in xmessy, not here 
+ VLEVELS = '$MPIOM_VRES' ! change value in xmessy, not here 
+ NPROCA  = $NPROCA       ! change value in xmessy, not here
+ NPROCB  = $NPROCB       ! change value in xmessy, not here
+ delta_time_mpiom = 3600  !timestep of 1 hour in case of GR15. 
+ !delta_time_mpiom = 7200  !timestep of 2 hour in case of GR30. 
+ L_TIDES = .FALSE. 
+ L_CHECK = .FALSE. 
+ L_COUPLING=.TRUE.
+ L_HAMOCC_COUPLING=.FALSE.
+/
+&OCECTL
+ caulapts= 0.
+ caulapuv= 0.005
+ cah00   = 1000.
+ dv0     = 1.e-2
+ av0     = 1.e-2
+ cwt     = 4.e-4
+ cstabeps= 0.03
+ dback   = 1.e-5
+ aback   = 1.e-4
+ crelsal = 3.3e-7
+ creltem = 0.
+ cdvocon = 0.05
+ cavocon = 0.0
+ istart  = 4          ! see below
+ i3drest = 0
+ icontro = 0
+/
+!
+! istart=0 >NEWSTART USE ONLY FOR COMPLETELY NEW SETUP (new topography etc!!!)
+! istart=1 start from horizonally uniform t,s profiles
+! istart=2 start from levitus
+! (istart=3 start from existing restart files (automatic if rerun present))
+! istart=4 start from external initial file mpiom_init_file_name 
+!          (see &INIT namelist below)
+!
+! i3drest=0 NO 3d-restoring (default)
+! i3drest=1 restoring to monthly mean t,s
+! i3drest=2 restoring to annual mean t,s
+!
+! Advection schemes
+! iocad=3 ADPO
+! iocad=4 ADPO + SLOPECON (default) 
+! iocad=5 ADFS
+!
+&INIT
+!mpiom_init_file_name = '${INPUTDIR_MPIOM}/add/initial/${MPIOM_HRES}${MPIOM_VRES}_${START_YEAR}${START_MONTH}.nc'
+! start from piControl (DECK) restart for 18660101:
+mpiom_init_file_name = '${INPUTDIR_MPIOM}/add/initial/GR15L40_185001_piControl_restart_0075_0001_mpiom.nc'
+
+/

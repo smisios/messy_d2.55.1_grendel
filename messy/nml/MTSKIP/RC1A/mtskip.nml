@@ -1,0 +1,77 @@
+! -*- f90 -*-
+!
+!*****************************************************************************
+! control namelist for MTSKIP
+!*****************************************************************************
+!
+&CTRL
+!
+!Define here, how often processes are calculated, i.e. discretisation in time.
+!trigmtskip=3 means that a process is calculated every third timestep.
+!Note that only odd multiples of steps are permitted.
+!Internal default is trig_mtskip=1; i.e. no skipping, process is calculated
+!every timestep.But this default stops the model and you receive the message:
+!Please switch off mtskip in switch.nml and change back c_offset in orbit.nml
+!and restart the model. 
+trigmtskip=3
+!
+!Number of model timesteps to be added on skipping interval because
+!of e.g. leapfrog, i.e. to maintain massbudget, no negative masses.
+!Default for addon_skip is: 2.0 for trig_mtskip=3
+!                           3.0 for trig_mtskip=5
+!Not setting addon_skip or setting it to negatives, invokes default.
+addon_skip = 2.0
+!
+!Define how many steps the model shall do without skipping after a new start or
+!for a restart, if no mtskip-tendency restart-file is present.
+!- Note that the default number for nstep_always is 10, 
+!  which is invoked if nstep_always is not set in namelist.
+!- If nstep_always is set negative, the model stops.
+!- nstep_always is slightly recalculated by the model:
+!  nstep_always=(nstep_always/trigmtskip)*trigmtskip+trigmtskip-1
+!  This is ensures: a) a minimum nstep_always in the case of nstep_always = 0
+!                   b) nstep_always is in accordance with trigmtskip 
+!- Note that a very high nstep_always can be used to run the model in no-skipping-mode.
+!  This might be especially useful to check for binary identical results.
+!- Note that nstep_always allows a simple control of the restart process:
+!  (a) It allows the easy use of restart-files of model simulations without 
+!      the mtskip submodel. A mtskip restart file does not need to be present.
+!  (b) Also the case of extending skipping to other submodels is covered, e.g.
+!      a restart from simulation with skipping just for mecca can be easily extended
+!      to a simulation with skipping for mecca and gmxe by deleting the mtskip restart file.
+nstep_always = 123
+!For timesteps less than nstep_always:
+!By default, photolysis rates are calculated at beginnig of timestep = current_date.
+!This is not the best choice. With phtl_offset this can be shifted.
+!E.g. phtl_offset = 0.5 shifts the date to calculate photolysis rates to midth of time-step:
+!current_date + phtl_offset*delta_time. This parameter can be omitted. The internal default
+!is phtl_offset = 0.
+phtl_offset = 0.5
+!
+!Switch fixer for negatives on. Default is false.
+!The fixer reduces tendency, so that no negatives are created.
+lfixneg = .TRUE.
+!
+!Switch budgeting of negatives on.
+!For each prognostic variable, that is subject to skipping a budget channel is created:
+!   The budget of the part of tendencies which create undershooting, 
+!   i.e. the part of the undershooting tendency, which is cut off (mass creation) by the fixer. 
+!Note, this option can be used with lfixneg = .TRUE. or .FALSE. 
+!Note, this option consumes a lot of memory. Default is false.
+lbudneg = .TRUE.
+!
+!Choose submodels, which should undergo skipping
+lmecca_mtskip = .TRUE.
+!For skipping of the following submodels, please contact Benedikt Steil.
+!lgmxe_mtskip = .FALSE.
+!lmsbm_mtskip = .FALSE.
+/
+!
+!*****************************************************************************
+! coupling namelist for MTSKIP
+!*****************************************************************************
+!
+!&CPL
+!
+!/
+!*****************************************************************************

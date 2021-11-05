@@ -1,0 +1,904 @@
+!  -*- f90 -*-
+&CTRL
+! ---------------------------------------------------------------------
+! EXPERIMENT NAME
+! ---------------------------------------------------------------------
+  EXP_NAME='$EXP_NAME',
+  EXEC_CHECKSUM='$EXEC_CHECKSUM',
+  I_VERBOSE_LEVEL = 1,
+ !I_VERBOSE_LEVEL = 4,
+! ---------------------------------------------------------------------
+! # FLUSH I/O BUFFER IN EVERY TIME STEP (DEFAULT: T (true))
+! # NOTE: F (false) might increase the overall performance
+ !L_FLUSH_IOBUFFER = F,
+! ---------------------------------------------------------------------
+! # ADD NEW OUTPUT CHANNELS (MAX. 50)
+! ---------------------------------------------------------------------
+  ADD_CHANNEL( 4)   = 'tr_family',
+  !
+  ADD_CHANNEL( 5)   = 'tr_Ox_HOx',
+  ADD_CHANNEL( 6)   = 'tr_NOx_NOy',
+  ADD_CHANNEL( 7)   = 'tr_hycarbs',
+  ADD_CHANNEL( 8)   = 'tr_perox',
+  ADD_CHANNEL( 9)   = 'tr_alks',
+  ADD_CHANNEL(10)   = 'tr_nalks',
+  ADD_CHANNEL(11)   = 'tr_halocarbs',
+  ADD_CHANNEL(12)   = 'tr_chlorine',
+  ADD_CHANNEL(13)   = 'tr_bromine',
+  ADD_CHANNEL(14)   = 'tr_sulfur',
+  ADD_CHANNEL(16)   = 'tr_mercury',
+  ADD_CHANNEL(17)   = 'tr_arom',
+  ADD_CHANNEL(18)   = 'tr_terp',
+  ADD_CHANNEL(19)   = 'tr_XPT',
+
+  ADD_CHANNEL(21)   = 'tr_oracle',
+  
+  !
+  ADD_CHANNEL(30)   = 'aer_bc_oc'
+  ADD_CHANNEL(31)   = 'aer_sulf'
+  ADD_CHANNEL(32)   = 'aer_nitr'
+  ADD_CHANNEL(33)   = 'aer_water'
+  ADD_CHANNEL(34)   = 'aer_du_ss'
+  ADD_CHANNEL(35)   = 'aer_physc'
+  ADD_CHANNEL(36)   = 'aer_aeropt'
+  ADD_CHANNEL(37)   = 'aer_oracle'
+
+! ---------------------------------------------------------------------
+! # ADD NEW CHANNEL OBJECT REFERENCES (MAX. 500)
+! # NOTES: 
+! #  - SOURCE OBJECT NAME MAY CONTAIN WILDCARDS '?' AND '*'
+! #    (in this case, target object name is ignored)
+! #  - TARGET CHANNEL NAME MAY CONTAIN WILDCARDS '?' AND '*'
+! #  - TARGET OBJECT NAME SET TO SOURCE OBJECT NAME, IF ''
+! ---------------------------------------------------------------------
+!
+  ADD_REF( 1)         = 'g3b',         'aps',        '*',         '',
+  ADD_REF( 2)         = 'scnbuf',      'vervel',     'g3b',       '',
+  ADD_REF( 3)         = 'ECHAM5',      'gworo*',     'gwave',     '',
+  ADD_REF( 4)         = 'g3b',         'geosp',      'tr_*',      '',
+  ADD_REF( 5)         = 'geoloc',      'gboxarea',   'tr_*',      '',
+  ADD_REF( 6)         = 'grid_def',      'grvol',      'tr_*',      '',
+  ADD_REF( 7)         = 'grid_def',      'grmass',     'tr_*',      '',
+  ADD_REF( 8)         = 'ECHAM5',      'press',      'tr_*',      '',
+  ADD_REF( 9)         = 'ECHAM5',      'tm1',        'tr_*',      '',
+
+  ADD_REF(10)         = 'geoloc',      'gboxarea',   'aer_*',     '',
+  ADD_REF(11)         = 'grid_def',      'grvol',      'aer_*',     '',
+  ADD_REF(12)         = 'grid_def',      'grmass',     'aer_*',     '',
+  ADD_REF(13)         = 'ECHAM5',      'press',      'aer_*',     '',
+  ADD_REF(14)         = 'ECHAM5',      'tm1',        'aer_*',     '',
+
+
+
+  ADD_REF(15)         = 'gl',          'q',          'g3b', '',
+  ADD_REF(16)         = 'gl',          'xl',         'g3b', '',
+  ADD_REF(17)         = 'gl',          'xi',         'g3b', '',
+
+  ADD_REF(18)         = 'ECHAM5',      'tpot',       'tropop',  '',
+  ADD_REF(19)         = 'ECHAM5',      'geopot',     'tropop',  '',
+
+
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  ! GASES 
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  ADD_REF( 20)       = 'tracer_gp',   'ClOX',       'tr_family', '',
+  ADD_REF( 21)       = 'tracer_gp',   'BrOX',       'tr_family', '',
+  ADD_REF( 22)       = 'tracer_gp',   'NOX',        'tr_family', '',
+  !
+  ADD_REF( 37)       = 'tracer_gp',   'O1D',        'tr_Ox_HOx', '',
+  ADD_REF( 38)       = 'tracer_gp',   'O3P',        'tr_Ox_HOx', '',
+  ADD_REF( 39)       = 'tracer_gp',   'O2',         'tr_Ox_HOx', '',
+  ADD_REF( 40)       = 'tracer_gp',   'O3',         'tr_Ox_HOx', '',
+  ADD_REF( 41)       = 'tracer_gp',   'H',          'tr_Ox_HOx', '',
+  ADD_REF( 42)       = 'tracer_gp',   'H2',         'tr_Ox_HOx', '',
+  ADD_REF( 43)       = 'tracer_gp',   'OH',         'tr_Ox_HOx', '',
+  ADD_REF( 44)       = 'tracer_gp',   'HO2',        'tr_Ox_HOx', '',
+  ADD_REF( 45)       = 'tracer_gp',   'H2O2',       'tr_Ox_HOx', '',
+  ADD_REF( 46)       = 'tracer_gp',   'H2O',        'tr_Ox_HOx', '',
+  ADD_REF( 47)       = 'ECHAM5',      'qm1',        'tr_O3_HOx', '',
+  !
+  ADD_REF( 50)       = 'tracer_gp',   'N',          'tr_NOx_NOy', '',
+  ADD_REF( 51)       = 'tracer_gp',   'N2',         'tr_NOx_NOy', '',
+  ADD_REF( 52)       = 'tracer_gp',   'NH3',        'tr_NOx_NOy', '',
+  ADD_REF( 53)       = 'tracer_gp',   'N2O',        'tr_NOx_NOy', '',
+  ADD_REF( 54)       = 'tracer_gp',   'NO',         'tr_NOx_NOy', '',
+  ADD_REF( 55)       = 'tracer_gp',   'NO2',        'tr_NOx_NOy', '',
+  ADD_REF( 56)       = 'tracer_gp',   'NO3',        'tr_NOx_NOy', '',
+  ADD_REF( 57)       = 'tracer_gp',   'N2O5',       'tr_NOx_NOy', '',
+  ADD_REF( 58)       = 'tracer_gp',   'HONO',       'tr_NOx_NOy', '',
+  ADD_REF( 59)       = 'tracer_gp',   'HNO3',       'tr_NOx_NOy', '',
+  ADD_REF( 60)       = 'tracer_gp',   'HNO4',       'tr_NOx_NOy', '',
+  ADD_REF( 61)       = 'tracer_gp',   'PAN',        'tr_NOx_NOy', '',
+  ADD_REF( 62)       = 'tracer_gp',   'HNO3_nat' ,  'tr_NOx_NOy', '',
+  ADD_REF( 63)       = 'tracer_gp',   'NH2OH',      'tr_NOx_NOy', '',
+  ADD_REF( 64)       = 'tracer_gp',   'NHOH',       'tr_NOx_NOy', '',
+  ADD_REF( 65)       = 'tracer_gp',   'NH2O',       'tr_NOx_NOy', '',
+  ADD_REF( 66)       = 'tracer_gp',   'HNO',        'tr_NOx_NOy', '',
+  ADD_REF( 67)       = 'tracer_gp',   'NH2',        'tr_NOx_NOy', '',
+  ADD_REF( 68)       = 'tracer_gp',   'HCN',        'tr_NOx_NOy', '',
+  ADD_REF( 69)       = 'tracer_gp',   'CH3CN',      'tr_NOx_NOy', '',
+  !
+  ADD_REF( 70)       = 'tracer_gp',   'CH4',        'tr_hycarbs', '',
+  ADD_REF( 71)       = 'tracer_gp',   'C2H6',       'tr_hycarbs', '',
+  ADD_REF( 72)       = 'tracer_gp',   'C2H4',       'tr_hycarbs', '',
+  ADD_REF( 73)       = 'tracer_gp',   'C3H8',       'tr_hycarbs', '',
+  ADD_REF( 74)       = 'tracer_gp',   'C3H6',       'tr_hycarbs', '',
+  ADD_REF( 75)       = 'tracer_gp',   'MVK',        'tr_hycarbs', '',
+  ADD_REF( 76)       = 'tracer_gp',   'MEK',        'tr_hycarbs', '',
+  ADD_REF( 76)       = 'tracer_gp',   'C5H8',       'tr_hycarbs', '',
+  ADD_REF( 78)       = 'tracer_gp',   'C2H2',       'tr_hycarbs', '',
+  ADD_REF( 79)       = 'tracer_gp',   'NC4H10',     'tr_hycarbs', '',
+  ADD_REF( 80)       = 'tracer_gp',   'IC4H10',     'tr_hycarbs', '',
+  !
+  ADD_REF( 90)       = 'tracer_gp',   'BENZENE',    'tr_arom', '',
+  ADD_REF( 91)       = 'tracer_gp',   'TOLUENE',    'tr_arom', '',
+  ADD_REF( 92)       = 'tracer_gp',   'LXYL',       'tr_arom', '',
+  ADD_REF( 93)       = 'tracer_gp',   'PHENOL',     'tr_arom', '',
+  ADD_REF( 94)       = 'tracer_gp',   'STYRENE',    'tr_arom', '',
+  ADD_REF( 95)       = 'tracer_gp',   'LTMB',       'tr_arom', '',
+  ADD_REF( 96)       = 'tracer_gp',   'BENZAL',     'tr_arom', '',
+  ADD_REF( 97)       = 'tracer_gp',   'LHAROM',     'tr_arom', '',
+  ADD_REF( 98)       = 'tracer_gp',   'EBENZ',      'tr_arom', '',
+  !
+  ADD_REF( 99)       = 'tracer_gp',   'APINENE',    'tr_terp', '',
+  ADD_REF(100)       = 'tracer_gp',   'BPINENE',    'tr_terp', '',
+  ADD_REF(101)       = 'tracer_gp',   'CARENE',     'tr_terp', '',
+  ADD_REF(102)       = 'tracer_gp',   'SABINENE',   'tr_terp', '',
+  ADD_REF(103)       = 'tracer_gp',   'CAMPHENE',   'tr_terp', '',
+  ADD_REF(104)       = 'tracer_gp',   'LHAROM',     'tr_terp', '',
+  !
+  ADD_REF(105)       = 'tracer_gp',   'XPT*',       'tr_XPT', '',
+  !
+  ADD_REF(180)       = 'tracer_gp',   'CH3O2',      'tr_perox', '',
+  ADD_REF(181)       = 'tracer_gp',   'CH3OOH',     'tr_perox', '',
+  ADD_REF(182)       = 'tracer_gp',   'C2H5O2',     'tr_perox', '',
+  ADD_REF(183)       = 'tracer_gp',   'C2H5OOH',    'tr_perox', '',
+  ADD_REF(184)       = 'tracer_gp',   'CH3CO3',     'tr_perox', '',
+  ADD_REF(185)       = 'tracer_gp',   'CH3CO3H',    'tr_perox', '',
+  ADD_REF(186)       = 'tracer_gp',   'IC3H7O2',    'tr_perox', '',
+  ADD_REF(187)       = 'tracer_gp',   'IC3H7OOH',   'tr_perox', '',
+  ADD_REF(188)       = 'tracer_gp',   'LHOC3H6O2',  'tr_perox', '',
+  ADD_REF(189)       = 'tracer_gp',   'LHOC3H6OOH', 'tr_perox', '',
+  ADD_REF(190)       = 'tracer_gp',   'CH3COCH2O2', 'tr_perox', '',
+  ADD_REF(191)       = 'tracer_gp',   'HYPERACET',  'tr_perox', '',
+  ADD_REF(192)       = 'tracer_gp',   'LC4H9O2',    'tr_perox', '',
+  ADD_REF(193)       = 'tracer_gp',   'LC4H9OOH',   'tr_perox', '',
+  ADD_REF(194)       = 'tracer_gp',   'MVKO2',      'tr_perox', '',
+  ADD_REF(195)       = 'tracer_gp',   'MVKOOH',     'tr_perox', '',
+  ADD_REF(196)       = 'tracer_gp',   'LMEKO2',     'tr_perox', '',
+  ADD_REF(197)       = 'tracer_gp',   'LMEKOOH',    'tr_perox', '',
+  ADD_REF(198)       = 'tracer_gp',   'ISO2',       'tr_perox', '',
+  ADD_REF(199)       = 'tracer_gp',   'ISOOH',      'tr_perox', '',
+  !
+  ADD_REF(209)       = 'tracer_gp',   'GLYOX',      'tr_alks', '',
+  ADD_REF(210)       = 'tracer_gp',   'CH3OH',      'tr_alks', '',
+  ADD_REF(211)       = 'tracer_gp',   'HCHO',       'tr_alks', '',
+  ADD_REF(212)       = 'tracer_gp',   'CO',         'tr_alks', '',
+  ADD_REF(213)       = 'tracer_gp',   'HCOOH',      'tr_alks', '',
+  ADD_REF(214)       = 'tracer_gp',   'CH3CHO',     'tr_alks', '',
+  ADD_REF(215)       = 'tracer_gp',   'CH3CO2H',    'tr_alks', '',
+  ADD_REF(216)       = 'tracer_gp',   'CH3COCH3',   'tr_alks', '',
+  ADD_REF(217)       = 'tracer_gp',   'ACETOL',     'tr_alks', '',
+  ADD_REF(218)       = 'tracer_gp',   'MGLYOX',     'tr_alks', '',
+  ADD_REF(219)       = 'tracer_gp',   'BIACET',     'tr_alks', '',
+  !
+  ADD_REF(220)       = 'tracer_gp',   'NACA',       'tr_nalks', '',
+  ADD_REF(221)       = 'tracer_gp',   'MPAN',       'tr_nalks', '',
+  ADD_REF(222)       = 'tracer_gp',   'IC3H7NO3',   'tr_nalks', '',
+  ADD_REF(223)       = 'tracer_gp',   'LC4H9NO3',   'tr_nalks', '',
+  ADD_REF(224)       = 'tracer_gp',   'ISON',       'tr_nalks', '',
+  !
+  ADD_REF(230)       = 'tracer_gp',   'CCl4',       'tr_halocarbs', '',
+  ADD_REF(231)       = 'tracer_gp',   'CH3Cl',      'tr_halocarbs', '',
+  ADD_REF(232)       = 'tracer_gp',   'CH3CCl3',    'tr_halocarbs', '',
+  ADD_REF(233)       = 'tracer_gp',   'CF2Cl2',     'tr_halocarbs', '',
+  ADD_REF(234)       = 'tracer_gp',   'CFCl3',      'tr_halocarbs', '',
+  ADD_REF(235)       = 'tracer_gp',   'CH2ClBr',    'tr_halocarbs', '',
+  ADD_REF(236)       = 'tracer_gp',   'CHCl2Br',    'tr_halocarbs', '',
+  ADD_REF(237)       = 'tracer_gp',   'CHClBr2',    'tr_halocarbs', '',
+  ADD_REF(238)       = 'tracer_gp',   'CH2Br2',     'tr_halocarbs', '',
+  ADD_REF(239)       = 'tracer_gp',   'CH3Br',      'tr_halocarbs', '',
+  ADD_REF(240)       = 'tracer_gp',   'CHBr3',      'tr_halocarbs', '',
+  ADD_REF(241)       = 'tracer_gp',   'CF3Br',      'tr_halocarbs', '',
+  ADD_REF(242)       = 'tracer_gp',   'CF2ClBr',    'tr_halocarbs', '',
+  !
+  ADD_REF(245)       = 'tracer_gp',   'Cl',         'tr_chlorine', '',
+  ADD_REF(246)       = 'tracer_gp',   'Cl2',        'tr_chlorine', '',
+  ADD_REF(247)       = 'tracer_gp',   'ClO',        'tr_chlorine', '',
+  ADD_REF(248)       = 'tracer_gp',   'HCl',        'tr_chlorine', '',
+  ADD_REF(249)       = 'tracer_gp',   'HOCl',       'tr_chlorine', '',
+  ADD_REF(250)       = 'tracer_gp',   'Cl2O2',      'tr_chlorine', '',
+  ADD_REF(251)       = 'tracer_gp',   'OClO',       'tr_chlorine', '',
+  ADD_REF(252)       = 'tracer_gp',   'ClNO2',      'tr_chlorine', '',
+  ADD_REF(253)       = 'tracer_gp',   'ClNO3',      'tr_chlorine', '',
+  !
+  ADD_REF(254)       = 'tracer_gp',   'ProdLCl',    'tr_chlorine', '',
+  ADD_REF(255)       = 'tracer_gp',   'ProdSCl',    'tr_chlorine', '',
+  !
+  ADD_REF(260)       = 'tracer_gp',   'Br',         'tr_bromine', '',
+  ADD_REF(261)       = 'tracer_gp',   'Br2',        'tr_bromine', '',
+  ADD_REF(262)       = 'tracer_gp',   'BrO',        'tr_bromine', '',
+  ADD_REF(263)       = 'tracer_gp',   'HBr',        'tr_bromine', '',
+  ADD_REF(264)       = 'tracer_gp',   'HOBr',       'tr_bromine', '',
+  ADD_REF(265)       = 'tracer_gp',   'BrNO2',      'tr_bromine', '',
+  ADD_REF(266)       = 'tracer_gp',   'BrNO3',      'tr_bromine', '',
+  ADD_REF(267)       = 'tracer_gp',   'BrCl',       'tr_bromine', '',
+  !
+  ADD_REF(268)       = 'tracer_gp',   'ProdLBr',     'tr_bromine', '',
+  ADD_REF(269)       = 'tracer_gp',   'ProdSBr',     'tr_bromine', '',
+  !
+  ADD_REF(271)       = 'tracer_gp',   'SO2',        'tr_sulfur', '',
+  ADD_REF(272)       = 'tracer_gp',   'H2SO4',      'tr_sulfur', '',
+  ADD_REF(273)       = 'tracer_gp',   'CH3SO3H',    'tr_sulfur', '',
+  ADD_REF(274)       = 'tracer_gp',   'DMS',        'tr_sulfur', '',
+  ADD_REF(275)       = 'tracer_gp',   'DMSO',       'tr_sulfur', '',
+  ADD_REF(276)       = 'tracer_gp',   'CH3SO2',     'tr_sulfur', '',
+  ADD_REF(277)       = 'tracer_gp',   'CH3SO3',     'tr_sulfur', '',
+  ADD_REF(278)       = 'tracer_gp',   'OCS',        'tr_sulfur', '',
+  ADD_REF(279)       = 'tracer_gp',   'SO',         'tr_sulfur', '',
+  ADD_REF(280)       = 'tracer_gp',   'SO3',        'tr_sulfur', '',
+  ADD_REF(281)       = 'tracer_gp',   'S',          'tr_sulfur', '',
+  ADD_REF(282)       = 'tracer_gp',   'SH',         'tr_sulfur', '',
+  !
+  ADD_REF(301)       = 'tracer_gp',   'MNNCATECO2',   'tr_oracle', '',
+  ADD_REF(302)       = 'tracer_gp',   'NDNCRESOOH',   'tr_oracle', '',
+  ADD_REF(303)       = 'tracer_gp',   'NDNPHENO2',    'tr_oracle', '',
+  ADD_REF(304)       = 'tracer_gp',   'NDNPHENOOH',   'tr_oracle', '',
+  ADD_REF(305)       = 'tracer_gp',   'DNPHENO2',     'tr_oracle', '',
+  ADD_REF(306)       = 'tracer_gp',   'NNCATECOOH',   'tr_oracle', '',
+  ADD_REF(307)       = 'tracer_gp',   'DNCRESOOH',    'tr_oracle', '',
+  ADD_REF(308)       = 'tracer_gp',   'DNCRESO2',     'tr_oracle', '',
+  ADD_REF(309)       = 'tracer_gp',   'MNNCATCOOH',   'tr_oracle', '',
+  ADD_REF(310)       = 'tracer_gp',   'DNPHENOOH',    'tr_oracle', '',
+  ADD_REF(311)       = 'tracer_gp',   'NNCATECO2',    'tr_oracle', '',
+  !
+  ADD_REF(312)       = 'tracer_gp',   'MNCATECOOH',   'tr_oracle', '',
+  ADD_REF(313)       = 'tracer_gp',   'NCATECOOH',    'tr_oracle', '',
+  ADD_REF(314)       = 'tracer_gp',   'MNCATECO2',    'tr_oracle', '',
+  ADD_REF(315)       = 'tracer_gp',   'NC4OHCPAN',    'tr_oracle', '',
+  ADD_REF(316)       = 'tracer_gp',   'NCATECO2',     'tr_oracle', '',
+  !
+  ADD_REF(317)       = 'tracer_gp',   'C5CO2OHPAN',   'tr_oracle', '',
+  ADD_REF(318)       = 'tracer_gp',   'C10PAN2   ',   'tr_oracle', '',
+  ADD_REF(319)       = 'tracer_gp',   'NPTLQOOH  ',   'tr_oracle', '',
+  ADD_REF(320)       = 'tracer_gp',   'TLEMUCNO3 ',   'tr_oracle', '',
+  ADD_REF(321)       = 'tracer_gp',   'C106NO3   ',   'tr_oracle', '',
+  ADD_REF(322)       = 'tracer_gp',   'C7PAN3    ',   'tr_oracle', '',
+  ADD_REF(323)       = 'tracer_gp',   'NPHENOOH  ',   'tr_oracle', '',
+  ADD_REF(324)       = 'tracer_gp',   'C721PAN   ',   'tr_oracle', '',
+  ADD_REF(325)       = 'tracer_gp',   'C6CO2OHPAN',   'tr_oracle', '',
+  ADD_REF(326)       = 'tracer_gp',   'C811PAN   ',   'tr_oracle', '',
+  ADD_REF(327)       = 'tracer_gp',   'NO3CH2PAN ',   'tr_oracle', '',
+  ADD_REF(328)       = 'tracer_gp',   'NPHENO2   ',   'tr_oracle', '',
+  ADD_REF(329)       = 'tracer_gp',   'NCRESO2   ',   'tr_oracle', '',
+  ADD_REF(330)       = 'tracer_gp',   'NPTLQO2   ',   'tr_oracle', '',
+  ADD_REF(331)       = 'tracer_gp',   'TLEMUCPAN ',   'tr_oracle', '',
+  ADD_REF(332)       = 'tracer_gp',   'NCRESOOH  ',   'tr_oracle', '',
+  ADD_REF(333)       = 'tracer_gp',   'ROO6R1NO3 ',   'tr_oracle', '',
+  ADD_REF(334)       = 'tracer_gp',   'C9PAN2',       'tr_oracle', '',
+  !
+  ADD_REF(335)       = 'tracer_gp',   'LNBPINABO2  ', 'tr_oracle', '',
+  ADD_REF(336)       = 'tracer_gp',   'TLBIPERNO3  ', 'tr_oracle', '',
+  ADD_REF(337)       = 'tracer_gp',   'BZEMUCNO3   ', 'tr_oracle', '',
+  ADD_REF(338)       = 'tracer_gp',   'C5CO2DBPAN  ', 'tr_oracle', '',
+  ADD_REF(339)       = 'tracer_gp',   'NBZQO2      ', 'tr_oracle', '',
+  ADD_REF(340)       = 'tracer_gp',   'LAPINABNO3  ', 'tr_oracle', '',
+  ADD_REF(341)       = 'tracer_gp',   'LNAPINABOOH ', 'tr_oracle', '',
+  ADD_REF(342)       = 'tracer_gp',   'ROO6R5O2    ', 'tr_oracle', '',
+  ADD_REF(343)       = 'tracer_gp',   'C4CO2DBPAN  ', 'tr_oracle', '',
+  ADD_REF(344)       = 'tracer_gp',   'NBZQOOH     ', 'tr_oracle', '',
+  ADD_REF(345)       = 'tracer_gp',   'C312COPAN   ', 'tr_oracle', '',
+  ADD_REF(346)       = 'tracer_gp',   'RO6R1NO3    ', 'tr_oracle', '',
+  ADD_REF(347)       = 'tracer_gp',   'DNCRES      ', 'tr_oracle', '',
+  ADD_REF(348)       = 'tracer_gp',   'BZEMUCPAN   ', 'tr_oracle', '',
+  ADD_REF(349)       = 'tracer_gp',   'LISOPACNO3O2', 'tr_oracle', '',
+  ADD_REF(350)       = 'tracer_gp',   'NTLFUO2     ', 'tr_oracle', '',
+  ADD_REF(351)       = 'tracer_gp',   'DNPHEN      ', 'tr_oracle', '',
+  ADD_REF(352)       = 'tracer_gp',   'ISOPBDNO3O2 ', 'tr_oracle', '',
+  ADD_REF(353)       = 'tracer_gp',   'C5PAN9      ', 'tr_oracle', '',
+  ADD_REF(354)       = 'tracer_gp',   'PINALNO3    ', 'tr_oracle', '',
+  ADD_REF(355)       = 'tracer_gp',   'LNAPINABO2  ', 'tr_oracle', '',
+  ADD_REF(356)       = 'tracer_gp',   'NSTYRENO2   ', 'tr_oracle', '',
+  ADD_REF(357)       = 'tracer_gp',   'C810NO3     ', 'tr_oracle', '',
+  ADD_REF(358)       = 'tracer_gp',   'NSTYRENOOH  ', 'tr_oracle', '',
+  ADD_REF(359)       = 'tracer_gp',   'BZBIPERNO3  ', 'tr_oracle', '',
+  ADD_REF(360)       = 'tracer_gp',   'BPINANO3    ', 'tr_oracle', '',
+  ADD_REF(361)       = 'tracer_gp',   'C614NO3     ', 'tr_oracle', '',
+  ADD_REF(362)       = 'tracer_gp',   'EPXDLPAN    ', 'tr_oracle', '',
+  ADD_REF(363)       = 'tracer_gp',   'LNBPINABOOH ', 'tr_oracle', '',
+  ADD_REF(364)       = 'tracer_gp',   'C89PAN  ',     'tr_oracle', '',
+  ADD_REF(365)       = 'tracer_gp',   'NBZFUO2 ',     'tr_oracle', '',
+  ADD_REF(366)       = 'tracer_gp',   'NBZFUOOH',     'tr_oracle', '',
+  !
+  ADD_REF(367)       = 'tracer_gp',   'MALANHYOOH   ','tr_oracle', '',
+  ADD_REF(368)       = 'tracer_gp',   'C235C6CO3H   ','tr_oracle', '',
+  ADD_REF(369)       = 'tracer_gp',   'NISOPOOH     ','tr_oracle', '',
+  ADD_REF(370)       = 'tracer_gp',   'MALANHYO2    ','tr_oracle', '',
+  ADD_REF(371)       = 'tracer_gp',   'C3PAN1       ','tr_oracle', '',
+  ADD_REF(372)       = 'tracer_gp',   'TLEMUCO2     ','tr_oracle', '',
+  ADD_REF(373)       = 'tracer_gp',   'C813O2       ','tr_oracle', '',
+  ADD_REF(374)       = 'tracer_gp',   'MNCATECH     ','tr_oracle', '',
+  ADD_REF(375)       = 'tracer_gp',   'NCRES1O2     ','tr_oracle', '',
+  ADD_REF(376)       = 'tracer_gp',   'C6CO2OHCO3   ','tr_oracle', '',
+  ADD_REF(377)       = 'tracer_gp',   'CRESO2       ','tr_oracle', '',
+  ADD_REF(378)       = 'tracer_gp',   'NC4MDCO2H    ','tr_oracle', '',
+  ADD_REF(379)       = 'tracer_gp',   'NC4OHCO3     ','tr_oracle', '',
+  ADD_REF(380)       = 'tracer_gp',   'CHOC3COPAN   ','tr_oracle', '',
+  ADD_REF(381)       = 'tracer_gp',   'MMALANHYO2   ','tr_oracle', '',
+  ADD_REF(382)       = 'tracer_gp',   'BZEMUCO2     ','tr_oracle', '',
+  ADD_REF(383)       = 'tracer_gp',   'PHENO2       ','tr_oracle', '',
+  ADD_REF(384)       = 'tracer_gp',   'C96NO3       ','tr_oracle', '',
+  ADD_REF(385)       = 'tracer_gp',   'CO235C6CO3   ','tr_oracle', '',
+  ADD_REF(386)       = 'tracer_gp',   'PHENOOH      ','tr_oracle', '',
+  ADD_REF(387)       = 'tracer_gp',   'NC4OHCO3H    ','tr_oracle', '',
+  ADD_REF(388)       = 'tracer_gp',   'MALDIALPAN   ','tr_oracle', '',
+  ADD_REF(389)       = 'tracer_gp',   'C4MCONO3OH   ','tr_oracle', '',
+  ADD_REF(390)       = 'tracer_gp',   'C5COOHCO3H   ','tr_oracle', '',
+  ADD_REF(391)       = 'tracer_gp',   'PBZN         ','tr_oracle', '',
+  ADD_REF(392)       = 'tracer_gp',   'NTLFUOOH     ','tr_oracle', '',
+  ADD_REF(393)       = 'tracer_gp',   'ACCOMECO3H   ','tr_oracle', '',
+  ADD_REF(394)       = 'tracer_gp',   'MMALNHYOOH   ','tr_oracle', '',
+  ADD_REF(395)       = 'tracer_gp',   'TLEMUCOOH    ','tr_oracle', '',
+  ADD_REF(396)       = 'tracer_gp',   'LNMBOABO2    ','tr_oracle', '',
+  ADD_REF(397)       = 'tracer_gp',   'C3PAN2       ','tr_oracle', '',
+  ADD_REF(398)       = 'tracer_gp',   'C89NO3       ','tr_oracle', '',
+  ADD_REF(399)       = 'tracer_gp',   'LMBOABNO3    ','tr_oracle', '',
+  ADD_REF(400)       = 'tracer_gp',   'C5CO2OHCO3   ','tr_oracle', '',
+  ADD_REF(401)       = 'tracer_gp',   'C4PAN5       ','tr_oracle', '',
+  ADD_REF(402)       = 'tracer_gp',   'LNMBOABOOH   ','tr_oracle', '',
+  ADD_REF(403)       = 'tracer_gp',   'ZCPANC23DBCOD','tr_oracle', '',
+  ADD_REF(404)       = 'tracer_gp',   'HCOCOHPAN    ','tr_oracle', '',
+  ADD_REF(405)       = 'tracer_gp',   'NBZFUONE     ','tr_oracle', '',
+  ADD_REF(406)       = 'tracer_gp',   'C514NO3      ','tr_oracle', '',
+  ADD_REF(407)       = 'tracer_gp',   'DB1NO3       ','tr_oracle', '',
+  ADD_REF(408)       = 'tracer_gp',   'NISOPO2      ','tr_oracle', '',
+  ADD_REF(409)       = 'tracer_gp',   'C5COO2NO2    ','tr_oracle', '',
+  ADD_REF(400)       = 'tracer_gp',   'LC5PAN1719   ','tr_oracle', '',
+  ADD_REF(411)       = 'tracer_gp',   'ACCOMECO3    ','tr_oracle', '',
+  ADD_REF(412)       = 'tracer_gp',   'NMBOBCO      ','tr_oracle', '',
+  ADD_REF(413)       = 'tracer_gp',   'C6COOHCO3H   ','tr_oracle', '',
+  ADD_REF(414)       = 'tracer_gp',   'NCRES1OOH    ','tr_oracle', '',
+  ADD_REF(415)       = 'tracer_gp',   'CRESOOH      ','tr_oracle', '',
+  ADD_REF(416)       = 'tracer_gp',   'BZEMUCOOH    ','tr_oracle', '',
+  ADD_REF(417)       = 'tracer_gp',   'NDNCRESO2    ','tr_oracle', '',
+  ADD_REF(418)       = 'tracer_gp',   'ACCOMEPAN    ','tr_oracle', '',
+  !
+  ADD_REF(420)       = 'tracer_gp',    'LfPOG*',     'tr_oracle',  '',
+  ADD_REF(421)       = 'tracer_gp',    'LfSOG*',     'tr_oracle',  '',
+  ADD_REF(422)       = 'tracer_gp',    'LbbPOG*',    'tr_oracle',  '',
+  ADD_REF(423)       = 'tracer_gp',    'LbbSOG*',    'tr_oracle',  '',
+  !
+  ADD_REF(425)       = 'tracer_gp',    'LOLE2',      'tr_oracle',  '',
+  ADD_REF(426)       = 'tracer_gp',    'LALK4',      'tr_oracle',  '',
+  ADD_REF(427)       = 'tracer_gp',    'LALK5',      'tr_oracle',  '',
+  ADD_REF(428)       = 'tracer_gp',    'LTERP',      'tr_oracle',  '',
+  ADD_REF(429)       = 'tracer_gp',    'LbSOG*',     'tr_oracle',  '',
+  ADD_REF(430)       = 'tracer_gp',    'LaSOG*',     'tr_oracle',  '',
+  ADD_REF(431)       = 'tracer_gp',    'LbOSOG*',    'tr_oracle',  '',
+  ADD_REF(432)       = 'tracer_gp',    'LaOSOG*',    'tr_oracle',  '',
+  !
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  ! AEROSOLS 
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+  ADD_REF(451)      = 'tracer_gp',    'BC_*',       'aer_bc_oc',  '',
+  ADD_REF(452)      = 'scalc',        'OC_*',       'aer_bc_oc',  '',
+  ADD_REF(453)      = 'scalc',        'mass_*',     'aer_bc_oc',  '',
+  !
+  ADD_REF(454)      = 'tracer_gp',    'H2SO4_*',    'aer_sulf',  '',
+  ADD_REF(455)      = 'tracer_gp',    'HSO4m_*',    'aer_sulf',  '',
+  ADD_REF(456)      = 'tracer_gp',    'SO4mm_*',    'aer_sulf',  '',
+  !
+  ADD_REF(457)      = 'tracer_gp',    'NO3m_*',     'aer_nitr',  '',
+  ADD_REF(458)      = 'tracer_gp',    'NH4p_*',     'aer_nitr',  '',
+ 
+  ADD_REF(459)      = 'tracer_gp',    'H2O_*',      'aer_water',  '',
+  ADD_REF(460)      = 'tracer_gp',    'Hp_*',       'aer_water',  '',
+  ADD_REF(461)      = 'tracer_gp',    'OHm_*',      'aer_water',  '',
+  !
+  ADD_REF(462)      = 'tracer_gp',    'DU_*',       'aer_du_ss',  '',
+  ADD_REF(463)      = 'tracer_gp',    'SS_*',       'aer_du_ss',  '',
+  ADD_REF(464)      = 'tracer_gp',    'Nap_*',      'aer_du_ss',  '',
+  ADD_REF(465)      = 'tracer_gp',    'Kp_*',       'aer_du_ss',  '',
+  ADD_REF(466)      = 'tracer_gp',    'Capp_*',     'aer_du_ss',  '',
+  ADD_REF(467)      = 'tracer_gp',    'Mgpp_*',     'aer_du_ss',  '',
+  !
+  ADD_REF(468)      = 'tracer_gp',    'fPOA*',      'aer_oracle',  '',
+  ADD_REF(469)      = 'tracer_gp',    'fSOA*',      'aer_oracle',  '',
+  ADD_REF(470)      = 'tracer_gp',    'bbPOA*',     'aer_oracle',  '',
+  ADD_REF(471)      = 'tracer_gp',    'bbSOA*',     'aer_oracle',  '',
+  ADD_REF(472)      = 'tracer_gp',    'SOAv*',      'aer_oracle',  '',
+  !
+  ADD_REF(473)      = 'tracer_gp',    'N_*',        'aer_physc',  '',
+  ADD_REF(474)      = 'gmxe_gp',      'AERNUMB*',   'aer_physc',  '',
+  ADD_REF(475)      = 'gmxe_gp',      'RWETAER*',   'aer_physc',  '',
+  ADD_REF(476)      = 'gmxe_gp',      'RDRYAER*',   'aer_physc',  '',
+  ADD_REF(477)      = 'gmxe_gp',      'DDRYAER*',   'aer_physc',  '',
+  !
+  ADD_REF(480)      = 'aeropt_GMXE',  'aot_opt_TOT_*','aer_aeropt',  '',
+
+
+! ---------------------------------------------------------------------
+! # SET DEFAULT OUTPUT AND RESTART HANDLING
+!      - ''
+!      - OUTPUT-FILETYPE, RERUN-FILETYPE, NO. OF STEPS PER OUTPUT-FILE,
+!      - RERUN, IGNORE, INST, AVE, STD, MIN, MAX, CNT, CAV, RANGE(2)
+! # NOTES:
+! #    IGNORE = T  FORCES THE MODEL TO IGNORE POTENTIAL lrestreq FLAGS
+! #                FOR PSEUDO-INITIAL RUNS FROM RESTART FILES
+! ---------------------------------------------------------------------
+! ------------------------------------R-I--I-A-S-M-M--C-C-R-R-
+OUT_DEFAULT     = '', $OFT, $OFT, -1, F,F, F,T,F,F,F, F,F, , ,
+! ---------------------------------------------------------------------
+! # OUTPUT PRECISION (ASCII, (P)NETCDF, (P)NETCDF, GRIB, HDF4, HDF5)
+! # NOTES: - ONLY (P)NETCDF CURRENTLY IMPLEMENTED;
+! #        - (P)NETCDF: 1=NF(90)_FLOAT; 2=NF(90)_DOUBLE
+ OUT_PREC = 1, 1, 1, 1, 1, 1,   ! for production
+!OUT_PREC = 1, 2, 2, 1, 1, 1,   ! for tests
+! ---------------------------------------------------------------------
+! # SET CHANNEL SPECIFIC DEFAULT OUTPUT AND RESTART HANDLING (MAX. 500)
+!      - channel-name
+!      - OUTPUT-FILETYPE, RERUN-FILETYPE, NO. OF STEPS PER OUTPUT-FILE,
+!      - RERUN, IGNORE, INST, AVE, STD, MIN, MAX, CNT, CAV, RANGE(2)
+! # NOTE: IF NO. OF STEPS PER OUTPUT-FILE <= 0, THE EVENT TRIGGER
+!         (CPL-NAMELIST, TIMER_TNF BELOW) CONTROLS THE FILE CONTENT
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!! - NO OUTPUT
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  ! ECHAM5 STANDARD
+  OUT_CHANNEL(  1)   = 'geoloc',        $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+  OUT_CHANNEL(  2)   = 'sp',               2,    2, -1, F,F, F,F,F,F,F, F,F, , ,
+  OUT_CHANNEL(  3)   = 'ls',               2,    2, -1, F,F, F,F,F,F,F, F,F, , ,
+  OUT_CHANNEL(  4)   = 'f',                2,    2, -1, F,F, F,F,F,F,F, F,F, , ,
+  OUT_CHANNEL(  5)   = 'g1a',           $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+  OUT_CHANNEL(  6)   = 'g1b',           $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+  OUT_CHANNEL(  7)   = 'g2a',           $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+  OUT_CHANNEL(  8)   = 'g2b',           $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+  OUT_CHANNEL(  9)   = 'gl',            $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+  OUT_CHANNEL( 10)   = 'scnbuf',        $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+  OUT_CHANNEL( 11)   = 'g3b',           $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+  OUT_CHANNEL( 12)   = 'nudg',             2,    2, -1, F,F, F,F,F,F,F, F,F, , ,
+  OUT_CHANNEL( 13)   = 'nudg_gp',       $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+  ! GRIDPOINT TRACER OUTPUT
+  OUT_CHANNEL( 12)   = 'tracer_*',      $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+  !
+  ! MESSy SUBMODELS
+  OUT_CHANNEL( 20)     = 'gmxe_gp',     $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+  OUT_CHANNEL( 21)     = 'aeropt_*',    $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+  OUT_CHANNEL( 22)     = 'orogw_*',     $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+  OUT_CHANNEL( 23)     = 'orbit_*',     $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+  OUT_CHANNEL( 24)     = 'qbo_*',       $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!! - ISTANTANEUS VALUES
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  OUT_CHANNEL( 50)     = 'scout',        $OFT, $OFT, -1, F,F, F,T,F,F,F, F,F, , ,
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!! - OUTPUT -> ALL THE REST!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+! ---------------------------------------------------------------------
+! # SET CHANNEL OBJECT SPECIFIC OUTPUT AND RESTART HANDLING (MAX. 1000)
+!      - channel-name
+!      - object-name
+!      - RERUN, IGNORE, INST, AVE, STD, MIN, MAX, CNT, CAV, RANGE(2)
+! ---------------------------------------------------------------------
+! ------------------------------------------------R-I--I-A-S-M-M--C-C-R-R-
+!
+! AP basics averages output with SD
+! ------------------------------------------------R-I--I-A-S-M-M--C-C-R-R-
+  OUT_OBJECT(156)  = 'ECHAM5', '*m1*',            F,F, F,T,T,F,F, F,F, , ,
+  OUT_OBJECT(157)  = 'ECHAM5', 'tsurf',           F,F, F,T,T,F,F, F,F, , ,
+  OUT_OBJECT(158)  = 'ECHAM5', 'rhum',            F,F, F,T,T,F,F, F,F, , ,
+  OUT_OBJECT(159)  = 'ECHAM5', 'aps',             F,F, F,T,T,F,F, F,F, , ,
+  OUT_OBJECT(160)  = 'grid_def', 'grmass',          F,F, F,T,T,F,F, F,F, , ,
+  OUT_OBJECT(161)  = 'ECHAM5', 'geopot',          F,F, F,T,T,F,F, F,F, , ,
+!
+  OUT_OBJECT(180)  = 'megan_gp', '*_gam*',        F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(181)  = 'megan_gp', '*_EF*',         F,F, F,F,F,F,F, F,F, , ,
+!
+! ECHAM5 STANDARD
+! - NO OUTPUT
+  OUT_OBJECT(  1)  = 'g3b','qtnew',               F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(  2)  = 'g3b','alake',               F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(  3)  = 'g3b','rintop',              F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(  4)  = 'g3b','acdnc',               F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(  5)  = 'g3b','wind10w',             F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(  6)  = 'g3b','aclc',                F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(  7)  = 'g3b','aclcv',               F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(  8)  = 'g3b','xvar',                F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(  9)  = 'g3b','az0',                 F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT( 10)  = 'g3b','alb',                 F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT( 11)  = 'g3b','xskew',               F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT( 12)  = 'g3b','slf',                 F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT( 13)  = 'g3b','ustrgw',              F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT( 14)  = 'g3b','vstrgw',              F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT( 15)  = 'g3b','vgrat',               F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT( 16)  = 'g3b','orostd',              F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT( 17)  = 'g3b','vlt',                 F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT( 18)  = 'g3b','forest',              F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT( 19)  = 'g3b','rogl',                F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT( 20)  = 'g3b','runtoc',              F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT( 21)  = 'g3b','runlnd',              F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT( 22)  = 'g3b','tke',                 F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT( 23)  = 'g3b','tkem1',               F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT( 24)  = 'g3b','fao',                 F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT( 25)  = 'g3b','rgcgn',               F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT( 26)  = 'g3b','sodif',               F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT( 27)  = 'g3b','rtype',               F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT( 28)  = 'g3b','tsl',                 F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT( 29)  = 'g3b','tslm',                F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT( 30)  = 'g3b','emter',               F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT( 31)  = 'g3b','trsol',               F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT( 32)  = 'g3b','emtef',               F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT( 33)  = 'g3b','trsof',               F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT( 34)  = 'g3b','tkem',                F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT( 35)  = 'g3b','grndcapc',            F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT( 36)  = 'g3b','grndhflx',            F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT( 37)  = 'g3b','grndc',               F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT( 38)  = 'g3b','grndd',               F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT( 39)  = 'g3b','acvtype',             F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT( 40)  = 'g3b','xtec',                F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT( 41)  = 'g3b','aprflux',             F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT( 42)  = 'g3b','ahfli',               F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT( 43)  = 'g3b','ahflw',               F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT( 44)  = 'g3b','ahfll',               F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT( 45)  = 'g3b','fluxres',             F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT( 46)  = 'g3b','amlcorr',             F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT( 47)  = 'g3b','amlheatac',           F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT( 48)  = 'g3b','apmebco',             F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT( 49)  = 'g3b','awhea',               F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT( 50)  = 'g3b','awsol',               F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT( 51)  = 'g3b','awfre',               F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT( 52)  = 'g3b','awust',               F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT( 53)  = 'g3b','awvst',               F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT( 54)  = 'g3b','awsta',               F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT( 55)  = 'g3b','aicon',               F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT( 56)  = 'g3b','aiqre',               F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT( 57)  = 'g3b','aifre',               F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT( 58)  = 'g3b','aiust',               F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT( 59)  = 'g3b','aivst',               F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT( 60)  = 'g3b','aros',                F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT( 61)  = 'g3b','adrain',              F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT( 62)  = 'g3b','disch',               F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT( 63)  = 'g3b','apmecal',             F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT( 64)  = 'g3b','oromea',              F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT( 65)  = 'g3b','orosig',              F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT( 66)  = 'g3b','orogam',              F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT( 67)  = 'g3b','orothe',              F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT( 68)  = 'g3b','oropic',              F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT( 69)  = 'g3b','oroval',              F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT( 70)  = 'g3b','emtef0',              F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT( 71)  = 'g3b','trsof0',              F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT( 72)  = 'g3b','so4all',              F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT( 73)  = 'g3b','so4nat',              F,F, F,F,F,F,F, F,F, , ,
+!
+! OBSOLETE DUE TO MODULARISATION:
+  OUT_OBJECT( 74)  = 'g3b','ocu',              F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT( 75)  = 'g3b','ocv',              F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT( 76)  = 'g3b','tradl',            F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT( 77)  = 'g3b','sradl',            F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT( 78)  = 'g3b','trafl',            F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT( 79)  = 'g3b','srafl',            F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT( 80)  = 'g3b','amlcorac',         F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT( 81)  = 'g3b','trfliac',          F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT( 82)  = 'g3b','trflwac',          F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT( 83)  = 'g3b','trfllac',          F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT( 84)  = 'g3b','sofliac',          F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT( 85)  = 'g3b','soflwac',          F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT( 86)  = 'g3b','sofllac',          F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT( 87)  = 'g3b','tsurf',            F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT( 88)  = 'g3b','srads',            F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT( 89)  = 'g3b','trads',            F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT( 90)  = 'g3b','srad0',            F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT( 91)  = 'g3b','trad0',            F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT( 92)  = 'g3b','srad0d',           F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT( 93)  = 'g3b','srafs',            F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT( 94)  = 'g3b','trafs',            F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT( 95)  = 'g3b','sraf0',            F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT( 96)  = 'g3b','traf0y',           F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT( 97)  = 'g3b','srad0u',           F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT( 98)  = 'g3b','sradsu',           F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT( 99)  = 'g3b','tradsu',           F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(100)  = 'g3b','sni',              F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(101)  = 'g3b','abso4y',           F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(102)  = 'g3b','ao3',              F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(103)  = 'g3b','tropo',            F,F, F,F,F,F,F, F,F, , ,
+!
+! --------------------------------------------------------------------------
+  OUT_OBJECT(110)  = 'ECHAM5','u10',              F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(111)  = 'ECHAM5','v10',              F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(112)  = 'ECHAM5','tsoil',            F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(113)  = 'ECHAM5','wsmx',             F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(114)  = 'ECHAM5','ws',               F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(115)  = 'ECHAM5','geosp',            F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(116)  = 'ECHAM5','tsi',              F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(117)  = 'ECHAM5','sni',              F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(118)  = 'ECHAM5','slm',              F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(119)  = 'ECHAM5','seaice',           F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(120)  = 'ECHAM5','albedo',           F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(121)  = 'ECHAM5','az0w',             F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(122)  = 'ECHAM5','az0i',             F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(123)  = 'ECHAM5','az0l',             F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(124)  = 'ECHAM5','tslm1',            F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(125)  = 'ECHAM5','sn',               F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(126)  = 'ECHAM5','prc',              F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(127)  = 'ECHAM5','prl',              F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(128)  = 'ECHAM5','aclc',             F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(129)  = 'ECHAM5','acdnc',            F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(130)  = 'ECHAM5','vdiffp',           F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(131)  = 'ECHAM5','vmixtau',          F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(132)  = 'ECHAM5','ilab',             F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(133)  = 'ECHAM5','qtec',             F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(134)  = 'ECHAM5','relo3',            F,F, F,F,F,F,F, F,F, , ,
+!
+  OUT_OBJECT(140)  = 'ECHAM5','gworo_du',         F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(141)  = 'ECHAM5','gworo_dv',         F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(142)  = 'ECHAM5','gworo_dt',         F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(143)  = 'ECHAM5','gwlif_du',         F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(144)  = 'ECHAM5','gwlif_dv',         F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(145)  = 'ECHAM5','gwlif_dt',         F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(146)  = 'ECHAM5','flxs',             F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(147)  = 'ECHAM5','flxt',             F,F, F,F,F,F,F, F,F, , ,
+!
+  OUT_OBJECT(148)  = 'ECHAM5','amlcorr',          F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(149)  = 'ECHAM5','disch',            F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(150)  = 'ECHAM5','fsnet',            F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(151)  = 'ECHAM5','pmsl',             F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(152)  = 'ECHAM5','xtecl',            F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(153)  = 'ECHAM5','xteci',            F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(154)  = 'ECHAM5','xtecnl',           F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(155)  = 'ECHAM5','xtecni',           F,F, F,F,F,F,F, F,F, , ,
+! --------------------------------------------------------------------------
+ !OUT_OBJECT(160)  = 'rad*_fubrad','flxup',       F,F, F,F,F,F,F, F,F, , ,
+ !OUT_OBJECT(161)  = 'rad*_fubrad','flxdo',       F,F, F,F,F,F,F, F,F, , ,
+ !OUT_OBJECT(162)  = 'rad*_fubrad','flxhart',     F,F, F,F,F,F,F, F,F, , ,
+ !OUT_OBJECT(163)  = 'rad*_fubrad','trfubc',      F,F, F,F,F,F,F, F,F, , ,
+ !OUT_OBJECT(164)  = 'rad*_fubrad','flup',        F,F, F,F,F,F,F, F,F, , ,
+ !OUT_OBJECT(165)  = 'rad*_fubrad','fldo',        F,F, F,F,F,F,F, F,F, , ,
+ !OUT_OBJECT(166)  = 'rad*_fubrad','flhart',      F,F, F,F,F,F,F, F,F, , ,
+ !OUT_OBJECT(167)  = 'rad*_fubrad','flupc',       F,F, F,F,F,F,F, F,F, , ,
+ !OUT_OBJECT(168)  = 'rad*_fubrad','fllya',       F,F, F,F,F,F,F, F,F, , ,
+ !OUT_OBJECT(169)  = 'rad*_fubrad','po3c',        F,F, F,F,F,F,F, F,F, , ,
+! --------------------------------------------------------------------------
+  OUT_OBJECT(170)  = 'rad*','trnir',             F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(171)  = 'rad*','trnif',             F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(172)  = 'rad*','trsw1',             F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(173)  = 'rad*','trs1f',             F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(174)  = 'rad*','flxsw1',            F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(175)  = 'rad*','aot_lw',            F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(176)  = 'rad*','aot_sw',            F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(177)  = 'rad*','gamma_sw',            F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(178)  = 'rad*','omega_sw',            F,F, F,F,F,F,F, F,F, , ,
+! --------------------------------------------------------------------------
+  OUT_OBJECT(190)  = 'gwave','gwheat',            F,F, F,F,F,F,F, F,F, , ,
+! --------------------------------------------------------------------------
+! --------------------------------------------------------------------------
+  OUT_OBJECT(220)  = 'onemis', '*_emflux',         F,F, F,T,F,F,F, F,F, , ,
+  OUT_OBJECT(221)  = 'onemis', 'emis_dms_sea',     F,F, F,T,F,F,F, F,F, , ,
+  OUT_OBJECT(222)  = 'onemis', 'mss*',             F,F, F,T,F,F,F, F,F, , ,
+  OUT_OBJECT(223)  = 'onemis', 'nss*',             F,F, F,T,F,F,F, F,F, , ,
+  OUT_OBJECT(224)  = 'onemis', '?C_sum*',          F,F, F,T,F,F,F, F,F, , ,
+  OUT_OBJECT(225)  = 'onemis', 'Num*',             F,F, F,T,F,F,F, F,F, , ,
+  OUT_OBJECT(226)  = 'onemis', 'emisflx*sum',      F,F, T,F,F,F,F, F,F, , ,
+  OUT_OBJECT(227)  = 'onemis', 'prectot',          F,F, F,T,F,F,F, F,F, , ,
+  OUT_OBJECT(228)  = 'onemis', 'zprecipinsoil',    F,F, F,T,F,F,F, F,F, , ,
+! --------------------------------------------------------------------------
+  OUT_OBJECT(240)  = 'sedi_*', 'loss_*',           F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(241)  = 'sedi_*', '*_v_mass_m*',      F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(242)  = 'sedi_*', '*_v_num_m*',       F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(243)  = 'sedi_*', 'ptrac_v_mass_m*',  F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(244)  = 'sedi_*', 'ptrac_v_num_m*',   F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(245)  = 'sedi_*', 'ptrac_v_mass_m04', F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(246)  = 'sedi_*', 'ptrac_v_num_m04',  F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(247)  = 'sedi_*', 'loss_AEROSOL',     F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(248)  = 'sedi_*', 'sediflux_AEROSOL', F,F, F,F,F,F,F, F,F, , ,
+! --------------------------------------------------------------------------
+! --------------------------------------------------------------------------
+  OUT_OBJECT(300)  = 'offemis','R_*',              F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(301)  = 'offemis','lgte_*',           F,F, T,F,F,F,F, F,F, , ,
+! --------------------------------------------------------------------------
+! --------------------------------------------------------------------------
+! --------------------------------------------------------------------------
+! --------------------------------------------------------------------------
+  OUT_OBJECT(340)  = 'convect','conv_counter',    F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(341)  = 'convect','conv_lte',        F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(342)  = 'convect','conv_ite',        F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(343)  = 'convect','conv_ute',        F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(344)  = 'convect','massfu',          F,F, F,T,F,F,F, F,F, , ,
+  OUT_OBJECT(345)  = 'convect','massfd',          F,F, F,T,F,F,F, F,F, , ,
+  OUT_OBJECT(346)  = 'convect','cu_*',            F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(347)  = 'convect','base_f*',         F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(348)  = 'convect','u_*',             F,F, F,T,F,F,F, F,F, , ,
+  OUT_OBJECT(349)  = 'convect','d_*',             F,F, F,T,F,F,F, F,F, , ,
+  OUT_OBJECT(350)  = 'convect','massfd_draf',     F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(351)  = 'convect','massfu_asc',      F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(352)  = 'convect','conv_vte',        F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(353)  = 'convect','udetr_h',         F,F, F,F,F,F,F, F,F, , ,
+! --------------------------------------------------------------------------
+! --------------------------------------------------------------------------
+! no 4D output: trac_field
+  OUT_OBJECT(380)  = 'cvtrans','trac_field',      F,F, F,F,F,F,F, F,F, , ,
+! --------------------------------------------------------------------------
+! no 4D output: wetradius, densaer
+  OUT_OBJECT(400)  = 'ptrac_gp','wetradius',      F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(401)  = 'ptrac_gp','densaer',        F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(402)  = 'ptrac_gp','sigma',          F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(403)  = 'ptrac_lg','wetradius',      F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(404)  = 'ptrac_lg','densaer',        F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(405)  = 'ptrac_lg','sigma',          F,F, F,F,F,F,F, F,F, , ,
+! --------------------------------------------------------------------------
+  OUT_OBJECT(410)  = 'viso',    '*_f',            F,F, F,T,F,F,F, F,F, , ,
+! --------------------------------------------------------------------------
+  OUT_OBJECT(411)  = 'tropop',  '*_f',            F,F, F,F,F,F,F, F,F, , ,
+! --------------------------------------------------------------------------
+  OUT_OBJECT(420)  = 'scav_gp','cloudpH_ls',     F,T, T,F,F,F,F, F,F, -1.0, 14.0,
+  OUT_OBJECT(421)  = 'scav_gp','rainpH_ls',      F,T, T,F,F,F,F, F,F, -1.0, 14.0,
+  OUT_OBJECT(422)  = 'scav_gp','cloudpH_cv',     F,T, T,F,F,F,F, F,F, -1.0, 14.0,
+  OUT_OBJECT(423)  = 'scav_gp','rainpH_cv',      F,T, T,F,F,F,F, F,F, -1.0, 14.0,
+  OUT_OBJECT(424)  = 'scav_gp','wetflx_*',       F,T, T,F,F,F,F, F,F, , ,
+  OUT_OBJECT(425)  = 'scav_gp','wetflx_ls_Hp_l', F,T, F,T,F,F,F, F,F, , ,
+  OUT_OBJECT(426)  = 'scav_gp','wetflx_cv_Hp_l', F,T, F,T,F,F,F, F,F, , ,
+  OUT_OBJECT(427)  = 'scav_gp','Hp_cloud_ls',    F,T, F,T,F,F,F, F,F, , ,
+  OUT_OBJECT(428)  = 'scav_gp','Hp_cloud_cv',    F,T, F,T,F,F,F, F,F, , ,
+ !OUT_OBJECT(429)  = 'scav',   'lwc_cv',         F,T, F,T,F,F,F, F,F, , ,
+ !OUT_OBJECT(430)  = 'scav',   'aps',            F,T, F,T,F,F,F, F,F, , ,
+! --------------------------------------------------------------------------
+! --------------------------------------------------------------------------
+! no 4D output: wetradius, dryradius, densaer
+ !OUT_OBJECT(480)  = 'm7_gp','wetradius',         F,F, F,F,F,F,F, F,F, , ,
+ !OUT_OBJECT(481)  = 'm7_gp','dryradius',         F,F, F,F,F,F,F, F,F, , ,
+ !OUT_OBJECT(482)  = 'm7_gp','densaer',           F,F, F,F,F,F,F, F,F, , ,
+ !OUT_OBJECT(483)  = 'm7_gp','wetrad_M*',         F,F, T,F,F,F,F, F,F, , ,
+! --------------------------------------------------------------------------
+ !OUT_OBJECT(520)  = 'cloud','rainflux',          F,F, T,F,F,F,F, T,T, 1.E-5, 1.0,
+ !OUT_OBJECT(521)  = 'cloud','rainflux_no',       F,F, F,F,F,F,F, F,F, , ,
+ !OUT_OBJECT(522)  = 'cloud','snowflux_no',       F,F, F,F,F,F,F, F,F, , ,
+ !OUT_OBJECT(523)  = 'cloud','acdnc',             F,F, F,F,F,F,F, F,F, , ,
+! --------------------------------------------------------------------------
+  OUT_OBJECT(540)  = 'jval_gp','J_O2',            F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(541)  = 'jval_gp','J_O1D',           F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(542)  = 'jval_gp','J_NO2',           F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(543)  = 'jval_gp','J_CHOH',          F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(544)  = 'jval_gp','J_CH3COCH3',      F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(545)  = 'jval_gp','J_BrO',           F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(546)  = 'jval_gp','aps',             F,F, F,F,F,F,F, F,F, , ,
+! --------------------------------------------------------------------------
+! --------------------------------------------------------------------------
+! as psc:
+ !OUT_OBJECT(590)  = 'msbm','HNO3_liq',           F,F, T,F,F,F,F, F,F, , ,
+ !OUT_OBJECT(591)  = 'msbm','HNO3_nat',           F,F, T,F,F,F,F, F,F, , ,
+ !OUT_OBJECT(592)  = 'msbm','HNO3_gas',           F,F, T,F,F,F,F, F,F, , ,
+ !OUT_OBJECT(594)  = 'msbm','phase',              F,F, T,F,F,F,F, F,F, , ,
+ !OUT_OBJECT(595)  = 'msbm','N_solid',            F,F, T,F,F,F,F, F,F, , ,
+ !OUT_OBJECT(596)  = 'msbm','r_solid',            F,F, T,F,F,F,F, F,F, , ,
+ !OUT_OBJECT(597)  = 'msbm','v_sed',              F,F, T,F,F,F,F, F,F, , ,
+ !OUT_OBJECT(598)  = 'msbm','A_liq',              F,F, T,F,F,F,F, F,F, , ,
+ !OUT_OBJECT(599)  = 'msbm','H2SO4',              F,F, T,F,F,F,F, F,F, , ,
+ !OUT_OBJECT(600)  = 'msbm','r_SurfMed',          F,F, T,F,F,F,F, F,F, , ,
+! as hetchem:
+ !OUT_OBJECT(601)  = 'msbm','khet*',              F,F, F,F,F,F,F, F,F, , ,
+!!$OUT_OBJECT(601)  = 'msbm','khet1',              F,F, T,F,F,F,F, F,F, , ,
+!!$OUT_OBJECT(602)  = 'msbm','khet5',              F,F, T,F,F,F,F, F,F, , ,
+!!$OUT_OBJECT(603)  = 'msbm','khet11',             F,F, T,F,F,F,F, F,F, , ,
+!!$OUT_OBJECT(604)  = 'msbm','khet12',             F,F, T,F,F,F,F, F,F, , ,
+!!$OUT_OBJECT(605)  = 'msbm','khet16',             F,F, T,F,F,F,F, F,F, , ,
+!!$OUT_OBJECT(606)  = 'msbm','khet22',             F,F, T,F,F,F,F, F,F, , ,
+!!$OUT_OBJECT(607)  = 'msbm','khet23',             F,F, T,F,F,F,F, F,F, , ,
+!!$OUT_OBJECT(608)  = 'msbm','khet26',             F,F, T,F,F,F,F, F,F, , ,
+!!$OUT_OBJECT(610)  = 'msbm','khet30',             F,F, T,F,F,F,F, F,F, , ,
+!
+ !OUT_OBJECT(611)  = 'msbm','HNO3_natsize*',      F,T, T,F,F,F,F, F,F, , ,
+ !OUT_OBJECT(612)  = 'msbm','N_ice',              F,T, T,F,F,F,F, F,F, , ,
+ !OUT_OBJECT(613)  = 'msbm','N_NAT',              F,T, T,F,F,F,F, F,F, , ,
+ !OUT_OBJECT(614)  = 'msbm','r_NAT',              F,T, T,F,F,F,F, F,F, , ,
+! --------------------------------------------------------------------------
+  OUT_OBJECT(620) = 'tracer_pdef_gp', 'MC*',     F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(621) = 'tracer_pdef_lg', 'MC*',     F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(622) = 'tracer_pdef_gp', 'MN*',     F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(623) = 'tracer_pdef_lg', 'MN*',     F,F, F,F,F,F,F, F,F, , ,
+! --------------------------------------------------------------------------
+  OUT_OBJECT(624) = 'mecca_khet_gp', 'khet_Hg_clim', F,F, F,F,F,F,F, F,F, , ,
+! --------------------------------------------------------------------------
+  OUT_OBJECT(700) = 'scout*',         'aps',      F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(701) = 's4d*',           'aps',      F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(702) = 'sorbit*',        'aps',      F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(703) = 'sorbit*',        'lsthr',    F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(704) = 'tracer_pdef_gp', 'aps',      F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(705) = 'tracer_pdef_lg', 'aps',      F,F, F,F,F,F,F, F,F, , ,
+! --------------------------------------------------------------------------
+  OUT_OBJECT(710) = 'qtimer', 'aps'               F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(711) = 'qtimer', '*_ACC'             T,T, T,F,F,F,F, F,F, , ,
+! --------------------------------------------------------------------------
+  OUT_OBJECT(721) = 'import_ts', 'aps'            F,F, F,F,F,F,F, F,F, , ,
+! --------------------------------------------------------------------------
+! no 4D output
+ !OUT_OBJECT(722) = 'aeropt_*', 'aot_lw'          F,F, F,F,F,F,F, F,F, , ,
+ !OUT_OBJECT(723) = 'aeropt_*', 'aot_sw'          F,F, F,F,F,F,F, F,F, , ,
+ !OUT_OBJECT(724) = 'aeropt_*', 'gamma_sw'        F,F, F,F,F,F,F, F,F, , ,
+ !OUT_OBJECT(725) = 'aeropt_*', 'omega_sw'        F,F, F,F,F,F,F, F,F, , ,
+!
+ !OUT_OBJECT(726) = 'cloudopt*', 'tau_cld_lw'     F,F, F,F,F,F,F, F,F, , ,
+ !OUT_OBJECT(727) = 'cloudopt*', 'tau_cld_sw'     F,F, F,F,F,F,F, F,F, , ,
+ !OUT_OBJECT(728) = 'cloudopt*', 'gamma_cld_sw'   F,F, F,F,F,F,F, F,F, , ,
+ !OUT_OBJECT(729) = 'cloudopt*', 'omega_cld_sw'   F,F, F,F,F,F,F, F,F, , ,
+!
+! --------------------------------------------------------------------------
+! no 4D output: wetradius, dryradius, densaer
+  OUT_OBJECT(780)  = 'gmxe_gp','wetradius',       F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(781)  = 'gmxe_gp','dryradius',       F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(782)  = 'gmxe_gp','densaer',         F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(783)  = 'gmxe_gp','ccn*',            F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(784)  = 'gmxe_gp','cph*',            F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(785)  = 'gmxe_gp','aod*',            F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(786)  = 'gmxe_gp','anumber',         F,F, F,F,F,F,F, F,F, , ,
+!---------------------------------------------------------------------------
+  OUT_OBJECT(800)  = 'gmxe_gp','CCN_M*',          F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(801)  = 'gmxe_gp','CpH_M*',          F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(802)  = 'gmxe_gp','e5*',             F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(803)  = 'gmxe_gp','z*',              F,F, F,F,F,F,F, F,F, , ,
+  OUT_OBJECT(804)  = 'gmxe_gp','DIAGAER_M*',      F,F, F,F,F,F,F, F,F, , ,
+!
+!
+!---------------------------------------------------------------------------
+/
+! #########################################################################
+&CPL
+! -------------------------------------------------------------------------- 
+! ENABLE ADDITIONAL BASEMODEL  OUTPUT ?
+! -> OUTPUT TIME INTERVAL => PUTDATA in ECHAM5.nml for ECHAM5
+!                         => ncomb/hcomb etc in GRIBOUT in INPUT_IO for COSMO 
+L_BM_ORIG_OUTPUT = F,
+! --------------------------------------------------------------------------
+!===========================================================================
+! --------------------------------------------------------------------------
+! SET OUTPUT INTERVALS FOR ALL CHANNELS (DEFAULT + INDIVIDUAL)
+! NOTE: CHANNEL OUTPUT OF tdiag, tdiag_gp, nudg, nudg_gp
+!       WILL BE SYNCHRONIZED TO THE SHORTEST OUTPUT INTERVAL (IF PRESENT !)
+! NOTE: First match (wildcard) counts 
+! --------------------------------------------------------------------------
+!TIMER_DEFAULT      = '',          10, 'steps', 'last', 0, 
+!TIMER_DEFAULT      = '',         1, 'hours', 'last', 0, 
+!TIMER_DEFAULT      = '',        1, 'months', 'last', 0, 
+TIMER_DEFAULT      = '',        1, 'days', 'last', 0, 
+! --------------------------------------------------------------------------
+!TIMER_CHANNEL(  1) = 'qtimer',        1, 'steps', 'last', 0,
+!TIMER_CHANNEL(  1) = 'qtimer',       11, 'hours', 'last', 0,
+!
+TIMER_CHANNEL(  2) = 'tracer_pdef*',  6, 'hours', 'last', 0,
+!
+! sampling output
+!TIMER_CHANNEL(  5) = 'scout*',        30, 'minutes', 'last', 0,
+TIMER_CHANNEL(  5) = 'scout*',         1, 'hours', 'last', 0,
+!TIMER_CHANNEL(  6) = 's4d*',          1, 'steps', 'last', 0,
+!
+! instantaneous
+!  TIMER_CHANNEL(  7) = 'MOM_inst*',    11, 'hours', 'last', 0,
+!
+!
+!---------------------------------------------------------------------------
+!===========================================================================
+!---------------------------------------------------------------------------
+! SET TIMER EVENTS FOR NEW FILENAMES
+! (IF NO. OF STEPS PER OUTPUT-FILE <= 0 ABOVE !!!)
+! NOTE: First match (wildcard) counts 
+!---------------------------------------------------------------------------
+!TIMER_TNF_DEFAULT = '', 1, 'days', 'first', 0,
+!TIMER_TNF_DEFAULT = '', 1, 'years', 'first', 0,
+TIMER_TNF_DEFAULT = '', 1, 'months', 'first', 0,
+!---------------------------------------------------------------------------
+!TIMER_TNF_CHANNEL( 1) = 'qtimer', 1, 'months', 'first', 0
+!TIMER_TNF_CHANNEL( 2) = 'scout*', 1, 'months', 'first', 0
+!TIMER_TNF_CHANNEL( 3) = '6h',     1, 'months', 'first', 0
+!TIMER_TNF_CHANNEL( 4) = 's4d*',   1, 'months', 'first', 0
+!---------------------------------------------------------------------------
+/
+
+&CTRL_PNETCDF
+!---------------------------------------------------------------------------
+ !MPI_IO_HINT(1) = 'IBM_largeblock_io','true',
+ !MPI_IO_HINT(2) = 'IBM_io_buffer_size','2949120',
+ !MPI_IO_HINT(3) = 'IBM_sparse_access','true',
+!---------------------------------------------------------------------------
+/

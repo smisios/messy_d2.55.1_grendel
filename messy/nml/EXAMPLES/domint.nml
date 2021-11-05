@@ -1,0 +1,60 @@
+! -*- f90 -*-
+
+!> mz_sg_20201102 | f90
+
+!! DOMINT: a sub-module for calculating domain integrals
+!!
+!! Author: S.Gromov (MPIC), 2018-2020
+!!
+!! example namelist
+
+&cpl
+!
+! domint: specify which fields should be integrated over which domains
+! taks list maximum entries: 500
+!
+! domint(xxx) = <#>, variable channel:object, [weighting channel:obj], [output name:caption:units], [scaling factor]
+!   <#> refers to domain(#) entry in the list below
+!
+
+! all tracers in atmopspheric domain (gp) [moles]
+  domint(01)  = 1, 'tracer_gp:*',   'grid_def:grmassdry', '::mol',                 34.518467381656     ! =1/28.97e-3  ! convert air mass -> air moles
+
+! ozone
+  domint(07)  = 1, 'tracer_gp:O3',  'grid_def:grmassdry', 'O3b:O_3 burden:Tmol',   34.518467381656e-12 ! =1000/28.97 -> mol
+  domint(08)  = 1, 'tracer_gp:O3',  'grid_def:grmassdry', 'O3m:O_3 mass:Tg',     1656.886434242319e-12 ! =1000/28.97*48/1e12 -> TgO3
+! CH4
+  domint(09)  = 1, 'tracer_gp:CH4', 'grid_def:grmassdry', 'CH4b:CH_4 burden:Tmol', 34.518467381656e-12 ! =1000/28.97 -> mol
+  domint(10)  = 1, 'tracer_gp:CH4', 'grid_def:grmassdry', 'CH4m:CH_4 mass:Tg',    553.676216775975e-12 ! =1000/28.97*16.04/1e12 -> Tg(CH4)
+
+! diagnostic
+  domint(101) = 1, 'grid_def:grmassdry', '',              'mass:domain air mass:kg'
+  domint(102) = 1, 'grid_def:grvol',     '',              'vol:domain volume:m3'
+  domint(103) = 1, 'ECHAM5:tm1',    'grid_def:grmassdry', 'temp:domain temperature:K*kg'
+  domint(104) = 1, 'ECHAM5:qm1',    'grid_def:grmassdry', 'sphum:domain spec. humidity:(kg/kg)*kg'
+  domint(110) = 1, 'mecca_gp:nsteps',  '',              ':no. of steps in MECCA:count'
+
+! integrals of lNOx emission
+  domint(21)  = 1, 'lnox*:xnox',    'grid_def:grvol',     '::TgN/yr', 31536000e-9 ! kgN/s/m3 * m3 -> TgN/yr
+! global lightning flashes count
+  domint(22)  = 2, 'lnox*:fps??',   '',                 ''
+!
+
+!
+! domain: coupling info, part. domain definition input & calc. control
+! domain implementations have unique numbers referred to in domain(#)
+! so far there are only atm. domains implemented and tested in ECHAM5
+!
+
+! #1: atmosphere - zonal/vertical (YZ)
+ !domain(1)%ldisable           = T                       ! set to .true. to disable tasks on this domain
+  domain(1)%name               = 'atm'                   ! set a custom name
+  domain(1)%trigcalc           = 1, 'steps', 'first', 0  ! calculation frequency
+  domain(1)%input = 'press=ECHAM5:press; sinlat=grid_def:sinlat; sinlon=grid_def:sinlon; theta=ECHAM5:tpot; tph_idx=tropop:tp_i; blh_idx=tropop:pblh_i; landfrac=ECHAM5:slf; ozone=tracer_gp:O3',
+!
+ !domain(1)%ldisable           = T                       ! set to .true. to disable tasks on this domain
+  domain(2)%name               = 'srf'                   ! set a custom name
+  domain(2)%trigcalc           = 1, 'steps', 'first', 0  ! calculation frequency
+  domain(2)%input = 'sinlat=grid_def:sinlat; sinlon=grid_def:sinlon; landfrac=ECHAM5:slf;',
+!
+/

@@ -1,0 +1,78 @@
+! -*- f90 -*-
+
+&CTRL
+lmade          = .true.   ! call MADE
+l_nuc          = .false.  ! enable/disable nucleation; default: .true.
+/
+
+&CPL
+! radiation
+l_aerorad        = .true.   ! calculate aerosol optical properties
+rad_sw_filename  = '$INPUTDIR_MESSY/made/aerorad_sw.nc' ! filename LUT (sw)
+rad_lw_filename  = '$INPUTDIR_MESSY/made/aerorad_lw.nc' ! filename LUT (lw)
+rad_diag_wavelen = 0.550 ! wavelenght(s) [micro-m] for optional diagnostic output
+! cloud physics
+l_cloudphysics   = .true.   ! calculate cloud droplet number concentration
+act_scheme       = 1        ! 1 = Abdul-Razzak and Ghan (2000)
+                            ! 2 = Lin and Leaitch (1997)
+! chemistry
+lcpl_gasphase    = .true.   ! cpl gas phase chemistry (H2SO4, HNO3, NH3, HCl)
+                            ! note: if lcpl_gasphase = .false., you have to 
+                            ! set USE_MECCA = .false. in xmessy, otherwise
+                            ! gas tracers are defined twice. IT HAS TO BE 
+                            ! CORRECTED!!!
+chemmodule       = 'mecca1'  ! name of chemistry module to couple to
+! ... define (gasphase) tracer used from chemistry module
+H2SO4_gas        = 'H2SO4', ''   ! tracername, subname
+NH3_gas          = '',      ''   ! tracername, subname
+HNO3_gas         = 'HNO3',  ''   ! tracername, subname
+!HCl_gas          = 'HCl',   ''   ! tracername, subname
+! H2SO4(g) production (SO2 + OH ---> H2SO4)
+!ProdSO4          = 'ProdSO4', '' ! tracername, subname
+! offline emissions
+SOA_stream       = 'offlem'     ! name of stream for SOA "emissions"
+SOA_element      = 'RGT0099_soa_emiss'   ! stream element of SOA "emissions"
+! online emissions
+l_calc_emis      = .true.
+! ... calculate sea salt emissions
+l_ss             = .true.      ! regard seasalt emission 
+! ... name of emission stream
+!emis_stream      = 'aeroem'
+SSemis_stream    = 'onlem'
+! ... names of stream elements seasalt
+! ... accumulation mode mass
+SS_mass_as       = 'mss_as_lsce'
+!SS_mass_as       = 'mss_as_monahan'
+!SS_mass_as       = 'emis_ss_as'
+! ... accumulation mode number
+SS_num_as        = 'nss_as_lsce'
+!SS_num_as        = 'nss_as_monahan'
+! ... coarse mode mass
+SS_mass_cs       = 'mss_cs_lsce'
+!SS_mass_cs       = 'mss_cs_monahan'
+! ... coarse mode number
+SS_num_cs        = 'nss_cs_lsce'
+!SS_num_cs        = 'nss_cs_monahan'
+! ... calculate dust emissions
+l_dust           = .false.   ! regard dust emissions
+! ... name of emission stream
+Duemis_stream    = 'onlem'
+! ... names of dust emission stream
+emis_dust        = 'du_emflux'   
+/
+
+ &BOXINIT TIMESTEPS = 48, TMST = 1800., PRESSURE = 101537.3, 
+ TEMPERATURE = 285.8112, RELHUM = 0.770946, CLOUDCOVER = 0., 
+ RH_HIST_AKN = 2., RH_HIST_ACC = 2., RH_HIST_COR = 2., RH_HIST_AKNS = 2., 
+ RH_HIST_ACCS = 2., RH_HIST_SOOTI = 2., RH_HIST_SOOTJ = 2., 
+ SO4RAT = 1.538e-05, NO3RAT = 1.727e-05, EM_BC_MASS = 1.941e-7, 4.988e-8, 0.,
+ EM_BC_NUM = 2.639e2, 1.969e0, 0., SOA = 0., TRACER = 1.0346131000245968E-11, 
+ 5.76948654275785E-14, 3.70839337357416E-17, 1.152848654538947E-13, 
+ 6.060300300019856E-12, 6.075354E-30, 1.2104497302141E-14, 
+ 5.423585150108514E-15, 1.411034699200001E-14, 2.186657241170018E-15, 
+ 1717956.1653222798, 82176.678461971, 80587.05, 1.5745277100038485E-9, 
+ 4.778138E-30, 5.732273E-8, 3*0., 8.958165E-17, 1.E-30, 
+ 3.292622E-10, 0., 1.444014265000076E-10, 5.85038E-9, 1.4108792762000001E-15, 
+ 1.551978E-12, LTEST_MCON = F, LTEST_NCON = F, LTEST_SO4 = F, 
+ LTEST_ADAPDT = F, 
+ /

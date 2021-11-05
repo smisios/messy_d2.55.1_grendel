@@ -1,0 +1,46 @@
+! -*- f90 -*-
+!
+! #############################################################################
+!
+! NMHC SPECIATION
+! In the NetCDF file only the total NMHC is provided, in units of
+! [kg(NMHC) m-2 s-1]. Conversion to kg(C) is done with the usual 161/210 
+! factor. To get the flux of a species X in [molec m-2 s-1]:
+!
+!  flux(X) = TOTAL(NMHC) * 161/210 * FRAC * 1000 * Navo / (MW(C) * #C)
+!
+! Where FRAC is the C mass fraction of the given species.
+!
+! ------------------------------------------------------------------------
+! | SPECIES  | 161/210 * FRAC   | #C | CONVERSION FACTOR                 |
+! |          | [g(C) g-1(NMHC)] |    | 161/210*FRAC*1000*Navo/(MW(C)*#C) |
+! |          |                  |    | [molec/kg(NMHC)]                  |
+! ------------------------------------------------------------------------
+! | C2H4     |          0.02850 |  2 |                       7.14474e+23 |
+! | C2H6     |          0.04580 |  2 |                       1.14817e+24 |
+! | C3H6     |          0.01200 |  3 |                       2.00554e+23 |
+! | C3H8     |          0.07250 |  3 |                       1.21168e+24 |
+! | NC4H10   |          0.54847 |  4 |                       6.87491e+24 |
+! | CH3CHO   |          0.00000 |  2 |                        ---        |
+! | CH3COCH3 |          0.01820 |  3 |                       3.04174e+23 |
+! | CH3CO2H  |          0.00000 |  2 |                        ---        |
+! | CH3OH    |          0.01100 |  1 |                       5.51524e+23 |
+! | HCHO     |          0.00367 |  1 |                       1.84009e+23 |
+! | HCOOH    |          0.00000 |  1 |                        ---        |
+! | MEK      |          0.02640 |  4 |                       3.30914e+23 |
+! ------------------------------------------------------------------------
+! |               SUM = 0.76654 = 161/210 (= 0.766667)                   |
+! ------------------------------------------------------------------------
+!
+! #############################################################################
+
+&regrid
+infile    = "$INPUTDIR_MESSY/offemis/CMIP6/CMIP6v1.1_DLR1.0_ssp370_ship_NMHC_201501-210012.nc",
+i_latm    = 'lat',
+i_latr    = -90.0,90.0,
+i_lonm    = 'lon',
+i_lonr    = -180.0,180.0,
+i_timem   = 'time',
+!var       ='C2H4=NMVOC_flux,7.14474e+23;C2H6=NMVOC_flux,1.14817e+24;C3H6=NMVOC_flux,2.00554e+23;C3H8=NMVOC_flux,1.21168e+24;NC4H10=NMVOC_flux,6.87491e+24;CH3COCH3=NMVOC_flux,3.04174e+23;CH3OH=NMVOC_flux,5.51524e+23;HCHO=NMVOC_flux,1.84009e+23;MEK=NMVOC_flux,3.30914e+23',
+var       ='C2H4=NMVOC_flux,7.14474e+23|units=molecules m-2 s-1| longname= emission flux of C2H4;C2H6=NMVOC_flux,1.14817e+24|units=molecules m-2 s-1| longname= emission flux of C2H6;C3H6=NMVOC_flux,2.00554e+23|units=molecules m-2 s-1| longname= emission flux of C3H6;C3H8=NMVOC_flux,1.21168e+24|units=molecules m-2 s-1| longname= emission flux of C3H8;NC4H10=NMVOC_flux,6.87491e+24|units=molecules m-2 s-1| longname= emission flux of NC4H10;CH3COCH3=NMVOC_flux,3.04174e+23|units=molecules m-2 s-1| longname= emission flux of CH3COCH3;CH3OH=NMVOC_flux,5.51524e+23|units=molecules m-2 s-1| longname= emission flux of CH3OH;HCHO=NMVOC_flux,1.84009e+23|units=molecules m-2 s-1| longname= emission flux of HCHO;MEK=NMVOC_flux,3.30914e+23|units=molecules m-2 s-1| longname= emission flux of MEK;',
+/

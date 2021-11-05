@@ -1,0 +1,56 @@
+! -*- f90 -*-
+
+!*****************************************************************************
+! control namelist for CLOUDJ
+!*****************************************************************************
+
+&CTRL
+NAMFIL_FJX_spec     = '$INPUTDIR_MESSY/cloudj/misc/FJX_spec.txt'
+NAMFIL_FJX_scat_cld = '$INPUTDIR_MESSY/cloudj/misc/FJX_scat-cld.txt'
+NAMFIL_FJX_scat_aer = '$INPUTDIR_MESSY/cloudj/misc/FJX_scat-aer.txt'
+NAMFIL_FJX_scat_UMa = '$INPUTDIR_MESSY/cloudj/misc/FJX_scat-UMa.txt'
+NAMFIL_atmos_std    = '$INPUTDIR_MESSY/cloudj/misc/atmos_std.txt'
+NAMFIL_FJX_j2j      = 'FJX_j2j.txt' ! read and write
+/
+
+!*****************************************************************************
+! coupling namelist for CLOUDJ
+!*****************************************************************************
+
+&CPL
+!
+l_skip_lg = T,             ! skip Lagrangian calculation?
+l_force = T,               ! calculate all species (not only for tracers)
+!cloudj_O3 = 'tracer_gp', 'O3',        ! ozone tracer
+cloudj_O3 = 'import_grid', 'RADO3_O3', ! for ozone climatology (see import.nml
+!                                      ! and rad.nml)
+cloudj_cossza = 'orbit', 'cossza_off', ! cos(zenith angle)
+! use imported ozone distribution above model top
+cloudj_O3h    = 'import_grid', 'O3ubc_O3_H',
+/
+
+!*****************************************************************************
+! regridder
+!*****************************************************************************
+
+&RGTEVENTS
+RG_TRIG(1) = 1,'months','first',0,  'O3ubc', 1, 1, 12, $START_MONTH, 'O3_H',
+/
+
+&regrid
+!outfile  =  "ncrg_${ECHAM5_HRES}_HALOE_MPIC1.0_clim_X_O3_01-12.nc",
+infile    = "$INPUTDIR_MESSY/jval/HALOE_MPIC1.0_clim_X_O3_01-12.nc",
+i_latm    = "LAT",          ! name of latitude axis in input file
+i_latr    = -90.0,90.0,     ! range of latitude axis in input file
+i_lonm    = "XHELP"         ! name of longitude axis in input file
+i_lonr    = 0., 360.,       ! range of longitude axis in input file
+i_timem   = "THELP",        ! name of time axis in input file
+i_hyai    = "PRESSedges",   ! name of hybrid A coefficients in input file
+i_hyam    = "PRESS",        ! name of hybrid A coefficients in input file
+i_hyar    = 0.005, 1013.25, ! extends pressure range from input file
+i_p0      = "100. Pa",      ! necessary for hPa to Pa conversion
+pressure  = T,              ! vert. regridding in press. coordinates
+var       = "O3_H",         ! name of input variable
+/
+
+!*****************************************************************************

@@ -1,0 +1,648 @@
+******************************************************************************
+
+INFOS
+
+- EDIT CODE:
+  cd $E2/messy/tools/jvpp ; d ; e README *.f90 xjvpp
+- compare generated code to JVAL:
+  (ediff-files "~/e2/messy_devel/messy/smcl/messy_jval_jvpp.inc"
+  "~/e2/messy_devel/messy/tools/jvpp/messy_jval_jvpp.inc")
+- compare generated code to JVNEW:
+  (ediff-files "~/e2/messy_devel/messy/smcl/messy_jvnew_jvpp.inc"
+  "~/e2/messy_devel/messy/tools/jvpp/messy_jval_jvpp.inc")
+- adopt generated *.inc file for JVNEW:
+  cp $E2/messy/tools/jvpp/messy_jval_jvpp.inc $E2/messy/smcl/messy_jvnew_jvpp.inc
+- finally, adopt generated *.inc file for JVAL:
+  cp $E2/messy/smcl/messy_jvnew_jvpp.inc $E2/messy/smcl/messy_jval_jvpp.inc
+- see also:
+  ~/messy/photolysis/landgraf_photo/from-chb
+  ~/messy/photolysis/new_halocarbons
+- zipfiles of latest code are here:
+  n ~/messy/photolysis/ori/
+- backup of unused species is here: ~/messy/photolysis/jvpp-bak
+- nc files from Ole's model runs:
+  ~/messy/photolysis/kirner/JVAL_final
+- JVAL/JVNEW comparison on grand:
+  ~/e2/jval_jvnew
+
+- PLOTS:
+- Anna's 3D comparison jval vs dat_m17:
+  cd ~/papers/sander-jval-ref2342/jval_jvnew
+  ev jval_jvnew.ps.gz jval_jvnew_vertical.ps.gz
+- Anna's 3D comparison jval vs dat_lit:
+  cd ~/papers/sander-jval-ref2342/jval_jvnew_lit
+  ev jval_jvnew.ps.gz jval_jvnew_vertical.ps.gz
+  read Zusammenfassung_Auswertung_Horizontal.ods and auswertung_horizontal.txt
+
+******************************************************************************
+
+COMPARISON OF JVAL AND JVNEW
+
+- on mpc01 (based on messy_d2.41i):
+  - edited files:
+    messy/util/xmessy_mmd.jvaljvnew
+    messy/nml/E5M2/JVALJVNEW/switch.nml
+    messy/nml/E5M2/JVALJVNEW/channel.nml
+    messy/nml/E5M2/JVALJVNEW/*            (links to DEFAULTS and E5)
+
+- on grand (based on messy_2.3zn):
+  cd ~/e2/jval_jvnew
+  go jval_jvnew.jnl
+  - data are in jval.nc and jvnew.nc
+  - backup of data is on external harddisk:
+    /media/disk/jval_jvnew
+
+******************************************************************************
+
+- numbering of the bins is:
+  - 0...7 -> only in jval submodel code (messy_jval_jvpp.inc and
+    messy_jval.f90)
+  - 1...8 -> everywhere else (Landgraf papers, jvpp, jval paper)
+
+------------------------------------------------------------------------------
+
+FILES:
+
+jnl/             --> plots for comparing jval vs jvnew
+util/            --> some auxiliary scripts
+dat_m17/         --> values identical to those used in MESSy-1.7 from the file:
+                     ~/messy/photolysis/new_halocarbons/chb/data/sig2.new3
+                     or ~/messy/photolysis/sig_cal/data/sig2.new7
+workdir_eff/     --> created in step2 (for m17, the result must be identical to
+                     ~/messy/photolysis/new_halocarbons/result-ok/sig_eff.*)
+
+~/messy/photolysis/jvpp-bak --> backup of jvpp files that are currently
+                                not needed
+
+------------------------------------------------------------------------------
+
+- from MESSy webage:
+  http://www.pa.op.dlr.de/~PatrickJoeckel/MESSy/current/auto/messy_submodels.html#PHOTO
+- from CHB:
+  http://www.mpch-mainz.mpg.de/~chb/messy/photo/
+  http://www.mpch-mainz.mpg.de/~chb/messy/photo/photo.pdf
+  - see also: ~/messy/photolysis/photo/*
+
+------------------------------------------------------------------------------
+
+QUESTIONS (already sent to ML):
+
+- uvcrossg.f:
+  if (waveo(2).gt.waven(1))then
+    waveo(1)=waven(1)
+    cso(1,1)=cso(2,1)
+  endif
+
+  This is taken from the code for the interpolation of a measured
+  spectrum to 176 wavelengths. I interpret it as follows: If the
+  second-lowest measured wavelength is larger than the lowest wavelength
+  of the 176-grid, then the first measured cross section is set equal to
+  the second. This results in some (at least for me) strange results at
+  wavelengths lower than the measured wavelengths.
+
+- main.f:
+  FLX(146) = 0.5 *FLX(146)  !ende genau bei 680 nm
+
+  Out of the 176 wavelengths, only the flux of this one is divided by 2.
+  I wonder what the reason for this is...
+
+- sig2.pro:
+  FOR Kg=0,39 DO BEGIN
+  ...
+  FOR K=0,9 DO TEST0(Kg*5+K)=A0(Kg)*x(Kg*5+K)+B0(Kg)
+
+  With this loop structure, previously calculated values are partially
+  overwritten, e.g. Kg=0,K=9 and Kg=1,K=4 write into the same element of
+  TEST0. Is this intentional?
+
+------------------------------------------------------------------------------
+
+UNSOLVED QUESTIONS:
+
+- why is SO2 included in chb/data/sig2.new3 but not in
+  chb/result-ori/sig_eff.* anymore?
+
+- why are the original *.ef6_320K very different but other temp are
+  okay?
+
+- why are some numbers in O2.ef2_*K kaputt? (some 1e13 larger and some
+  are negativ) (chb/result-ori/sig_temp.I2.zip ist korrupt)
+
+******************************************************************************
+
+Anna Kunert:
+- ähnlich bis gleich, ansonsten vermerkt
+- Prozentangaben sind immer relative Unterschiede
+- absolute Unteschiede immer im Bereich von E-4 bis E-8, ansonsten
+  vermerkt
+- "weiß": überhaupt keine Daten
+- "ganz doof": wenn irgendetwas sehr merkwürdig war
+
+-----------------------------------------------------------------------------------------------------------
+SURFACE PLOTS jval_jvnew.jnl                               | VERTICAL PROFILES jval_jvnew_vertical.jnl
+relative Untschiede überwiegend an Tag-Nacht Grenze        | bei allen Bildern ab 70°N: weiß
+am höchsten, ansonsten vermerkt                            |
+-------------------------------------------------------------------------------------------------------------
+O2       | e-28 abs diff, bis 10%, punktuell bis 100%      | 5-6%, punktuell bis 14% (rechts unten),
+         |                                                 | insgesamt aber gut, abs. Diff.: E-10-E-11
+---------|-------------------------------------------------|-------------------------------------------------
+O3P      | gut                                             | gut, nur -1%-0,4%, neg. rel. Abweichung.:
+         |                                                 | besonders ein Band in 30-40 level, pos.
+         |                                                 | rel. Abw.: rechte untere Ecke
+---------|-------------------------------------------------|-------------------------------------------------
+O1D      | -5% - 4.5%                                      | -14%-4%, pos. rel. Abw.: rechts unten, neg.
+         |                                                 | rel. Abw.: besonders ein Band in 30-40
+         |                                                 | level und zentral tiefer
+---------|-------------------------------------------------|-------------------------------------------------
+H2O      | weiß                                            | schlechte Skalierung, Abw. insg. -5%-5%,
+         |                                                 | punktuell aber bis 105% (schmaler
+         |                                                 | Streifen ca. 40-50 level), abs. Diff.:
+         |                                                 | E-11
+---------|-------------------------------------------------|-------------------------------------------------
+H2O2     | gut                                             | gut, -2,6%-1,2%, pos. rel. Abw.: rechts
+         |                                                 | unten, neg. rel. Abw.: breites Band
+         |                                                 | (30-50 level) und zentral tiefer
+---------|-------------------------------------------------|-------------------------------------------------
+N2O      | e-27 abs diff, -0.5% - 1%, punktuell bis 16%    | rel. Abw.: saftige grüne Wiese mit Himmel und
+         |                                                 | Wolken ;-) sehr gut, rel. Abw. unter 1%,
+         |                                                 | abs. Diff.: E-10-E-11
+---------|-------------------------------------------------|-------------------------------------------------
+NO2      | -5% - -4.5%, höchste Abweichung bei rel diff    | nur neg. rel. Abw.: ca. -4%--5%
+         | nicht an Tag-Nacht-Grenze sondern zentral       |
+---------|-------------------------------------------------|-------------------------------------------------
+NO       | weiß                                            | ganz doof: alten Bilder vorhanden, neue weiß,
+         |                                                 | dort lediglich bei normaler Skalierung
+         |                                                 | (nicht log) Skalierung vorhanden,
+         |                                                 | rel.diff. natürlich auch weiß, abs.diff.
+         |                                                 | wie normales altes Bild nur Skalierung
+         |                                                 | andersherum, da nun negativ
+---------|-------------------------------------------------|-------------------------------------------------
+NO2O     | e-2 abs diff, 6% - 8,5%, Abweichungen deutl.    | nur pos. rel. Abw.: 5,2%-8,4%, geringere Abw.
+         | sichtbar, stärkste Abweichung bei rel diff      | zentral (55-65 level) und rechts (40-80
+         | zentral, nicht direkt an Tag-Nacht-Grenze       | level), höhere Abw. links (10-20 level)
+         |                                                 | und unten (80-90 level), abs. Diff.: E-2
+---------|-------------------------------------------------|-------------------------------------------------
+NOO2     | e-3 abs diff, bis 8%, merkwürdige rel diff      | -6,5%-7,5%, sehr ähnlich NO2O, abs. Diff.: E-3
+         | Verteilung                                      |
+---------|-------------------------------------------------|-------------------------------------------------
+N2O5     | gut                                             | neue Bilder komisch, oberhalb Linie (20-30
+         |                                                 | level) weiß, obwohl die Werte der alten
+         |                                                 | Bilder nach oben hin zunehmen, ansonsten
+         |                                                 | gute Übereinstimmung, im unteren Bereich
+         |                                                 | -4%-4%, weiter oben bis knapp 60% rel.
+         |                                                 | Abw.
+---------|-------------------------------------------------|-------------------------------------------------
+NO3NOO   | ganz doof ;-) (rechte Seite weiß, Skala oben    | ganz doof: alten Bilder vorhanden, neue
+         | rechts aber vorhanden, links mitte komisch)     | weiß, dort lediglich bei normaler
+         |                                                 | Skalierung (nicht log) Skalierung
+         |                                                 | vorhanden, rel.diff. natürlich auch weiß,
+         |                                                 | abs.diff. wie normales altes Bild nur
+         |                                                 | Skalierung andersherum, da nun negativ
+---------|-------------------------------------------------|-------------------------------------------------
+HONO     | gut, höchste Abweichungen bei rel diff nicht an | sehr gut, nur geringe neg. rel. Abw. von
+         | Tag-Nacht-Grenze sondern zentral                | unter 1%
+---------|-------------------------------------------------|-------------------------------------------------
+HNO3     | -4% - 6%                                        | -6%-6%, pos. rel. Abw.: rechts unten
+         |                                                 | (50-60°N, 40-90 level), neg. rel. Abw.:
+         |                                                 | unterhalb von 50 level
+---------|-------------------------------------------------|-------------------------------------------------
+HNO4     | ganz doof (rechts links passt garnicht, bis     | ganz ganz doof: nicht so gute Übereinstimmung
+         | -370000% rel diff -> negativ?)                  | zw. alt und neu, rel. Abw. miserabel:
+         |                                                 | -54000%(rechte untere
+         |                                                 | Ecke)-0%(überwiegend)
+---------|-------------------------------------------------|-------------------------------------------------
+CH4      | weiß                                            | ganz doof: alten Bilder vorhanden, neue weiß,
+         |                                                 | dort lediglich bei normaler Skalierung
+         |                                                 | (nicht log) Skalierung vorhanden,
+         |                                                 | rel.diff. natürlich auch weiß, abs.diff.
+         |                                                 | wie normales altes Bild nur Skalierung
+         |                                                 | andersherum, da nun negativ
+---------|-------------------------------------------------|-------------------------------------------------
+CH3OOH   | gut                                             | gut, -2,1%-1%, pos. rel. Abw.: rechts unten
+         |                                                 | (50-60°N, 40-90 level), neg. rel. Abw.:
+         |                                                 | unterhalb von 50 level
+---------|-------------------------------------------------|-------------------------------------------------
+COH2     | gut, höchste Abweichungen bei rel diff nicht    | sehr gut, weniger als 0,5% rel. Abw.
+         | an Tag-Nacht-Grenze sondern zentral             |
+---------|-------------------------------------------------|-------------------------------------------------
+CHOH     | -2.5% - 2.5%                                    | -4%-3,2%, pos. rel. Abw.: rechts unten
+         |                                                 | (50-60°N, 40-90 level), neg. rel. Abw.:
+         |                                                 | oberhalb 40 level
+---------|-------------------------------------------------|-------------------------------------------------
+CO2      | e-33 abs diff                                   | gut, rel. Abw. unter 0,1%, abs. Diff.: E-13
+---------|-------------------------------------------------|-------------------------------------------------
+CH3CHO   | -4% - 5%                                        | -5,5%-5,5%, pos. rel. Abw.: rechts unten
+         |                                                 | (50-60°N, 40-90 level), neg. rel. Abw.:
+         |                                                 | unterhalb 30 level
+---------|-------------------------------------------------|-------------------------------------------------
+PAA      | e-11 abs diff, wenigsten Abweichungen bei rel   | -6,4%-0%, unterhalb 50 level ca. 0%, oberhalb
+=CH3CO3H | diff an Tag-Nacht-Grenze, Abweichungen zentral  | ca -3%--2%, breiter Streifen (25-40
+         |                                                 | level) -6%--5%
+---------|-------------------------------------------------|-------------------------------------------------
+PAN      | -4% - 2%                                        | -4,2%-2%, pos. rel. Abw.: rechts unten
+         |                                                 | (50-60°N, 40-90 level), neg. rel. Abw.:
+         |                                                 | unterhalb 60 level
+---------|-------------------------------------------------|-------------------------------------------------
+CH3COCH3 | ganz doof: rechts deutl. geringere Werte als    | ganz ganz doof: neue Bilder deutl.
+         | links, rel diff bis -3400%, komische Verteilung | geringere Werte als alte, deutl.
+         |                                                 | sichtbare Unterschiede, -8600%(rechts
+         |                                                 | unten)-0%(überwiegend)
+---------|-------------------------------------------------|-------------------------------------------------
+CH3COCHO | bis -60%                                        | ganz ganz doof: neue Bilder deutl.
+=MGLYOX  |                                                 | geringere Werte als alte, deutl.
+         |                                                 | sichtbare Unterschiede,
+         |                                                 | -720%-0%(unterhalb 80 level)
+---------|-------------------------------------------------|-------------------------------------------------
+MVK      | ganz doof (rechte Seite weiß, Skala oben        | ganz doof: alten Bilder vorhanden, neue weiß,
+         | rechts aber vorhanden)                          | dort lediglich bei normaler Skalierung
+         |                                                 | (nicht log) Skalierung vorhanden,
+         |                                                 | rel.diff. natürlich auch weiß, abs.diff.
+         |                                                 | wie normales altes Bild nur Skalierung
+         |                                                 | andersherum, da nun negativ
+---------|-------------------------------------------------|-------------------------------------------------
+GLYOX    | ganz doof (rechte Seite weiß, Skala oben        | ganz doof: alten Bilder vorhanden, neue
+         | rechts aber vorhanden)                          | weiß, dort lediglich bei normaler
+         |                                                 | Skalierung (nicht log) Skalierung
+         |                                                 | vorhanden, rel.diff. natürlich auch weiß,
+         |                                                 | abs.diff. wie normales altes Bild nur
+         |                                                 | Skalierung andersherum, da nun negativ
+---------|-------------------------------------------------|-------------------------------------------------
+HOCH2CHO | ganz doof (rechte Seite weiß, Skala oben        | ganz doof: alten Bilder vorhanden, neue
+         | rechts aber vorhanden)                          | weiß, dort lediglich bei normaler
+         |                                                 | Skalierung (nicht log) Skalierung
+         |                                                 | vorhanden, rel.diff. natürlich auch weiß,
+         |                                                 | abs.diff. wie normales altes Bild nur
+         |                                                 | Skalierung andersherum, da nun negativ
+---------|-------------------------------------------------|-------------------------------------------------
+MACR     | ganz doof (rechte Seite weiß, Skala oben        | ganz doof: alten Bilder vorhanden, neue weiß,
+         | rechts aber vorhanden)                          | dort lediglich bei normaler Skalierung
+         |                                                 | (nicht log) Skalierung vorhanden,
+         |                                                 | rel.diff. natürlich auch weiß, abs.diff.
+         |                                                 | wie normales altes Bild nur Skalierung
+         |                                                 | andersherum, da nun negativ
+---------|-------------------------------------------------|-------------------------------------------------
+Cl2      | gut                                             | gut, unter 1% rel. Abw.
+---------|-------------------------------------------------|-------------------------------------------------
+Cl2O2    | gut                                             | -3%-1,2%, pos. rel. Abw.: rechts unten
+         |                                                 | (60-70°N, 50-90 level), neg. Abw.:
+         |                                                 | unterhalb 30 level
+---------|-------------------------------------------------|-------------------------------------------------
+OClO     | e-3 abs diff, -9% - -3%, interessante rel       | -10,5%-1%, geringste rel. Abw. rechts unten,
+         | diff Verteilung                                 | überwiegend große rel. Abw., Unterschiede
+         |                                                 | zw. alten und neuen Bildern sichtbar,
+         |                                                 | abs. Diff.: E-2-E-4
+---------|-------------------------------------------------|-------------------------------------------------
+HCl      | e-29 abs diff, merkwürdige rel diff Verteilung  | sehr gut, rel. Abw. unter 0,05%, abs. Diff.:
+         |                                                 | E-10
+---------|-------------------------------------------------|-------------------------------------------------
+HOCl     | gut                                             | gut, -1,8%-1%, nur untere rechte Ecke pos.
+         |                                                 | rel. Abw., sonst überall neg. rel. Abw.
+---------|-------------------------------------------------|-------------------------------------------------
+ClNO2    | gut                                             | -2,6%-1,5%, nur untere rechte Ecke pos. rel.
+         |                                                 | Abw., sonst überall neg. rel. Abw.
+         |                                                 | (besonders unterhalb 30 level)
+---------|-------------------------------------------------|-------------------------------------------------
+ClNO3    | 4.5% - 13.5%, höchste Abweichung bei rel        | neue Bilder komisch, oberhalb Linie (20
+         | diff zentral, nicht an Tag-Nacht-Grenze         | level) weiß, obwohl die Werte der alten
+         |                                                 | Bilder nach oben hin zunehmen, deutl.
+         |                                                 | sichtbare Unterschiede zw. alten und
+         |                                                 | neuen Bildern, 1-39%, unterhalb 30 level
+         |                                                 | bis ca. 25%, oberhalb bis 39%
+---------|-------------------------------------------------|-------------------------------------------------
+ClONO2   | ganz doof (rechte Seite weiß, Skala oben        | ganz doof: alten Bilder vorhanden, neue
+         | rechts aber vorhanden)                          | weiß, dort lediglich bei normaler
+         |                                                 | Skalierung (nicht log) Skalierung
+         |                                                 | vorhanden, rel.diff. natürlich auch weiß,
+         |                                                 | abs.diff. wie normales altes Bild nur
+         |                                                 | Skalierung andersherum, da nun negativ
+---------|-------------------------------------------------|-------------------------------------------------
+CH3Cl    | e-30 abs diff, interessante abs diff und rel    | sehr gut, unter 0,1% rel. Abw., abs. Diff.:
+         | diff Verteilung                                 | E-11
+---------|-------------------------------------------------|-------------------------------------------------
+CCl4     | e-27 abs diff                                   | sehr gut, unter 0,1% rel. Abw., abs. Diff.:
+         |                                                 | E-9-E-10
+---------|-------------------------------------------------|-------------------------------------------------
+CH3CCl3  | e-28 abs diff, interessante abs diff Verteilung | sehr gut, unter 0,1% rel. Abw., abs.
+         |                                                 | Diff.: E-10
+---------|-------------------------------------------------|-------------------------------------------------
+CFCl3    | e-24 abs diff, bis -5%, punktuell bis -50%      | -3,4%-3,8%, neg. Abw.: 80-90 level, pos.
+         |                                                 | Abw.: 20-70°N, 40-80 level und 40-90°S,
+         |                                                 | 70-80 level, abs. Diff.: E-9
+---------|-------------------------------------------------|-------------------------------------------------
+CF2Cl2   | e-28 abs diff                                   | gut, unter 1% rel. Abw., schönes Bild! ;-)
+         |                                                 | , abs. Diff.: E-10
+---------|-------------------------------------------------|-------------------------------------------------
+Br2      | gut                                             | gut, unter 1% rel. Abw.
+---------|-------------------------------------------------|-------------------------------------------------
+BrO      | deutl. Abweichungen sichtbar, e-3 abs diff,     | doof: deutl. Abweichungen sichtbar, Werte des
+         | -20% - -13%, höchste Abweichung bei rel diff    | neuen Bildes generell niedriger als die
+         | nicht an Tag-Nacht-Grenze, sondern zentral      | der alten Bilder, -29,5%--11%, besonders
+         |                                                 | starke neg. rel. Abw.: rechts unten, abs.
+         |                                                 | Diff.: E-2-E-3
+---------|-------------------------------------------------|-------------------------------------------------
+HOBr     | gut                                             | gut, unter 1% rel. Abw.
+---------|-------------------------------------------------|-------------------------------------------------
+BrNO2    | gut                                             | gut, unter 1% rel. Abw.
+---------|-------------------------------------------------|-------------------------------------------------
+BrNO3    | gut                                             | gut, unter 1% rel. Abw.
+---------|-------------------------------------------------|-------------------------------------------------
+BrCl     | gut                                             | gut, -2,6%-1,3%, pos. Abw.: rechts unten,
+         |                                                 | neg. Abw. gesamtes restliches Bild
+---------|-------------------------------------------------|-------------------------------------------------
+CH3Br    | e-28 abs diff, -2% - 6%, punktuell bis 60%      | sehr gut, unter 0,1% rel. Abw., abs. Diff.:
+         |                                                 | E-10
+---------|-------------------------------------------------|-------------------------------------------------
+CH2Br2   | ganz doof (schlechte Übereinstimmung, e-10 abs  | ganz doof: deutlich sichtbare Unterschiede,
+         | diff, -190% - -100%, merkwürdige Verteilungen)  | -185%-0%, extrem neg. rel. Abw. 70-90
+         |                                                 | level, der Rest ca. 0%
+---------|-------------------------------------------------|-------------------------------------------------
+CHBr3    | sichtbare Unterschiede, -170% - -30%, höchsten  | ganz doof: deutlich sichtbare Unterschiede,
+         | Abweichungen bei rel diff nicht an Tag-Nacht    | -150%-110%, neg. rel. Abw.: 80-90 level
+         | Grenze, sondern zentral und über Antarktis      | und besonders rechts unten, pos. rel.
+         |                                                 | Abw.: 40°S-40°N, 60-70 level und
+         |                                                 | besonders 40-70°N, 40-70 level
+---------|-------------------------------------------------|-------------------------------------------------
+CHClBr2  | e-14 abs diff, intressante Verteilung abs       | sehr gut, unter 0,01% rel. Abw., abs.
+         | diff und rel diff                               | Diff.: E-10
+---------|-------------------------------------------------|-------------------------------------------------
+CH2ClBr  | e-20 abs diff, interessante rel diff            | gut, unter 1% rel. Abw., abs. Diff.: E-10
+         | Verteilung (größere Abweichungen bei            |
+         | Übergang von hohen zu niedrigen Werten bei      |
+         | ch2clbr Verteilung)                             |
+---------|-------------------------------------------------|-------------------------------------------------
+CHCl2Br  | e-14, ebenfalls interessante abs diff und       | sehr gut, unter 0,001% rel. Abw., abs.
+         | rel diff Verteilungen                           | Diff.: E-11
+---------|-------------------------------------------------|-------------------------------------------------
+CF3Br    | ganz doof (rechte Seite weiß, Skala oben        | ganz doof: alten Bilder vorhanden, neue
+         | rechts aber vorhanden)                          | weiß, dort lediglich bei normaler
+         |                                                 | Skalierung (nicht log) Skalierung
+         |                                                 | vorhanden, rel.diff. natürlich auch weiß,
+         |                                                 | abs.diff. wie normales altes Bild nur
+         |                                                 | Skalierung andersherum, da nun negativ
+---------|-------------------------------------------------|-------------------------------------------------
+CF2ClBr  | e-20 abs diff, rel diff sieht aus wie rotes     | sehr gut, unter 0,01% rel. Abw., abs.
+         | Herzchen auf blauem Hintergrund *lach*          | Diff.: E-10
+---------|-------------------------------------------------|-------------------------------------------------
+I2       | höchste Abweichungen bei rel diff nicht an      | gut, unter 1% rel. Abw.
+         | Tag-Nacht-Grenze, sondern zentral               |
+---------|-------------------------------------------------|-------------------------------------------------
+IO       | gut                                             | gut, unter 1% rel. Abw.
+---------|-------------------------------------------------|-------------------------------------------------
+HOI      | gut                                             | gut, unter 1% rel. Abw.
+---------|-------------------------------------------------|-------------------------------------------------
+INO2     | höchste Abweichungen bei rel diff nicht an      | gut, nur neg. rel. Abw. bis -1,2%
+         | Tag-Nacht-Grenze, sondern zentral               |
+---------|-------------------------------------------------|-------------------------------------------------
+INO3     | höchste Abweichungen bei rel diff nicht an      | sehr gut, unter 0,1% rel. Abw., größte
+         | Tag-Nacht-Grenze, sondern zentral               | Abweichung in breitem Streifen ca. 20-50
+         |                                                 | level
+---------|-------------------------------------------------|-------------------------------------------------
+CH2I2    | gut                                             | -2,8%-2%, pos. rel. Abw.: rechts unten,
+         |                                                 | stärkste neg. rel. Abw.: breiter Streifen
+         |                                                 | ca 30-60 level
+---------|-------------------------------------------------|-------------------------------------------------
+CH3I     | -3,5% - 2.5%                                    | Unterschiede sichtbar, -9%-2,5%, pos. rel.
+         |                                                 | Abw.: rechts unten, neg. rel. Abw.:
+         |                                                 | besonders ein Streifen ca. 30-50 level
+---------|-------------------------------------------------|-------------------------------------------------
+C3H7I    | -4% - 2.5%                                      | Unterschiede sichtbar, -9%-3%, pos. rel.
+         |                                                 | Abw.: rechts unten, neg. rel. Abw.:
+         |                                                 | besonders ein Streifen ca. 30-50 level
+---------|-------------------------------------------------|-------------------------------------------------
+CH2ClI   | gut                                             | -4,8%-1,2%, pos. rel. Abw.: rechts unten,
+         |                                                 | neg. rel. Abw.: besonders ein Streifen
+         |                                                 | ca. 30-50 level
+---------|-------------------------------------------------|-------------------------------------------------
+ICl      | gut                                             | sehr gut, fast unter 0,1% rel. Abw.
+---------|-------------------------------------------------|-------------------------------------------------
+IBr      | höchste Abweichungen bei rel diff nicht an      | sehr gut, fast unter 0,1% rel. Abw.
+         | Tag-Nacht-Grenze, sondern zentral               |
+---------|-------------------------------------------------|-------------------------------------------------
+SO2      | e-23 abs diff, -3.5% - -4.5%, punktuell         | ganz doof, deutlich sichtbare Unterschiede,
+         | bis -11.5%                                      | -5%-34%, interessante rel. Abw., neg.
+         |                                                 | rel. Abw.: rechte und linke untere Ecke,
+         |                                                 | höchste pos. rel. Abw.: 40°S-10°N, 80
+         |                                                 | level
+---------|-------------------------------------------------|-------------------------------------------------
+SO3      | ganz doof (rechte Seite weiß, Skala oben        | ganz doof: alten Bilder vorhanden, neue weiß,
+         | rechts aber vorhanden)                          | dort lediglich bei normaler Skalierung
+         |                                                 | (nicht log) Skalierung vorhanden,
+         |                                                 | rel.diff. natürlich auch weiß, abs.diff.
+         |                                                 | wie normales altes Bild nur Skalierung
+         |                                                 | andersherum, da nun negativ
+---------|-------------------------------------------------|-------------------------------------------------
+SF6      | weiß                                            | ganz doof: alten Bilder vorhanden, neue weiß,
+         |                                                 | dort lediglich bei normaler Skalierung
+         |                                                 | (nicht log) Skalierung vorhanden,
+         |                                                 | rel.diff. natürlich auch weiß, abs.diff.
+         |                                                 | wie normales altes Bild nur Skalierung
+         |                                                 | andersherum, da nun negativ
+---------|-------------------------------------------------|-------------------------------------------------
+OCS      | ganz doof (rechte Seite weiß, Skala oben        | ganz doof: alten Bilder vorhanden, neue weiß,
+         | rechts aber vorhanden)                          | dort lediglich bei normaler Skalierung
+         |                                                 | (nicht log) Skalierung vorhanden,
+         |                                                 | rel.diff. natürlich auch weiß, abs.diff.
+         |                                                 | wie normales altes Bild nur Skalierung
+         |                                                 | andersherum, da nun negativ
+---------|-------------------------------------------------|-------------------------------------------------
+CS2      | ganz doof (rechte Seite weiß, Skala oben        | ganz doof: alten Bilder vorhanden, neue weiß,
+         | rechts aber vorhanden)                          | dort lediglich bei normaler Skalierung
+         |                                                 | (nicht log) Skalierung vorhanden,
+         |                                                 | rel.diff. natürlich auch weiß, abs.diff.
+         |                                                 | wie normales altes Bild nur Skalierung
+         |                                                 | andersherum, da nun negativ
+-------------------------------------------------------------------------------------------------------------
+
+******************************************************************************
+
+CHB = JVAL with code from chb
+NEW = status when using dat_lit
+
++ = OKAY
+? = something is strange, see note
+h = hardcoded (code just copied, not calculated)
+w = work in progress, see note
+d = deleted
+
+---------------------------------------------------------
+              |CHB|NEW| Anna | m17      | lit           |
+---------------------------------------------------------
+  1 O2        | ? | + | OK   |          |               |
+  2 O3P       | + | + | OK   | O3.s3t   | O3.sig        |
+  3 O1D       | + | + | OK   | O3.s3t   | O3.sig        |
+  4 H2O2      | + | + | OK   |          |               |
+  5 NO2       | + | + | OK   |          |               |
+  6 NO2O      | + | + | (OK) | NO3.s2t  | NO3.sig       |
+  7 NOO2      | + | + | (OK) | NO3.s2t  | NO3.sig       |
+  8 N2O5      | + | + | ?    |          |               |
+  9 HNO3      | + | + | (OK) |          |               |
+ 10 HNO4      | ? | + | ?    |          |               |
+ 11 PAN       | ? | + | OK   |          |               |
+ 12 HONO      | + | + | OK   |          |               |
+ 13 CH3OOH    | + | + | OK   |          |               |
+ 14 COH2      | + | + | OK   | HCHO.s2t | HCHO.sig+tc1  |
+ 15 CHOH      | + | + | OK   | HCHO.s2t | HCHO.sig+tc1  |
+ 16 CH3CO3H   | ? | + | (OK) |          |               |
+ 17 CH3CHO    | + | + | (OK) |          |               |
+ 18 CH3COCH3  | h | h | ?    |          |               |
+ 19 MGLYOX    | h | h | ?    |          |               |
+ 20 HOCl      | + | + | OK   |          |               |
+ 21 OClO      | + | + | (OK) |          |               |
+ 22 Cl2O2     | + | + | OK   |          |               |
+ 23 ClNO3     | + | + | ?    | s3t      | ClNO3.sig+tc2 |
+ 24 ClNO2     | + | + | OK   |          |               |
+ 25 Cl2       | + | + | OK   |          |               |
+ 26 BrO       | ? | + | (OK) |          |               |
+ 27 HOBr      | + | + | OK   |          |               |
+ 28 BrCl      | + | + | OK   |          |               |
+ 29 BrNO3     | + | + | OK   |          |               |
+ 30 BrNO2     | + | + | OK   |          |               |
+ 31 Br2       | + | + | OK   |          |               |
+ 32 CCl4      | + | + | OK   |          |               |
+ 33 CH3Cl     | + | + | OK   | s3t      | sig           |
+ 34 CH3CCl3   | + | + | OK   | s3t      | sig           |
+ 35 CFCl3     | ? | + | (OK) |          |               |
+ 36 CF2Cl2    | + | + | OK   |          |               |
+ 37 CH3Br     | + | + | OK   |          |               |
+ 38 CF2ClBr   | + | + | OK   |          |               |
+ 39 CF3Br     | + | + | weiß |          |               |
+ 40 CH3I      | ? | + | (OK) |          |               |
+ 41 C3H7I     | ? | + | (OK) |          | tc2           |
+ 42 CH2ClI    | + | + | OK   |          |               |
+ 43 CH2I2     | + | + | OK   |          |               |
+ 44 IO        | + | + | OK   |          |               |
+ 45 HOI       | + | + | OK   |          |               |
+ 46 I2        | + | + | OK   |          |               |
+ 47 ICl       | + | + | OK   |          |               |
+ 48 IBr       | + | + | OK   |          |               |
+ 49 INO2      | + | + | OK   |          |               |
+ 50 INO3      | + | + | OK   |          |               |
+ 51 SO2       | ? | d | ?    | sig      |               |
+ 52 SO3       | + | + | weiß |          |               |
+ 53 OCS       | ? | + | weiß |          | s2t           |
+ 54 CS2       | ? | d | weiß |          |               |
+ 55 H2O       | + | + | OK   |          |               |
+ 56 N2O       | + | + | OK   |          |               |
+ 57 NO        | h | h | weiß |          |               |
+ 58 CO2       | ? | + | OK   | sig      |               |
+ 59 HCl       | + | + | OK   |          |               |
+ 60 CHCl2Br   | + | + | OK   |          |               |
+ 61 CHClBr2   | + | + | OK   |          |               |
+ 62 CH2ClBr   | + | + | OK   |          |               |
+ 63 CH2Br2    | ? | + | ?    |          |               |
+ 64 CHBr3     | ? | + | ?    |          |               |
+ 65 SF6       | + | + | weiß |          |               |
+ 66 NO3NOO    | ? | d | ?    |          |               |
+ 67 ClONO2    | + | + | weiß |          | ClNO3.sig+tc2 |
+ 68 MACR      | h | h | weiß |          |               |
+ 69 MVK       | h | h | weiß |          |               |
+ 70 GLYOX     | h | h | weiß |          |               |
+ 71 HOCH2CHO  | ? | + | weiß |          |               |
+ 72 CH4       | + | + | weiß |          |               |
+ 73 O2_b1b2   |   |   |      |          |               |
+ 74 O2_b1     |   |   |      |          |               |
+ 75 O2_b2     |   |   |      |          |               |
+ 76 O3PO1D    |   |   |      |          |               |
+ 77 O3Pp      |   |   |      |          |               |
+ 78 H2O1D     |   |   |      |          |               |
+ 79 N2        |   |   |      |          |               |
+ 80 N2_b1     |   |   |      |          |               |
+ 81 N2_b2     |   |   |      |          |               |
+ 82 N2_b3     |   |   |      |          |               |
+ 83 NN2D      |   |   |      |          |               |
+ 84 NOp       |   |   |      |          |               |
+ 85 Op_em     |   |   |      |          |               |
+ 86 O2p_em    |   |   |      |          |               |
+ 87 Op_O_em   |   |   |      |          |               |
+ 88 N2p_em    |   |   |      |          |               |
+ 89 Np_N_em   |   |   |      |          |               |
+ 90 Np_N2D_em |   |   |      |          |               |
+ 91 N_N2D_em  |   |   |      |          |               |
+ 92 Op_em_b   |   |   |      |          |               |
+ 93 se_O2_b1  |   |   |      |          |               |
+ 94 se_O2_b2  |   |   |      |          |               |
+ 95 se_N2_b1  |   |   |      |          |               |
+ 96 se_N2_b2  |   |   |      |          |               |
+ 97 se_N2_b3  |   |   |      |          |               |
+ 98 se_N2_b4  |   |   |      |          |               |
+ 99 se_Op_em  |   |   |      |          |               |
+100 O2_aurq   |   |   |      |          |               |
+101 N2_aurq   |   |   |      |          |               |
+102 H2SO4     | h | h |      |          |               |
+---------------------------------------------------------
+
+NOTES:
+
+1 O2: CHB: Contains factor 0.95 "to scale for bias".
+
+2 O3P: M17: Fixed quantum yield in intervals 0 and 1 is already included
+  in coefficients sig_O3P(0) and sig_O3P(1).
+
+3 O1D: M17: Fixed quantum yield in intervals 0 and 1 is already included
+  in coefficients sig_O1D(0) and sig_O1D(1).
+
+10 HNO4: CHB: T-dep in interval 1 from unknown source.
+
+11 PAN: CHB: Missing parenthesis bug.
+
+16 CH3CO3H: CHB: In interval 1, sig_CH3CO3H has a strange, constant
+   value that does not even depend on O2 (dlv2).
+
+18 CH3COCH3: CHB: lots of hardcoded additions.
+
+19 MGLYOX: CHB: hardcoded f6, f7, prel
+
+35 CFCl3: CHB: Missing parenthesis bug.
+
+40 CH3I: CHB: Value of a3 is very different from jvpp.
+
+41 C3H7I: CHB: Value of a3 is very different from jvpp.
+
+42 CH2ClI: CHB: Value of a3 is very different from jvpp.
+
+51 SO2: CHB: Numbers cannot be reproduced properly using sig file in
+   dat_m17/spectra.
+
+53 OCS: CHB: Numbers cannot be reproduced properly using sig file in
+   dat_m17/spectra.
+
+58 CO2: CHB: Where are numbers for lambda > 300 nm from? Not from
+   Shemansky! NEW: try to get spectrum from Shemansky from spectral
+   atlas.
+
+63 CH2Br2: CHB: Numbers cannot be reproduced properly using sig file in
+   dat_m17/spectra.
+
+64 CHBr3:  CHB:  A4_CHBr3 ... A7_CHBr3 have 4 elements, but then functions
+   p1(...) and p2(...) with only 2 or 3 parameters is used. Maybe the
+   other values are to small to be useful? Also, I get very different
+   values for c5_CHBr3(2) = 1.1972E+00, 3.5545E+00 --> something is
+   wrong.
+
+66 NO3NOO: CHB: quantum yields are probably guessed by CHB, maybe based
+   on JPL2006?
+
+68 MACR: CHB: Numbers cannot be reproduced properly using sig file in
+   dat_m17/spectra. hardcoded f6 factor, check quantum yield
+   calculation.
+
+69 MVK: CHB: Numbers can be reproduced very well using sig file in
+   dat_m17/spectra but hardcoded f6 factor. The current code probably
+   includes the wavelength-dependence of the quantum yield (phi =
+   exp(-0.055*(lambda-308))/(5.5+9.2E-19*[M]) according to Gierczak et
+   al. (1997)) in the coefficients. The factor 32.16/(5.5+9.2E-19*[M])
+   (which equals 1 for [M]=2.90e19) is used to describe the pressure
+   dependence.
+
+70 GLYOX: CHB: Numbers can be reproduced very well using sig file in
+   dat_m17/spectra but there is the hardcoded f6 factor: check quantum
+   yield calculation. Also, it is unclear where the factor
+   14.35/(6.8+251.8e-4*ptorr) in jvpp_step2 comes from. Only the
+   denominator is from ref2353. The value 14.35 was probably chosen so
+   that the factor=1 at 300 Torr?
+
+71 HOCH2CHO: CHB: Between 179.37 nm and 211.64 nm, CHB apparently
+   assumed the same value of 8.24E-20 cm2 which JPL2006 recommends for
+   212 nm.
+
+******************************************************************************

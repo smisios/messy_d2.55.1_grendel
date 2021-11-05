@@ -1,0 +1,35 @@
+# ----------------------------------------------
+export
+SHELL     = sh
+
+F90       = mpif90
+F90FLAGS  = -DLF --chk a,e,s --ap -g --trap -O0 -Cpp -DPNCREGRID
+LIBS      = -L/data/joec_pa/soft/netcdf/v3.6.3_lf62d/lib -lnetcdf
+INCLUDES  = -I/data/joec_pa/soft/netcdf/v3.6.3_lf62d/include
+
+# ----------------------------------------------
+
+srcdir     = ./src
+bindir     = ./bin
+includedir = ./include
+PROG       = ncregrid.exe
+
+# ----------------------------------------------
+
+all:
+	cd $(srcdir) ; \
+	$(MAKE)
+
+install: all
+	if test ! -d $(bindir) ; then mkdir $(bindir) ; fi
+	cp -f $(srcdir)/$(PROG) $(bindir)/.
+	if test ! -d $(includedir) ; then mkdir $(includedir) ; fi
+	cp -f $(srcdir)/*.mod $(includedir)/.
+
+clean:
+	rm -f $(srcdir)/*.o $(srcdir)/*~ $(srcdir)/*.mod $(srcdir)/$(PROG)
+
+distclean: clean
+	rm -fr $(bindir) $(includedir) ./config.log ./config.status ./Makefile
+
+# ----------------------------------------------

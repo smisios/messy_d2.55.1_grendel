@@ -1,0 +1,190 @@
+! -*- f90 -*-
+
+&CTRL_TS
+! ### SYNTAX:
+!     - name of time series
+!     - [var@] name (incl. path) of data file
+!           .nc -> netCDF, e.g., "var@my_path_to_my_file/my_file.nc" 
+!               -> ASCII,  e.g., "my_path_to_my_file/my_file.txt" 
+!     - valid range ( default: -HUGE(0._dp), HUGE(0._dp) )
+!     - out of time interval policy: 0: stop; 1: continue with nearest ...
+!       ... (before time interval, after time interval)
+!     - interpolation method:  -1: previous; 0: linear interpolation; 1: next
+!     - yr,mo,dy,hr,mi,se : pick out always this date/time
+!       (example: 2000, , , , , , will cycle through the year 2000 etc.)
+!     - offset (in days)
+!
+! ###########
+! ### QBO ###
+! ###########
+!
+TS(1) = 'qbo', '$INPUTDIR_MESSY/qbo/misc/qbo_data_v02.txt', ,99.90, 0, 0, 0, , , , , , , 0.0,
+!TS(1) = 'qbo', 'QBO@$INPUTDIR_MESSY/qbo/qbo_data_v04.nc',   ,99.90, 0, 0, 0, , , , , , , 0.0,
+!
+! ############ ######################
+! ### JVAL ### ### RAD4ALL_FUBRAD ###
+! ############ ######################
+!
+!   NOTE: 
+!    The data file must either contain
+!     * JVAL and/or FUBRAD:
+!       - the F10.7cm in sfu (adjusted to 1 AU !!!)
+!     * JVAL
+!       - phi_la,SR_toa_flux,flux(7),f0(7) (adjusted to 1 AU !!!)
+!     * FUBRAD
+!       - TSI, Flya, Fsch1, Fs, Fl, soscale, Fherz(7:21),
+!         Fhart(22:31), Fhug(32:49), Fchap
+!         (units: Wm-2, except: Fsch1, Fs, Fl (erg cm-2 s-1),
+!         soscale (dimensionless))
+!
+!TS(2) = 'solact','F107@$INPUTDIR_MESSY/jval/F10.7_1AU_1948_2085.nc', , , 0, 0, 0, , , , , , , 0.0,
+!TS(2) = 'solact','SOLCYC@$INPUTDIR_MESSY/jval/solar_data_1AU_1950_2006.nc', , , 0, 0, 0, , , , , , , 0.0,
+!
+!TS(3) = 'solspec','SOLAR_DATA@$INPUTDIR_MESSY/rad4all/spectral_solar_data_daily_1950_2007_fubrad_v01.nc', , , 0, 0, 0, , , , , , , 0.0,
+!
+TS(2) = 'solact','$INPUTDIR_MESSY/jval/misc/NRLSSI_FUB1.0_hist_X_solar1AU_19500101_20111231.txt', , , 0, 0, 0, , , , , , , 0.0,
+!
+TS(3) = 'solspec','$INPUTDIR_MESSY/rad/fubrad/misc/NRLSSI_FUB1.0_hist_X_spec055_19500101_20111231.txt', , , 0, 0, 0, , , , , , , 0.0,
+
+
+!TS(2) = 'solact','$INPUTDIR_MESSY/jval/misc/NRLSSI_FUB1.0_HadGEM_X_solar1AU_19500101_21001231.txt', , , 0, 0, 0, , , , , , , 0.0,
+!
+!TS(3) = 'solspec','$INPUTDIR_MESSY/rad/fubrad/misc/NRLSSI_FUB1.0_HadGEM_X_spec055_19500101_21001231.txt', , , 0, 0, 0, , , , , , , 0.0,
+!
+! spe_method = 0; internal calculation of ionization rate
+!TS(4) = 'pflux','$INPUTDIR_MESSY/spe/misc/PFLUX198601_200612.TXT', , , 0, 0, 0, , , , , , , 0.0,
+! spe_method = 1; use externally calculated ionization rates
+!TS(5) = 'ionrate','$INPUTDIR_MESSY/spe/misc/ionrates1963_2006_L90.txt', , , 0, 0, 0, , , , , , , 0.0,
+! for spe_method = 2 (AIMOS) see RGTEVENTS
+/
+
+&CTRL_LT
+! ### SYNTAX:
+! ### LT(.) = 'table name','netcdf-file with path','netcdf variable name',
+! ###         (table name must be unique)
+!
+!LT(1) = 'mytable','$INPUTDIR_MESSY/mysubmodel/LT_my_file.nc','myvar',
+!
+/
+
+&RGTEVENTS
+! ### SYNTAX:
+! ###         NML=   '' (DEFAULT)   : this namelist-file (import.nml)
+!                    <namelist file>: other namelist file
+!
+! ###         FILE=  '' (DEFAULT)   : - ONLY first netCDF-file in NML
+!                    <netCDF-file>  : - this file in NML
+!
+! ###         VAR=   '' (DEFAULT)   : - all variables from FILE
+!                                     - all variables in first namelist in NML
+!                    <tracer name>  : - this variable from namelist in NML
+!                                       (FILE specifier ignored !!!)
+! ###         Z=     <z1,z2,...>    : - list of emission heights [m]
+!                                       (above GND) for multi level emissions
+!                                       (Nx2D)
+!
+! NOTEs: (1) SUMMATION OF DIFFERENT OFFLINE EMISSIONS FOR ONE TRACER
+!            CAN BE ACHEIVED BY USING THE
+!            FILE- or VAR- specifier in combination with the NML-specifier
+!        (2) PRESCRIBED MIXING RATIOS CAN BE ACHIEVED
+!            in combination with SUBMODEL TNUDGE
+!        (3) Surface emission fluxes (2D) must be in  molecules m-2 s-1.
+!        (4) Volume emissions (3D)        must be in  molecules m-3 s-1.
+!        (5) Multi level emissions (Nx2D) must be in  molecules m-2 s-1.
+!        (6) For volume emissions (3D), the corresponding &REGRID-namelist
+!            must contain the specification of the vertical coordinate.
+!            The Z-specifier (emission heights) must not be used!
+!        (7) The trigger for multi level emissions (Nx2D) is the presence
+!            of the Z-specifier (emission heights) in the RG_TRIG action
+!            string. The corresponding &REGRID-namelist must not contain any
+!            specification of a vertical coordinate, since the levels
+!            must be treated as 'invariant' (parameter-)dimension.
+!        (8) For Nx2D emissions, the FILE specifier must not be used, since
+!            the level is treated by NCREGRID as invariant dimension.
+!            (Regridding of a file (i.e., multiple variables in one step)
+!             containing one or more variables with a free parameter
+!             (here level index) is not possible, since the 'parameter'
+!             dimension is already used for the number of variables.)
+!
+! LOWER BOUNDARY CONDITIONS (for tnudge.nml)
+!
+!
+! GHG: N2O, CH4, CO2
+RG_TRIG(1)  = 1,'months', 'first',0, 'TN_GHG',  733,1,744,349, 'NML=./import/DLR_1.0_X_sfmr_GHG_195001-201112.nml;',
+! GHG - OLD
+! RG_TRIG(2)  = 1,'months', 'first',0, 'TN_GHG', 121,1,132,1, 'NML=./import/sfmr_GHG.nml',
+!
+! CFC: CFCl3, CF2Cl, CH3CCl3, CCl4
+RG_TRIG(3)  = 1,'months', 'first',0, 'TN_CFC',  733,1,744,349, 'NML=./import/DLR_1.0_X_sfmr_CFC_195001-201112.nml;',
+!
+! HCFC: CH3Cl, CH3Br 
+RG_TRIG(7)  = 1,'months', 'first',0, 'TN_HCFC', 733,1,744,349, 'NML=./import/DLR_1.0_X_sfmr_HCFC_195001-201112.nml;',
+!RG_TRIG(8)  = 1,'months', 'first',0, 'TN_CH3Br', 733,1,744,349, 'NML=./import/DLR_1.0_X_sfmr_CH3Br_VSLS_195001-201112.nml;',
+!
+! Halons: CF2ClBr, CF3Br
+!RG_TRIG(9) = 1,'months', 'first',0, 'TN_Halon', 733,1,744,349, 'NML=./import/DLR_1.0_X_sfmr_Halons_195001-201112.nml;',
+!
+! CFC - OLD
+!RG_TRIG(10)  = 1,'months', 'first',0, 'TN_CFC',1777,1,1788,589, 'NML=./import/sfmr_CFC.nml',
+!
+! EMISSIONS RETRO and IASA
+RG_TRIG(11)  = 1,'months', 'first',0, 'TN_NOX', 1705,1,1716,253, 'NML=./import/nox_1958_2100.nml; VAR=NO; Z=45,140,240,400,600,800',
+RG_TRIG(12)  = 1,'months', 'first',0, 'TN_CO', 1705,1,1716,253, 'NML=./import/co_1958_2100.nml; VAR=CO; Z=45,140,240,400,600,800',
+!RG_TRIG(13)  = 1,'months', 'first',0, 'TN_C2H4', 1,1,12,$START_MONTH, 'NML=./import/c2h4_2000.nml; VAR=C2H4; Z=45,140,240,400,600,800',
+!RG_TRIG(14)  = 1,'months', 'first',0, 'TN_C2H6', 1,1,12,$START_MONTH, 'NML=./import/c2h6_2000.nml; VAR=C2H6; Z=45,140,240,400,600,800',
+!RG_TRIG(15)  = 1,'months', 'first',0, 'TN_C3H6', 1,1,12,$START_MONTH, 'NML=./import/c3h6_2000.nml; VAR=C3H6; Z=45,140,240,400,600,800',
+!RG_TRIG(16)  = 1,'months', 'first',0, 'TN_C3H8', 1,1,12,$START_MONTH, 'NML=./import/c3h8_2000.nml; VAR=C3H8; Z=45,140,240,400,600,800',
+!RG_TRIG(17)  = 1,'months', 'first',0, 'TN_NC4H10', 1,1,12,$START_MONTH, 'NML=./import/c4h10_2000.nml; VAR=NC4H10; Z=45,140,240,400,600,800',
+RG_TRIG(18)  = 1,'months', 'first',0, 'TN_CH3CHO', 1,1,12,$START_MONTH, 'NML=./import/ch3cho_2000.nml; VAR=CH3CHO; Z=45,140,240,400,600,800',
+RG_TRIG(19)  = 1,'months', 'first',0, 'TN_CH3COCH3', 1,1,12,$START_MONTH, 'NML=./import/ch3coch3_2000.nml; VAR=CH3COCH3; Z=45,140,240,400,600,800',
+RG_TRIG(20)  = 1,'months', 'first',0, 'TN_CH3CO2H', 1,1,12,$START_MONTH, 'NML=./import/ch3cooh_2000.nml; VAR=CH3CO2H; Z=45,140,240,400,600,800',
+RG_TRIG(21)  = 1,'months', 'first',0, 'TN_CH3OH', 1,1,12,$START_MONTH, 'NML=./import/ch3oh_2000.nml; VAR=CH3OH; Z=45,140,240,400,600,800',
+RG_TRIG(22)  = 1,'months', 'first',0, 'TN_HCHO', 1705,1,1716,253, 'NML=./import/hcho_1958_2100.nml; VAR=HCHO; Z=45,140,240,400,600,800',
+RG_TRIG(23)  = 1,'months', 'first',0, 'TN_HCOOH', 1,1,12,$START_MONTH, 'NML=./import/hcooh_2000.nml; VAR=HCOOH; Z=45,140,240,400,600,800',
+!RG_TRIG(24)  = 1,'months', 'first',0, 'TN_MEK', 1,1,12,$START_MONTH, 'NML=./import/mek_2000.nml; VAR=MEK; Z=45,140,240,400,600,800',
+RG_TRIG(25)  = 1,'months', 'first',0, 'TN_AIR', 1105,1,1116,253, 'NML=./import/emis_airc_NOx_1958_2050.nml; VAR=NOX',
+!
+! EMISSIONs which repeat the year 2000
+RG_TRIG(26)  = 1,'months', 'first',0, 'TN_SO2', 1,1,12,$START_MONTH, 'NML=./import/so2_2000.nml; VAR=SO2; Z=45,140,240,400,600,800',
+!RG_TRIG(27)  = 1,'months', 'first',0, 'TN_NH3', 1,1,12,$START_MONTH, 'NML=./import/nh3_2000.nml; VAR=NH3; Z=45,140,240,400,600,800',
+! EMISSIONs by Giselle
+RG_TRIG(28)  = 1,'months', 'first',0, 'HALOCARB_CHBr3', 1,1,12,$START_MONTH, 'NML=./import/ZISKA_CHBr3.nml; VAR=CHBr3',
+RG_TRIG(29)  = 1,'months', 'first',0, 'HALOCARB_CH2Br2', 1,1,12,$START_MONTH, 'NML=./import/LIANG_CH2Br2.nml; VAR=CH2Br2',
+RG_TRIG(30) = 1,'years', 'first',0, 'HALOCARB_BrCarbons', 1,1,1,1, 'NML=./import/Warwick_UMZ1.0_clim_biowater_BrCarbons_X-X.nml;',
+
+! Halons: CF2ClBr, CF3Br
+RG_TRIG(31) = 1,'months', 'first',0, 'TN_Halon', 733,1,744,349, 'NML=./import/Halons_195001-201112.nml;',
+!
+! GHG 2
+! RG_TRIG(28)  = 1,'months', 'first',0, 'TN_CO2', 121,1,132,1, 'NML=./import/sfmr_CO2.nml',
+!SF6 for MAOAM
+!RG_TRIG(30)  = 1,'months', 'first',0, 'TN_SF6', 73,1,84,25, 'NML=./import/sfmr_SF6_1998_2004.nml; VAR=SF6',
+!RG_TRIG(31)  = 1,'months', 'first',0, 'TN_SF6p', 73,1,84,25, 'NML=./import/sfmr_SF6_1998_2004.nml; VAR=SF6p',
+!RG_TRIG(32)  = 1,'days', 'first',0, 'TN_SF6', 54983,1,54984,17898, 'NML=./import/sfmr_SF6_1951_2099.nml; VAR=SF6',
+!RG_TRIG(33)  = 1,'days', 'first',0, 'TN_SF6p', 54983,1,54984,17898, 'NML=./import/sfmr_SF6_1951_2099.nml; VAR=SF6p',
+! ONEMIS
+!RG_TRIG(200) = 1, 'months', 'first', 0, 'emis_DMS_sea', 1,1,12,$START_MONTH, 'NML=./import/seawater_DMS.nml'
+! MSBM
+RG_TRIG(197)=1,'months','first',0,'H2SO4_clim',469,1,480,229,'VAR=H2SO4_init; NML=./import/H2SO4_init.nml',
+! ###########################################
+! DATA IMPORT FOR DDEP (DRY DEPOSITION)
+! ###########################################
+!
+RG_TRIG(270) = 1,'years', 'first',0,'soilpH',  1,1, 1,1,'VAR=soilpH; NML=./import/X_X_X_soilpHcl_X_X-X.nml; IXF=7',
+! additionally the fields lai, hc and drag (overlap with online emissions)
+! are needed.
+RG_TRIG(271) =  1,'months','first',0,'surf_para',  1,1,12,$START_MONTH,'NML=./import/X_X_X_surfpara_X_01-12.nml'
+!
+! TIMER: JAN 1950 =  1        DEC 1950 = 12
+!        JAN 1951 = 13        DEC 1951 = 24
+!        JAN 1960 = 121       DEC 1960 = 132
+!        JAN 2009 = 709       DEC 2009 = 720
+!
+RG_TRIG(275) = 1,'months', 'first',0, 'DVMETH', 709,1,720,349, 'VAR=oxid; NML=./import/UBernLPJ_DLR1.0_HIST_soiloxid_CH4_195001-200912.nml'
+!
+! external AIMOS ionization rates from Jan-Maik Wissing (http://sun.physik.uos.de/~maik/AIMOS/)
+! available from Jan,11th 2001 to Dec, 30th 2010
+RG_TRIG(320)  = 2,'hours', 'first',0, 'jmionrates_p', 1,1,600,1, 'NML=./import/AIMOS_P.nml; VAR=ionratep',
+RG_TRIG(321)  = 2,'hours', 'first',0, 'jmionrates_e', 1,1,600,1, 'NML=./import/AIMOS_E.nml; VAR=ionratee',
+RG_TRIG(322)  = 2,'hours', 'first',0, 'jmionrates_a', 1,1,600,1, 'NML=./import/AIMOS_A.nml; VAR=ionratea',
+/

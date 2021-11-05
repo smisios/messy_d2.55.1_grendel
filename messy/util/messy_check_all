@@ -1,0 +1,99 @@
+#! /bin/tcsh -f
+
+### APPLY ALL MESSy-CONFORMITY CHECKS TO ALL f90 FILES
+###
+### Author: Patrick Jöckel, MPICH, Mainz, Germany, Mar 2004
+
+set BINPATH = ./messy/util
+
+if ($# == 0) then
+   echo "USAGE: `basename $0` <BASEMODEL>"
+   exit 1
+endif
+
+### PARSE COMMAND LINE
+# BASEMODEL
+set BASEMODEL = $1
+#  op_pj_20120118+
+if ( -d $BASEMODEL == 0 ) then
+   exit 0
+endif
+#  op_pj_20120118-
+echo
+echo '#############################################'
+echo 'BASEMODEL: '$BASEMODEL
+echo '#############################################'
+echo
+shift
+if ($# == 0) then
+   unset verb
+else
+   set verb
+endif
+
+### BASEMODEL SETTINGS
+if ( -r messy/$BASEMODEL/messy_setup != 0 ) then
+   source messy/$BASEMODEL/messy_setup
+else
+   echo "ERROR: MESSY SETUP messy/$BASEMODEL/messy_setup IS UNREADABLE\!"
+   exit 1
+endif
+
+set F90DIRS = ( messy/smcl messy/bmil messy/$BASEMODEL/smil messy/$BASEMODEL/bmil )
+
+### SOURCE FILES 
+if (${?verb}) then
+   echo 'Looking for messy-f90-source files ...'
+endif
+
+set F90SRCS= ()
+foreach dir (${F90DIRS})
+    if (${?verb}) then
+       echo ' ... in '$dir
+    endif
+    set nonomatch
+    set list0 = `echo $dir/messy*.f90`
+    set empty = "$dir/messy*.f90"
+    unset nonomatch
+    if ( "$list0[1]" != "$empty[1]" ) then
+      set F90SRCS = ($F90SRCS $list0) 
+    endif
+end
+
+if (${?verb}) then
+   echo 'Starting messy-conformity checks ...'
+endif
+
+##############################
+if (${?verb}) then
+   echo ' ... files'
+endif
+
+foreach file ($F90SRCS)
+
+   ${BINPATH}/messy_check_01 $BASEMODEL $file
+   ${BINPATH}/messy_check_02 $BASEMODEL $file
+   ${BINPATH}/messy_check_03 $BASEMODEL $file
+   ${BINPATH}/messy_check_04 $BASEMODEL $file
+   ${BINPATH}/messy_check_05 $BASEMODEL $file
+   ${BINPATH}/messy_check_07 $BASEMODEL $file
+   ${BINPATH}/messy_check_08 $BASEMODEL $file
+
+end
+
+##############################
+if (${?verb}) then
+   echo ' ... submodels'
+endif
+
+set smlist = `grep -iE "logical.*use_" messy/smcl/messy_main_switch.f90 | awk '{print tolower($3)}' | sed 's|use_||g'`
+
+foreach sm ($smlist)
+
+  echo $sm
+  ${BINPATH}/messy_check_06 $BASEMODEL $sm
+
+end
+##############################
+
+exit 0

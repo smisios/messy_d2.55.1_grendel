@@ -1,0 +1,508 @@
+#! /bin/tcsh -f
+
+set script=`basename $0`
+### INIT ###################################################################
+set restart   = ''
+set cycle     = ''
+set srcdir=`pwd`
+set instnum = 1
+
+while ($# > 0)
+    switch ($1)
+      case '-h':
+        echo "Usage: $script [-h] -r <nnnn> -c <mmmm> [-d <directory>] [-i <k>]"
+        echo " "
+        echo "  -h  : show this help and exit"
+        echo '  -r  : restart chain number (save); nnnn always 4 digits'
+        echo '  -c  : cycle number; mmmm always 4 digits'
+        echo '  -d  : look in <directory> for save/nnnn subdirectory'
+        echo '        (default: .)'
+        echo '  -i  : number of instances is <k> (default: 1)'
+        echo " "
+        echo "Author: Patrick Joeckel, MPICH, Mainz, Sep 2005"
+        echo " "
+        exit 1
+        breaksw
+      case '-r':
+        shift 
+         if (("$1" == "") || \
+             (`echo $1 | awk '{print substr($1,1,1)}'` == "-")) then
+            echo 'Error: Argument <nnnn> missing\!'
+            echo "Use $script -h for more information\!"
+            exit 1
+        else
+            set restart = "$1"
+            shift
+        endif
+        breaksw
+      case '-c':
+        shift 
+        if (("$1" == "") || \
+            (`echo $1 | awk '{print substr($1,1,1)}'` == "-")) then
+            echo 'Error: Argument <mmmm> missing\!'
+            echo "Use $script -h for more information\!"
+            exit 1
+        else
+            set cycle = "$1"
+            shift
+        endif
+        breaksw
+      case '-d':
+        shift
+        if (("$1" == "") || \
+            (`echo $1 | awk '{print substr($1,1,1)}'` == "-")) then
+            echo 'Error: Argument <directory> missing\!'
+            echo "Use $script -h for more information\!"
+            exit 1
+        else
+            set srcdir = $1
+            shift
+        endif
+        breaksw
+      case '-i':
+        shift
+        if (("$1" == "") || \
+            (`echo $1 | awk '{print substr($1,1,1)}'` == "-")) then
+            echo 'Error: Argument <number of instances> missing\!'
+            echo "Use $script -h for more information\!"
+            exit 1
+        else
+            set instnum = "$1"
+            shift
+        endif
+        breaksw
+      default:
+        echo "Unknown option: $1"
+        echo "Use $script -h for more information\!"
+        exit 1
+        breaksw
+    endsw
+end
+
+if ("$restart" == "") then
+   echo 'ERROR: -r option must be specified\!'
+   echo "Use $script -h for more information\!"
+   exit 1
+endif
+
+if ("$cycle" == "") then
+   echo 'ERROR: -c option must be specified\!'
+   echo "Use $script -h for more information\!"
+   exit 1
+endif
+
+##################################################################
+
+# INIT
+set destdir=`pwd`
+
+### START LOOP OVER ALL INSTANCES ################################ >
+set j = 0
+while ($j < $instnum)
+  set j=`expr $j + 1`
+  if ($instnum > 1) then
+      set jstr=`echo $j | awk '{printf("%2.2i\n",$1)}'`
+  else
+      set jstr=""
+  endif
+  if (-d $srcdir/$jstr) then
+     cd $srcdir/$jstr
+     set srcdirinst=`pwd`
+  else
+     echo "ERROR: $srcdir/$jstr' does not exist\!"
+     exit 1
+  endif
+  if (! -d $destdir/$jstr) then
+     mkdir $destdir/$jstr
+  endif
+  cd $destdir/$jstr
+  set destdirinst=`pwd`
+
+  echo '------------------------------------------------------------------'
+  echo "WORKING DIRECTORY (DESTINATION) : $destdir"
+  echo "RESTART DIRECTORY (SOURCE)      : $srcdir"
+  echo "INSTANCE NUMBER                 : $j"
+  echo "INSTANCE DIRECTORY (DESTINATION): $destdirinst"
+  echo "INSTANCE DIRECTORY (SOURCE)     : $srcdirinst"
+  echo "                  CHAIN ELEMENT : save/$restart"
+  echo "                  CYCLE NUMBER  : $cycle"
+  echo ""
+
+  # CREATE SUBDIRECTORY STRUCTURE
+  if ("$srcdirinst" != "$destdirinst") then
+      echo "CHECKING LOCAL DIRECTORY STRUCTURE ..."
+      if (! -d save) then
+          echo "  ... CREATING DIRECTORY save"
+          mkdir save
+      endif
+      if (! -d save/$restart) then
+          echo "  ... CREATING DIRECTORY save/$restart"
+          mkdir save/$restart
+      endif
+      if (-d $srcdirinst/save/$restart/GUESS) then
+          if (! -d save/$restart/GUESS) then
+             echo "  ... CREATING DIRECTORY save/$restart/GUESS"
+             mkdir save/$restart/GUESS
+          endif
+      endif
+      echo "... OK."
+
+      echo "COPYING ... "
+      echo "  ... RESTART CHAIN ELEMENT: $restart"
+      echo "  ... CYCLE                : $cycle"
+      echo "  ... FROM DIRECTORY       : $srcdirinst"
+
+      # COPY FILES
+      echo "  -> MSH_NO"
+      if (-r $srcdirinst/save/$restart/MSH_NO) then
+         cp -f $srcdirinst/save/$restart/MSH_NO  save/$restart/.
+      else
+         echo "ERROR: $srcdirinst/save/$restart/MSH_NO missing."
+         exit 1
+      endif
+
+      echo '  -> xmessy*'
+      set flist = (`find $srcdirinst/save/$restart -maxdepth 1 -name 'xmessy*' -print`)
+      if (${#flist} > 0) then
+         foreach f ($flist)
+          cp -f $f save/$restart/.
+         end
+      else
+          echo "ERROR: No $srcdirinst/save/$restart/xmessy* found."
+          exit 1
+      endif
+
+      # ECHAM5 only and ECHAM can only be 1st instance
+      if ($j == 1) then
+         echo '  -> rerun*'
+         set flist = (`find $srcdirinst/save/$restart -maxdepth 1 -name 'rerun*' -print`)
+         if (${#flist} > 0) then
+            foreach f ($flist)
+               cp -f $f save/$restart/.
+            end
+         else
+            echo "WARNING: No $srcdirinst/save/$restart/rerun* found."
+            echo "         (This is only relevant, if ECHAM is the basemodel.)"
+         endif
+      endif
+
+      # COPY SUBDIRECTORIES
+      echo '  -> bin/'
+      if (-d $srcdirinst/save/$restart/bin) then
+         cp -fr $srcdirinst/save/$restart/bin save/$restart
+      else
+         echo "ERROR: Subdirectory $srcdirinst/save/$restart/bin missing."
+         exit 1
+      endif
+      
+      echo '  -> nml/'
+      if (-d $srcdirinst/save/$restart/nml) then
+         cp -fr $srcdirinst/save/$restart/nml save/$restart
+      else
+         echo "ERROR: Subdirectory $srcdirinst/save/$restart/nml missing."
+         exit 1
+      endif
+
+      # COPY REQUIRED RESTART FILES
+      echo "  -> restart_${cycle}*"
+      set flist = (`find $srcdirinst/save/$restart -maxdepth 1 -name 'restart_'${cycle}'*' -print`)
+      if (${#flist} > 0) then
+         foreach f ($flist)
+           cp -f $f save/$restart/.
+         end
+      else
+         echo "ERROR: No $srcdirinst/save/$restart/restart_${cycle}* found."
+         exit 1
+      endif
+
+      ### FILES FOR GUESS
+      if (-d $srcdirinst/save/$restart/GUESS) then 
+         echo "  -> GUESS data and restart files"
+         cp -fr $srcdirinst/save/$restart/GUESS save/$restart/.
+      endif
+
+      ### CLM RESTART FILES
+      set flist = (\
+        `find $srcdirinst/save/$restart -maxdepth 1 -name '*.r.*' -print` \
+        `find $srcdirinst/save/$restart -maxdepth 1 -name '*.rh0.*' -print` \
+        `find $srcdirinst/save/$restart -maxdepth 1 -name '*.rs.*' -print` \
+        `find $srcdirinst/save/$restart -maxdepth 1 -name '*.rh1.*' -print` \
+        `find $srcdirinst/save/$restart -maxdepth 1 -name 'rpointer*' -print` \
+        )
+      if (${#flist} > 0) then
+         echo "  -> CLM data and restart files"
+         foreach f ($flist)
+           cp -r $f save/$restart/.
+         end
+      endif
+
+      ###+ COPY ICON files
+      set iflist = (`find $srcdirinst/save/$restart -name 'icon*' -print`)
+      if (${#iflist} > 0) then
+         cp -f  $srcdirinst/save/$restart/icon.sh save/$restart
+         set dir=`pwd`
+         cd $srcdirinst/save/$restart
+         set restart_date=`ncdump -h restart_${cycle}_tracer_gp_D01.nc | grep restart_date_time | sed 's|"||g;s|\..*||g' | awk '{print $3"T"$4"Z"}'`
+         cd $dir
+         ### COPY ICON restart files
+         set iflist2 = (`find $srcdirinst/save/$restart -name '*_restart_atm_'${restart_date}'*'`)
+         if (${#iflist2} > 0) then
+            echo " -> ICON restart files"
+            foreach rfile ($iflist2)
+              cp -f  $rfile save/$restart
+            end
+         endif
+      endif
+      ###- COPY ICON files
+
+      echo "... OK."
+      
+  endif # if ("$srcdirinst" != "$destdirinst")
+
+  # UP-COPY FILES
+  echo "COPYING FILES FROM LOCAL save/$restart ..."
+
+  if (-r save/$restart/MSH_NO) then
+     echo "  -> MSH_NO"
+     cp -f save/$restart/MSH_NO  .
+  else
+     echo "ERROR: save/$restart/MSH_NO missing."
+     exit 1
+  endif
+
+  echo "  -> xmessy*"
+  set flist = (`find ./save/$restart -maxdepth 1 -name 'xmessy*' -print`)
+  if (${#flist} > 0) then
+     foreach f ($flist)
+      cp -f $f .
+     end
+  else
+     echo "ERROR: No save/$restart/xmessy* found."
+     exit 1
+  endif
+  # ECHAM5 only and ECHAM can only be 1st instance
+  if ($j == 1) then
+     echo "  -> rerun*"
+     set flist = (`find ./save/$restart -maxdepth 1 -name 'rerun*' -print`)
+     if (${#flist} > 0) then
+        foreach f ($flist)
+          cp -f $f .
+        end
+     else
+        echo "WARNING: No ./save/$restart/rerun* found."
+        echo "         (This is only relevant, if ECHAM is the basemodel.)"
+     endif
+  endif
+  echo "... OK."
+
+  # UP-COPY DIRECTORIES
+  echo "COPYING SUBDIRECTORIES FROM save/$restart ..."
+  echo "  -> bin/"
+  if (-d save/$restart/bin) then
+     cp -fr save/$restart/bin .
+  else
+     echo "ERROR: Subdirectory save/$restart/bin missing."
+     exit 1
+  endif
+
+  echo "  -> nml/"
+  if (-d save/$restart/nml) then
+     cp -fr save/$restart/nml .
+  else
+     echo "ERROR: Subdirectory save/$restart/nml missing."
+     exit 1
+  endif
+  
+  if (-d save/$restart/GUESS) then  
+    echo "  -> GUESS/"
+    if (-d ./GUESS) then
+       rm -rf GUESS
+    endif
+    mkdir GUESS
+    cp -fr save/$restart/GUESS/*.out* GUESS/.
+  endif
+  echo "... OK."
+
+  # SET LOCAL LINKS FOR RESTART FILE
+  echo "SETTING LOCAL LINKS TO RESTART FILES IN save/$restart ..."
+  #
+  set flist = (`find save/$restart -maxdepth 1 -name 'restart_'${cycle}'*' -print`)
+  foreach file ($flist)
+     set link = `echo $file | sed 's|_'${cycle}'||g' | sed 's|save/'${restart}'/||g'`
+     if (-l $link) then
+        rm -f $link
+     endif
+     echo '   '$link' -> '$file
+     ln -fs $file $link
+  end
+
+  if (-d save/$restart/GUESS) then 
+     set cycnum=`echo ${cycle}| awk '{print $1-0}'`
+     set flist = (`find save/$restart/GUESS -maxdepth 1 -name ${cycnum}'_*state' -print`)
+     foreach file ($flist)
+        set link=`echo $file  | sed 's|'${cycnum}'_||g'| sed 's|_'${cycle}'||g' | sed 's|save/'${restart}'/||g'`
+        if (-l GUESS/$link) then
+            rm -f GUESS/$link
+        endif
+        echo '   '$link' -> '$file
+        ln -fs ../$file $link
+     end
+     if (-r ../save/$restart/GUESS/${cycnum}_meta.bin) then
+        ln -fs ../save/$restart/GUESS/${cycnum}_meta.bin GUESS/meta.bin
+     else
+        echo "ERROR: ../save/$restart/GUESS/${cycnum}_meta.bin missing."
+        exit 1
+     endif
+  endif
+
+  # LINK CLM files
+  set flist1 = (\
+     `find save/$restart -maxdepth 1 -name '*.r.*' -print` \
+     `find save/$restart -maxdepth 1 -name '*.rh0.*' -print` \
+     `find save/$restart -maxdepth 1 -name '*.rs.*' -print` \
+     `find save/$restart -maxdepth 1 -name '*.rh1.*' -print` \
+     )
+  set flist2 = (\
+     `find save/$restart -maxdepth 1 -name 'rpointer*' -print` \
+     )
+  if ( (${#flist1} > 0) || (${#flist2} > 0) ) then
+     echo "  -> CLM data and restart files"
+     foreach f ($flist1)
+       echo "link file " $f
+       ln -fs $f .
+     end
+     foreach f ($flist2)
+       echo "cp file " $f
+       cp -f $f .
+     end
+  endif
+
+  ###+ LINK ICON FILES
+  set iflist = (`find save/$restart -name 'icon*'`)
+  if (${#iflist} > 0) then
+    set dir=`pwd`
+    cd save/$restart
+    set restart_date=`ncdump -h restart_${cycle}_tracer_gp_D01.nc | grep restart_date_time | sed 's|"||g;s|\..*||g' | awk '{print $3"T"$4"Z"}'`
+    cd $dir
+    ### SET LOCAL LINKS FOR ICON
+    set grid_list=(`grep dynamics_grid_filename NAMELIST* | sed "s|.*=||g;s|[',\,]||g ; s| ||g; s|.nc| |g; s| $$||g"`)
+    set grid_numbers=(`grep dynamics_parent_grid_id NAMELIST* | sed "s|.*=||g;s|[',]||g ;s| *| |g;s|^ ||g;s| $$||g"`)
+    set flist = (`find save/$restart -maxdepth 1 -name '*_restart_atm_'${restart_date}'*' -print`)
+    foreach rfile ($flist)
+      set grid_name=`echo $rfile | awk -F '/' '{print $3};' | sed 's|_restart_atm_.*||g'`
+      set domain=0
+      set gnr=0
+      foreach grd (${grid_list})
+        @ gnr= $gnr + 1
+        if ("${grd}" == "${grid_name}") then
+           set dom_nr=`expr ${grid_numbers[$gnr]} + 1`
+           set domain=`printf "%02d" ${dom_nr}`
+           set link=restart_atm_DOM${domain}.nc
+           echo ... creating link  $link ' -> ' $rfile
+           ln -fs $rfile $link
+        endif
+      end
+    end
+    if (-r save/$restart/icon.sh) then
+       cp -f save/$restart/icon.sh .
+    else
+       echo "ERROR: save/$restart/icon.sh missing."
+       exit 1
+    endif
+  endif
+  ###- LINK ICON ORI files
+
+  echo "... OK."
+
+  # CLEAN
+  if ("$srcdirinst" == "$destdirinst") then
+     # REMOVE LOCAL NAMELIST FILES
+     echo "REMOVING LOCAL namelist-FILES *.nml ..."
+     set flist = (`find . -maxdepth 1 -name '*.nml' -print`)
+     foreach f ($flist)
+        rm -f $f
+     end
+     if (-r namelist.echam) then
+        rm -f namelist.echam
+     endif
+     echo "... OK."
+     # REMOVE OLD END* FILES
+     echo "REMOVING LOCAL END-FILES END* ..."
+     set flist = (`find . -maxdepth 1 -name 'END*' -print`)
+     foreach f ($flist)
+        rm -f $f
+     end  
+     echo "... OK."
+     # REMOVE OLD core* CORE* FILES AND DIRECTORIES
+     set clist = (`find . -name 'core*' -print` `find . -name 'CORE*' -print`)
+     if (${#clist} > 0) then
+        echo "REMOVING LOCAL core* CORE* files/directories ..."
+        foreach c ($clist)
+          rm -fr $c
+        end
+        echo "... OK."
+     endif
+  endif
+
+### END LOOP OVER ALL INSTANCES ############################### >
+  cd $destdir
+  echo '------------------------------------------------------------------'
+end
+
+if ($instnum != 1) then
+   if ("$srcdir" != "$destdir") then
+      echo "COPYING RUN-SCRIPT TO WORKING DIRECTORY ..."
+      set flist = (`find $destdir/01/save/$restart -maxdepth 1 -name 'xmessy*' -print`)
+      if (${#flist} > 0) then
+         foreach f ($flist)
+           cp -f $f .
+         end
+      else
+         echo "ERROR: No $destdir/01/save/$restart/xmessy* found."
+         exit 1
+      endif
+   endif
+   echo "COPYING NAMELIST DIRECTORY TO WORKING DIRECTORY ..."
+   if (-d $destdir/01/save/$restart/nml) then
+      cp -rf $destdir/01/save/$restart/nml .
+   else
+      echo "ERROR: Subdirecotry $destdir/01/save/$restart/nml missing."
+      exit 1
+   endif
+endif
+
+if ("$srcdir" != "$destdir") then
+   # OUTPUT WARNING
+   echo ""
+   echo ""
+   echo '*************************************************************'
+   echo '*** \!\!\! DO NOT FORGET TO UPDATE $WORKDIR IN RUNSCRIPT \!\!\! ***'
+   echo '*************************************************************'
+   echo ""
+   echo '*************************************************************'
+   echo '*** \!\!\! MAKE SURE TO HAVE UNAMBIGUOUS rerun_*_echam       ***'
+   echo '***     (AND rerun_*_nudg) in EMAC RESTART DIRECTORY  \!\!\! ***'
+   echo '*************************************************************'
+   echo ""
+   echo '*************************************************************'
+   echo '*** YOU MIGHT FURTHER WANT TO                             ***'
+   if ($instnum == 1) then
+   echo '***     --- UPDATE EXECUTABLE in subdirectory ./bin       ***'
+   else
+   echo '***     --- UPDATE EXECUTABLES in subdirectories ??/bin   ***'
+   endif
+   echo '***     --- UPDATE NAMELIST FILES in nml subdirectory     ***'
+   echo '*************************************************************'
+   echo ""
+   echo '*************************************************************'
+   echo '*** IN CASE A CLM-RESTART SIMULATION IS INITIALIZED IN A  ***'
+   echo '*** NEW DIRECTORY, COPY THE LAST HISTORY FILE FROM THE    ***'
+   echo '*** ORIGINAL SIMULATION, BECAUSE THEY ARE CONTINUED ...   ***'
+   echo '*************************************************************'
+   echo ""
+else
+   echo 'FINISHED.'
+   echo ''
+endif
+
+exit 0

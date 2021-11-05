@@ -1,0 +1,92 @@
+! -*- f90 -*-
+&CPL
+!#####################################
+!# A. DEFINITION OF ISO-SURFACES 
+!#####################################
+!# NOTES:
+!# - channel objects <name>_i, and <name_f> are added for
+!#   'index' and 'fraction below'
+!# SYNTAX:
+!#    ISO-SURFACE name, channel, object, iso-value, index + fraction ?,
+!#        reverse search ?, skip levels from top, skip levels from sfc
+!#
+!!# PRESSURE LEVELS
+!ISO(1)  = 'p075',      'COSMO',  'press',  7500.0, T, T,  ,  ,
+!ISO(2)  = 'p080',      'COSMO',  'press',  8000.0, T, T,  ,  ,
+!ISO(3)  = 'p100',      'COSMO',  'press', 10000.0, T, T,  ,  ,
+!ISO(4)  = 'p200',      'COSMO',  'press', 20000.0, T, T,  ,  ,
+ ISO(5)  = 'p500',      'COSMO',  'press', 50000.0, T, T,  ,  ,
+ ISO(6)  = 'p700',      'COSMO',  'press', 70000.0, T, T,  ,  ,
+!!#
+!!# ISENTROPES (THETA=CONST.)
+ ISO(7)  = 'isent340',  'COSMO',  'tpot',    340.0, T, T,  ,  ,
+ ISO(8)  = 'isent380',  'COSMO',  'tpot',    380.0, T, T,  ,  ,
+ ISO(9)  = 'isent420',  'COSMO',  'tpot',    420.0, T, T,  ,  ,
+!!#
+!!# CONST. POTENTIAL VORTICITY
+ ISO(10) = 'PV2',        'tropop',  'PV',       2.0, T, T, 1, 4,
+ ISO(11) = 'PV3',        'tropop',  'PV',       3.0, T, T, 1, 3,
+ ISO(12) = 'PV4',        'tropop',  'PV',       4.0, T, T, 1, 3,
+!#
+!# FOR LNOX
+ISO(20)  = 't260',      '${MINSTANCE[$i]}',  'tm1',    260.0, T, T,  ,  ,
+!
+!#####################################
+!# B. FIELDS MAPPED TO (ISO-)SURFACES
+!#####################################
+!# NOTES:
+!# - '_i' and '_f' are internally appended to SURFACE(object) name
+!#   for 'index' and 'fraction below'; availability of '_f' determines
+!#   the mapping method
+!# SYNTAX:
+!#    MAP name, ISO-SURFACE(channel), ISO-SURFACE(object), 
+!#              FIELD(channel), FIELD(object)
+!#
+!!# PRESSURE (e.g. for LGVLUX)
+!MAP(1)  = 'pp075',   'viso',   'p075',     'COSMO', 'press',
+!MAP(2)  = 'pp080',   'viso',   'p080',     'COSMO', 'press',
+!MAP(3)  = 'pp100',   'viso',   'p100',     'COSMO', 'press',
+!MAP(4)  = 'pp200',   'viso',   'p200',     'COSMO', 'press',
+!MAP(5)  = 'pp500',   'viso',   'p500',     'COSMO', 'press',
+!MAP(6)  = 'pp700',   'viso',   'p700',     'COSMO', 'press',
+!!#
+!!# ISENTROPES
+ MAP(10) = 'pth340',   'viso',  'isent340', 'COSMO', 'press',
+ MAP(11) = 'pth380',   'viso',  'isent380', 'COSMO', 'press',
+ MAP(12) = 'pth420',   'viso',  'isent420', 'COSMO', 'press',
+ MAP(13) = 'PVth340',  'viso',  'isent340', 'tropop', 'PV',
+ MAP(14) = 'PVth380',  'viso',  'isent380', 'tropop', 'PV',
+ MAP(15) = 'PVth420',  'viso',  'isent420', 'tropop', 'PV',
+!!#
+!!# TROPOPAUSE
+ MAP(16) = 'ttp',     'tropop', 'tp',    'COSMO', 'tm1',
+ MAP(17) = 'ztp',     'tropop', 'tp',    'COSMO', 'geopot',
+ MAP(18) = 'thtp',    'tropop', 'tp',    'COSMO', 'tpot',
+!!#
+!!# PLANETARY BOUNDARY LAYER HEIGHT
+ MAP(22) = 'ppblh',   'tropop', 'pblh',  'COSMO', 'press',
+ MAP(23) = 'tpblh',   'tropop', 'pblh',  'COSMO', 'tm1',
+!!#
+!!# PV
+ MAP(24) = 'pPV2',    'viso',   'PV2',   'COSMO', 'press',
+ MAP(25) = 'pPV3',    'viso',   'PV3',   'COSMO', 'press',
+ MAP(26) = 'pPV4',    'viso',   'PV4',   'COSMO', 'press',
+ MAP(27) = 'thPV2',   'viso',   'PV2',   'COSMO', 'tpot',
+ MAP(28) = 'thPV3',   'viso',   'PV3',   'COSMO', 'tpot',
+ MAP(29) = 'thPV4',   'viso',   'PV4',   'COSMO', 'tpot',
+ MAP(30) = 'tPV2',    'viso',   'PV2',   'COSMO', 'tm1',
+ MAP(31) = 'tPV3',    'viso',   'PV3',   'COSMO', 'tm1',
+ MAP(32) = 'tPV4',    'viso',   'PV4',   'COSMO', 'tm1',
+!!#
+!!# GEOPOTENTIAL
+ MAP(33) = 'g500',    'viso',   'p500',  'COSMO', 'geopot',
+ MAP(34) = 'g700',    'viso',   'p700',  'COSMO', 'geopot',
+!!#
+!!# number of CELLs at 75 hPa
+!MAP(30) = 'ncb075',  'viso',   'p075',  'attila', 'NCB',
+!!#
+! ut_kt_20041009+
+!MAP(40) = 'flxs_tp',   'tropop', 'tp',    'rad01', 'flxs',
+!MAP(41) = 'flxt_tp',   'tropop', 'tp',    'rad01', 'flxt',
+! ut_kt_20041009-
+/

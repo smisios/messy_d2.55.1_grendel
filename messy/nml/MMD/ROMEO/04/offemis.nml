@@ -1,0 +1,208 @@
+! -*- f90 -*-
+
+&CPL
+L_GP       = T  ! EMISSIONS FOR GRIDPOINT TRACERS
+L_LG       = F  ! EMISSIONS FOR LAGRANGIAN TRACERS
+l_lg_tend  = F  ! LAGRANGIAN TRACER TENDENCY AS CHANNEL OBJECT ?
+! ### SYNTAX:
+!     (SPECIFIERS MUST BE UPPERCASE !)
+! ###         GP=    Gridpoint  Emission Method (0,1,2) (SURFACE ONLY)
+!                    0: no emission; only channel object (DEFAULT)
+!                    1: 2D (SURFACE EM.) -> lowest layer
+!                       3D (VOLUME  EM.) -> emission ON
+!                       Nx2D (MULTI LEVEL EM.) -> internally converted to 3D
+!                    SURFACE EMISSIONS ONLY:
+!                    2: lower boundary condition for flux
+!
+! ###         LG=    Lagrangian Emission Method (0,1,2,3,4)
+!                    0: no emission; only channel object (DEFAULT)
+!                    1: 2D (SURFACE EM.)       -> into CELLs in lowest layer
+!                       3D (VOLUME  EM.)       -> emission ON
+!                       Nx2D (MULTI LEVEL EM.) -> internally converted to 3D
+!                    SURFACE EMISSIONS ONLY:
+!                    2: into lowest CELLs within boundary layer
+!                    3: into all CELLs in boundary layer (vertical gradient)
+!                    4: into all CELLs in boundary layer (no vertical gradient)
+!
+!NOTEs:  (1) Surface emission fluxes (2D) must be in  molecules m-2 s-1.
+!        (2) Volume emissions (3D)        must be in  molecules m-3 s-1.
+!        (3) Multi level emissions (Nx2D) must be in  molecules m-2 s-1.
+!        (4) For volume emissions (3D), the corresponding channel object 
+!            must be in the GP_3D_MID representation
+!        (5) The trigger for multi level emissions (Nx2D) is the presence
+!            of the channel object attribute heights
+!
+! EMISSION: 'TRACER[_SUBNAME][,scaling];...', CHANNEL NAME, CHANNEL OBJECT, 
+!           EMISSION METHOD
+!
+! LOWER BOUNDARY CONDITIONS (SEE tnudge.nml)
+!
+! ###########################################
+! DIRECT EMISSIONS
+! ###########################################
+!
+! CH3CCl3
+!!$EMIS_IN(180) = 'CH3CCl3', 'import_grid', 'Mfx_MCF_CH3CCl3', 'GP=2', ! Methylcloroform 
+!
+!
+! CH4_fx
+!
+! EMISSION CLASSES OF EMPA
+!
+! anthropogenic
+!
+!EMIS_IN(190) = 'CH4_fx;PCH4', 'import_grid', 'ANTHE_CH4', 'GP=2', ! anth.
+!
+!!$EMIS_IN(190) = 'CH4_fx;', 'import_grid', 'Mfx_an_AFRICA_CH4', 'GP=2', ! anth.
+!!$EMIS_IN(191) = 'CH4_fx;', 'import_grid', 'Mfx_an_AUS_CH4', 'GP=2', ! anth.
+!!$EMIS_IN(192) = 'CH4_fx;', 'import_grid', 'Mfx_an_CHINA_CH4', 'GP=2', ! anth.
+!!$EMIS_IN(193) = 'CH4_fx;', 'import_grid', 'Mfx_an_EU_CH4', 'GP=2', ! anth.
+!!$EMIS_IN(194) = 'CH4_fx;', 'import_grid', 'Mfx_an_INDIA_CH4', 'GP=2', ! anth.
+!!$EMIS_IN(195) = 'CH4_fx;', 'import_grid', 'Mfx_an_MIDEAST_CH4', 'GP=2', ! anth.
+!!$EMIS_IN(196) = 'CH4_fx;', 'import_grid', 'Mfx_an_NA_CH4', 'GP=2', ! anth.
+!!$EMIS_IN(197) = 'CH4_fx;', 'import_grid', 'Mfx_an_OCEAN_CH4', 'GP=2', ! anth.
+!!$EMIS_IN(198) = 'CH4_fx;', 'import_grid', 'Mfx_an_RUS_CH4', 'GP=2', ! anth.
+!!$EMIS_IN(199) = 'CH4_fx;', 'import_grid', 'Mfx_an_SA_CH4', 'GP=2', ! anth.
+!!$EMIS_IN(200) = 'CH4_fx;', 'import_grid', 'Mfx_an_SE_ASIA_CH4', 'GP=2', ! anth.
+!
+! biomass burning
+!
+EMIS_IN(201) = 'CH4_fx;', 'import_grid', 'BB_AUS_CH4',     'GP=2', ! bb
+EMIS_IN(202) = 'CH4_fx;', 'import_grid', 'BB_CHINA_CH4',     'GP=2', ! bb
+EMIS_IN(203) = 'CH4_fx;', 'import_grid', 'BB_EU_CH4',     'GP=2', ! bb
+EMIS_IN(204) = 'CH4_fx;', 'import_grid', 'BB_INDIA_CH4',     'GP=2', ! bb
+EMIS_IN(205) = 'CH4_fx;', 'import_grid', 'BB_NA_bor_CH4',     'GP=2', ! bb
+EMIS_IN(206) = 'CH4_fx;', 'import_grid', 'BB_N_AFR_CH4',     'GP=2', ! bb
+EMIS_IN(207) = 'CH4_fx;', 'import_grid', 'BB_NA_temp_CH4',     'GP=2', ! bb
+EMIS_IN(208) = 'CH4_fx;', 'import_grid', 'BB_N_MIDEAST_CH4',     'GP=2', ! bb
+EMIS_IN(209) = 'CH4_fx;', 'import_grid', 'BB_RUS_CH4',     'GP=2', ! bb
+EMIS_IN(210) = 'CH4_fx;', 'import_grid', 'BB_S_AFR_CH4',     'GP=2', ! bb
+EMIS_IN(211) = 'CH4_fx;', 'import_grid', 'BB_SA_temp_CH4',     'GP=2', ! bb
+EMIS_IN(212) = 'CH4_fx;', 'import_grid', 'BB_SA_trop_CH4',     'GP=2', ! bb
+EMIS_IN(213) = 'CH4_fx;', 'import_grid', 'BB_SE_ASIA_CH4',     'GP=2', ! bb
+!
+! ocean
+!
+EMIS_IN(214) = 'CH4_fx;', 'import_grid', 'Mfx_oc_CH4', 'GP=2', ! ocean
+!
+! rice
+!
+!!$EMIS_IN(215) = 'CH4_fx;', 'import_grid', 'Mfx_ri_AFR_CH4', 'GP=2', ! rice
+!!$EMIS_IN(216) = 'CH4_fx;', 'import_grid', 'Mfx_ri_ASIA_AUS_CH4', 'GP=2', ! rice
+!!$EMIS_IN(217) = 'CH4_fx;', 'import_grid', 'Mfx_ri_CHINA_CH4', 'GP=2', ! rice
+!!$EMIS_IN(218) = 'CH4_fx;', 'import_grid', 'Mfx_ri_EU_CH4', 'GP=2', ! rice
+!!$EMIS_IN(219) = 'CH4_fx;', 'import_grid', 'Mfx_ri_INDIA_CH4', 'GP=2', ! rice
+!!$EMIS_IN(220) = 'CH4_fx;', 'import_grid', 'Mfx_ri_NA_CH4', 'GP=2', ! rice
+!!$EMIS_IN(221) = 'CH4_fx;', 'import_grid', 'Mfx_ri_SA_CH4', 'GP=2', ! rice
+!
+! termites
+!
+EMIS_IN(222) = 'CH4_fx;', 'import_grid', 'Mfx_te_CH4', 'GP=2', ! termites
+!
+! volcanoes
+!
+EMIS_IN(223) = 'CH4_fx;', 'import_grid', 'Mfx_vo_CH4', 'GP=2', ! volcanoes
+!
+! wetlands
+!
+EMIS_IN(224) = 'CH4_fx;', 'import_grid', 'Mfx_wl_AUS_CH4', 'GP=2', ! wetlands
+EMIS_IN(225) = 'CH4_fx;', 'import_grid', 'Mfx_wl_CHINA_CH4', 'GP=2', ! wetlands
+EMIS_IN(226) = 'CH4_fx;', 'import_grid', 'Mfx_wl_EU_CH4', 'GP=2', ! wetlands
+EMIS_IN(227) = 'CH4_fx;', 'import_grid', 'Mfx_wl_india_CH4', 'GP=2', ! wetlands
+EMIS_IN(228) = 'CH4_fx;', 'import_grid', 'Mfx_wl_MIDEAST_CH4', 'GP=2', ! wetlands
+EMIS_IN(229) = 'CH4_fx;', 'import_grid', 'Mfx_wl_NA_bor_CH4', 'GP=2', ! wetlands
+EMIS_IN(230) = 'CH4_fx;', 'import_grid', 'Mfx_wl_N_AFR_CH4', 'GP=2', ! wetlands
+EMIS_IN(231) = 'CH4_fx;', 'import_grid', 'Mfx_wl_NA_TEMP_CH4', 'GP=2', ! wetlands
+EMIS_IN(232) = 'CH4_fx;', 'import_grid', 'Mfx_wl_RUS_CH4', 'GP=2', ! wetlands
+EMIS_IN(233) = 'CH4_fx;', 'import_grid', 'Mfx_wl_S_AFR_CH4', 'GP=2', ! wetlands
+EMIS_IN(234) = 'CH4_fx;', 'import_grid', 'Mfx_wl_SA_temp_CH4', 'GP=2', ! wetlands
+EMIS_IN(235) = 'CH4_fx;', 'import_grid', 'Mfx_wl_SA_TROP_CH4', 'GP=2', ! wetlands
+EMIS_IN(236) = 'CH4_fx;', 'import_grid', 'Mfx_wl_se_asia_CH4', 'GP=2', ! wetlands
+!
+! wild animals
+!
+EMIS_IN(237) = 'CH4_fx;', 'import_grid', 'Mfx_wa_CH4', 'GP=2', !wild animals
+
+
+
+!
+!
+!
+! All special ROMEO tracers
+EMIS_IN(238) = 'TNODOMV', 'import_grid', 'ROM_TNO_D_OMV', 'GP=2', !TNO_D_OMV               
+EMIS_IN(239) = 'CH4EDF', 'import_grid', 'ROM_CH4_EDF', 'GP=2', !CH4_EDF                     
+EMIS_IN(240) = 'CH4OMV', 'import_grid', 'ROM_CH4_OMV', 'GP=2', !CH4_OMV                     
+EMIS_IN(241) = 'CH4OIL', 'import_grid', 'ROM_CH4_OIL', 'GP=2', !CH4_OIL                     
+EMIS_IN(242) = 'CH4GAS', 'import_grid', 'ROM_CH4_GAS', 'GP=2', !CH4_GAS                     
+EMIS_IN(243) = 'CH4OILPAR', 'import_grid', 'ROM_CH4_OILPAR', 'GP=2', !CH4_OILPAR            
+EMIS_IN(244) = 'CH4GASPAR', 'import_grid', 'ROM_CH4_GASPAR', 'GP=2', !CH4_GASPAR            
+EMIS_IN(245) = 'CH4OMV1', 'import_grid', 'ROM_CH4_OMV_1', 'GP=2', !CH4_OMV_1               
+EMIS_IN(246) = 'CH4OMV2', 'import_grid', 'ROM_CH4_OMV_2', 'GP=2', !CH4_OMV_2               
+EMIS_IN(247) = 'CH4OMV3', 'import_grid', 'ROM_CH4_OMV_3', 'GP=2', !CH4_OMV_3               
+EMIS_IN(248) = 'CH4OMV4', 'import_grid', 'ROM_CH4_OMV_4', 'GP=2', !CH4_OMV_4               
+EMIS_IN(249) = 'CH4OMV5', 'import_grid', 'ROM_CH4_OMV_5', 'GP=2', !CH4_OMV_5               
+EMIS_IN(250) = 'CH4OMV6', 'import_grid', 'ROM_CH4_OMV_6', 'GP=2', !CH4_OMV_6               
+EMIS_IN(251) = 'CH4OMV7', 'import_grid', 'ROM_CH4_OMV_7', 'GP=2', !CH4_OMV_7               
+EMIS_IN(252) = 'CH4OMV8', 'import_grid', 'ROM_CH4_OMV_8', 'GP=2', !CH4_OMV_8               
+EMIS_IN(253) = 'CH4OMV9', 'import_grid', 'ROM_CH4_OMV_9', 'GP=2', !CH4_OMV_9  
+EMIS_IN(254) = 'CH4OMV10', 'import_grid', 'ROM_CH4_OMV_10', 'GP=2', !CH4_OMV_10            
+EMIS_IN(255) = 'CH4OMV11', 'import_grid', 'ROM_CH4_OMV_11', 'GP=2', !CH4_OMV_11            
+EMIS_IN(256) = 'CH4OMV12', 'import_grid', 'ROM_CH4_OMV_12', 'GP=2', !CH4_OMV_12            
+EMIS_IN(257) = 'CH4OMV13', 'import_grid', 'ROM_CH4_OMV_13', 'GP=2', !CH4_OMV_13            
+EMIS_IN(258) = 'CH4OMV14', 'import_grid', 'ROM_CH4_OMV_14', 'GP=2', !CH4_OMV_14            
+EMIS_IN(259) = 'CH4OMV15', 'import_grid', 'ROM_CH4_OMV_15', 'GP=2', !CH4_OMV_15            
+EMIS_IN(260) = 'CH4OMV16', 'import_grid', 'ROM_CH4_OMV_16', 'GP=2', !CH4_OMV_16            
+EMIS_IN(261) = 'CH4OMV17', 'import_grid', 'ROM_CH4_OMV_17', 'GP=2', !CH4_OMV_17            
+EMIS_IN(262) = 'CH4OMV18', 'import_grid', 'ROM_CH4_OMV_18', 'GP=2', !CH4_OMV_18            
+EMIS_IN(263) = 'CH4OMV19', 'import_grid', 'ROM_CH4_OMV_19', 'GP=2', !CH4_OMV_19            
+EMIS_IN(264) = 'CH4OMV20', 'import_grid', 'ROM_CH4_OMV_20', 'GP=2', !CH4_OMV_20            
+EMIS_IN(265) = 'CH4OMV21', 'import_grid', 'ROM_CH4_OMV_21', 'GP=2', !CH4_OMV_21            
+EMIS_IN(266) = 'CH4TNOB', 'import_grid', 'ROM_CH4_TNO_B', 'GP=2', !CH4_TNO_B               
+EMIS_IN(267) = 'CH4TNOD', 'import_grid', 'ROM_CH4_TNO_D', 'GP=2', !CH4_TNO_D               
+EMIS_IN(268) = 'CH4TNOJ', 'import_grid', 'ROM_CH4_TNO_J', 'GP=2', !CH4_TNO_J               
+EMIS_IN(269) = 'CH4TNOKL', 'import_grid', 'ROM_CH4_TNO_KL', 'GP=2', !CH4_TNO_KL            
+EMIS_IN(270) = 'CH4OTHERS', 'import_grid', 'ROM_CH4_OTHERS', 'GP=2', !CH4_TNO_OTHERS
+EMIS_IN(271) = 'COATNO', 'import_grid', 'ROM_CO_A_TNO', 'GP=2', !CO_A_TNO  
+EMIS_IN(272) = 'CH4LAKES', 'import_grid', 'ROM_CH4_LAKES', 'GP=2', !CH4_LAKE  
+!
+!
+!
+! All special ROMEO tracers
+!EMIS_IN(238) = 'CH4_fx;PCH4;TNODOMV', 'import_grid', 'ROM_TNO_D_OMV', 'GP=2', !TNO_D_OMV               
+!EMIS_IN(239) = 'CH4_fx;PCH4;CH4EDF', 'import_grid', 'ROM_CH4_EDF', 'GP=2', !CH4_EDF                     
+!EMIS_IN(240) = 'CH4_fx;PCH4;CH4OMV', 'import_grid', 'ROM_CH4_OMV', 'GP=2', !CH4_OMV                     
+!EMIS_IN(241) = 'CH4_fx;PCH4;CH4OIL', 'import_grid', 'ROM_CH4_OIL', 'GP=2', !CH4_OIL                     
+!EMIS_IN(242) = 'CH4_fx;PCH4;CH4GAS', 'import_grid', 'ROM_CH4_GAS', 'GP=2', !CH4_GAS                     
+!EMIS_IN(243) = 'CH4_fx;PCH4;CH4OILPAR', 'import_grid', 'ROM_CH4_OILPAR', 'GP=2', !CH4_OILPAR            
+!EMIS_IN(244) = 'CH4_fx;PCH4;CH4GASPAR', 'import_grid', 'ROM_CH4_GASPAR', 'GP=2', !CH4_GASPAR            
+!EMIS_IN(245) = 'CH4_fx;PCH4;CH4OMV1', 'import_grid', 'ROM_CH4_OMV_1', 'GP=2', !CH4_OMV_1               
+!EMIS_IN(246) = 'CH4_fx;PCH4;CH4OMV2', 'import_grid', 'ROM_CH4_OMV_2', 'GP=2', !CH4_OMV_2               
+!EMIS_IN(247) = 'CH4_fx;PCH4;CH4OMV3', 'import_grid', 'ROM_CH4_OMV_3', 'GP=2', !CH4_OMV_3               
+!EMIS_IN(248) = 'CH4_fx;PCH4;CH4OMV4', 'import_grid', 'ROM_CH4_OMV_4', 'GP=2', !CH4_OMV_4               
+!EMIS_IN(249) = 'CH4_fx;PCH4;CH4OMV5', 'import_grid', 'ROM_CH4_OMV_5', 'GP=2', !CH4_OMV_5               
+!EMIS_IN(250) = 'CH4_fx;PCH4;CH4OMV6', 'import_grid', 'ROM_CH4_OMV_6', 'GP=2', !CH4_OMV_6               
+!EMIS_IN(251) = 'CH4_fx;PCH4;CH4OMV7', 'import_grid', 'ROM_CH4_OMV_7', 'GP=2', !CH4_OMV_7               
+!EMIS_IN(252) = 'CH4_fx;PCH4;CH4OMV8', 'import_grid', 'ROM_CH4_OMV_8', 'GP=2', !CH4_OMV_8               
+!EMIS_IN(253) = 'CH4_fx;PCH4;CH4OMV9', 'import_grid', 'ROM_CH4_OMV_9', 'GP=2', !CH4_OMV_9               
+!EMIS_IN(254) = 'CH4_fx;PCH4;CH4OMV10', 'import_grid', 'ROM_CH4_OMV_10', 'GP=2', !CH4_OMV_10            
+!EMIS_IN(255) = 'CH4_fx;PCH4;CH4OMV11', 'import_grid', 'ROM_CH4_OMV_11', 'GP=2', !CH4_OMV_11            
+!EMIS_IN(256) = 'CH4_fx;PCH4;CH4OMV12', 'import_grid', 'ROM_CH4_OMV_12', 'GP=2', !CH4_OMV_12            
+!EMIS_IN(257) = 'CH4_fx;PCH4;CH4OMV13', 'import_grid', 'ROM_CH4_OMV_13', 'GP=2', !CH4_OMV_13            
+!EMIS_IN(258) = 'CH4_fx;PCH4;CH4OMV14', 'import_grid', 'ROM_CH4_OMV_14', 'GP=2', !CH4_OMV_14            
+!EMIS_IN(259) = 'CH4_fx;PCH4;CH4OMV15', 'import_grid', 'ROM_CH4_OMV_15', 'GP=2', !CH4_OMV_15            
+!EMIS_IN(260) = 'CH4_fx;PCH4;CH4OMV16', 'import_grid', 'ROM_CH4_OMV_16', 'GP=2', !CH4_OMV_16            
+!EMIS_IN(261) = 'CH4_fx;PCH4;CH4OMV17', 'import_grid', 'ROM_CH4_OMV_17', 'GP=2', !CH4_OMV_17            
+!EMIS_IN(262) = 'CH4_fx;PCH4;CH4OMV18', 'import_grid', 'ROM_CH4_OMV_18', 'GP=2', !CH4_OMV_18            
+!EMIS_IN(263) = 'CH4_fx;PCH4;CH4OMV19', 'import_grid', 'ROM_CH4_OMV_19', 'GP=2', !CH4_OMV_19            
+!!EMIS_IN(264) = 'CH4_fx;PCH4;CH4OMV20', 'import_grid', 'ROM_CH4_OMV_20', 'GP=2', !CH4_OMV_20            
+!EMIS_IN(265) = 'CH4_fx;PCH4;CH4OMV21', 'import_grid', 'ROM_CH4_OMV_21', 'GP=2', !CH4_OMV_21            
+!EMIS_IN(266) = 'CH4_fx;PCH4;CH4TNOB', 'import_grid', 'ROM_CH4_TNO_B', 'GP=2', !CH4_TNO_B               
+!EMIS_IN(267) = 'CH4_fx;PCH4;CH4TNOD', 'import_grid', 'ROM_CH4_TNO_D', 'GP=2', !CH4_TNO_D               
+!EMIS_IN(268) = 'CH4_fx;PCH4;CH4TNOJ', 'import_grid', 'ROM_CH4_TNO_J', 'GP=2', !CH4_TNO_J               
+!EMIS_IN(269) = 'CH4_fx;PCH4;CH4TNOKL', 'import_grid', 'ROM_CH4_TNO_KL', 'GP=2', !CH4_TNO_KL            
+!EMIS_IN(270) = 'CH4_fx;PCH4;CH4OTHERS', 'import_grid', 'ROM_CH4_OTHERS', 'GP=2', !CH4_TNO_OTHERS
+!EMIS_IN(271) = 'CH4_fx;PCH4;COATNO', 'import_grid', 'ROM_CO_A_TNO', 'GP=2', !CO_A_TNO  
+
+
+
+/

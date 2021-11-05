@@ -1,0 +1,99 @@
+! -*- f90 -*-
+
+&RUNCTL
+!# NOTES:
+!# 1. The following entries are meaningless, because they are overwritten
+!#    by TIMER (see timer.nml):
+!#    DT_START, DT_STOP, NO_DAYS, NO_STEPS, LRESUME, NO_CYCLES, PUTRERUN,
+!#    LABORT 
+!# 2. PUTDATA is only meaningful, if you switch L_BM_ORIG_OUTPUT = T
+!#    in channel.nml; all output is controlled in channel.nml
+!#
+!-  LRESUME      = $MSH_LRESUME        ! do not change; set by run-script
+  out_expname  = "$EXP_NAME"
+  out_filetype = 2                   ! GRIB=1, NetCDF=2
+! LTDIAG       = T                   ! tendency diagnostics
+! IADVEC       = 0                   ! no advection for quick runs
+  NMWICFI      = 8       ! number of mass-wind-inconsistency fixer iterations
+  LAMIP        = $ECHAM5_LAMIP
+  LNUDGE       = $LNUDGE             ! nudging 
+  LNMI         = $LNMI               ! normal mode filtering for nudging
+  LMIDATM      = $ECHAM5_LMIDATM     ! middle atmosphere setup
+  LCOUPLE      = $ECHAM5_LCOUPLE     ! Coupling of ECHAM and MPIOM
+!-  DT_START     = $START_YEAR,$START_MONTH,$START_DAY,0,0,0
+!-  DT_STOP      = $STOP_YEAR,$STOP_MONTH,$STOP_DAY,0,0,0
+!-  PUTDATA      = 5,'hours','first',0
+!-  TRIGFILES    = 1,'days','first',0
+!-  PUTRERUN     = 1,'months','last',0  ! default: 1,'months','last',0
+!-  NO_CYCLES    = 5,                  ! number of rerun cycles
+!-  LABORT       = F
+  NPROMA       = $NPROMA             ! change value in xmessy, not here
+  NPROCA       = $NPROCA             ! change value in xmessy, not here
+  NPROCB       = $NPROCB             ! change value in xmessy, not here
+/
+
+&DYNCTL
+  VCHECK=235.             ! activate for L90MA
+  SPDRAG=0.926E-4         ! activate for L90MA
+/
+
+&NMICTL
+/
+
+&NDGCTL
+!
+DT_NUDG_START =${START_YEAR},${START_MONTH},${START_DAY},${START_HOUR},0,0
+DT_NUDG_STOP  =${STOP_YEAR},${STOP_MONTH},${STOP_DAY},${STOP_HOUR},0,0
+LNUDGDBX      = F
+!LNUDGINI      = T
+LNUDGINI      = F
+NUDGTRUN      = 0
+LNUDGWOBS     = F
+LNUDGFRD      = F
+!
+NDG_FILE_VOR  = "$INPUTDIR_NUDGE/${FNAME_NUDGE}_vor"
+NDG_FILE_DIV  = "$INPUTDIR_NUDGE/${FNAME_NUDGE}_div"
+NDG_FILE_STP  = "$INPUTDIR_NUDGE/${FNAME_NUDGE}_stp"
+NDG_FILE_SST  = "$INPUTDIR_NUDGE/${FNAME_NUDGE}_sst"
+!
+!!# netCDF+
+!!# for usage of new nudging data in netCDF format
+!!# Notes: - SST/SIC usage from file <NDG_FILE_SST>.nc,
+!!#          but only if NSSTINC > 0 (default: 24 hours)
+!!#        - SIC usage only, if sic is available in <NDG_FILE_SST>.nc
+!!#        - INUDGFORMAT set via xmessy_mmd (ECHAM5_NUDGING_DATA_FORMAT)
+!!#          (0: old IEEE, 1: not used, 2: netCDF)
+!!#
+!!!NSSTINC     = 0
+NDG_FILE_NC  = "$INPUTDIR_NUDGE/${FNAME_NUDGE}.nc"
+INUDGFORMAT  = $ECHAM5_NUDGING_DATA_FORMAT 
+!!# netCDF-
+!
+! nudging weights: 
+!
+! L191MA (~1 hPa)
+!NUDGD =  15*0.0000,0.0168,0.0365,0.0566,0.0741,0.0817,0.0896,0.0978,0.1073,0.1182,0.1294,0.1411,0.1556,0.1717,0.1886,0.2067,0.2304,0.2553,0.2814,0.3144,0.3514,0.3902,0.4370,0.4919,0.5495,136*0.5787,0.5154,0.3737,0.2643,0.2021,0.1442,0.1137,0.0861,0.0575,0.0280,0.0027,  6*0.0000,
+!NUDGV =  15*0.0000,0.1344,0.2919,0.4528,0.5927,0.6539,0.7171,0.7825,0.8580,0.9451,1.0352,1.1288,1.2444,1.3732,1.5084,1.6538,1.8434,2.0423,2.2511,2.5147,2.8103,3.1206,3.4955,3.9349,4.3959,136*4.6296,4.1234,2.9892,2.1140,1.6165,1.1534,0.9099,0.6894,0.4605,0.2242,0.0219,  6*0.0000,
+!NUDGT =  15*0.0000,0.0336,0.0730,0.1132,0.1482,0.1635,0.1793,0.1956,0.2145,0.2363,0.2588,0.2822,0.3111,0.3433,0.3771,0.4134,0.4608,0.5106,0.5628,0.6287,0.7026,0.7801,0.8739,0.9837,1.0990,136*1.1574,1.0309,0.7473,0.5285,0.4041,0.2884,0.2275,0.1724,0.1151,0.0560,0.0055,  6*0.0000,
+!NUDGP         = 1.1574
+!
+! L191MA (~10 hPa)
+NUDGD =  74*0.0000,0.0041,0.0396,0.0740,0.0890,0.1054,0.1269,0.1509,0.1818,0.2172,0.2616,0.3140,0.3779,0.4559,0.5476, 87*0.5787,0.5154,0.3737,0.2643,0.2021,0.1442,0.1137,0.0861,0.0575,0.0280,0.0027,  6*0.0000,
+NUDGV =  74*0.0000,0.0330,0.3166,0.5924,0.7119,0.8432,1.0151,1.2072,1.4543,1.7373,2.0927,2.5117,3.0227,3.6462,4.3810, 87*4.6296,4.1234,2.9892,2.1140,1.6165,1.1534,0.9099,0.6894,0.4605,0.2242,0.0219,  6*0.0000,
+NUDGT =  74*0.0000,0.0082,0.0792,0.1481,0.1780,0.2108,0.2538,0.3018,0.3636,0.4343,0.5232,0.6279,0.7557,0.9116,1.0953, 87*1.1574,1.0309,0.7473,0.5285,0.4041,0.2884,0.2275,0.1724,0.1151,0.0560,0.0055,  6*0.0000,
+NUDGP         = 1.1574
+!
+! L191MA (~100 hPa)
+!NUDGD = 123*0.0000,0.0180,0.0585,0.0832,0.1000,0.1222,0.1465,0.1789,0.2154,0.2614,0.3525,0.5096, 41*0.5787,0.5154,0.3737,0.2643,0.2021,0.1442,0.1137,0.0861,0.0575,0.0280,0.0027,  6*0.0000,
+!NUDGV = 123*0.0000,0.1438,0.4685,0.6656,0.8003,0.9773,1.1719,1.4313,1.7229,2.0912,2.8196,4.0765, 41*4.6296,4.1234,2.9892,2.1140,1.6165,1.1534,0.9099,0.6894,0.4605,0.2242,0.0219,  6*0.0000,
+!NUDGT = 123*0.0000,0.0360,0.1172,0.1664,0.2001,0.2444,0.2930,0.3578,0.4307,0.5228,0.7049,1.0191, 41*1.1574,1.0309,0.7473,0.5285,0.4041,0.2884,0.2275,0.1724,0.1151,0.0560,0.0055,  6*0.0000,
+!NUDGP         = 1.1574
+!
+! L191MA (~200 hPa)
+!NUDGD = 136*0.0000,0.0269,0.0660,0.0853,0.1014,0.1228,0.1456,0.1760,0.2087,0.2515,0.2984,0.3588,0.4257,0.5108, 26*0.5787,0.5154,0.3737,0.2643,0.2021,0.1442,0.1137,0.0861,0.0575,0.0280,0.0027,  6*0.0000,
+!NUDGV = 136*0.0000,0.2152,0.5280,0.6826,0.8116,0.9823,1.1650,1.4075,1.6693,2.0115,2.3865,2.8696,3.4049,4.0859, 26*4.6296,4.1234,2.9892,2.1140,1.6165,1.1534,0.9099,0.6894,0.4605,0.2242,0.0219,  6*0.0000,
+!NUDGT = 136*0.0000,0.0538,0.1320,0.1707,0.2029,0.2456,0.2913,0.3519,0.4173,0.5029,0.5966,0.7174,0.8512,1.0215, 26*1.1574,1.0309,0.7473,0.5285,0.4041,0.2884,0.2275,0.1724,0.1151,0.0560,0.0055,  6*0.0000,
+!NUDGP         = 1.1574
+!
+!
+/

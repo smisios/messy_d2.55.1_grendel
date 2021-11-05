@@ -1,0 +1,147 @@
+#! /usr/bin/env perl
+
+#
+# Scan a Fortran file for minimal Fortran 95 standards compliance.
+#
+# Also check existence of 'implicit none',
+# and non-existence of carriage return characters at end of line.
+#
+
+use warnings;
+use strict;
+
+my %constraint = (
+    line_length => { val => 132, msg => 'maximum line length' },
+    max_continue => { val => 39, msg => 'maximum number of continuations' },
+    name_length => { val => 31, msg => 'maximum name length' },
+    cr_chars => { val => 0, msg => 'carriage return allowance' },
+    implicit_none => { val => 1, msg => 'implicit none tolerance' },
+    eof_string => { val => 0, msg => 'string at eof' },
+    eof_continue => { val => 0, msg => 'continuation at eof' }
+);
+
+my %state = (
+    string => 0,
+    quoted => 0,
+    continuation => 0,
+    continue_count => 0,
+    comment => 0,
+    implicit_none => 0,
+    cr_chars => 0
+);
+
+my $slapped = 0;
+
+# This is Fortran.
+# No funky multibyte sequences when it comes to maximum line lengths.
+use bytes;
+
+# Main program
+
+while(<>) {
+    chomp;
+    # Check line length first
+    if(length > $constraint{line_length}->{val}) {
+        slap($constraint{line_length}, length);
+    }
+    # Skip comment lines and pre-processor directives
+    m/^\s*[!#].*$/ and next;
+
+    while(1) {
+        # Skip continuation chars at begin of next line
+        $state{continuation} &&
+        m/\G^\s*&?/gc and
+            $state{continuation} = 0, next;
+        # CR at end of line: slap!
+        m/\G\r$/gc and
+            ++$state{cr_chars}, next;
+        # IMPLICIT NONE keyword
+        !$state{string} && !$state{quoted} && !$state{comment} &&
+        m/\Gimplicit\s+none/gci and
+            $state{implicit_none} = 1, next;
+        # White space: skip
+        m/\G\s+/gc and  
+            next;
+        # Apostrophed string: record state
+        !$state{quoted} && !$state{comment} &&
+        m/\G'/gc and
+            $state{string} = !$state{string}, next;
+        # Quoted string: record state
+        !$state{string} && !$state{comment} &&
+        m/\G"/gc and
+            $state{quoted} = !$state{quoted}, next;
+        # Comment: record state
+        !$state{string} && !$state{quoted} &&
+        m/\G!/gc and
+            $state{comment} = 1, next;
+        # Continuation: record and check
+        !$state{comment} &&
+        m/\G&/gc and
+            $state{continuation} = 1, next;
+        # Long name: slap!
+        !$state{string} && !$state{quoted} && !$state{comment} &&
+        m/\G(\w\w{$constraint{name_length}->{val},})/gco and
+            slap($constraint{name_length}, length($1)), next;
+        # Other names: skip
+        m/\G\w+/gc and
+            next;
+        # Other characters: skip
+        m/\G[\W\S]/gc and
+            next;
+        # End of line: check continuations, end comment, get next line
+        if(m/$/) {
+            if($state{continuation}) {
+                ++$state{continue_count};
+            }
+            else {
+                if($state{continue_count} > $constraint{max_continue}->{val}) {
+                    slap($constraint{max_continue}, $state{continue_count});
+                }
+                $state{continue_count} = 0;
+            }
+            $state{comment} = 0;
+            last;
+        }
+    }
+}
+continue {
+    # Reset input line numbering at end of file.
+    # Dish out pending slap!s.
+    if(eof) {
+        if($state{string} || $state{quoted}) {
+            slap($constraint{eof_string}, 1);
+            $state{string} = $state{quoted} = 0;
+        }
+        if($state{continuation}) {
+            slap($constraint{eof_continue}, 1);
+            $state{continuation} = 0;
+        }
+        $state{continue_count} = 0;
+        $state{comment} = 0;
+        if($state{implicit_none}) {
+            $state{implicit_none} = 0;
+        }
+        else {
+            slap($constraint{implicit_none}, 0); 
+        }
+        if($state{cr_chars}) {
+            slap($constraint{cr_chars}, $state{cr_chars});
+            $state{cr_chars} = 0;
+        }
+        close ARGV;
+    }
+}
+
+exit $slapped;
+
+# Subroutines
+
+sub slap {
+    my $constraint = shift;
+    my $found_val = shift;
+    my $msg = $constraint->{msg};
+    my $val = $constraint->{val};
+    my $pos = defined(pos) ? pos : 0;
+    warn "$ARGV:$..$pos: $msg exceeded (allowed $val, found $found_val)\n";
+    $slapped = 1;
+}

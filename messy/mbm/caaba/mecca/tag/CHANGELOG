@@ -1,0 +1,151 @@
+
+20140630
+> update: methane carbon fraction tagging cfg, IC transfer specs.
+  - bugfix: erroneous PTs were added to eq. in cases the species of interest was not in the educt list of a source-specified r-n (lost?)
+
+20140703
++ added generation of fixed species arrays + adjustments to source code generation
+
+20150508+
+> check-in w/PJ @DLR on 20150508
+  - several bugfixes
+  - prefixes for fractional tagging are changed: FM->FCM (Fraction of C from Methane), FI -> FCI, etc.
+
+20150802
+> tagging v.2 is introduced
+  - doubling mode removed as obsolete
+    - removed dbl/ directory, restructured tag/
+    - MECCA scripts/code are updated accordingly
+    - renamed /messy/tools/tagdbl -> /messy/tools/tag
+  - improved capability of adding new equations/reactions ( sections [ADD:EQN] and [ADD:SPC] in cfg )
+  + all matching patterns are based on regular expressions ( incl. embudget )
+  + added the new mode of tagging which allows migration of molecules between the tagging classes to describe various conversion processes, e.g. distinguish oxidation generations
+  - refurbished spaghetti-plots creation (tested with graphvis v.2.38.0)
+
+20150809
+- bugfix: loss PTs were created for budgeted species unconditionally in reactions of two tagged species (should appear only in the sink r-n of the species being budgeted)
+
+20150921
+> new: radiocarbon tagging is introduced (updated imtag_tag_common.f90 for 14C-handling routines)
+> updates:
+  + KIE-specific records may now use regexp-like expressions for reaction abbreviations and species names
+  + indroduced strict regexp usage: only matches that eq the argument being checked are value (to avoid matching, e.g., of 14CH3O3 for 14CH3 mask)
+- bugfix: KIE was added more than once to the reactions w/specified source
+
+20151104
+- (?) fixed redundant dependency that caused recompilation of SCAV even if no tagging is used
+  - replaced messy_mecca_kpp -> messy_main_constants_mem in USE statement of messy_mecca_tag_si.f90-zero
+- bugfix: wrong parsing of the fixed isotope composition marker (*) in cfg file
+
+20151205
+> improved configuration modules hierarchy
+  - unified reference isotope standards & units -> in cfg core files (+delta-values are *internally* expressed in given units)
+
+20160210-15
+- fixes & improvements during check-in with PJ
+  - lost bugfix for non-_dp masses put into tracdef
+  - wrong production PTs creation in "shifting" reactions
+  - former tag_src_temp is created for every configuration (tag_{%TAG}_src_temp, declaration problems)
+  - code can be compiled with new fpc (ver. 3+), however *fpc versions <2.6 are not supported*
+> new: selectable composition transfer mode (itransm):
+  - when iatom= is specified, applies single-substituted isotope composition transfer model
+  - when no iatom specified, uses fractional transfer model (species weightings specified in cfg are accounted for)
+> new: eqnskip= parameter in cfg files allows skipping equations that contain species from TSL
+
+20160220
+> new: added possibility to specify isotope branching (IB, as opposed to stochastic element transfer)
+  - to add IB entries, use [SRC] section of cfg files
+  - an IB entry should use exact name of the isotopolgue and molecular stoichiometry, e.g.: 
+    I2CH3O = 0.881 I2HCHO 0.118 I2HO2
+  - IB *requires* manual specification of molecular transfer (in [SRC] section) for the selected reaction
+> updates:
+  - reduced tagging output in xtag/xembud
+  - refurbished pascal code
+- verified MIM1 and NMO (MOM-derived new methane oxidation chemistry) H-transfer
+  - separate FHM and IH configurations (*-mim1 for MIM1)
+
+20160618
++ improved detection of H2SO4 counterparts (from MECCA-TAG) in DDEP
+
+20160712
+- bugfix: code generated for "fixed" species (the SI template erroneously had the x0 imtag instruction instead of f0)
+
+20160715
++ embudget: passive tracers acquire molar masses of budgeted species in tracdef.tex (otherwise their integrals are not being calculated in tracer_pdef)
+
+20160818
+- bugfix: extraneous reactions were created from a source specification record using the educt not present in used-TSL
+- improved detection of comment lines in input *.tex files
+
+20161217
+- improved species mass handling & element table, corrected RMA calculus
+- dot files creation is now selectable in cfg file [CPARAMS] section, option 'dots=FROM1 FROM2 ... > TO1 TO2 ... '
+- regexp can be used for selecting r-n abbrebiations (not species yet) in transfer/source spec. records (warning: experimental)
+
+20170110
+> added an option to create diagnostic PTs for unaccounted production/loss of elemental/molecular composition (switched by USE_PT_UPL)
+  - refurbished parts of code, improved mass-balance check (accounts for source specification info)
+- potential bugfix in calculation of pMC values in the code generated for boxmodel
+- added runtime optimisation for simulations with MC box (see TAG_OPT_SKIP_XTRABOXPPROC cfg. parameter)
+
+20170322
+> tagging version 2.5 (MESSy v.2.53.*)
+  - improved tracer definition files creation, including the new MESSy chemprop facility
+  - isotopologue molar masses can be rounded to given no. of digits after comma (option roundmass= )
+  - improvements from F.Frank/P.Joeckel on isotope H chemistry (cfg) and tagging F90 code
+  - syntax of passive tracers'' has changed from PTL*/PTP* to XPTL*/XPTP*
+
+20171023
+- bugfix: moved addinline4tagrates() after kieproc() in imtag; otherwise uninitialised variables from KIE section may be used in optimised rate calculations (op_pj_20171021)
+
+20180605
++ added an option to check for cfg parameter (defined in [CPARAMS]) during code generation (via {>CPAR:} and {<CPAR:} meta-parentheses)
+- improved info about conditional processing of cfg/generated code by imcom/imtag
+
+20180619
+> bugfixes:
+  - since changes to the CHEMPROP facility, old-style detection of columns in .tex failed due to two-line column headers :O, defaults introduced
+  - creation of PTs for non-tagged species in tagged reactions was wrong since CHEMPROP
+  - mass of neutron (instead of unity) was given to PTs with unspecified element
+  - parameter 'drsyntax' (ambuguously referring to doubled reac. syntax) renamed to 'trsyntax' (was OK in embudget but not in imtag)
+  - fixed xtag which continued even when embudget was exiting with error
+  - fixed issues with embudget-ing multiple configurations
+  - added a fix/check for too large no. of isotopologues/tagging classes specified [20181106]
+  - added drill-down to refspec of the regular species for tagged/budgeted tracers (for species not present in chemprop, like O3s) [20181120]
+
+20190121
+- corrected headers in template files (now include "created automatically" for easier location, and "do not edit")
+
+20200301-0712
+> tagging version 2.6 (MESSy v.2.55.*)
+- new & updated tagging configurations
+  - refurbished C & O transfer in MIM/MOM mechanisms, CO sink KIEs
+  - CIO: clumped O2 isotope tagging + diagnostic (CAABA/EMAC)
+  - FN: reactive N cycling tagging + turnover (CAABA/aMC)
+  - FO: atomic O fraction tagging / O3, H2O, O2 as sources (CAABA/EMAC)
+  - FS: organic S chemistry tagging + yields, budgeting (CAABA/EMAC)
+  - parameter definition restyled for more flexible usage (those global in *_parameters.inc can be overridden on the module/cfg. level)
+- [bug]fixes to the tagging code / templates etc.
+  + added possibility to have class-wise fixed (nudged) composition
+  - fixed errors in transfer source handling / eqn. parsing
+  + added negation (!) of the pattern matching (normal/regex) for species/equation tags
+  + embudget can add equations and species like imtag (using [ADD:SPC] & [ADD:EQN] config sections)
+    + tracer definitions are created automatically for the added species if they have ref.spec. field (e.g. {&O3})
+  - tagged species tolerances in KPP are automatically set based those for regular species
+  - fpc versions below 3 are *no longer supported*
+
+20200919
+> core bugfixes:
+  - imtag: configuration code was added more than once if multiple #EQUATIONS directives are present in .eqn
+  - imcom_make_tracprop(): added use of tracer subnames - same PTs were created twice for tracers different subnames (e.g. N2O and N2O_c)
+
+
+KNOWN ISSUES:
+- if any exe bails out with SIGSEGV, it is likely that it runs into the strict system memory/stack limits => use shell 'unlimit' (or equivalent) command
+- when EMAC crashes in *scan_tracs() routine, it is likely that H2O is not present/available via TRACER => switch on H2O or add H2O tracer by some means
+- if a key in a *.cfg file starts with an apostrophe (``), this may cause SIGSEGV (reason unknown, likely fpc internal)
+
+TODO:
+? conditional processing of cfg
+~ regexp for species in transfer/source spec. records (testing now)
+? double/triple substitutions

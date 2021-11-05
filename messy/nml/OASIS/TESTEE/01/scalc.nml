@@ -1,0 +1,42 @@
+! -*- f90 -*-
+
+&CPL
+! ### SYNTAX:
+! # CALC(.) = 'object-name', 'list-of-channel-objects', 'operation',when?,
+! # : when: 1: global_start, 2 (default): global_end, 3: both
+! # : list of channel objects = 'ch1:obj1%s1&l1,obj2%s2&l1,...;cha2:obj1%s1,...;'
+! # : s1, s1, ... optional scaling factors
+! # : l1, l2, ... optional reduction to one specific vertical level
+! #               indicator LL => number of model layer nlev / ke
+!                 , otherwise number required
+! # : operation = SUM
+!
+!
+! TODO : defined as in correct for fesom coupling
+! - do accumulation with OASIS 
+! - determine location where to call scalc
+! - modify script for position use in scalc
+CALC(5)  = 'ustrwat','g3b:ustrw;ECHAM5:zzwat','MULT','messy_global_start'
+CALC(6)  = 'ustrnow','g3b:ustri;ECHAM5:zznow','MULT','messy_global_start'
+CALC(7)  = 'vstrwat','g3b:vstrw;ECHAM5:zzwat','MULT','messy_global_start'
+CALC(8)  = 'vstrnow','g3b:vstri;ECHAM5:zznow','MULT','messy_global_start'
+CALC(9)  = 'ustrnoi','g3b:ustrw;ECHAM5:zznoi','MULT','messy_global_start'
+CALC(10) = 'ustrice','g3b:ustri;ECHAM5:zzice','MULT','messy_global_start'
+CALC(11) = 'vstrnoi','g3b:vstrw;ECHAM5:zznoi','MULT','messy_global_start'
+CALC(12) = 'vstrice','g3b:vstri;ECHAM5:zzice','MULT','messy_global_start'
+
+CALC(13) = 'ustarw','scalc:ustrwat,ustrnow','SUM','messy_global_start'
+CALC(14) = 'vstarw','scalc:vstrwat,vstrnow','SUM','messy_global_start'
+CALC(15) = 'ustari','scalc:ustrnoi,ustrice','SUM','messy_global_start'
+CALC(16) = 'vstari','scalc:vstrnoi,vstrice','SUM','messy_global_start'
+
+CALC(17) = 'rsf', 'ECHAM5:rsfl%999.97,rsfc%999.97','SUM','messy_global_start'
+CALC(18) = 'ssf', 'ECHAM5:ssfl%999.97,ssfc%999.97','SUM','messy_global_start'
+CALC(19) = 'evapwdrho', 'ECHAM5:evapw%999.97','SUM','messy_global_start'
+CALC(20) = 'evapidrho', 'ECHAM5:evapi%999.97','SUM','messy_global_start'
+
+CALC(21) = 'heat2oce', 'ECHAM5:ahflw,ahfsw,trflw,ssfl%3.337e6,ssfc%3.337e6','SUM','messy_global_start'
+CALC(22) = 'heat2ice', 'g3b:qres,ahfice','SUM','messy_global_start'
+
+!
+/

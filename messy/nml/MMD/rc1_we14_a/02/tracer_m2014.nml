@@ -1,0 +1,299 @@
+! -*- f90 -*-
+&CTRL
+L_FAMILY     = T, !# USE TRACER FAMILIES (SEE CTRL_FAMILY BELOW)
+L_PDEF       = T, !# SWITCH TRACER SUB-SUBMODEL PDEF (SEE CPL/CTRL_PDEF BELOW)
+/
+
+&CPL
+L_TRACER_INIT = T, !# SWITCH ON(T)/OFF(F) TRACER INITIALISATION
+L_CONV_LG2GP  = T, !# ONLY IF LAGRANGIAN TRACERS PRESENT 
+/
+
+&CTRL_FAMILY
+l_verbose = F,   !# diagnostic output
+i_diag_pe = 0,   !# ... for this p_pe
+i_diag_jrow = 1, !# ... and this jrow
+!#
+!# NOTES:
+!#    - MAX. NUMBER OF FAMILIES: 50
+!#    - FAMILY-TYPE = 1: FAMILY = SUM OF TRACERS, TRACER = FRACTION OF FAMILY
+!#                                - TRACER FRACTIONS NOT TRANSPORTED
+!#                                - PROCESS SPECIFIC CONVERSION
+!#                                - switch is meaningless for type 1
+!#    -             = 2: FAMILY = SUM OF TRACERS, TRACER REMAINS
+!#                                - TRACER TRANSPORTED
+!#                                - RESCALED TO SUM AFTER TRANSPORT
+!#                                - switch = .FALSE.: no re-scaling,
+!#                                                    only summation
+!#                                -        = .TRUE. (default): re-scaling ON
+!#    - FAMILY TRACER MUST NOT EXIST
+!#    - FIRST VALID TRACER IN FAMILY SPECIFIES ATTRIBUTES OF TRACER FAMILY
+!#    - nadvect=nconvect=nvdiff = ON FOR FAMILIES WITH FAMILY-TYPE = 1
+!#    - EACH TRACER CAN BE MEMBER OF ZERO OR ONE TRACER FAMILY
+!#    - THE DEFAULT WEIGHT FOR EACH TRACER IS 1.0
+!# SYNTAX:
+!#    tracer-set, family-type, switch, family-name, family-subname,
+!#    LIST OF TRACERS ...
+!#    ... ('name' OR 'name_subname' OR 'name:weight' OR 'name_subname:weight')
+!
+TF(1) = 'gp',1,T,'ClOX','','Cl','ClO','HOCl','OClO','Cl2O2:2.0','Cl2:2.0',!94*''
+TF(2) = 'gp',1,T,'BrOX','','Br','BrO','HOBr','BrCl','Br2:2.0',!95*''
+TF(3) = 'gp',1,T,'NOX','','N','NO','NO2','NO3','N2O5:2.0',!95*''
+!TF(3) = 'gp',1,T,'NOX','','NO','NO2','NO3','N2O5:2.0',!95*''
+!TF(4) = 'gp',1,T,'HOx','','H','OH','HO2',!97*''
+!TF(5) = 'gp',1,T,'Ox','','O1D','O3P','O3',!97*''
+!
+!TF(6)  = 'gp',2,F,'RGM','','HgO','HgCl','HgCl2','HgBr','HgBr2','ClHgBr','BrHgOBr','ClHgOBr',!82*''
+!
+!TF(7) = 'gp',2,F,'Br','tot', 'BrNO2','CF3Br','CF2ClBr','CH2Br2:2.0','CHBr3:3.0','CH3Br','CHCl2Br','CHClBr2:2.0','CH2ClBr','BrCl','Br2:2.0','BrNO3','HOBr','HBr','BrO','Br',!84*'',
+!
+!TF(8) = 'gp',2,F,'Cl','tot', 'CF2ClBr','Cl2O2:2.0','CCl4:4.0','CF2Cl2:2.0','CFCl3:3.0','OClO','ClNO2','CHCl2Br:2.0','CHClBr2','CH2ClBr','CH3CCl3:3.0','CH3Cl','Cl2:2.0','BrCl','HOCl','ClNO3','ClO','HCl','Cl','Clmres_cs',!80*'',
+!
+!TF(7) = 'gp',2,F,'Br','tot', 'BrCl','Br2:2.0','HOBr','HBr',!??*'',
+!
+!TF(8) = 'gp',2,F,'Cl','tot', 'BrCl','Cl2:2.0','HOCl','HCl',!??*'',
+! op_mm_20150320 update for consitency with RC1SD-base10a
+TF(7) = 'gp',2,F,'Bry','', 'BrNO2','BrCl','Br2:2.0','BrNO3','HOBr','HBr','BrO','Br',!84*'',                                                                         
+TF(8) = 'gp',2,F,'Cly','','OClO','ClNO2','Cl2:2.0','BrCl','HOCl','ClNO3','ClO','HCl','Cl','Clmres_cs',!80*'',                                                             
+
+
+
+!
+!!$ !### SETUP FOR E4CHEM:
+!!$ TF(1) = 'gp',1,T,'ClOX','','Cl','ClO','HOCl','OClO','Cl2O2:2.0','Cl2:2.0',
+!!$ TF(2) = 'gp',1,T,'NOX','','N','NO','NO2','NO3','N2O5:2.0','HNO4',
+!!$ !# ONLY FOR E4CHEM: Ox
+!!$ TF(3) = 'gp',1,T,'Ox','','O1D','O3P','O3',
+!!$ !# ONLY FOR E4CHEM: TRANSPORT HNO3 AND NAT TOGETHER
+!!$ TF(4) = 'gp',1,T,'HNO3NAT','','HNO3','NAT',
+!!$ !TF(5) = 'gp',1,T,'BrOX','','Br','BrO','HOBr','BrCl','Br2:2.0',!95*''
+!
+/
+
+
+&CTRL_PDEF
+!# diagnostic output ?
+L_DIAGOUT = F,
+!# SYNTAX: set-name, tracer-name, subname,
+!#         reset to zero?, stop on exceed?, relative tolerance
+TPD_DEFAULT(1) = 'gp',   '',     '',    T, F, 0.01,
+TPD_DEFAULT(2) = 'lg',   '',     '',    T, F, 0.01,
+TPD_DEFAULT(3) = 'lggp', '',     '',    F, F, 0.01,
+!
+!TPD(1)         = 'gp',   'HNO3', 'nat', T, F,     ,
+!TPD(2)         = 'gp',   'N',    '',    T, F,     ,
+TPD(1)          = 'gp',  'LossO3N',  '', F, F,     , 
+TPD(2)          = 'gp',  'LossO3H',  '', F, F,     , 
+TPD(3)          = 'gp',  'LossO3Cl', '', F, F,     , 
+
+!
+/
+
+
+!!! #####################################################################
+!!! ### TRACER INITIALISATION
+!!! #####################################################################
+
+!!! #####################################################################
+!!! ### H2O
+!!! #####################################################################
+
+&regrid
+!infile    = "/export/pa_data02/users/mert_mr/restart_files/rc1-base-eu-restart-1-jul-07.nc"
+!infile    = "/work/bd0617/b309098/restart_files/rc1-eu03-restart-1-jul-07.nc"
+!infile     = "$INPUTDIR_MESSY/tracer/RC1SD-base-10a_0163_restart_0001_tracer_gp.nc"
+infile     = "$INPUTDIR_MESSY/tracer/RC1SD-base-10b_0184_restart_0002_tracer_gp.nc"
+i_latm    = "lat",      ! name of latitude dimension in input file
+i_latr    = -90.0,90.0,
+i_lonm    = "lon",      ! name of longitude dimension in input file
+!i_timem   = "time",     ! name of time dimension in input file
+!i_hyai    = "hyai",     ! name of hybrid A coefficients in input file
+i_hyam    = "hyam",     ! name of hybrid A coefficients in input file
+!i_hybi    = "hybi",     ! name of hybrid B coefficients in input file
+i_hybm    = "hybm",     ! name of hybrid B coefficients in input file
+i_ps      = "101325.0 Pa",
+i_p0      = "1. Pa",        ! value of reference pressure in input file
+var       = "H2O;",
+!i_t       = 1,
+/
+
+!!! #####################################################################
+!!! ### GMXE AEROSOL TRACER
+!!! #####################################################################
+
+!!$&regrid
+!!$infile    = "$INPUTDIR_MESSY/gmxe/restart_0001_tracer_gp.nc"
+!!$i_latm    = "lat",      ! name of latitude dimension in input file
+!!$i_latr    = -90.0,90.0,
+!!$i_lonm    = "lon",      ! name of longitude dimension in input file
+!!$!i_timem   = "time",     ! name of time dimension in input file
+!!$!i_hyai    = "hyai",     ! name of hybrid A coefficients in input file
+!!$i_hyam    = "hyam",     ! name of hybrid A coefficients in input file
+!!$!i_hybi    = "hybi",     ! name of hybrid B coefficients in input file
+!!$i_hybm    = "hybm",     ! name of hybrid B coefficients in input file
+!!$i_ps      = "101325.0 Pa",
+!!$i_p0      = "1. Pa",        ! value of reference pressure in input file
+!!$var       = "NO3m_cs;Hp_cs;H2O_ns;Hp_ns;NH4p_ns;SO4mm_ns;HSO4m_ns;NO3m_ns;Clm_ns;OHm_ns;N_ns;H2O_ks;Hp_ks;NH4p_ks;Nap_ks;SO4mm_ks;HSO4m_ks;NO3m_ks;Clm_ks;OHm_ks;SS_ks;OC_ks;BC_ks;N_ks;H2SO4_as;H2O_as;Hp_as;NH4p_as;Nap_as;SO4mm_as;HSO4m_as;NO3m_as;Clm_as;OHm_as;SS_as;DU_as;OC_as;BC_as;N_as;",
+!!$!i_t       = 1,
+!!$/
+!!$
+!!$&regrid
+!!$infile    = "$INPUTDIR_MESSY/gmxe/restart_0001_tracer_gp.nc"
+!!$i_latm    = "lat",      ! name of latitude dimension in input file
+!!$i_latr    = -90.0,90.0,
+!!$i_lonm    = "lon",      ! name of longitude dimension in input file
+!!$!i_timem   = "time",     ! name of time dimension in input file
+!!$!i_hyai    = "hyai",     ! name of hybrid A coefficients in input file
+!!$i_hyam    = "hyam",     ! name of hybrid A coefficients in input file
+!!$!i_hybi    = "hybi",     ! name of hybrid B coefficients in input file
+!!$i_hybm    = "hybm",     ! name of hybrid B coefficients in input file
+!!$i_ps      = "101325.0 Pa",
+!!$i_p0      = "1. Pa",        ! value of reference pressure in input file
+!!$var       = "H2SO4_cs;H2O_cs;NH4p_cs;Nap_cs;SO4mm_cs;HSO4m_cs;Clm_cs;OHm_cs;SS_cs;DU_cs;OC_cs;BC_cs;N_cs;H2O_ki;Hp_ki;NH4p_ki;SO4mm_ki;HSO4m_ki;NO3m_ki;Clm_ki;OHm_ki;OC_ki;BC_ki;N_ki;H2O_ai;Hp_ai;NH4p_ai;SO4mm_ai;HSO4m_ai;NO3m_ai;Clm_ai;OHm_ai;DU_ai;N_ai;H2O_ci;Hp_ci;NH4p_ci;SO4mm_ci;HSO4m_ci;NO3m_ci;Clm_ci;OHm_ci;DU_ci;N_ci;",
+!!$!i_t       = 1,
+!!$/
+
+!!! #####################################################################
+!!! ### MECCA
+!!! #####################################################################
+
+!!! ###  SHORT(ER) LIVED HALOCARBONS
+
+&regrid
+!infile    = "/work/bd0617/b309098/restart_files/rc1-eu03-restart-1-jul-07.nc"
+!infile    = "/export/pa_data02/users/mert_mr/restart_files/rc1-base-eu-restart-1-jul-07.nc"
+!infile     = "$INPUTDIR_MESSY/tracer/RC1SD-base-10a_0163_restart_0001_tracer_gp.nc"
+infile     = "$INPUTDIR_MESSY/tracer/RC1SD-base-10b_0184_restart_0002_tracer_gp.nc"
+i_latm    = "lat",      ! name of latitude dimension in input file
+i_latr    = -90.0,90.0,
+i_lonm    = "lon",      ! name of longitude dimension in input file
+!i_timem   = "time",     ! name of time dimension in input file
+!i_hyai    = "hyai",     ! name of hybrid A coefficients in input file
+i_hyam    = "hyam",     ! name of hybrid A coefficients in input file
+!i_hybi    = "hybi",     ! name of hybrid B coefficients in input file
+i_hybm    = "hybm",     ! name of hybrid B coefficients in input file
+i_ps      = "101325.0 Pa",
+i_p0      = "1. Pa",        ! value of reference pressure in input file
+var       = "CH2Br2;CH2ClBr;CHBr3;CHCl2Br;CHClBr2;",
+!i_t       = 1,
+/
+
+!!! ###  LONG(ER) LIVED HALOCARBONS, CO2, SF6, N2O, CH4, H2
+
+&regrid
+!infile    = "/work/bd0617/b309098/restart_files/rc1-eu03-restart-1-jul-07.nc"
+!infile    = "/export/pa_data02/users/mert_mr/restart_files/rc1-base-eu-restart-1-jul-07.nc"
+infile     = "$INPUTDIR_MESSY/tracer/RC1SD-base-10b_0184_restart_0002_tracer_gp.nc"
+i_latm    = "lat",      ! name of latitude dimension in input file
+i_latr    = -90.0,90.0,
+i_lonm    = "lon",      ! name of longitude dimension in input file
+!i_timem   = "time",     ! name of time dimension in input file
+!i_hyai    = "hyai",     ! name of hybrid A coefficients in input file
+i_hyam    = "hyam",     ! name of hybrid A coefficients in input file
+!i_hybi    = "hybi",     ! name of hybrid B coefficients in input file
+i_hybm    = "hybm",     ! name of hybrid B coefficients in input file
+i_ps      = "101325.0 Pa",
+i_p0      = "1. Pa",        ! value of reference pressure in input file
+var       = "CCl4;CF2Cl2;CFCl3;CH3Br;CH3CCl3;CH3Cl;CO2;N2O;CH4;H2;",
+! CF2ClBr,0.0; CF3Br,0.0; SF6,??;
+!i_t       = 1,
+/
+
+!!! ###  MERCURY (Hg)
+
+!!$&regrid
+!!$infile    = "$INPUTDIR_MESSY/tracer/M2E24_exp05_0007_restart_0005_tracer_gp.nc"
+!!$i_latm    = "lat",      ! name of latitude dimension in input file
+!!$i_latr    = -90.0,90.0,
+!!$i_lonm    = "lon",      ! name of longitude dimension in input file
+!!$!i_timem   = "time",     ! name of time dimension in input file
+!!$!i_hyai    = "hyai",     ! name of hybrid A coefficients in input file
+!!$i_hyam    = "hyam",     ! name of hybrid A coefficients in input file
+!!$!i_hybi    = "hybi",     ! name of hybrid B coefficients in input file
+!!$i_hybm    = "hybm",     ! name of hybrid B coefficients in input file
+!!$i_ps      = "101325.0 Pa",
+!!$i_p0      = "1. Pa",        ! value of reference pressure in input file
+!!$var       = "Hg;RGM_cs;HgO;HgCl2;HgBr2;ClHgBr;BrHgOBr;ClHgOBr;HgCl;HgBr;RGM;",
+!!$!i_t       = 1,
+!!$/
+
+!!! ### OTHERS
+
+&regrid
+!infile    = "/work/bd0617/b309098/restart_files/rc1-eu03-restart-1-jul-07.nc"
+!infile    = "/export/pa_data02/users/mert_mr/restart_files/rc1-base-eu-restart-1-jul-07.nc"
+infile     = "$INPUTDIR_MESSY/tracer/RC1SD-base-10b_0184_restart_0002_tracer_gp.nc"
+i_latm    = "lat",      ! name of latitude dimension in input file
+i_latr    = -90.0,90.0,
+i_lonm    = "lon",      ! name of longitude dimension in input file
+!i_timem   = "time",     ! name of time dimension in input file
+!i_hyai    = "hyai",     ! name of hybrid A coefficients in input file
+i_hyam    = "hyam",     ! name of hybrid A coefficients in input file
+!i_hybi    = "hybi",     ! name of hybrid B coefficients in input file
+i_hybm    = "hybm",     ! name of hybrid B coefficients in input file
+i_ps      = "101325.0 Pa",
+i_p0      = "1. Pa",        ! value of reference pressure in input file
+var       = "C2H6;NC4H10;C3H8;NACA;CH3CO3H;MPAN;IC3H7NO3;HCOOH;C2H5OOH;IC3H7OOH;LHOC3H6OOH;CH3CO2H;HYPERACET;HNO4;PAN;MEK;CH3COCH3;CH3OH;N2O5;Cl2;ISON;CO;H2O2;MGLYOX;C3H6;C2H4;HNO3;CH3OOH;C5H8;MVK;BrNO3;LC4H9NO3;ClNO3;CH3CHO;O3;NO3;NO2;NO;HCHO;HCl;BrO;",
+!i_t       = 1,
+/
+
+&regrid
+!infile    = "/work/bd0617/b309098/restart_files/rc1-eu03-restart-1-jul-07.nc"
+!infile    = "/export/pa_data02/users/mert_mr/restart_files/rc1-base-eu-restart-1-jul-07.nc"
+infile     = "$INPUTDIR_MESSY/tracer/RC1SD-base-10b_0184_restart_0002_tracer_gp.nc"
+i_latm    = "lat",      ! name of latitude dimension in input file
+i_latr    = -90.0,90.0,
+i_lonm    = "lon",      ! name of longitude dimension in input file
+!i_timem   = "time",     ! name of time dimension in input file
+!i_hyai    = "hyai",     ! name of hybrid A coefficients in input file
+i_hyam    = "hyam",     ! name of hybrid A coefficients in input file
+!i_hybi    = "hybi",     ! name of hybrid B coefficients in input file
+i_hybm    = "hybm",     ! name of hybrid B coefficients in input file
+i_ps      = "101325.0 Pa",
+i_p0      = "1. Pa",        ! value of reference pressure in input file
+var       = "BrNO2;H2SO4;CH3SO3H;NO3m_cs;Hp_cs;BIACET;Cl2O2;CH3SO3;NH3;OClO;ClNO2;SO2;N;NH2OH;LMEKOOH;ISOOH;DMSO;NHOH;HONO;LC4H9OOH;MVKOOH;CH3SO2;NH2O;HNO;NH2;IC3H7O2;CH3COCH2O2;LMEKO2;LC4H9O2;BrCl;ACETOL;Br2;ISO2;MVKO2;HOCl;DMS;LHOC3H6O2;C2H5O2;HOBr;CH3CO3;H;O1D;HBr;HO2;OH;O3P;Cl;Br;ClO;CH3O2;HNO3_nat;NH4pres_cs;Clmres_cs;",
+!i_t       = 1,
+/
+
+!!! #####################################################################
+!!! ### D14CO
+!!! #####################################################################
+
+!!$&regrid
+!!$!outfile  =          "ncrg_${HRES}_"
+!!$!! :restart_date_time = 
+!!$infile    = "$INPUTDIR_MESSY/d14co/M2E23_exp11_restart_0004_0008_tracer_gp.nc"
+!!$i_latm    = "lat",      ! name of latitude dimension in input file
+!!$i_latr    = -90.0,90.0,
+!!$i_lonm    = "lon",      ! name of longitude dimension in input file
+!!$!i_timem   = "time",     ! name of time dimension in input file
+!!$!i_hyai    = "hyai",     ! name of hybrid A coefficients in input file
+!!$i_hyam    = "hyam",     ! name of hybrid A coefficients in input file
+!!$!i_hybi    = "hybi",     ! name of hybrid B coefficients in input file
+!!$i_hybm    = "hybm",     ! name of hybrid B coefficients in input file
+!!$i_ps      = "101325.0 Pa",
+!!$i_p0      = "1. Pa",        ! value of reference pressure in input file
+!!$var       = "CO_14C_01;CO_14Cs_01;CO_14Ct_01;CO_14C_02;CO_14Cs_02;CO_14Ct_02;"
+!!$i_t       = 1,
+!!$/
+
+!!! #####################################################################
+!!! ### DRADON
+!!! #####################################################################
+
+!!$&regrid
+!!$!! :restart_date_time = "20041231 234800"
+!!$infile    = "$INPUTDIR_MESSY/tracer/M2E24_exp05_0007_restart_0005_tracer_gp.nc"
+!!$i_latm    = "lat",      ! name of latitude dimension in input file
+!!$i_latr    = -90.0,90.0,
+!!$i_lonm    = "lon",      ! name of longitude dimension in input file
+!!$!i_timem   = "time",     ! name of time dimension in input file
+!!$!i_hyai    = "hyai",     ! name of hybrid A coefficients in input file
+!!$i_hyam    = "hyam",     ! name of hybrid A coefficients in input file
+!!$!i_hybi    = "hybi",     ! name of hybrid B coefficients in input file
+!!$i_hybm    = "hybm",     ! name of hybrid B coefficients in input file
+!!$i_ps      = "101325.0 Pa",
+!!$i_p0      = "1. Pa",        ! value of reference pressure in input file
+!!$var       = "Rn222;Po218;Pb214;Bi214;Pb210;",
+!!$!i_t       = 1,
+!!$/

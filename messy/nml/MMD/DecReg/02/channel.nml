@@ -1,0 +1,507 @@
+! -*- f90 -*-
+&CTRL
+! ---------------------------------------------------------------------
+! EXPERIMENT NAME
+! ---------------------------------------------------------------------
+EXP_NAME='$EXP_NAME',
+EXEC_CHECKSUM='$EXEC_CHECKSUM',
+! ---------------------------------------------------------------------
+! # FLUSH I/O BUFFER IN EVERY TIME STEP (DEFAULT: T (true))
+! # NOTE: F (false) might increase the overall performance
+!L_FLUSH_IOBUFFER = F,
+I_VERBOSE_LEVEL = 20,
+! ---------------------------------------------------------------------
+! # ADD NEW OUTPUT CHANNELS (MAX. 50)
+! ---------------------------------------------------------------------
+ADD_CHANNEL( 1) = 'miklip_am', 
+ADD_CHANNEL( 2) = 'miklip_mm',
+ADD_CHANNEL( 3) = 'miklip_dm',
+ADD_CHANNEL( 4) = 'miklip_dmax',
+ADD_CHANNEL( 5) = 'miklip_dmin',
+ADD_CHANNEL( 6) = 'miklip_6h',
+ADD_CHANNEL( 7) = 'miklip_6hmax',
+ADD_CHANNEL( 8) = 'miklip_3h',
+ADD_CHANNEL( 9) = 'miklip_1hm',
+!
+! ---------------------------------------------------------------------
+! # ADD NEW CHANNEL OBJECT REFERENCES (MAX. 500)
+! # NOTES: 
+! #  - TARGET CHANNEL NAME MAY CONTAIN WILDCARDS '?' AND '*'
+! #  - TARGET OBJECT NAME SET TO SOURCE OBJECT NAME, IF ''
+! ---------------------------------------------------------------------
+! variables for all output channels
+ADD_REF(  1)        = 'COSMOm001',   'PS',        'miklip_*',  'aps',
+ADD_REF(  2)        = 'grid_def',       'philat_2d', 'miklip_*',  'geolat',
+ADD_REF(  3)        = 'grid_def',       'philon_2d', 'miklip_*',  'geolon',
+ADD_REF(  4)        = 'COSMO_ORI',   'RLAT',      'miklip_*',  '',
+ADD_REF(  5)        = 'COSMO_ORI',   'RLON',      'miklip_*',  '',
+!
+!
+!
+! ---------- ANNUAL MEAN (== DAILY MEAN) ----------
+! variables for MODULE-C, adapted from CORDEX-CCLM
+ADD_REF( 10)       = 'COSMO_ORI',   'T_2M',      'miklip_am',     'tas',
+ADD_REF( 11)       = 'COSMOm001',   'TOT_PREC',  'miklip_am',     'pr',
+ADD_REF( 12)       = 'COSMOm001',   'PMSL',      'miklip_am',     'psl',
+ADD_REF( 13)       = 'COSMO_ORI',   'QV_2M',     'miklip_am',     'huss',
+ADD_REF( 14)       = 'COSMO',       'wind10',    'miklip_am',     'sfcwind',
+!ADD_REF( 15)       = 'COSMO_ORI',   'VABSMX_10M','miklip_am',     'sfcwindmax',
+ADD_REF( 16)       = 'COSMO_ORI',   'DURSUN',    'miklip_am',     'sund',
+ADD_REF( 17)       = 'COSMO_ORI',   'ALWD_S',    'miklip_am',     'rlds',
+ADD_REF( 18)       = 'COSMO_ORI',   'ALHFL_S',   'miklip_am',     'hfls',
+ADD_REF( 19)       = 'COSMO_ORI',   'ASHFL_S',   'miklip_am',     'hfss',
+ADD_REF( 20)       = 'COSMO_ORI',   'ASWDIFU_S', 'miklip_am',     'rsus',
+ADD_REF( 21)       = 'COSMO_ORI',   'ALWU_S',    'miklip_am',     'rlus',
+ADD_REF( 22)       = 'COSMO_ORI',   'AEVAP_S',   'miklip_am',     'evspsbl',
+ADD_REF( 23)       = 'COSMO_ORI',   'RUNOFF_S',  'miklip_am',     'mrros',
+ADD_REF( 24)       = 'COSMO_ORI',   'ATHB_T',    'miklip_am',     'rlut',
+ADD_REF( 25)       = 'COSMO_ORI',   'ASOD_T',    'miklip_am',     'rsdt',
+ADD_REF( 26)       = 'COSMO_ORI',   'ASOB_T',    'miklip_am',     '',
+ADD_REF( 27)       = 'COSMO_ORI',   'U_10M',     'miklip_am',     'uas',
+ADD_REF( 28)       = 'COSMO_ORI',   'V_10M',     'miklip_am',     'vas',
+ADD_REF( 29)       = 'COSMO_ORI',   'VMAX_10M',  'miklip_am',     'wsgsmax',
+ADD_REF( 30)       = 'COSMOm001',   'HPBL',      'miklip_am',     'zmla',
+ADD_REF( 31)       = 'COSMOm001',   'TQV',       'miklip_am',     'prw',
+ADD_REF( 32)       = 'COSMOm001',   'TQC',       'miklip_am',     '',
+ADD_REF( 33)       = 'COSMOm001',   'TQI',       'miklip_am',     'clivi',
+ADD_REF( 34)       = 'COSMO_ORI',   'SNOW_MELT', 'miklip_am',     'snm',
+!
+! defined on more than one time level - take from COSMOm001
+ADD_REF( 40)       = 'COSMOm001',   'W_SO_ICE',  'miklip_am',     'mfrso',
+ADD_REF( 41)       = 'COSMOm001',   'W_SO',      'miklip_am',     'mrso',
+ADD_REF( 42)       = 'COSMOm001',   'H_SNOW',    'miklip_am',     'snd',
+ADD_REF( 43)       = 'COSMOm001',   'T_S',       'miklip_am',     'ts',
+ADD_REF( 44)       = 'COSMOm001',   'W_SNOW',    'miklip_am',     'snw',
+!
+! variables, calculated with SCALC
+ADD_REF( 50)       = 'scalc',       'clt',       'miklip_am',     '',
+ADD_REF( 51)       = 'scalc',       'rsds',      'miklip_am',     '',
+ADD_REF( 52)       = 'scalc',       'mrro',      'miklip_am',     '',
+ADD_REF( 53)       = 'scalc',       'prc',       'miklip_am',     '',
+!
+! variables on pressure levels
+ADD_REF( 60)       = 'COSMOp001',   'U',         'miklip_am',     'ua_p',
+ADD_REF( 61)       = 'COSMOp001',   'V',         'miklip_am',     'va_p',
+ADD_REF( 62)       = 'COSMOp001',   'T',         'miklip_am',     'ta_p',
+ADD_REF( 63)       = 'COSMOp001',   'QV',        'miklip_am',     'hus_p',
+ADD_REF( 64)       = 'COSMOp001',   'FI',        'miklip_am',     'z_p',
+!
+! additional varibales (beyond CORDEX list)
+ADD_REF( 70)       = 'COSMOm001',   'CAPE_CON',  'miklip_am',     'cape_con',
+ADD_REF( 71)       = 'COSMOm001',   'CAPE_ML',   'miklip_am',     'cape_ml',
+ADD_REF( 72)       = 'COSMOm001',   'CAPE_MU',   'miklip_am',     'cape_mu',
+ADD_REF( 73)       = 'COSMOm001',   'CIN_ML',    'miklip_am',     'cin_ml',
+ADD_REF( 74)       = 'COSMOm001',   'CIN_MU',    'miklip_am',     'cin_mu',
+ADD_REF( 75)       = 'COSMOm001',   'SLI',       'miklip_am',     'sli',
+ADD_REF( 76)       = 'COSMOm001',   'TD_2M',     'miklip_am',     'td_2m',
+ADD_REF( 77)       = 'COSMOm001',   'CLCL',      'miklip_am',     'cll',
+ADD_REF( 78)       = 'COSMOm001',   'CLCM',      'miklip_am',     'clm',
+ADD_REF( 79)       = 'COSMOm001',   'CLCH',      'miklip_am',     'clh',
+!
+!
+!
+! ---------- MONTHLY MEAN (== DAILY MEAN) ----------
+! variables for MODULE-C, adapted from CORDEX-CCLM
+ADD_REF(110)       = 'COSMO_ORI',   'T_2M',      'miklip_mm',     'tas',
+ADD_REF(111)       = 'COSMOm001',   'TOT_PREC',  'miklip_mm',     'pr',
+ADD_REF(112)       = 'COSMOm001',   'PMSL',      'miklip_mm',     'psl',
+ADD_REF(113)       = 'COSMO_ORI',   'QV_2M',     'miklip_mm',     'huss',
+ADD_REF(114)       = 'COSMO',       'wind10',    'miklip_mm',     'sfcwind',
+!ADD_REF(115)       = 'COSMO_ORI',   'VABSMX_10M','miklip_mm',     'sfcwindmax',
+ADD_REF(116)       = 'COSMO_ORI',   'DURSUN',    'miklip_mm',     'sund',
+ADD_REF(117)       = 'COSMO_ORI',   'ALWD_S',    'miklip_mm',     'rlds',
+ADD_REF(118)       = 'COSMO_ORI',   'ALHFL_S',   'miklip_mm',     'hfls',
+ADD_REF(119)       = 'COSMO_ORI',   'ASHFL_S',   'miklip_mm',     'hfss',
+ADD_REF(120)       = 'COSMO_ORI',   'ASWDIFU_S', 'miklip_mm',     'rsus',
+ADD_REF(121)       = 'COSMO_ORI',   'ALWU_S',    'miklip_mm',     'rlus',
+ADD_REF(122)       = 'COSMO_ORI',   'AEVAP_S',   'miklip_mm',     'evspsbl',
+ADD_REF(123)       = 'COSMO_ORI',   'RUNOFF_S',  'miklip_mm',     'mrros',
+ADD_REF(124)       = 'COSMO_ORI',   'ATHB_T',    'miklip_mm',     'rlut',
+ADD_REF(125)       = 'COSMO_ORI',   'ASOD_T',    'miklip_mm',     'rsdt',
+ADD_REF(126)       = 'COSMO_ORI',   'ASOB_T',    'miklip_mm',     '',
+ADD_REF(127)       = 'COSMO_ORI',   'U_10M',     'miklip_mm',     'uas',
+ADD_REF(128)       = 'COSMO_ORI',   'V_10M',     'miklip_mm',     'vas',
+ADD_REF(129)       = 'COSMO_ORI',   'VMAX_10M',  'miklip_mm',     'wsgsmax',
+ADD_REF(130)       = 'COSMOm001',   'HPBL',      'miklip_mm',     'zmla',
+ADD_REF(131)       = 'COSMOm001',   'TQV',       'miklip_mm',     'prw',
+ADD_REF(132)       = 'COSMOm001',   'TQC',       'miklip_mm',     '',
+ADD_REF(133)       = 'COSMOm001',   'TQI',       'miklip_mm',     'clivi',
+ADD_REF(134)       = 'COSMO_ORI',   'SNOW_MELT', 'miklip_mm',     'snm',
+!
+! defined on more than one time level - take from COSMOm001
+ADD_REF(140)       = 'COSMOm001',   'W_SO_ICE',  'miklip_mm',     'mfrso',
+ADD_REF(141)       = 'COSMOm001',   'W_SO',      'miklip_mm',     'mrso',
+ADD_REF(142)       = 'COSMOm001',   'H_SNOW',    'miklip_mm',     'snd',
+ADD_REF(143)       = 'COSMOm001',   'T_S',       'miklip_mm',     'ts',
+ADD_REF(144)       = 'COSMOm001',   'W_SNOW',    'miklip_mm',     'snw',
+!
+! variables, calculated with SCALC
+ADD_REF(150)       = 'scalc',       'clt',       'miklip_mm',     '',
+ADD_REF(151)       = 'scalc',       'rsds',      'miklip_mm',     '',
+ADD_REF(152)       = 'scalc',       'mrro',      'miklip_mm',     '',
+ADD_REF(153)       = 'scalc',       'prc',       'miklip_mm',     '',
+!
+! variables on pressure levels
+ADD_REF(160)       = 'COSMOp001',   'U',         'miklip_mm',     'ua_p',
+ADD_REF(161)       = 'COSMOp001',   'V',         'miklip_mm',     'va_p',
+ADD_REF(162)       = 'COSMOp001',   'T',         'miklip_mm',     'ta_p',
+ADD_REF(163)       = 'COSMOp001',   'QV',        'miklip_mm',     'hus_p',
+ADD_REF(164)       = 'COSMOp001',   'FI',        'miklip_mm',     'z_p',
+!
+! additional varibales (beyond CORDEX list)
+ADD_REF(170)       = 'COSMOm001',   'CAPE_CON',  'miklip_mm',     'cape_con',
+ADD_REF(171)       = 'COSMOm001',   'CAPE_ML',   'miklip_mm',     'cape_ml',
+ADD_REF(172)       = 'COSMOm001',   'CAPE_MU',   'miklip_mm',     'cape_mu',
+ADD_REF(173)       = 'COSMOm001',   'CIN_ML',    'miklip_mm',     'cin_ml',
+ADD_REF(174)       = 'COSMOm001',   'CIN_MU',    'miklip_mm',     'cin_mu',
+ADD_REF(175)       = 'COSMOm001',   'SLI',       'miklip_mm',     'sli',
+ADD_REF(176)       = 'COSMOm001',   'TD_2M',     'miklip_mm',     'td_2m',
+ADD_REF(177)       = 'COSMOm001',   'CLCL',      'miklip_mm',     'cll',
+ADD_REF(178)       = 'COSMOm001',   'CLCM',      'miklip_mm',     'clm',
+ADD_REF(179)       = 'COSMOm001',   'CLCH',      'miklip_mm',     'clh',
+!
+!
+!
+! ---------- DAILY MEAN ----------
+! variables for MODULE-C, adapted from CORDEX-CCLM
+ADD_REF(210)       = 'COSMO_ORI',   'T_2M',      'miklip_dm',     'tas',
+ADD_REF(211)       = 'COSMOm001',   'TOT_PREC',  'miklip_dm',     'pr',
+ADD_REF(212)       = 'COSMOm001',   'PMSL',      'miklip_dm',     'psl',
+ADD_REF(213)       = 'COSMO_ORI',   'QV_2M',     'miklip_dm',     'huss',
+ADD_REF(214)       = 'COSMO',       'wind10',    'miklip_dm',     'sfcwind',
+!ADD_REF(215)       = 'COSMO_ORI',   'VABSMX_10M','miklip_dm',     'sfcwindmax',
+ADD_REF(216)       = 'COSMO_ORI',   'DURSUN',    'miklip_dm',     'sund',
+ADD_REF(217)       = 'COSMO_ORI',   'ALWD_S',    'miklip_dm',     'rlds',
+ADD_REF(218)       = 'COSMO_ORI',   'ALHFL_S',   'miklip_dm',     'hfls',
+ADD_REF(219)       = 'COSMO_ORI',   'ASHFL_S',   'miklip_dm',     'hfss',
+ADD_REF(220)       = 'COSMO_ORI',   'ASWDIFU_S', 'miklip_dm',     'rsus',
+ADD_REF(221)       = 'COSMO_ORI',   'ALWU_S',    'miklip_dm',     'rlus',
+ADD_REF(222)       = 'COSMO_ORI',   'AEVAP_S',   'miklip_dm',     'evspsbl',
+ADD_REF(223)       = 'COSMO_ORI',   'RUNOFF_S',  'miklip_dm',     'mrros',
+ADD_REF(224)       = 'COSMO_ORI',   'ATHB_T',    'miklip_dm',     'rlut',
+ADD_REF(225)       = 'COSMO_ORI',   'ASOD_T',    'miklip_dm',     'rsdt',
+ADD_REF(226)       = 'COSMO_ORI',   'ASOB_T',    'miklip_dm',     '',
+ADD_REF(227)       = 'COSMO_ORI',   'U_10M',     'miklip_dm',     'uas',
+ADD_REF(228)       = 'COSMO_ORI',   'V_10M',     'miklip_dm',     'vas',
+ADD_REF(229)       = 'COSMO_ORI',   'VMAX_10M',  'miklip_dm',     'wsgsmax',
+ADD_REF(230)       = 'COSMOm001',   'HPBL',      'miklip_dm',     'zmla',
+ADD_REF(231)       = 'COSMOm001',   'TQV',       'miklip_dm',     'prw',
+ADD_REF(232)       = 'COSMOm001',   'TQC',       'miklip_dm',     '',
+ADD_REF(233)       = 'COSMOm001',   'TQI',       'miklip_dm',     'clivi',
+ADD_REF(234)       = 'COSMO_ORI',   'SNOW_MELT', 'miklip_dm',     'snm',
+!
+! defined on more than one time level - take from COSMOm001
+ADD_REF(240)       = 'COSMOm001',   'W_SO_ICE',  'miklip_dm',     'mfrso',
+ADD_REF(241)       = 'COSMOm001',   'W_SO',      'miklip_dm',     'mrso',
+ADD_REF(242)       = 'COSMOm001',   'H_SNOW',    'miklip_dm',     'snd',
+ADD_REF(243)       = 'COSMOm001',   'T_S',       'miklip_dm',     'ts',
+ADD_REF(244)       = 'COSMOm001',   'W_SNOW',    'miklip_dm',     'snw',
+!
+! variables, calculated with SCALC
+ADD_REF(250)       = 'scalc',       'clt',       'miklip_dm',     '',
+ADD_REF(251)       = 'scalc',       'rsds',      'miklip_dm',     '',
+ADD_REF(252)       = 'scalc',       'mrro',      'miklip_dm',     '',
+ADD_REF(253)       = 'scalc',       'prc',       'miklip_dm',     '',
+!
+! variables on pressure levels
+ADD_REF(260)       = 'COSMOp001',   'U',         'miklip_dm',     'ua_p',
+ADD_REF(261)       = 'COSMOp001',   'V',         'miklip_dm',     'va_p',
+ADD_REF(262)       = 'COSMOp001',   'T',         'miklip_dm',     'ta_p',
+ADD_REF(263)       = 'COSMOp001',   'QV',        'miklip_dm',     'hus_p',
+ADD_REF(264)       = 'COSMOp001',   'FI',        'miklip_dm',     'z_p',
+!
+! additional varibales (beyond CORDEX list)
+ADD_REF(270)       = 'COSMOm001',   'CAPE_CON',  'miklip_dm',     'cape_con',
+ADD_REF(271)       = 'COSMOm001',   'CAPE_ML',   'miklip_dm',     'cape_ml',
+ADD_REF(272)       = 'COSMOm001',   'CAPE_MU',   'miklip_dm',     'cape_mu',
+ADD_REF(273)       = 'COSMOm001',   'CIN_ML',    'miklip_dm',     'cin_ml',
+ADD_REF(274)       = 'COSMOm001',   'CIN_MU',    'miklip_dm',     'cin_mu',
+ADD_REF(275)       = 'COSMOm001',   'SLI',       'miklip_dm',     'sli',
+ADD_REF(276)       = 'COSMOm001',   'TD_2M',     'miklip_dm',     'td_2m',
+ADD_REF(277)       = 'COSMOm001',   'CLCL',      'miklip_dm',     'cll',
+ADD_REF(278)       = 'COSMOm001',   'CLCM',      'miklip_dm',     'clm',
+ADD_REF(279)       = 'COSMOm001',   'CLCH',      'miklip_dm',     'clh',
+!
+!
+!
+! ---------- DAILY MAX ----------
+! variables for MODULE-C, adapted from CORDEX-CCLM
+ADD_REF(290)       = 'COSMO_ORI',   'T_2M',      'miklip_dmax',   'tasmax',
+ADD_REF(291)       = 'COSMO',       'wind10',    'miklip_dmax',   'sfcwindmax',
+!
+!
+!
+! ---------- DAILY MIN ----------
+! variables for MODULE-C, adapted from CORDEX-CCLM
+ADD_REF(292)       = 'COSMO_ORI',   'T_2M',      'miklip_dmin',   'tasmin',
+!
+!
+!
+! ---------- 6h INST ----------
+! variables for MODULE-C, adapted from CORDEX-CCLM
+!ADD_REF(310)       = 'COSMO_ORI',   'T_2M',      'miklip_6h',     'tas',
+!ADD_REF(311)       = 'COSMOm001',   'TOT_PREC',  'miklip_6h',     'pr',
+!ADD_REF(312)       = 'COSMOm001',   'PMSL',      'miklip_6h',     'psl',
+!ADD_REF(313)       = 'COSMO_ORI',   'QV_2M',     'miklip_6h',     'huss',
+ADD_REF(314)       = 'COSMO',       'wind10',    'miklip_6h',     'sfcwind',
+!ADD_REF(315)       = 'COSMO_ORI',   'VABSMX_10M','miklip_6h',     'sfcwindmax',
+!ADD_REF(316)       = 'COSMO_ORI',   'DURSUN',    'miklip_6h',     'sund',
+!ADD_REF(317)       = 'COSMO_ORI',   'ALWD_S',    'miklip_6h',     'rlds',
+!ADD_REF(318)       = 'COSMO_ORI',   'ALHFL_S',   'miklip_6h',     'hfls',
+!ADD_REF(319)       = 'COSMO_ORI',   'ASHFL_S',   'miklip_6h',     'hfss',
+!ADD_REF(320)       = 'COSMO_ORI',   'ASWDIFU_S', 'miklip_6h',     'rsus',
+!ADD_REF(321)       = 'COSMO_ORI',   'ALWU_S',    'miklip_6h',     'rlus',
+ADD_REF(322)       = 'COSMO_ORI',   'AEVAP_S',   'miklip_6h',     'evspsbl',
+!ADD_REF(323)       = 'COSMO_ORI',   'RUNOFF_S',  'miklip_6h',     'mrros',
+ADD_REF(324)       = 'COSMO_ORI',   'ATHB_T',    'miklip_6h',     'rlut',
+ADD_REF(325)       = 'COSMO_ORI',   'ASOD_T',    'miklip_6h',     'rsdt',
+ADD_REF(326)       = 'COSMO_ORI',   'ASOB_T',    'miklip_6h',     '',
+ADD_REF(327)       = 'COSMO_ORI',   'U_10M',     'miklip_6h',     'uas',
+ADD_REF(328)       = 'COSMO_ORI',   'V_10M',     'miklip_6h',     'vas',
+!ADD_REF(329)       = 'COSMO_ORI',   'VMAX_10M',  'miklip_6h',     'wsgsmax',
+!ADD_REF(330)       = 'COSMOm001',   'HPBL',      'miklip_6h',     'zmla',
+ADD_REF(331)       = 'COSMOm001',   'TQV',       'miklip_6h',     'prw',
+ADD_REF(332)       = 'COSMOm001',   'TQC',       'miklip_6h',     '',
+ADD_REF(333)       = 'COSMOm001',   'TQI',       'miklip_6h',     'clivi',
+!ADD_REF(334)       = 'COSMO_ORI',   'SNOW_MELT', 'miklip_6h',     'snm',
+!
+! defined on more than one time level - take from COSMOm001
+!ADD_REF(340)       = 'COSMOm001',   'W_SO_ICE',  'miklip_6h',     'mfrso',
+!ADD_REF(341)       = 'COSMOm001',   'W_SO',      'miklip_6h',     'mrso',
+!ADD_REF(342)       = 'COSMOm001',   'H_SNOW',    'miklip_6h',     'snd',
+ADD_REF(343)       = 'COSMOm001',   'T_S',       'miklip_6h',     'ts',
+!ADD_REF(344)       = 'COSMOm001',   'W_SNOW',    'miklip_6h',     'snw',
+!
+! variables, calculated with SCALC
+ADD_REF(350)       = 'scalc',       'clt',       'miklip_6h',     '',
+!ADD_REF(351)       = 'scalc',       'rsds',      'miklip_6h',     '',
+!ADD_REF(352)       = 'scalc',       'mrro',      'miklip_6h',     '',
+ADD_REF(353)       = 'scalc',       'prc',       'miklip_6h',     '',
+!
+! variables on pressure levels
+ADD_REF(360)       = 'COSMOp001',   'U',         'miklip_6h',     'ua_p',
+ADD_REF(361)       = 'COSMOp001',   'V',         'miklip_6h',     'va_p',
+ADD_REF(362)       = 'COSMOp001',   'T',         'miklip_6h',     'ta_p',
+ADD_REF(363)       = 'COSMOp001',   'QV',        'miklip_6h',     'hus_p',
+ADD_REF(364)       = 'COSMOp001',   'FI',        'miklip_6h',     'z_p',
+!
+! additional varibales (beyond CORDEX list)
+ADD_REF(370)       = 'COSMOm001',   'CAPE_CON',  'miklip_6h',     'cape_con',
+ADD_REF(371)       = 'COSMOm001',   'CAPE_ML',   'miklip_6h',     'cape_ml',
+ADD_REF(372)       = 'COSMOm001',   'CAPE_MU',   'miklip_6h',     'cape_mu',
+ADD_REF(373)       = 'COSMOm001',   'CIN_ML',    'miklip_6h',     'cin_ml',
+ADD_REF(374)       = 'COSMOm001',   'CIN_MU',    'miklip_6h',     'cin_mu',
+ADD_REF(375)       = 'COSMOm001',   'SLI',       'miklip_6h',     'sli',
+ADD_REF(376)       = 'COSMOm001',   'TD_2M',     'miklip_6h',     'td_2m',
+ADD_REF(377)       = 'COSMOm001',   'CLCL',      'miklip_6h',     'cll',
+ADD_REF(378)       = 'COSMOm001',   'CLCM',      'miklip_6h',     'clm',
+ADD_REF(379)       = 'COSMOm001',   'CLCH',      'miklip_6h',     'clh',
+!
+!
+!
+! ---------- 3h INST ----------
+! variables for MODULE-C, adapted from CORDEX-CCLM
+ADD_REF(410)       = 'COSMO_ORI',   'T_2M',      'miklip_3h',     'tas',
+ADD_REF(411)       = 'COSMOm001',   'TOT_PREC',  'miklip_3h',     'pr',
+ADD_REF(412)       = 'COSMOm001',   'PMSL',      'miklip_3h',     'psl',
+ADD_REF(413)       = 'COSMO_ORI',   'QV_2M',     'miklip_3h',     'huss',
+!ADD_REF(414)       = 'COSMO',       'wind10',    'miklip_3h',     'sfcwind',
+!ADD_REF(415)       = 'COSMO_ORI',   'VABSMX_10M','miklip_3h',     'sfcwindmax',
+!ADD_REF(416)       = 'COSMO_ORI',   'DURSUN',    'miklip_3h',     'sund',
+ADD_REF(417)       = 'COSMO_ORI',   'ALWD_S',    'miklip_3h',     'rlds',
+ADD_REF(418)       = 'COSMO_ORI',   'ALHFL_S',   'miklip_3h',     'hfls',
+ADD_REF(419)       = 'COSMO_ORI',   'ASHFL_S',   'miklip_3h',     'hfss',
+ADD_REF(420)       = 'COSMO_ORI',   'ASWDIFU_S', 'miklip_3h',     'rsus',
+ADD_REF(421)       = 'COSMO_ORI',   'ALWU_S',    'miklip_3h',     'rlus',
+!ADD_REF(422)       = 'COSMO_ORI',   'AEVAP_S',   'miklip_3h',     'evspsbl',
+!ADD_REF(423)       = 'COSMO_ORI',   'RUNOFF_S',  'miklip_3h',     'mrros',
+!ADD_REF(424)       = 'COSMO_ORI',   'ATHB_T',    'miklip_3h',     'rlut',
+!ADD_REF(425)       = 'COSMO_ORI',   'ASOD_T',    'miklip_3h',     'rsdt',
+!ADD_REF(426)       = 'COSMO_ORI',   'ASOB_T',    'miklip_3h',     '',
+!ADD_REF(427)       = 'COSMO_ORI',   'U_10M',     'miklip_3h',     'uas',
+!ADD_REF(428)       = 'COSMO_ORI',   'V_10M',     'miklip_3h',     'vas',
+!ADD_REF(429)       = 'COSMO_ORI',   'VMAX_10M',  'miklip_3h',     'wsgsmax',
+ADD_REF(430)       = 'COSMOm001',   'HPBL',      'miklip_3h',     'zmla',
+!ADD_REF(431)       = 'COSMOm001',   'TQV',       'miklip_3h',     'prw',
+!ADD_REF(432)       = 'COSMOm001',   'TQC',       'miklip_3h',     '',
+!ADD_REF(433)       = 'COSMOm001',   'TQI',       'miklip_3h',     'clivi',
+!ADD_REF(434)       = 'COSMO_ORI',   'SNOW_MELT', 'miklip_3h',     'snm',
+!
+! defined on more than one time level - take from COSMOm001
+!ADD_REF(440)       = 'COSMOm001',   'W_SO_ICE',  'miklip_3h',     'mfrso',
+!ADD_REF(441)       = 'COSMOm001',   'W_SO',      'miklip_3h',     'mrso',
+!ADD_REF(442)       = 'COSMOm001',   'H_SNOW',    'miklip_3h',     'snd',
+!ADD_REF(443)       = 'COSMOm001',   'T_S',       'miklip_3h',     'ts',
+!ADD_REF(444)       = 'COSMOm001',   'W_SNOW',    'miklip_3h',     'snw',
+!
+! variables, calculated with SCALC
+!ADD_REF(450)       = 'scalc',       'clt',       'miklip_3h',     '',
+ADD_REF(451)       = 'scalc',       'rsds',      'miklip_3h',     '',
+!ADD_REF(452)       = 'scalc',       'mrro',      'miklip_3h',     '',
+!ADD_REF(453)       = 'scalc',       'prc',       'miklip_3h',     '',
+!
+! variables on pressure levels
+!ADD_REF(460)       = 'COSMOp001',   'U',         'miklip_3h',     'ua_p',
+!ADD_REF(461)       = 'COSMOp001',   'V',         'miklip_3h',     'va_p',
+!ADD_REF(462)       = 'COSMOp001',   'T',         'miklip_3h',     'ta_p',
+!ADD_REF(463)       = 'COSMOp001',   'QV',        'miklip_3h',     'hus_p',
+!ADD_REF(464)       = 'COSMOp001',   'FI',        'miklip_3h',     'z_p',
+!
+! additional varibales (beyond CORDEX list)
+!ADD_REF(470)       = 'COSMOm001',   'CAPE_CON',  'miklip_3h',     'cape_con',
+!ADD_REF(471)       = 'COSMOm001',   'CAPE_ML',   'miklip_3h',     'cape_ml',
+!ADD_REF(472)       = 'COSMOm001',   'CAPE_MU',   'miklip_3h',     'cape_mu',
+!ADD_REF(473)       = 'COSMOm001',   'CIN_ML',    'miklip_3h',     'cin_ml',
+!ADD_REF(474)       = 'COSMOm001',   'CIN_MU',    'miklip_3h',     'cin_mu',
+!ADD_REF(475)       = 'COSMOm001',   'SLI',       'miklip_3h',     'sli',
+!ADD_REF(476)       = 'COSMOm001',   'TD_2M',     'miklip_3h',     'td_2m',
+!ADD_REF(477)       = 'COSMOm001',   'CLCL',      'miklip_3h',     'cll',
+!ADD_REF(478)       = 'COSMOm001',   'CLCM',      'miklip_3h',     'clm',
+!ADD_REF(479)       = 'COSMOm001',   'CLCH',      'miklip_3h',     'clh',
+!
+!
+!
+! ---------- 1h MEAN ----------
+! variables for MODULE-C, adapted from CORDEX-CCLM
+ADD_REF(490)       = 'COSMOm001',   'TOT_PREC',  'miklip_1hm',    'pr',
+!
+!
+!
+!
+!
+! ---------------------------------------------------------------------
+! # SET DEFAULT OUTPUT AND RESTART HANDLING
+!      - ''
+!      - OUTPUT-FILETYPE, RERUN-FILETYPE, NO. OF STEPS PER OUTPUT-FILE,
+!      - RERUN, IGNORE, INST, AVE, STD, MIN, MAX, CNT, CAV, RANGE(2)
+! # NOTES:
+! #    IGNORE = T  FORCES THE MODEL TO IGNORE POTENTIAL lrestreq FLAGS
+! #                FOR PSEUDO-INITIAL RUNS FROM RESTART FILES
+! ---------------------------------------------------------------------
+OUT_DEFAULT     = '', 2, 2, 10, F,F, F,F,F,F,F, F,F, , ,
+! ---------------------------------------------------------------------
+! # OUTPUT PRECISION (ASCII, (P)NETCDF, (P)NETCDF, GRIB, HDF4, HDF5)
+! # NOTES: - ONLY (P)NETCDF CURRENTLY IMPLEMENTED;
+! #        - (P)NETCDF: 1=NF(90)_FLOAT; 2=NF(90)_DOUBLE
+OUT_PREC = 2, 2, 2, 2, 2, 2
+! ---------------------------------------------------------------------
+! # SET CHANNEL SPECIFIC DEFAULT OUTPUT AND RESTART HANDLING (MAX. 500)
+!      - channel-name
+!      - OUTPUT-FILETYPE, RERUN-FILETYPE, NO. OF STEPS PER OUTPUT-FILE,
+!      - RERUN, IGNORE, INST, AVE, STD, MIN, MAX, CNT, CAV, RANGE(2)
+! # NOTE: IF NO. OF STEPS PER OUTPUT-FILE <= 0, THE EVENT TRIGGER
+!         (CPL-NAMELIST, TIMER_TNF BELOW) CONTROLS THE FILE CONTENT
+! ---------------------------------------------------------------------
+OUT_CHANNEL(  1) = 'miklip_am',   $OFT, $OFT,   -1,     F,F, F,T,F,F,F, F,F, , ,
+OUT_CHANNEL(  2) = 'miklip_mm',   $OFT, $OFT,   -1,     F,F, F,T,F,F,F, F,F, , ,
+OUT_CHANNEL(  3) = 'miklip_dm',   $OFT, $OFT,   -1,     F,F, F,T,F,F,F, F,F, , ,
+OUT_CHANNEL(  4) = 'miklip_dmax', $OFT, $OFT,   -1,     F,F, F,F,F,F,T, F,F, , ,
+OUT_CHANNEL(  5) = 'miklip_dmin', $OFT, $OFT,   -1,     F,F, F,F,F,T,F, F,F, , ,
+OUT_CHANNEL(  6) = 'miklip_6h',   $OFT, $OFT,   10,     F,F, T,F,F,F,F, F,F, , ,
+OUT_CHANNEL(  7) = 'miklip_3h',   $OFT, $OFT,   10,     F,F, T,F,F,F,F, F,F, , ,
+OUT_CHANNEL(  8) = 'miklip_1h',   $OFT, $OFT,   10,     F,F, T,F,F,F,F, F,F, , ,
+OUT_CHANNEL(  9) = 'miklip_1hm',  $OFT, $OFT,   -1,     F,F, F,T,F,F,F, F,F, , ,
+OUT_CHANNEL( 20) = 'qtimer',      $OFT, $OFT,   -1,     F,F, T,F,F,F,F, F,F, , ,
+OUT_CHANNEL( 21) = 'mmdclnt',     $OFT, $OFT,  100,     F,F, T,F,F,F,F, F,F, , ,
+OUT_CHANNEL( 22) = 'mmdserv',     $OFT, $OFT,  100,     F,F, T,F,F,F,F, F,F, , ,
+!OUT_CHANNEL( 40) = 'COSMO_ORI',   $OFT, $OFT,   10,     F,F, F,F,F,F,F, F,F, , ,
+!OUT_CHANNEL( 50) = 'scalc',       $OFT, $OFT,   10,     F,F, T,F,F,F,F, F,F, , ,
+!OUT_CHANNEL( 41)     = 'COSMO',         2, 2,  10, F,F, T,F,F,F,F, F,F, , ,
+!OUT_CHANNEL( 42)     = 'COSMOm*',       2, 2,  10, F,F, T,F,F,F,F, F,F, , ,
+!OUT_CHANNEL( 43)     = 'COSMOc*',       2, 2,  10, F,F, T,F,F,F,F, F,F, , ,
+!OUT_CHANNEL( 44)     = 'COSMOp*',       2, 2,  10, F,F, T,F,F,F,F, F,F, , ,
+!OUT_CHANNEL( 45)     = 'COSMOz*',       2, 2,  10, F,F, T,F,F,F,F, F,F, , ,
+!OUT_CHANNEL( 46)     = 'COSMOs*',       2, 2,  10, F,F, T,F,F,F,F, F,F, , ,
+!OUT_CHANNEL( 47)     = 'MMDC4',         2, 2,   1, F,F, T,F,F,F,F, F,F, , ,
+!OUT_CHANNEL( 48)     = 'MMDC4_IN',      2, 2,  10, F,F, F,F,F,F,F, F,F, , ,
+!OUT_CHANNEL(150)     = 'import*',       2, 2,  10, F,F, F,F,F,F,F, F,F, , ,
+!!$OUT_CHANNEL(150)     = 'COSMO',       2, 2,  10, F,F, T,F,F,F,F, F,F, , ,
+!!$!
+!!$! ---------------------------------------------------------------------
+!!$! # SET CHANNEL OBJECT SPECIFIC OUTPUT AND RESTART HANDLING (MAX. 1000)
+!!$!      - channel-name
+!!$!      - object-name
+!!$!      - RERUN, IGNORE, INST, AVE, STD, MIN, MAX, CNT, CAV, RANGE(2)
+!!$! ---------------------------------------------------------------------
+!
+!
+!OUT_OBJECT(700) = 'COSMO_ORI',  'U',     F,F, F,T,F,F,F, F,F, , ,
+!OUT_OBJECT(701) = 'COSMO_ORI',  'V',     F,F, F,T,F,F,F, F,F, , ,
+!OUT_OBJECT(702) = 'COSMO_ORI',  'TQV',   F,F, F,T,F,F,F, F,F, , ,
+!OUT_OBJECT(703) = 'COSMO_ORI',  'TQC',   F,F, F,T,F,F,F, F,F, , ,
+!OUT_OBJECT(704) = 'COSMO_ORI',  'TQI',   F,F, F,T,F,F,F, F,F, , ,
+!
+!
+/
+! #########################################################################
+&CPL
+! --------------------------------------------- 
+! ENABLE ADDITIONAL BASEMODEL OUTPUT ?
+! -> OUTPUT TIME INTERVAL => PUTDATA in ECHAM5.nml for ECHAM5
+!                         => ncomb/hcomb etc in GRIBOUT in INPUT_IO for COSMO 
+L_BM_ORIG_OUTPUT = T,
+! --------------------------------------------- 
+! TO CALCULATE COSMO OUTPUT VARIABLES ONLY WHEN OUTPUT IS WRITTEN,
+! SET THIS SWITCH FALSE.
+! DEFAULT IS TRUE -> CALCULATE THE OUTPUT VARIABLES IN EACH TIME STEP.
+!L_CALCOUT_EACH_STEP = F
+! --------------------------------------------- 
+! --------------------------------------------- 
+! SET OUTPUT INTERVALS FOR ALL CHANNELS (DEFAULT + INDIVIDUAL)
+! NOTE: CHANNEL OUTPUT OF tdiag, tdiag_gp, nudg, nudg_gp
+!       WILL BE SYNCHRONIZED TO THE SHORTEST OUTPUT INTERVAL (IF PRESENT !)
+! NOTE: First match (wildcard) counts 
+! --------------------------------------------- 
+!TIMER_DEFAULT    = '',     1, 'months', 'last', 0, 
+!TIMER_DEFAULT    = '',     1, 'hours',  'first', 0,
+!TIMER_DEFAULT    = '',     2, 'minutes',  'first', 0,
+TIMER_DEFAULT    = '',      1, 'steps',  'first', 0,
+!TIMER_DEFAULT    = '',      6, 'hours',  'first', 0,
+!TIMER_DEFAULT    = '',     1, 'days',  'first', 0,
+! --------------------------------------------- 
+!TIMER_CHANNEL( 1) = 'COSMO', 13, 'steps',   'first', 0,  
+!TIMER_CHANNEL( 2) = 'COSMOc*', 7, 'steps',   'first', 0, 
+!TIMER_CHANNEL( 3) = 'COSMOm*', 3 'steps',   'first', 0, 
+!TIMER_CHANNEL( 4) = 'COSMO*', 12, 'minutes',   'first', 0,  ! qqq
+!TIMER_CHANNEL( 5) = 'COSMOz*', 1, 'months',   'first', 0,  ! qqq
+!TIMER_CHANNEL( 6) = 'COSMOs*', 11, 'steps',   'first', 0,  ! qqq
+!TIMER_CHANNEL( 7) = 'COSMO_ORI', 10, 'steps',   'first', 0,  ! qqq
+!TIMER_CHANNEL( 1) = 'MMDC4', 1, 'steps',   'first', 0,  ! qqq
+!
+TIMER_CHANNEL(  1) = 'miklip_am',    1, 'years',  'first', 0,
+TIMER_CHANNEL(  2) = 'miklip_mm',    1, 'months', 'first', 0,
+TIMER_CHANNEL(  3) = 'miklip_dm',    1, 'days',   'first', 0,
+TIMER_CHANNEL(  4) = 'miklip_dmax',  1, 'days',   'first', 0,
+TIMER_CHANNEL(  5) = 'miklip_dmin',  1, 'days',   'first', 0,
+TIMER_CHANNEL(  6) = 'miklip_6h',    6, 'hours',  'first', 0,
+TIMER_CHANNEL(  7) = 'miklip_3h',    3, 'hours',  'first', 0,
+TIMER_CHANNEL(  8) = 'miklip_1h',    1, 'hours',  'first', 0,
+TIMER_CHANNEL(  9) = 'miklip_1hm',   1, 'hours',  'first', 0,
+TIMER_CHANNEL( 21) = 'mmdclnt', 12, 'minutes',   'first', 0,  ! qqq
+TIMER_CHANNEL( 22) = 'mmdserv', 12, 'minutes',   'first', 0,  ! qqq
+!
+!
+!
+!
+!
+!
+!
+!
+TIMER_TNF_DEFAULT         = '',              1, 'days',   'first', 0,
+TIMER_TNF_CHANNEL( 1)     = 'miklip_am',    10, 'years',  'first', 0
+TIMER_TNF_CHANNEL( 2)     = 'miklip_mm',     1, 'years',  'first', 0
+TIMER_TNF_CHANNEL( 3)     = 'miklip_dm',     1, 'months', 'first', 0
+TIMER_TNF_CHANNEL( 4)     = 'miklip_dmax',   1, 'months', 'first', 0
+TIMER_TNF_CHANNEL( 5)     = 'miklip_dmin',   1, 'months', 'first', 0
+!TIMER_TNF_CHANNEL( 6)     = 'miklip_6h',     1, 'months', 'first', 0
+!TIMER_TNF_CHANNEL( 7)     = 'miklip_3h',     1, 'months', 'first', 0
+!TIMER_TNF_CHANNEL( 8)     = 'miklip_1h',     1, 'months', 'first', 0
+TIMER_TNF_CHANNEL( 9)     = 'miklip_1hm',    1, 'days',   'first', 0
+/
+&CTRL_PNETCDF
+!---------------------------------------------------------------------------
+!MPI_IO_HINT(1) = 'IBM_largeblock_io','true',
+!MPI_IO_HINT(2) = 'IBM_io_buffer_size','2949120',
+!MPI_IO_HINT(3) = 'IBM_sparse_access','true',
+!---------------------------------------------------------------------------
+/

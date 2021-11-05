@@ -1,0 +1,35 @@
+# ----------------------------------------------
+export
+SHELL     = sh
+
+F90       = mpxlf95_r
+F90FLAGS  = -q64 -qsuppress=1518-061:1518-128 -qsuppress=1500-036 -O3 -qstrict -qMAXMEM=-1 -qsuffix=cpp=f90 -qzerosize -WF,-D__ibm__ -d -WF,-qlanglvl=classic -qlanglvl=95pure -qfree=f90 -qspillsize=32648 -qarch=pwr4 -qtune=pwr4 -Q -qhot
+LIBS      = -L/pf/b/b302019/soft/netcdf/v3.6.3/lib -lnetcdf
+INCLUDES  = -I/pf/b/b302019/soft/netcdf/v3.6.3/include
+
+# ----------------------------------------------
+
+srcdir     = ./src
+bindir     = ./bin
+includedir = ./include
+PROG       = import_grid.exe
+
+# ----------------------------------------------
+
+all:
+	cd $(srcdir) ; \
+	$(MAKE)
+
+install: all
+	if test ! -d $(bindir) ; then mkdir $(bindir) ; fi
+	cp -f $(srcdir)/$(PROG) $(bindir)/.
+	if test ! -d $(includedir) ; then mkdir $(includedir) ; fi
+	cp -f $(srcdir)/*.mod $(includedir)/.
+
+clean:
+	rm -f $(srcdir)/*.o $(srcdir)/*~ $(srcdir)/*.mod $(srcdir)/$(PROG)
+
+distclean: clean
+	rm -fr $(bindir) $(includedir) ./config.log ./config.status ./Makefile
+
+# ----------------------------------------------

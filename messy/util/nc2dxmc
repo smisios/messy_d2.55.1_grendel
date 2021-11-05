@@ -1,0 +1,195 @@
+#! /bin/tcsh -f
+
+### nc2dxmc
+### =======
+### Creates from a set of netCDF files
+### (containing a split time-series)
+### a multi-netCDF metafile for openDX (MACRO mc4dx).
+###
+### Author: Patrick Joeckel, MPI for Chemistry, Mainz, July 2004
+###
+### VERSION 1.3b
+
+### FOR DEBUGGING
+#set echo verbose
+
+#alias awk gawk
+
+set script=`basename $0`
+
+### INIT ###################################################################
+set namefrag = ''
+set out = 'all.dxmc'
+set exclfrag = ''
+set directory = '.'
+
+while ($# > 0)
+#while ($1 != '')
+    switch ($1)
+      case '-h':
+        echo "Usage: $script [-h] [-n <namefrag>] [-x <exclude>] [-p]"
+        echo "               [-dir <directory>]"
+	echo " "
+        echo "  -h  : show this help and exit"
+	echo "  -n  : use netCDF files with <namefrag> in name"
+        echo '        Note: netCDF files must have the suffix ".nc"'
+	echo '  -x  : exclude netCDF files with <exclude> in name'
+        echo '  -p  : prepend path to netCDF-filename(s)'
+        echo '  -dir: look in <directory> for netCDF-files'
+	echo '        Note: implies -p'
+	echo " "
+	echo "Notes:"
+	echo "   + The resulting descriptor file is named"
+        echo "     <namefrag>.dxmc, if -n is specified, or "
+        echo "     all.dxmc, if -n is not specified."
+	echo " "
+        echo "Author: Patrick Joeckel, MPICH, Mainz, July 2004"
+        echo "        (http://www.mpch-mainz.mpg.de/~joeckel/nc2dxmc)"
+	echo " "
+	exit 1
+        breaksw
+      case '-n':
+	shift 
+#      if (($# == 0) || (`echo $1 | awk '{print substr($1,1,1)}'` == "-")) then
+        if (("$1" == "") || \
+            (`echo $1 | awk '{print substr($1,1,1)}'` == "-")) then
+            echo 'Error: Argument <namefrag> missing\!'
+	    echo "Use $script -h for more information\!"
+	    exit 1
+	else
+	    set namefrag = $1
+            set out = $1.dxmc
+	    shift
+	endif
+        breaksw
+      case '-x':
+	shift 
+        if (("$1" == "") || \
+            (`echo $1 | awk '{print substr($1,1,1)}'` == "-")) then
+            echo 'Error: Argument <exclude> missing\!'
+	    echo "Use $script -h for more information\!"
+	    exit 1
+	else
+	    set exclfrag = $1
+	    shift
+	endif
+        breaksw
+      case '-p'
+        set wp = 1
+        shift
+        breaksw
+      case '-dir':
+	shift
+        if (("$1" == "") || \
+            (`echo $1 | awk '{print substr($1,1,1)}'` == "-")) then
+            echo 'Error: Argument <directory> missing\!'
+	    echo "Use $script -h for more information\!"
+	    exit 1
+	else
+	    set directory = $1
+	    shift
+	    set wp = 1
+	endif
+        breaksw
+      default:
+        echo "Unknown option: $1"
+	echo "Use $script -h for more information\!"
+	exit 1
+        breaksw
+    endsw
+end
+
+### SET DIRECTORIES ########################################################
+set workdir = `pwd`
+set out     = $workdir/$out
+cd $directory
+############################################################################
+
+### CHECK ncdump ###########################################################
+set ncdump = `which ncdump`
+if (( "$ncdump" == "" ) || (`basename "$ncdump"` != 'ncdump') ) then
+   echo 'Error: "ncdump" is not available\!'
+   exit 1
+endif 
+############################################################################
+
+### CHECK EXISTENCE OF FILES ###############################################
+set nonomatch
+set list0 = `echo *$namefrag*.nc`
+set empty = "*$namefrag*.nc"
+unset nonomatch
+
+if ( "$list0[1]" == "$empty[1]" ) then
+    echo 'No *'$namefrag'*.nc files in '`pwd`' \!'
+    exit 1
+endif
+
+### TAKE ONLY FILENAMES
+if ( $exclfrag != '') then
+   set list = ()
+   @ count = 1
+   while ($count <= ${#list0})
+   if ( $list0[$count] !~ *$exclfrag* ) then
+       set list = ($list $list0[$count])
+   endif
+   @ count++
+   end
+else
+set list = ( $list0 )
+endif
+
+if ( ${#list} < 1 ) then 
+   echo 'Empty netCDF filelist\!'
+   exit 1
+endif
+############################################################################
+
+rm -f $out
+echo 'Output to '$out' ...'
+
+### INITIALIZE TIME INFORMATION ############################################
+@ tstart = 1 
+@ tlength = 0
+@ tstop = 0
+############################################################################
+
+### LOOP OVER FILES ########################################################
+@ count = 0
+foreach fname ($list)
+@ count ++
+
+### GET LENGTH OF UNLIMITED DIM/VAR FROM FILE IN LIST ######################
+set ulim = `$ncdump -h $fname | grep UNLIMITED`
+if ( ${#ulim} >= 1 ) then 
+   set tlength = `echo $ulim[6] | sed 's|(||g'`
+else
+   echo 'ERROR: UNLIMITED DIMENSION CANNOT BE FOUND\!'
+   exit 2
+endif
+############################################################################
+
+@ tstart = $tstop + 1
+@ tstop  = $tstop + $tlength
+
+if ( ${?wp} ) then
+   echo `pwd`/$fname $tlength $tstart $tstop >> $out
+else
+   echo $fname $tlength $tstart $tstop >> $out
+endif
+
+### END LOOP OVER FILES AND PRODUCE STEPFILE_RECORD ########################
+end
+############################################################################
+
+echo 'multi-netCDF descriptor file for OpenDX (macro mc4dx): '$out
+
+############################################################################
+unset tstart
+unset tstop
+unset tlength
+unset out
+############################################################################
+cd -
+############################################################################
+
+exit 0

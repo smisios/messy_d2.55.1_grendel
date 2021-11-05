@@ -1,0 +1,31 @@
+#!/bin/sh
+#hh 09.08.05 setup of grid description file arcgri
+#program should be run at double precission
+set -e
+. "@abs_builddir@/../setup-common.inc"
+
+if [ x${DEBUG+set} = xset ]; then
+  verbose=1
+else
+  verbose=0
+fi
+
+# assert that GRID DEST ie je are set
+assert_vars_are_set DEST GRID ie je
+
+@MKDIR_P@ mk_arcgri
+cd mk_arcgri
+@LN_S@ "${DEST}/${GRID}_anta" anta
+
+$CMD_PREFIX "@abs_builddir@/mkarcgri" <<EOF
+&gridparams
+ie=${ie}
+je=${je}
+${verbose+verbose=${verbose}} /
+EOF
+
+mv arcgri "${DEST}/${GRID}_arcgri"
+
+cd ..
+rm mk_arcgri/anta
+rmdir mk_arcgri

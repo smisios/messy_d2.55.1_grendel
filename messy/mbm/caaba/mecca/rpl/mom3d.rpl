@@ -1,0 +1,111 @@
+// -*- kpp -*- kpp mode for emacs
+// see example.rpl for details about replacement files
+
+// Author: Andrea Pozzer   : Based on CCMI-base-01 changes adapted to MOM
+//         Patrick Joeckel : CCMI-base-01
+//         Holger Tost     : OCS chemistry added
+//         Christoph Bruehl: modified, see below
+//         Patrick Joeckel : additional diagnostic tracers
+
+// exclude H2OH2O reactions
+#REPLACE <G2117>
+#ENDREPLACE
+
+#REPLACE <G2118>
+#ENDREPLACE
+
+// O3s diagnostic:
+#REPLACE <>
+<G01Diag> O3s            = LO3s        : {%StTrG} k_O3s; {&1714}
+#ENDREPLACE
+
+
+// Hg chemistry aleady removed in mechanism selection
+
+//
+// MODIFIED SULFUR CHEMISTRY FOR USAGE WITH INTERACTIVE AEROSOL
+//
+// this has been suggested by Ch. Bruehl, maybe with an original rate coefficient prior to JPL-2011
+// #REPLACE <G9200>
+// <a>  SO2    + OH    = SO3 + HO2 : {%TrStGS}   k_3rd(temp,cair,3.E-31,3.3,1.5E-12,0.,0.6); {&1555}
+// #ENDREPLACE
+//
+// this is the original reaction in gas_mim1.eqn (JPL-2011):
+// <G9200>  SO2 + OH {+O2+H2O} = H2SO4 + HO2  : {%StTrGS}   k_3rd(temp,cair,3.3E-31,4.3,1.6E-12,0.,0.6){§1.1}; {&2626}
+// keeping the same reaction rate coefficient splitting the reaction yields:
+#REPLACE <G9200>
+<a>  SO2    + OH    = SO3 + HO2 : {%StTrG}   k_3rd(temp,cair,3.3E-31,4.3,1.6E-12,0.,0.6){§1.1}; {&2626}
+#ENDREPLACE
+
+//
+// - G9202, J9002 and J9003 are new
+// - <J9001>  SO2 + hv  = SO  + O3P   : {%TrStGSJ} JX(ip_SO2); {&SGN}
+//   not used, because J_SO2 not correct, apply scaled J_OCS instead
+//
+#REPLACE <>
+<G9100>  SO + O2   = SO2 + O3P   : {%TrStG} 1.25e-13*exp(-2190/temp); {&2626}
+<G9101>  SO + O3   = SO2 + O2    : {%TrStG} 3.4e-12*exp(-1100/temp); {&2626}
+<G9102>  S  + O2   = SO  + O3P   : {%TrStG} 2.3e-12; {&2626}
+<G9201>  SH + O2   = OH  + SO    : {%TrStG} 4.e-19; {&2626}
+<G9202>  SO3 + H2O = H2SO4       : {%TrStG} 8.5e-41*exp(6540./temp)*C(ind_H2O); {&1555}
+<G9406>  OCS + OH  = SH  + CO2   : {%TrStG} 1.1e-13*exp(-1200./temp); {&2626}
+<G9407>  OCS + O3P = CO  + SO    : {%TrStG} 2.1e-11*exp(-2200./temp); {&2626}
+<J9000>  OCS + hv  = CO  + S     : {%TrStGJ} JX(ip_OCS); {&}
+//original
+<J9001>  SO2 + hv  = SO  + O3P   : {%TrStGJ} 60.*JX(ip_OCS); {&}
+// Christof Brhuel suggestions: 
+//<J9001>  SO2 + hv  = SO  + O3P   : {%TrStGJ} JX(ip_SO2); {&}
+<J9002>  SO3 + hv   = SO2 + O3P  : {%TrStGJ} JX(ip_SO3); {&}
+<J9003>  H2SO4 + hv = SO3 + H2O  : {%TrStGJ} JX(ip_H2SO4); {&}
+#ENDREPLACE
+
+// ORACLE for SOG
+#REPLACE <>
+//G49fPOG2>    LfPOG01         =        LfPOG01    : {%TrG} 2.00E-11; {&SGN}
+<G49fPOG2>    LfPOG02  + OH   = 1.15   LfSOGsv01  : {%TrG} 2.00E-11; {&SGN}
+<G49fPOG3>    LfPOG03  + OH   = 1.15   LfSOGsv02  : {%TrG} 2.00E-11; {&SGN}
+<G49fPOG4>    LfPOG04  + OH   = 1.15   LfSOGiv03  : {%TrG} 2.00E-11; {&SGN}
+<G49fPOG5>    LfPOG05  + OH   = 1.15   LfSOGiv04  : {%TrG} 2.00E-11; {&SGN}
+<G49bbPOG2>   LbbPOG02  + OH  = 1.15   LbbSOGsv01 : {%TrG} 2.00E-11; {&SGN}
+<G49bbPOG3>   LbbPOG03  + OH  = 1.15   LbbSOGsv02 : {%TrG} 2.00E-11; {&SGN}
+<G49bbPOG4>   LbbPOG04  + OH  = 1.15   LbbSOGiv03 : {%TrG} 2.00E-11; {&SGN}
+<G49fSOGsv2>  LfSOGsv02 + OH  = 1.15   LfSOGsv01  : {%TrG} 2.00E-11; {&SGN}
+<G49fSOGiv2>  LfSOGiv02 + OH  = 1.15   LfSOGiv01  : {%TrG} 2.00E-11; {&SGN}
+<G49fSOGiv3>  LfSOGiv03 + OH  = 1.15   LfSOGiv02  : {%TrG} 2.00E-11; {&SGN}
+<G49fSOGiv4>  LfSOGiv04 + OH  = 1.15   LfSOGiv03  : {%TrG} 2.00E-11; {&SGN}
+// <G49fPOG2>    LbbPOG01        =        LbbPOG01   : {%TrG} 2.00E-11; {&SGN}
+<G49bbSOGsv2> LbbSOGsv02 + OH = 1.15   LbbSOGsv01 : {%TrG} 2.00E-11; {&SGN}
+<G49bbSOGiv2> LbbSOGiv02 + OH = 1.15   LbbSOGiv01 : {%TrG} 2.00E-11; {&SGN}
+<G49bbSOGiv3> LbbSOGiv03 + OH = 1.15   LbbSOGiv02 : {%TrG} 2.00E-11; {&SGN}
+
+
+// VOLATILE COMPONENTS, ONLY THE ONE MISSING FROM MOM ARE ADDED!
+<G49TERP1>    LTERP    + OH   = 0.0812 LbSOGv01 + 0.0695 LbSOGv02 + 0.2714 LbSOGv03 + 0.4598 LbSOGv04 : {%TrG} 1.8308E-11*EXP(449.38/temp); {&SGN}
+<G49TERP2>    LTERP    + O3   = 0.0812 LbSOGv01 + 0.0695 LbSOGv02 + 0.2714 LbSOGv03 + 0.4598 LbSOGv04 : {%TrG} 1.0805E-15*EXP(-821.26/temp); {&SGN}
+<G49TERP1>    LTERP    + NO3  = 0.0812 LbSOGv01 + 0.0695 LbSOGv02 + 0.2714 LbSOGv03 + 0.4598 LbSOGv04 : {%TrG} 3.6616E-12*EXP(174.62/temp); {&SGN}
+<G49TERP1>    LTERP    + O1D  = 0.0812 LbSOGv01 + 0.0695 LbSOGv02 + 0.2714 LbSOGv03 + 0.4598 LbSOGv04 : {%TrG} 3.2714E-11; {&SGN}
+<G49ARO1>     LALK4    + OH   = 0.0000 LaSOGv01 + 0.0183 LaSOGv02 + 0.0000 LaSOGv03 + 0.0000 LaSOGv04 : {%TrG} 5.9525902E-12*EXP(-90.58/temp); {&SGN}
+<G49ARO1>     LALK5    + OH   = 0.0000 LaSOGv01 + 0.1070 LaSOGv02 + 0.0000 LaSOGv03 + 0.0000 LaSOGv04 : {%TrG} 1.1104831E-11*EXP(-51.83/temp); {&SGN}
+//<G49ARO1>     LARO1    + OH   = 0.0020 LaSOGv01 + 0.1106 LaSOGv02 + 0.201  LaSOGv03 + 0.2913 LaSOGv04 : {%TrG} 1.8107719E-12*EXP(354.77/temp); {&SGN}
+//<G49ARO1>     LARO2    + OH   = 0.0012 LaSOGv01 + 0.1481 LaSOGv02 + 0.2279 LaSOGv03 + 0.3305 LaSOGv04 : {%TrG} 2.6411801E-11*EXP(0.00/temp); {&SGN}
+//<G49ARO1>     LOLE1    + OH   = 0.0003 LaSOGv01 + 0.0018 LaSOGv02 + 0.0155 LaSOGv03 + 0.0617 LaSOGv04 : {%TrG} 7.1030849E-12*EXP(451.39/temp); {&SGN}
+//<G49ARO1>     LOLE1    + NO3  = 0.0003 LaSOGv01 + 0.0018 LaSOGv02 + 0.0155 LaSOGv03 + 0.0617 LaSOGv04 : {%TrG} 4.4519529E-14*EXP(-375.91/temp); {&SGN}
+//<G49ARO1>     LOLE1    + O1D  = 0.0003 LaSOGv01 + 0.0018 LaSOGv02 + 0.0155 LaSOGv03 + 0.0617 LaSOGv04 : {%TrG} 1.0704724E-11*EXP(-234.00/temp); {&SGN}
+<G49ARO1>     LOLE2    + OH   = 0.0017 LaSOGv01 + 0.0135 LaSOGv02 + 0.0435 LaSOGv03 + 0.1424 LaSOGv04 : {%TrG} 1.7407701E-11*EXP(384.46/temp); {&SGN}
+<G49ARO1>     LOLE2    + O3   = 0.0017 LaSOGv01 + 0.0135 LaSOGv02 + 0.0435 LaSOGv03 + 0.1424 LaSOGv04 : {%TrG} 5.0221891E-16*EXP(-461.45/temp); {&SGN}
+<G49ARO1>     LOLE2    + NO3  = 0.0017 LaSOGv01 + 0.0135 LaSOGv02 + 0.0435 LaSOGv03 + 0.1424 LaSOGv04 : {%TrG} 7.2628560E-13*EXP(0.00/temp); {&SGN}
+<G49ARO1>     LOLE2    + O1D  = 0.0017 LaSOGv01 + 0.0135 LaSOGv02 + 0.0435 LaSOGv03 + 0.1424 LaSOGv04 : {%TrG} 2.0909145E-11; {&SGN}
+
+// mz_ap_20180808+
+//<G49bSOGv2>   LbSOGv02  + OH  = 1.075  LbOSOGv01  : {%TrG} 1.00E-11; {&SGN}
+//<G49bSOGv3>   LbSOGv03  + OH  = 1.075  LbOSOGv02  : {%TrG} 1.00E-11; {&SGN}
+//<G49bSOGv4>   LbSOGv04  + OH  = 1.075  LbOSOGv03  : {%TrG} 1.00E-11; {&SGN}
+//<G49bOSOGv2>  LbOSOGv02 + OH  = 1.075  LbOSOGv01  : {%TrG} 1.00E-11; {&SGN}
+//<G49bOSOGv3>  LbOSOGv03 + OH  = 1.075  LbOSOGv02  : {%TrG} 1.00E-11; {&SGN}
+// mz_ap_20180808-
+<G49aSOGv2>   LaSOGv02  + OH  = 1.075  LaOSOGv01  : {%TrG} 1.00E-11; {&SGN}
+<G49aSOGv3>   LaSOGv03  + OH  = 1.075  LaOSOGv02  : {%TrG} 1.00E-11; {&SGN}
+<G49aSOGv4>   LaSOGv04  + OH  = 1.075  LaOSOGv03  : {%TrG} 1.00E-11; {&SGN}
+<G49aOSOGv2>  LaOSOGv02 + OH  = 1.075  LaOSOGv01  : {%TrG} 1.00E-11; {&SGN}
+<G49aOSOGv3>  LaOSOGv03 + OH  = 1.075  LaOSOGv02  : {%TrG} 1.00E-11; {&SGN}
+#ENDREPLACE

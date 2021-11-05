@@ -1,0 +1,97 @@
+MODULE micro_params
+
+use grid, only: nzm, sp
+
+implicit none
+
+!  Microphysics stuff:
+
+! Densities of hydrometeors
+
+real, parameter :: rhor = 1000. ! Density of water, kg/m3
+real, parameter :: rhos = 100.  ! Density of snow, kg/m3
+real, parameter :: rhog = 400.  ! Density of graupel, kg/m3
+!real, parameter :: rhog = 917.  ! hail - Lin 1983    
+
+! Temperatures limits for various hydrometeors
+
+real, parameter :: tbgmin = 253.16    ! Minimum temperature for cloud water., K
+real, parameter :: tbgmax = 273.16    ! Maximum temperature for cloud ice, K
+real, parameter :: tprmin = 268.16    ! Minimum temperature for rain, K
+real, parameter :: tprmax = 283.16    ! Maximum temperature for snow+graupel, K
+real, parameter :: tgrmin = 223.16    ! Minimum temperature for snow, K
+real, parameter :: tgrmax = 283.16    ! Maximum temperature for graupel, K
+
+! Terminal velocity coefficients
+
+real, parameter :: a_rain = 842. ! Coeff.for rain term vel 
+real, parameter :: b_rain = 0.8  ! Fall speed exponent for rain
+real, parameter :: a_snow = 4.84 ! Coeff.for snow term vel
+real, parameter :: b_snow = 0.25 ! Fall speed exponent for snow
+!real, parameter :: a_grau = 40.7! Krueger (1994) ! Coef. for graupel term vel
+real, parameter :: a_grau = 94.5 ! Lin (1983) (rhog=400)
+!real, parameter :: a_grau = 127.94! Lin (1983) (rhog=917)
+real, parameter :: b_grau = 0.5  ! Fall speed exponent for graupel
+
+! Autoconversion
+
+!real, parameter :: qcw0 = 1.e-3     ! Threshold for water autoconversion, g/g  
+!real, parameter :: qci0 = 1.e-4     ! Threshold for ice autoconversion, g/g
+!real, parameter :: alphaelq = 1.e-3 ! autoconversion of cloud water rate coef
+!real, parameter :: betaelq = 1.e-3  ! autoconversion of cloud ice rate coef
+!real, parameter :: qp_threshold = 1.e-8 ! minimal rain/snow water content
+
+! set via namelist
+REAL :: qcw0
+REAL :: qci0
+REAL :: alphaelq
+REAL :: betaelq
+REAL :: qp_threshold
+
+! Accretion
+
+real, parameter :: erccoef = 1.0   ! Rain/Cloud water collection efficiency
+real, parameter :: esccoef = 1.0   ! Snow/Cloud water collection efficiency
+real, parameter :: esicoef = 0.1   ! Snow/cloud ice collection efficiency
+real, parameter :: egccoef = 1.0   ! Graupel/Cloud water collection efficiency
+real, parameter :: egicoef = 0.1   ! Graupel/Cloud ice collection efficiency
+
+! Interseption parameters for exponential size spectra
+
+real, parameter :: nzeror = 8.e6   ! Intercept coeff. for rain  
+real, parameter :: nzeros = 3.e6   ! Intersept coeff. for snow
+real, parameter :: nzerog = 4.e6   ! Intersept coeff. for graupel
+!real, parameter :: nzerog = 4.e4   ! hail - Lin 1993 
+
+! Misc. microphysics variables
+
+real(sp) gam3       ! Gamma function of 3
+real(sp) gams1      ! Gamma function of (3 + b_snow)
+real(sp) gams2      ! Gamma function of (5 + b_snow)/2
+real(sp) gams3      ! Gamma function of (4 + b_snow)
+real(sp) gamg1      ! Gamma function of (3 + b_grau)
+real(sp) gamg2      ! Gamma function of (5 + b_grau)/2
+real(sp) gamg3      ! Gamma function of (4 + b_grau)
+real(sp) gamr1      ! Gamma function of (3 + b_rain)
+real(sp) gamr2      ! Gamma function of (5 + b_rain)/2
+real(sp) gamr3      ! Gamma function of (4 + b_rain)
+
+INTEGER, PARAMETER, PRIVATE :: dp = SELECTED_REAL_KIND(12,307)
+REAL(dp), POINTER, DIMENSION(:) :: accrsc   => NULL()
+REAL(dp), POINTER, DIMENSION(:) :: accrsi   => NULL()
+REAL(dp), POINTER, DIMENSION(:) :: accrrc   => NULL()
+REAL(dp), POINTER, DIMENSION(:) :: coefice  => NULL()
+REAL(dp), POINTER, DIMENSION(:) :: accrgc   => NULL()
+REAL(dp), POINTER, DIMENSION(:) :: accrgi   => NULL()
+REAL(dp), POINTER, DIMENSION(:) :: evaps1   => NULL()
+REAL(dp), POINTER, DIMENSION(:) :: evaps2   => NULL()
+REAL(dp), POINTER, DIMENSION(:) :: evapr1   => NULL()
+REAL(dp), POINTER, DIMENSION(:) :: evapr2   => NULL()
+REAL(dp), POINTER, DIMENSION(:) :: evapg1   => NULL()
+REAL(dp), POINTER, DIMENSION(:) :: evapg2   => NULL()
+
+REAL(dp) :: a_bg, a_pr, a_gr 
+
+
+END MODULE micro_params
+

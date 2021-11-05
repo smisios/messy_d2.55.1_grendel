@@ -1,0 +1,733 @@
+#! /bin/ksh
+#
+# run script for NCEP data
+# Made by Ismael Núñez-Riboni, based on the run script from MPIOM-latest for OMIP forcing.
+# HH. 091026
+
+######################################
+#       PREPARE DIRECTORIES
+#       AND RUN SCRIPT
+######################################
+
+# computing platform/site and compiler:
+  platform=aix   ; mode=SMT ; task_geometry=yes # IBM powerN AIX. Blizzard.
+# platform=linux86                               # Linux x86 PC
+# platform=linux-x64                             # Linux x86_64 cluster Tornado.
+# platform=sx                                    # NEC SX SUPER-UX
+#
+if [ -x `which basename 2>/dev/null | grep -v 'no .* in'` ]; then
+  compiler=`basename "ccache mpxlf95_r"`
+else
+  compiler=`echo "ccache mpxlf95_r" | sed 's:^.*/::'`
+fi
+# name of the experiment and grid resolution:
+#EXPNO=tp04l40
+#GRID=TP04
+#LEV=L40
+
+#EXPNO=GR30L40
+#GRID=GR30
+#LEV=L40
+
+#EXPNO=tp10l40
+EXPNO=TP04L40_ncep
+GRID=TP10
+LEV=L40
+
+#EXPNO=tp04l80
+#GRID=TP04
+#LEV=L80
+
+export WORK=/work/mh0033/m300034
+
+# absolute path to work directory:
+EXPDIR=${WORK}/experiments/ncep # Blizzard
+
+# absolute path to directory with plenty of space:
+ARCDIR=${WORK}/experiments/ncep # Blizzard
+
+# absolute path to model binary:
+MODDIR=/work/bm0558/m300034/mpiom-spg/bin
+
+# model binary:
+MODBIN=mpiom.x
+
+# absolute path to directory with initial data:
+INITIAL_DATA=/pool/data/MPIOM
+
+# absolute path to directory with NCEP data:
+#NCEP_DATA=/work/mh0033/m300034/data/ncep/tp04 # Blizzard
+NCEP_DATA=/work/mh0033/m300034/data/ncep/tp10 # Blizzard
+
+nproca=8    # tasks in x direction
+nprocb=8     # tasks in y direction
+nthread=1    # openmp threads
+
+ncpu=$(( nproca * nprocb * nthread ))
+
+#
+# hamocc
+#
+hamocc=false
+
+#
+# profiling
+#
+profile=no
+
+# the directories for the experiment will be created, if not already there
+WRKDIR=${EXPDIR}/${EXPNO}
+ARCHIVE=${ARCDIR}/${EXPNO}
+
+if [ ! -d $WRKDIR ]; then
+    /client/bin/mkdir -p ${WRKDIR}
+    cd ${WRKDIR}
+#   cp ${MODDIR}/${MODBIN} ${MODBIN}  &&  MODDIR=${WRKDIR}
+    echo 1948 > year.asc
+fi
+if [ ! -d $ARCHIVE ]; then
+    /client/bin/mkdir -p $ARCHIVE/restart
+    /client/bin/mkdir -p $ARCHIVE/outdata
+fi
+
+submit=qsub
+[[ ${platform} != aix ]]     || submit=llsubmit
+[[ ${platform} != linux86 ]] || submit=""
+
+if [ -x '/client/bin/ksh' ]; then
+  # where an override for ksh is installed, use that
+  shell='/client/bin/ksh'
+else
+  shell='/bin/ksh'
+fi
+
+case ${platform} in
+  (aix)
+  if [[ "${mode}" = "SMT" ]]; then
+    tasks_per_node=64
+    affinity=cpu
+    memory_mb=750
+  else
+    tasks_per_node=32
+    affinity=core
+    memory_mb=1500
+  fi
+  ;;
+esac
+
+if [ x$task_geometry = xyes ]; then
+  case ${platform} in
+
+    (aix)
+    # tasks per node in x direction
+    if [ $nproca -ge 8 ]; then tilex=8 ;
+    else tilex=$nproca ; fi
+    (( tiley =  tasks_per_node / tilex ))   # tasks per node in y direction
+    if [ $tiley -gt $nprocb ]; then
+      if [ $nprocb -ge 8 ]; then tiley=8 ;
+      else tiley=$nprocb ; fi
+      (( tilex =  tasks_per_node / tiley ))   # tasks per node in y direction
+    fi
+    export TASK_GEOMETRY=`/work/bm0558/m300034/mpiom-latest/contrib/aix/geometry.pl ${nproca}-${nprocb}-${tasks_per_node}-${tilex}-${tiley}`
+    (( ncpu = nproca * nprocb ))
+    (( node = ncpu / tasks_per_node )) || { node=1 ; tasks_per_node=${ncpu} ; }
+
+    ;;
+  esac
+else
+  case ${platform} in
+    (aix)
+    ((node = (nproca * nprocb + tasks_per_node - 1) / tasks_per_node ))
+    ;;
+  esac
+fi
+
+jobname=${EXPNO}.job
+cat > ${WRKDIR}/${jobname}<<EOF1
+#! ${shell}
+#-----------------------------------------------------------------------------
+$(case ${platform} in
+
+  ( aix )
+printf "
+# Version for LoadLeveler
+#
+# @ shell = ${shell}
+# @ class = cluster
+# @ job_type = parallel
+# @ node_usage= not_shared
+# @ rset = rset_mcm_affinity
+$(if [ "${task_geometry}" = "yes" ]; then
+  echo "# @ mcm_affinity_options = mcm_accumulate"
+  echo "# @ task_geometry = $TASK_GEOMETRY"
+else
+  echo "# @ mcm_affinity_options = mcm_distribute,mcm_mem_req"
+  echo "# @ node = ${node}"
+  echo "# @ tasks_per_node = ${tasks_per_node}"
+fi)
+# @ resources = ConsumableMemory(${memory_mb}mb)
+# @ task_affinity = ${affinity}(${nthread})
+# @ network.MPI = sn_all,not_shared,us
+# @ wall_clock_limit = 08:00:00
+# @ job_name = ${jobname}
+# @ output = \$(job_name).o\$(jobid)
+# @ error = \$(job_name).o\$(jobid)
+# @ notification = error
+# @ queue"
+     ;;
+
+  ( linux-x64 )
+printf "
+# Version for Sun GridEngine
+#
+#$ -S ${shell}
+#$ -N ${jobname}
+#$ -o \$JOB_NAME.o\$JOB_ID
+#$ -j y
+#$ -cwd
+#$ -pe orte ${ncpu}"
+     ;;
+
+  ( sx )
+printf  "
+# Version for NQSII
+#
+#PBS -S ${shell}
+#PBS -N ${jobname}             # job name
+#PBS -l cpunum_prc=${ncpu}     # 8 cpus per node
+#PBS -l cputim_job=04:00:00    # 2 h realtime per node
+#PBS -l memsz_job=5gb          # 48 GB Memory per node
+#PBS -j o                      # join err and out to out"
+     ;;
+
+esac)
+
+#-----------------------------------------------------------------------------
+#
+#                  Job file to run MPIOM with OMIP forcing
+#
+#-----------------------------------------------------------------------------
+#
+# If a command has a non-zero exit status, execute ERR trap, if set, and exit
+#
+set -ex
+#
+#=============================================================================
+$(case ${platform} in
+  (aix)
+printf '
+export MEMORY_AFFINITY=MCM
+export MP_SINGLE_THREAD=yes
+
+# also see hpct_guide.pdf
+export HPM_EVENT_SET=92,127
+export HPM_UNIQUE_FILE_NAME=yes
+export HPM_AGGREGATE=average.so   # write prof. with per event set averaged values
+#export HPM_AGGREGATE=mirror.so   # write unchanged profiles from indiv. tasks
+#export HPM_AGGREGATE=single.so   # write profile from one task
+                                  # (set via env var HPM_PRINT_TASK)
+
+#export PREATTACH_PROCESSOR_CORE_LIST=AUTO_SELECT
+'
+  ;;
+
+  (linux-x64)
+printf '
+export FORT_BUFFERD="Y"
+'
+  ;;
+
+  (sx)
+printf '
+export MPIPROGINF=ALL_DETAIL
+#export F_PROGINF=DETAIL
+export F_SETBUF=4096
+'
+  ;;
+
+esac)
+
+export OMP_NUM_THREADS=1
+export MPIOM_THREADS=$nthread
+export MPIEXPORT="MPIOM_THREADS"
+
+#
+# hamocc
+#
+hamocc=${hamocc}
+
+#
+# profiling
+#
+profile=${profile}
+
+EXPNO=${EXPNO}
+echo "Experiment: \${EXPNO}"
+
+nprocx=$nproca
+nprocy=$nprocb
+
+(( ncpus = nprocx * nprocy ))
+#
+echo "   CPUs: \${ncpus} (nprocx: \${nprocx}, nprocy: \${nprocy})"
+
+#-----------------------------------------------------------------------------
+#
+WRKDIR=${EXPDIR}/\${EXPNO}
+
+# absolute path to model binary and model binary
+MODDIR=${MODDIR}
+MODBIN=${MODBIN}
+
+# absolute path to directory with plenty of space:
+ARCHIVE=${ARCDIR}/\${EXPNO}
+
+# absolute path to directory with initial data:
+INITIAL_DATA=${INITIAL_DATA}
+
+# horizontal and vertical resolution
+GRID=${GRID}
+LEV=${LEV}
+
+#-----------------------------------------------------------------------------
+caulapuv=0.005
+ibolk=1000
+ltidal=.false.
+if [ "\${GRID}" = "GR60" ] ; then
+  ie=60
+  je=50
+  DT=10800
+  TP=.false.
+
+elif [ "\${GRID}" = "GR30" ] ; then
+  ie=122
+  je=101
+  DT=8640
+  TP=.false.
+
+elif [ "\${GRID}" = "GR15" ] ; then
+  ie=256
+  je=220
+  DT=4800
+  TP=.false.
+
+elif [ "\${GRID}" = "TP10" ] ; then
+  ie=362
+  je=192
+  [[ "\${ltidal}" = ".true." ]] && DT=3600 || DT=5400
+  TP=.true.
+
+elif [ "\${GRID}" = "TP04" ] ; then
+  ie=802
+  je=404
+  DT=3600
+  TP=.true.
+  caulapuv=0.0027
+
+elif [ "\${GRID}" = "TP01" ] ; then
+  ie=3586
+  je=1800
+  #DT=900
+  DT=600
+  TP=.true.
+  caulapuv=0.0025
+  ibolk=0
+
+elif [ "\${GRID}" = "TP6M" ] ; then
+  ie=3602
+  je=2394
+  DT=450
+  TP=.true.
+  caulapuv=0.0025
+  ibolk=0
+fi
+
+
+if [ "\${LEV}" = "L3" ] ; then
+  ke=3
+
+elif [ "\${LEV}" = "L20" ] ; then
+  ke=20
+
+elif [ "\${LEV}" = "L40" ] ; then
+  ke=40
+
+elif [ "\${LEV}" = "L80" ] ; then
+  ke=80
+fi
+
+
+#-----------------------------------------------------------------------------
+#
+cd \${WRKDIR}           #  output and rerun files are written into \$ARCHIVE
+#
+pwd
+#-----------------------------------------------------------------------------
+#
+# specification of files
+#
+#-----------------------------------------------------------------------------
+#
+set +e
+
+#CP='\cp -p'
+CP='ln -sf'
+$(if [[ "${platform}" = linux* ]]; then
+  echo "CP='/client/bin/cdo -p 8b copy'"
+  case "$compiler" in
+    (nag*)
+      #for NAG compiler we need little endian
+      echo "CP='/client/bin/cdo -p 8l copy'"
+      ;;
+  esac
+fi)
+
+\$CP  \${INITIAL_DATA}/\${GRID}/\${GRID}_arcgri             arcgri
+\cp  \${INITIAL_DATA}/\${GRID}/\${GRID}_topo                topo
+\$CP  \${INITIAL_DATA}/\${GRID}/\${GRID}_anta               anta
+\cp \${INITIAL_DATA}/\${GRID}/\${GRID}_BEK                   BEK
+chmod u+rw BEK
+
+\$CP  \${INITIAL_DATA}/\${GRID}/\${GRID}\${LEV}_INITEM_PHC  INITEM
+\$CP  \${INITIAL_DATA}/\${GRID}/\${GRID}\${LEV}_INISAL_PHC  INISAL
+\$CP  \${INITIAL_DATA}/\${GRID}/\${GRID}\${LEV}_SURSAL_PHC  SURSAL
+
+\$CP  \${INITIAL_DATA}/runoff_obs                         runoff_obs
+\$CP  \${INITIAL_DATA}/runoff_pos                         runoff_pos
+
+
+#-----------------------------------------------------------------------------
+if [ \${hamocc} == "true" ] ; then
+# monthly mean dust field for hamocc
+
+\cp  \${INITIAL_DATA}/\${GRID}/\${GRID}_INPDUST.nc      INPDUST.nc
+  chmod u+rw INPDUST.nc
+fi
+
+chmod u+rw arcgri topo anta BEK GI* INITEM INISAL SURSAL
+
+#-----------------------------------------------------------------------------
+set -e
+
+for lll in 1 ; do
+
+typeset -Z4 YEAR=\$(cat year.asc) ; export YEAR
+echo \$YEAR
+STA=3 ; export STA
+RES=0 ; export RES
+
+if [ \${YEAR} -eq 1948 ] ; then # CONDITIONS OF THE FIRST NCEP YEAR
+#STA=3 # starting from last restart file
+STA=2 # starting from levitus
+RES=0
+fi
+
+##########################################################
+# READING NCEP DATA. Ismael. 090914. Bremen:
+
+tar xvf ${NCEP_DATA}/ncep.\${GRID}.\${YEAR}.tar
+
+mv air.2m.\${GRID}.\${YEAR}.ext GITEM
+mv prate.sfc.\${GRID}.\${YEAR}.ext GIPREC
+mv tdew.sfc.\${GRID}.\${YEAR}.ext GITDEW
+mv uvwnd.10m.\${GRID}.\${YEAR}.ext GIU10
+mv dswrf.sfc.\${GRID}.\${YEAR}.ext GISWRAD
+mv tcdc.eatm.\${GRID}.\${YEAR}.ext GICLOUD
+mv uflx.sfc.\${GRID}.\${YEAR}.ext GIWIX
+mv vflx.sfc.${GRID}.\${YEAR}.ext GIWIY
+
+# Finish reading NCEP data
+##########################################################
+
+
+#
+# istart=0 >NEWSTART USE ONLY FOR COMPLETELY NEW SETUP (new topography etc!!!)
+# istart=1 start from horizonally uniform t,s profiles
+# istart=2 start from levitus
+# istart=3 start from existing restart files Z37000, Z38000 (default)
+#
+# i3drest=0 NO 3d-restoring (default)
+# i3drest=1 restoring to annual mean t,s
+# i3drest=2 restoring to monthluy mean t,s
+#
+# Advection schemes
+# iocad=3 ADPO (default)
+# iocad=4 obsolete, use iocad=3 and ibbl_transport=1
+# iocad=5 ADFS
+#
+# BBL transport (slope convection)
+# ibbl_transport=1  (default)
+#
+# ltidal=.true.  enables eph.tidal sub model (default=false)
+#
+# imean=0 no output
+# imean=1 daily average of output fields
+# imean=2 monthly average of output fields (default)
+# imean=3 yearly average of output fields
+# imean=4 every time step
+#
+# nyears: number of years to be simulated (default=0)
+# nmonths: number of months to be simulated (default=1)
+#
+cat > OCECTL  << EOF
+&ocedim
+ ie_g = \${ie}
+ je_g = \${je}
+ ke = \${ke}
+ lbounds_exch_tp =  \${TP}
+/
+&nprocs
+ nprocx=\${nprocx}
+ nprocy=\${nprocy}
+/
+ &ocectl
+ dt      = \${DT}
+ caulapts= 0.
+ caulapuv= \${caulapuv}
+ aus     = 0.
+ cah00   = 1000.
+ ibolk   = \${ibolk}
+ dv0     = 1.e-2
+ av0     = 1.e-2
+ cwt     = 4.e-4
+ cstabeps= 0.03
+ dback   = 1.e-5
+ aback   = 1.e-4
+ crelsal = 3.3e-7
+ creltem = 0.
+ cdvocon = 0.05
+ cavocon = 0.0
+ ltidal  = \${ltidal}
+ nyears  = 0
+ nmonts  = 12
+ ndays   = 0
+ imean   = 2       ! 2 for monthly mean output
+ istart  = \${STA}
+ i3drest = \${RES}
+ ihalo   = 2
+ imod    = 1
+ lmpitype = .false.
+ lnonblock = .true.
+ icontro = 0
+ ly_start = \${YEAR} ! Ismael. 091026. HH.
+ /
+EOF
+
+if [ \${ke} -eq 3 ] ; then
+cat >> OCECTL  << EOF2
+ &ocedzw
+ cdzw     = 12.,10.,5000.,
+ /
+EOF2
+fi
+
+if [ \${ke} -eq 20 ] ; then
+cat >> OCECTL  << EOF2
+ &ocedzw
+  cdzw = 20.,20., 20., 30.,40.,50.,70.,
+         90.,120.,150.,180.,210.,250.,300.,
+         400.,500.,600.,700.,900.,1400.,
+ /
+EOF2
+fi
+
+if [ \${ke} -eq 40 ] ; then
+cat >> OCECTL  << EOF2
+ &ocedzw
+ cdzw     = 12.,10.,10.,10.,10.,10.,13.,15.,20.,25.,
+            30.,35.,40.,45.,50.,55.,60.,70.,80.,90.,
+            100.,110.,120.,130.,140.,150.,170.,180.,190.,200.,
+            220.,250.,270.,300.,350.,400.,450.,500.,500.,600.,
+ /
+EOF2
+fi
+
+if [ \${ke} -eq 80 ] ; then
+cat >> OCECTL  <<EOF2
+ &ocedzw
+ cdzw     = 12.,10.,10.,10.,10.,10.,10.,11.,11.,12.,
+            13.,13.,14.,14.,15.,16.,16.,17.,18.,19.,
+            20.,21.,21.,22.,24.,25.,26.,27.,28.,29.,
+            31.,32.,34.,35.,37.,39.,40.,42.,44.,46.,
+            48.,50.,53.,55.,58.,60.,63.,66.,69.,72.,
+            76.,79.,83.,87.,91.,95.,99.,104.,108.,113.,
+            119.,124.,130.,136.,142.,149.,155.,163.,170.,178.,
+            186.,195.,204.,213.,223.,233.,244.,255.,267.,279.,
+ /
+EOF2
+fi
+
+#
+# hamocc
+#
+if [ \${hamocc} == "true" ] ; then
+
+# mean_2D/3D_freq=0 no output
+# mean_2D/3D_freq=1 daily average of output fields
+# mean_2D/3D_freq=2 monthly average of output fields (default for mean_2D_freq)
+# mean_2D/3D_freq=3 yearly average of output fields (default for mean_3D_freq)
+# mean_2D/3D_freq=4 every time step
+
+#creates daily averages for bgc timeseries
+(( TSDT = 86400 / DT ))
+
+cat > NAMELIST_BGC  << EOF2
+ &BGCCTL
+ io_stdo_bgc =  8,
+ kchck       =  0,
+ isac        =  1,
+ mean_2D_freq = 2,
+ mean_3D_freq = 3,
+ rmasko      = -9e33
+ nfreqts1    =  \${TSDT},
+ rlonts1     = -20.0,60.0,65.0,-64.0,-175.0,-145.0,-25.0,-140.0
+ rlatts1     = 47.0,17.0,10.0,32.0,-53.0,50.0,64.0,5.0
+ rdep1ts1    = 80.0, 80.0,80.0,80.0,80.0,80.0,80.0,80.0
+ rdep2ts1    = 1000.0,1000.0,1000.0,200.0,1000.0,1000.0,1000.0,1000.0
+ rdep3ts1    = 3000.0,3000.0,3000.0,300.0,2000.0,2000.0,2000.0,2000.0
+ /
+EOF2
+#
+fi
+
+#=============================================================================
+echo "Integration started on \$(date)"
+$(case ${platform} in
+  ( aix )
+printf '
+# with binding
+#unset MP_TASK_AFFINITY
+#export TARGET_CPU_LIST=-1
+#export TARGET_CPU_LIST="0 2 4 6 8 10 12 14 16 18 20 22 24 26 28 30"
+
+#export TARGET_CPU_RANGE=-1
+#poe ~puetz/bin/launch ${MODDIR}/${MODBIN} -procs $ncpus -hfile /u/m211054/host.list
+#poe ~puetz/bin/hybrid_launch ${MODDIR}/${MODBIN} -procs $ncpus -hfile /u/m211054/host.list
+
+# hpmcount
+#. /usr/local/ihpct_2.2/env_sh   # RZG
+#. /usr/lpp/ppe.hpct/env_sh      # DKRZ
+#export LIBPATH=${IHPCT_BASE}/lib64:$LIBPATH
+#poe hpmcount ${MODDIR}/${MODBIN} -procs $ncpus -hfile /u/m211054/host.list
+
+if [[ "${profile}" = "yes" ]]; then
+  set +e
+  trace_running=$(trcstop) || echo trcstop status $?
+  tprof -usz -p mpiom.x -x poe ${MODDIR}/${MODBIN}
+  set -e
+else
+  poe ${MODDIR}/${MODBIN}
+fi
+echo status $?
+
+if [[ "${profile}" = "yes" ]]; then
+  jobid=$(echo $LOADL_STEP_ID | cut -d. -f2)
+  profdir=prof_${YEAR}.${jobid}
+  mkdir ${profdir}
+  mv poe.prof mpi_profile* single_trace mpiom.hpm mpiom.viz ${profdir}
+  cp -p OCECTL ${profdir}
+  tar cvf ${profdir}/oceout.tar oceout*
+  rm oceout*
+fi
+'
+  ;;
+
+  ( linux86 )
+printf '
+# with mpich2
+MPI_BIN=/bin
+${MPI_BIN}/mpiexec -envall -n ${ncpus} ${MODDIR}/${MODBIN}
+
+# with openmpi
+#MPI_BIN=/bin
+##${MPI_BIN}/mpiexec -x MPIOM_THREADS -x FORT_BUFFERED -n ${ncpus} ${MODDIR}/${MODBIN}
+
+# laptop
+#MPI_BIN=/bin
+##${MPI_BIN}/mpiexec -n ${ncpus} ${MODDIR}/${MODBIN}
+'
+  ;;
+
+  ( linux-x64 )
+printf '
+MPIROOT=
+MPI_BIN=${MPIROOT}/bin
+${MPI_BIN}/mpiexec --prefix ${MPIROOT} -display-map -x MPIOM_THREADS -x FORT_BUFFERED -np ${ncpus} -bynode ${MODDIR}/${MODBIN}
+
+#for interactive use with  NAG compiler and gbd
+##${MPI_BIN}/mpiexec -debugger "gdb --args @mpirun@ @mpirun_args@" -debug -host tornado1,tornado1,tornado1,tornado1 -np 4 ${MODDIR}/${MODBIN}
+'
+  ;;
+
+  ( sx )
+printf 'mpirun -np ${ncpus} ${MODDIR}/${MODBIN}'
+  ;;
+
+esac)
+
+echo "Integration completed on \$(date)"
+#=============================================================================
+[[ "\${profile}" = "no" ]] || set +e
+[[ -d  \${ARCHIVE}/restart ]] || /client/bin/mkdir -p \${ARCHIVE}/restart
+cp -p Z37000 Z38000
+cp -p Z37000 \${ARCHIVE}/restart/Z37000_\${YEAR}
+
+[[ -d  \${ARCHIVE}/outdata ]] || /client/bin/mkdir -p \${ARCHIVE}/outdata
+
+mv fort.71 \${EXPNO}_\${YEAR}.ext4
+
+#mv fort.93 \${EXPNO}_weto.ext4
+#mv fort.94 \${EXPNO}_gila.ext4
+#mv fort.97 \${EXPNO}_giph.ext4
+#mv fort.96 \${EXPNO}_depto.ext4
+#mv fort.151 \${EXPNO}_dlxp.ext4
+#mv fort.152 \${EXPNO}_dlyp.ext4
+#mv fort.153 \${EXPNO}_deuto.ext4
+#mv fort.154 \${EXPNO}_dlxu.ext4
+#mv fort.155 \${EXPNO}_dlyu.ext4
+
+mv \${EXPNO}_\${YEAR}.ext4 \${ARCHIVE}/outdata/\${EXPNO}_\${YEAR}.ext4
+tar cvf \${EXPNO}_\${YEAR}.tar fort.*
+mv \${EXPNO}_\${YEAR}.tar \${ARCHIVE}/outdata/\${EXPNO}_\${YEAR}.tar
+\rm fort.*
+mv TIMESER.ext \${ARCHIVE}/outdata/\${EXPNO}_TIMESER_\${YEAR}.ext4
+mv TIMESER.asc \${ARCHIVE}/outdata/\${EXPNO}_TIMESER_\${YEAR}.asc
+
+#
+# hamocc
+#
+if [ \${hamocc} == "true" ] ; then
+
+  tar cvf \${YEAR}_hamocc.tar restartw_bgc.nc bgcmean_2d.nc bgcmean_3d.nc \
+                              bgcmean_bioz.nc bgcmean_sed.nc timeser_bgc.nc bgcout oceout
+  mv \${YEAR}_hamocc.tar \${ARCHIVE}/outdata/\${YEAR}_hamocc.tar
+
+  \mv restartw_bgc.nc restartr_bgc.nc
+  \rm bgcmean_2d.nc bgcmean_3d.nc bgcmean_bioz.nc bgcmean_sed.nc timeser_bgc.nc bgcout oceout
+
+fi
+#=============================================================================
+
+(( YEAR = YEAR + 1 ))
+\rm year.asc
+echo \$YEAR > year.asc
+
+done
+
+if [ \${YEAR} -le 2008 ] ; then
+  echo "submitting next job"
+  ${submit} \${WRKDIR}/${jobname}
+#  llsubmit ${WRKDIR}/run_blizz_mpiom_ncep
+fi
+
+exit
+EOF1
+
+chmod 755 ${WRKDIR}/${jobname}
+printf "\n%s\n" "To start MPIOM experiment ${EXPNO}:"
+printf "%s\n" "   cd ${WRKDIR}"
+printf "%s\n\n" "   ${submit} ${jobname}"
+#-----------------------------------------------------------------------------
+
+exit 0
+

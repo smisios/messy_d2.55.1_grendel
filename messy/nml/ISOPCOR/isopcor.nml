@@ -1,0 +1,40 @@
+! -*- f90 -*-
+
+&CTRL
+/
+
+&CPL
+!
+!### trigger for update of production rate calculation
+trigger = 1,'steps','first',0
+!
+!### HELIOSPHERIC POTENTIAL [MV]
+c_phi = 'import_ts','phi',
+!c_phi = '#','500.0',
+!
+!### WHICH PRODUCTION RATES ARE CALCULATED?
+!### DEFAULT: .TRUE.
+ l_iso(1) = T,        !# 14C
+ l_iso(2) = F,        !# 10Be
+ l_iso(3) = F,        !# 7Be
+ l_iso(4) = F,        !# 22Na
+ l_iso(5) = F,        !# 36Cl
+!
+!### TROPOPAUSE (INDEX + FRACTION)
+c_tp = 'tropop', 'tp',
+!
+!### LIST OF TRACERS WITH CORRESPONDING SOURCES
+!### 'tracer basename', 'tracer subname', prod. rate, domain, scaling factor
+!###     - prod.rate: 1: 14C, 2: 10Be, 3: 7Be, 4: 22Na, 5: 36Cl
+!###     - domain   : 0: both, 1: trop, 2: strat
+!
+trac(1) = 'CO', '14C'  , 1 , 0, 0.95,    ! 14C -> 14CO (0.95)
+trac(2) = 'CO', '14C_T', 1 , 1, 0.95,    ! 14C -> 14CO (0.95)
+trac(3) = 'CO', '14C_S', 1 , 2, 0.95,    ! 14C -> 14CO (0.95)
+!
+!### ADJUST TRACER TENDENCIES, SUCH THAT S = F1 + F2
+!### 's', 'f1', 'f2'
+!
+tadj(1) = 'CO_14C', 'CO_14C_T', 'CO_14C_S',
+!
+/

@@ -1,0 +1,97 @@
+! -*- f90 -*-
+
+&CTRL
+!# LNOX can be operated in two different modes:
+!# 1) l_mode_scal = .TRUE. is used to estimate the parameterisation, base model,
+!#                         convection parameterisation and model resolution 
+!#                         dpendent scaling factor r_scall_ff
+!#                         Notes:
+!#                         - r_scal_ff should be 1.0 in this mode
+!#                         - "chemistry" is not required in this mode
+!#                         - all paramterisations can be run simultaneously
+!# 2) l_mode_scal = .FALSE. (default) is used for production simulations;
+!#                         the flash frequency and L-NOx production is scaled
+!#                         with r_scal_ff
+!#                         Notes: 
+!#                         - usually for simulations with "chemistry"
+!#                         - all paramterisations can be run simultaneously, but
+!#                           only one (to be selected, see below) determines
+!#                           the L-NOx source
+!
+l_mode_scal = .FALSE.
+!
+!# select parameterisation for the calculation of the flash frequency:
+i_ffcalc     = 2,    !# 1: Price & Rind
+                     !# 2: Grewe
+                     !# 3: Allen & Pickering (massflux)
+                     !# 4: Allen & Pickering (convective precipitation)
+                     !# 5: Dahl (COSMO only)
+                     !# 9: diagnostically all parameterisations
+!
+!# select: 1: CG only, 2: CG + IC (preferable!)
+!
+i_iccg       = 2,    ! 1: CG only, 2: CG + IC
+! 
+!# select vertical shape of NOx emission profile
+!# 1: constant
+!# 2: C-shape according to Pickeri (preferable!)
+!
+i_shape      = 2,
+!
+!# Scaling factor for flash-frequency:
+!# Note: The global annual mean (1995-2005) of LIS OTD is 46.6 flashes/s
+!
+r_scal_ff(1) = 1.00      ! Price & Rind
+r_scal_ff(2) = 8.763017  ! Grewe (factor based on 1990/01-1991/01, SHARP-dyn-04)
+!                        !       (PJ, 20.02.2014)
+r_scal_ff(3) = 1.00      ! Allen & Pickering (Massflux)
+r_scal_ff(4) = 1.00      ! Allen & Pickering (convective precipitation)
+r_scal_ff(5) = 1.00      ! Dahl (COSMO only)
+!
+!# Average NOx production per CG flash [kgN/flash]
+!# Note: P&R: 6.7E26 molec/flash -> ~ 15.6 kgN/flash
+!
+r_noxpf(1)   = 15.6, !
+r_noxpf(2)   = 15.6, !
+r_noxpf(3)   = 15.6, !
+r_noxpf(4)   = 15.6, !
+r_noxpf(5)   = 15.6, !
+!
+! NOx production efficiency ratio (IC/CG)
+r_eff(1)     = 0.1,  
+r_eff(2)     = 0.1,  
+r_eff(3)     = 0.1,  
+r_eff(4)     = 0.1,  
+r_eff(5)     = 0.1,  
+!
+! only for Grewe parameterisation (ff =  A * (sqrt(D)*MF)**B)
+!r_Grewe_A = 1.54e-5  ! default for Tiedtke
+!r_Grewe_B = 4.9      ! default for Tiedtke
+!r_Grewe_A = 1.0      ! activate for Bechtold
+!r_Grewe_B = 1.5      ! activate for Bechtold
+!
+/
+
+&CPL
+!#  coupling parameterisation to NO tracer emission
+!
+i_ff_cpl    = 2       ! 1: Price & Rind
+                      ! 2: Grewe
+                      ! 3: Allen & Pickering (Massflux)
+                      ! 4: Allen & Pickering (convective precipitation)
+                      ! WARNING: is only selectable in case of i_ffcalc = 9
+                      !          otherwise forced to be equal to i_ffcalc 
+!
+!# input channel objects
+!
+!# ECHAM5:
+c_top       = 'convect','cu_top',       ! cloud top level
+c_bot       = 'convect','cu_bot',       ! cloud bottom level
+c_massfu    = 'convect','massfu',
+c_precflx   = 'convect','cv_precflx',
+!
+!# skip Lagrangian calculation? (default: F)
+!
+!l_skip_lg = T,             ! skip Lagrangian calculation?
+!
+/

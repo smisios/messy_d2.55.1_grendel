@@ -1,0 +1,710 @@
+! -*- f90 -*-
+
+&CPL
+L_GP       = T  ! EMISSIONS FOR GRIDPOINT TRACERS
+L_LG       = F  ! EMISSIONS FOR LAGRANGIAN TRACERS
+l_lg_tend  = F  ! LAGRANGIAN TRACER TENDENCY AS CHANNEL OBJECT ?
+! ### SYNTAX:
+!     (SPECIFIERS MUST BE UPPERCASE !)
+! ###         GP=    Gridpoint  Emission Method (0,1,2) (SURFACE ONLY)
+!                    1: 2D (SURFACE EM.) -> lowest layer
+!                       3D (VOLUME  EM.) -> emission ON
+!                       Nx2D (MULTI LEVEL EM.) -> internally converted to 3D
+!                    SURFACE EMISSIONS ONLY:
+!                    2: lower boundary condition for flux
+!
+! ###         LG=    Lagrangian Emission Method (0,1,2,3,4)
+!                    1: 2D (SURFACE EM.)       -> into CELLs in lowest layer
+!                       3D (VOLUME  EM.)       -> emission ON
+!                       Nx2D (MULTI LEVEL EM.) -> internally converted to 3D
+!                    SURFACE EMISSIONS ONLY:
+!                    2: into lowest CELLs within boundary layer
+!                    3: into all CELLs in boundary layer (vertical gradient)
+!                    4: into all CELLs in boundary layer (no vertical gradient)
+!
+!NOTEs:  (1) Surface emission fluxes (2D) must be in  molecules m-2 s-1.
+!        (2) Volume emissions (3D)        must be in  molecules m-3 s-1.
+!        (3) Multi level emissions (Nx2D) must be in  molecules m-2 s-1.
+!        (4) For volume emissions (3D), the corresponding channel object 
+!            must be in the GP_3D_MID representation
+!        (5) The trigger for multi level emissions (Nx2D) is the presence
+!            of the channel object attribute heights
+!
+! EMISSION: 'TRACER[_SUBNAME][,scaling];...', CHANNEL NAME, CHANNEL OBJECT, 
+!           EMISSION METHOD
+!
+! LOWER BOUNDARY CONDITIONS (SEE tnudge.nml)
+!
+! ###########################################
+! DIRECT EMISSIONS
+! ###########################################
+! ---------------
+! biomass burning
+! ---------------
+EMIS_IN(20)  =  'CO;CObio',        'import_grid','BB_CO',            'GP=1'
+EMIS_IN(21)  =  'NO;NOybio',        'import_grid','BB_NO',            'GP=1'
+!EMIS_IN(22)  =  'N2O',       'import_grid','BB_N2O',           'GP=1'
+EMIS_IN(23)  =  'SO2',       'import_grid','BB_SO2',           'GP=1'
+!EMIS_IN(24)  =  'H2',        'import_grid','BB_H2',            'GP=1'
+!EMIS_IN(25)  =  'CO2',       'import_grid','BB_CO2',           'GP=1'
+!EMIS_IN(26)  =  'CH4',       'import_grid','BB_CH4',           'GP=1'
+EMIS_IN(27)  =  'NH3',       'import_grid','BB_NH3',           'GP=1'
+!
+EMIS_IN(28)  =  'C2H4;NMHCbio,2',      'import_grid','BB_C2H4',     'GP=1'
+EMIS_IN(29)  =  'C2H6;NMHCbio,2',      'import_grid','BB_C2H6',     'GP=1'
+EMIS_IN(30)  =  'C3H6;NMHCbio,3',      'import_grid','BB_C3H6',     'GP=1'
+EMIS_IN(31)  =  'C3H8;NMHCbio,3',      'import_grid','BB_C3H8',     'GP=1'
+EMIS_IN(32)  =  'NC4H10;NMHCbio,4',    'import_grid','BB_NC4H10',   'GP=1'
+EMIS_IN(33)  =  'CH3CHO;NMHCbio,2',    'import_grid','BB_CH3CHO',   'GP=1'
+EMIS_IN(34)  =  'CH3COCH3;NMHCbio,3',  'import_grid','BB_CH3COCH3', 'GP=1'
+EMIS_IN(35)  =  'CH3CO2H;NMHCbio,2',   'import_grid','BB_CH3CO2H',  'GP=1'
+EMIS_IN(36)  =  'CH3OH;NMHCbio,1',     'import_grid','BB_CH3OH',    'GP=1'
+EMIS_IN(37)  =  'HCHO;NMHCbio,1',      'import_grid','BB_HCHO',     'GP=1'
+EMIS_IN(38)  =  'HCOOH;NMHCbio,1',     'import_grid','BB_HCOOH',    'GP=1'
+EMIS_IN(39)  =  'MEK;NMHCbio,4',       'import_grid','BB_MEK',      'GP=1'
+!
+! ============================
+! == ENERGY (VEU2 + CMIP5) ===
+! ============================
+! tagging category anth non traffic! 
+EMIS_IN(40) = 'NO;NOyind' ,     'import_grid','ENE_NO',         'GP=1'
+EMIS_IN(41) = 'CO;COind' ,     'import_grid','ENE_CO',         'GP=1'
+EMIS_IN(42) = 'SO2' ,    'import_grid','ENE_SO2',        'GP=1'
+EMIS_IN(43) = 'C2H4;NMHCind,2' ,   'import_grid','ENE_C2H4',       'GP=1'
+EMIS_IN(44) = 'C2H6;NMHCind,2' ,   'import_grid','ENE_C2H6',       'GP=1'
+EMIS_IN(45) = 'C3H6;NMHCind,3' ,   'import_grid','ENE_C3H6',       'GP=1'
+EMIS_IN(46) = 'C3H8;NMHCind,3' ,   'import_grid','ENE_C3H8',       'GP=1'
+EMIS_IN(47) = 'NC4H10;NMHCind,4',  'import_grid','ENE_NC4H10',     'GP=1'
+!EMIS_IN() = 'CH3CHO', 'import_grid', 'ENE_CH3CHO',     'GP=1'
+EMIS_IN(49) = 'CH3COCH3;NMHCind,3','import_grid','ENE_CH3COCH3',   'GP=1'
+!EMIS_IN() = 'CH3CO2H', 'import_grid','ENE_CH3CO2H',    'GP=1'
+EMIS_IN(51) = 'CH3OH;NMHCind,1' ,  'import_grid','ENE_CH3OH',      'GP=1'
+EMIS_IN(52) = 'HCHO;NMHCind,1' ,   'import_grid','ENE_HCHO',       'GP=1'
+!EMIS_IN() = 'HCOOH' ,  'import_grid','ENE_HCOOH',      'GP=1'
+EMIS_IN(54) = 'MEK;NMHCind,4' ,    'import_grid','ENE_MEK',        'GP=1'
+EMIS_IN(55) = 'NH3' ,    'import_grid','ENE_NH3',        'GP=1'
+
+
+!
+! ==============================
+! == INDUSTRY (VEU2 + CMIP5) ===
+! ==============================
+! tagging category anth non traffic! 
+
+EMIS_IN(56) = 'NO;NOyind' ,     'import_grid','IND_NO',         'GP=1'
+EMIS_IN(57) = 'CO;COind' ,     'import_grid','IND_CO',         'GP=1'
+EMIS_IN(58) = 'SO2' ,    'import_grid','IND_SO2',        'GP=1'
+EMIS_IN(59) = 'C2H4;NMHCind,2' ,   'import_grid','IND_C2H4',       'GP=1'
+EMIS_IN(60) = 'C2H6;NMHCind,2' ,   'import_grid','IND_C2H6',       'GP=1'
+EMIS_IN(61) = 'C3H6;NMHCind,3' ,   'import_grid','IND_C3H6',       'GP=1'
+EMIS_IN(62) = 'C3H8;NMHCind,3' ,   'import_grid','IND_C3H8',       'GP=1'
+EMIS_IN(63) = 'NC4H10;NMHCind,4',  'import_grid','IND_NC4H10',     'GP=1'
+!EMIS_IN() = 'CH3CHO', 'import_grid', 'IND_CH3CHO',     'GP=1'
+EMIS_IN(64) = 'CH3COCH3;NMHCind,3','import_grid','IND_CH3COCH3',   'GP=1'
+!EMIS_IN() = 'CH3CO2H', 'import_grid','IND_CH3CO2H',    'GP=1'
+EMIS_IN(65) = 'CH3OH;NMHCind,1' ,  'import_grid','IND_CH3OH',      'GP=1'
+EMIS_IN(66) = 'HCHO;NMHCind,1' ,   'import_grid','IND_HCHO',       'GP=1'
+!EMIS_IN() = 'HCOOH' ,  'import_grid','IND_HCOOH',      'GP=1'
+EMIS_IN(67) = 'MEK;NMHCind,4' ,    'import_grid','IND_MEK',        'GP=1'
+EMIS_IN(68) = 'NH3' ,    'import_grid','IND_NH3',        'GP=1'
+
+!
+! ==============================
+! == DOMESTIC (VEU2 + CMIP5) ===
+! ==============================
+!tagging category anth non traffic! 
+
+
+EMIS_IN(79) = 'NO;NOyind' ,     'import_grid','DOM_NO',         'GP=1'
+EMIS_IN(80) = 'CO;COind' ,     'import_grid','DOM_CO',         'GP=1'
+EMIS_IN(81) = 'SO2' ,    'import_grid','DOM_SO2',        'GP=1'
+EMIS_IN(82) = 'C2H4;NMHCind,2' ,   'import_grid','DOM_C2H4',       'GP=1'
+EMIS_IN(83) = 'C2H6;NMHCind,2' ,   'import_grid','DOM_C2H6',       'GP=1'
+EMIS_IN(84) = 'C3H6;NMHCind,3' ,   'import_grid','DOM_C3H6',       'GP=1'
+EMIS_IN(85) = 'C3H8;NMHCind,3' ,   'import_grid','DOM_C3H8',       'GP=1'
+EMIS_IN(86) = 'NC4H10;NMHCind,4',  'import_grid','DOM_NC4H10',     'GP=1'
+!EMIS_IN() = 'CH3CHO', 'import_grid', 'DOM_CH3CHO',     'GP=1'
+EMIS_IN(87) = 'CH3COCH3;NMHCind,3','import_grid','DOM_CH3COCH3',   'GP=1'
+!EMIS_IN() = 'CH3CO2H', 'import_grid','DOM_CH3CO2H',    'GP=1'
+EMIS_IN(88) = 'CH3OH;NMHCind,1' ,  'import_grid','DOM_CH3OH',      'GP=1'
+EMIS_IN(89) = 'HCHO;NMHCind,1' ,   'import_grid','DOM_HCHO',       'GP=1'
+!EMIS_IN() = 'HCOOH' ,  'import_grid','DOM_HCOOH',      'GP=1'
+EMIS_IN(90) = 'MEK;NMHCind,4' ,    'import_grid','DOM_MEK',        'GP=1'
+EMIS_IN(91) = 'NH3' ,    'import_grid','DOM_NH3',        'GP=1'
+
+
+!
+! ==============================
+! == LAND TRANSPORT DE (VEU2) ===
+! ==============================
+!tagging category direct traffic de!
+
+EMIS_IN(92) = 'NO;NOyteu' ,     'import_grid','TRA-DE_NO',         'GP=1'
+EMIS_IN(93) = 'CO;COteu' ,     'import_grid','TRA-DE_CO',         'GP=1'
+EMIS_IN(94) = 'SO2' ,    'import_grid','TRA-DE_SO2',        'GP=1'
+EMIS_IN(95) = 'C2H4;NMHCteu,2' ,   'import_grid','TRA-DE_C2H4',       'GP=1'
+EMIS_IN(96) = 'C2H6;NMHCteu,2' ,   'import_grid','TRA-DE_C2H6',       'GP=1'
+EMIS_IN(97) = 'C3H6;NMHCteu,3' ,   'import_grid','TRA-DE_C3H6',       'GP=1'
+EMIS_IN(98) = 'C3H8;NMHCteu,3' ,   'import_grid','TRA-DE_C3H8',       'GP=1'
+EMIS_IN(99) = 'NC4H10;NMHCteu,4',  'import_grid','TRA-DE_NC4H10',     'GP=1'
+!EMIS_IN() = 'CH3CHO;NMHCddt', 'import_grid', 'TRA-DE_CH3CHO',     'GP=1'
+EMIS_IN(100) = 'CH3COCH3;NMHCteu,3','import_grid','TRA-DE_CH3COCH3',   'GP=1'
+!EMIS_IN() = 'CH3CO2H;NMHCddt', 'import_grid','TRA-DE_CH3CO2H',    'GP=1'
+EMIS_IN(101) = 'CH3OH;NMHCteu,1' ,  'import_grid','TRA-DE_CH3OH',      'GP=1'
+EMIS_IN(102) = 'HCHO;NMHCteu,1' ,   'import_grid','TRA-DE_HCHO',       'GP=1'
+!EMIS_IN() = 'HCOOH' ,  'import_grid','TRA-DE_HCOOH',      'GP=1'
+EMIS_IN(103) = 'MEK;NMHCteu,4' ,    'import_grid','TRA-DE_MEK',        'GP=1'
+EMIS_IN(104) = 'NH3' ,    'import_grid','TRA-DE_NH3',        'GP=1'
+
+
+!
+! ==============================
+! == LAND TRANSPORT EU (CMIP5 + VEU2) ===
+! ==============================
+!tagging category direct traffic EU!
+
+EMIS_IN(105) = 'NO;NOyteu' ,     'import_grid','TRA-EU_NO',         'GP=1'
+EMIS_IN(106) = 'CO;COteu' ,     'import_grid','TRA-EU_CO',         'GP=1'
+EMIS_IN(107) = 'SO2' ,    'import_grid','TRA-EU_SO2',        'GP=1'
+EMIS_IN(108) = 'C2H4;NMHCteu,2' ,   'import_grid','TRA-EU_C2H4',       'GP=1'
+EMIS_IN(109) = 'C2H6;NMHCteu,2' ,   'import_grid','TRA-EU_C2H6',       'GP=1'
+EMIS_IN(110) = 'C3H6;NMHCteu,3' ,   'import_grid','TRA-EU_C3H6',       'GP=1'
+EMIS_IN(111) = 'C3H8;NMHCteu,3' ,   'import_grid','TRA-EU_C3H8',       'GP=1'
+EMIS_IN(112) = 'NC4H10;NMHCteu,4',  'import_grid','TRA-EU_NC4H10',     'GP=1'
+!EMIS_IN() = 'CH3CHO;NMHCedt', 'import_grid', 'TRA-EU_CH3CHO',     'GP=1'
+EMIS_IN(113) = 'CH3COCH3;NMHCteu,3','import_grid','TRA-EU_CH3COCH3',   'GP=1'
+!EMIS_IN() = 'CH3CO2H;NMHCedt', 'import_grid','TRA-EU_CH3CO2H',    'GP=1'
+EMIS_IN(114) = 'CH3OH;NMHCteu,1' ,  'import_grid','TRA-EU_CH3OH',      'GP=1'
+EMIS_IN(115) = 'HCHO;NMHCteu,1' ,   'import_grid','TRA-EU_HCHO',       'GP=1'
+!EMIS_IN() = 'HCOOH' ,  'import_grid','TRA-EU_HCOOH',      'GP=1'
+EMIS_IN(116) = 'MEK;NMHCteu,4' ,    'import_grid','TRA-EU_MEK',        'GP=1'
+EMIS_IN(117) = 'NH3' ,    'import_grid','TRA-EU_NH3',        'GP=1'
+
+
+!
+! ==============================
+! == LAND TRANSPORT global (CMIP5) ===
+! ==============================
+!tagging category traffic!
+
+EMIS_IN(118) = 'NO;NOytra' ,     'import_grid','TRA_NO',         'GP=1'
+EMIS_IN(119) = 'CO;COtra' ,     'import_grid','TRA_CO',         'GP=1'
+EMIS_IN(120) = 'SO2' ,    'import_grid','TRA_SO2',        'GP=1'
+EMIS_IN(121) = 'C2H4;NMHCtra,2' ,   'import_grid','TRA_C2H4',       'GP=1'
+EMIS_IN(122) = 'C2H6;NMHCtra,2' ,   'import_grid','TRA_C2H6',       'GP=1'
+EMIS_IN(123) = 'C3H6;NMHCtra,3' ,   'import_grid','TRA_C3H6',       'GP=1'
+EMIS_IN(124) = 'C3H8;NMHCtra,3' ,   'import_grid','TRA_C3H8',       'GP=1'
+EMIS_IN(125) = 'NC4H10;NMHCtra,4',  'import_grid','TRA_NC4H10',     'GP=1'
+!EMIS_IN() = 'CH3CHO;NMHCedt', 'import_grid', 'TRA_CH3CHO',     'GP=1'
+EMIS_IN(126) = 'CH3COCH3;NMHCtra,3','import_grid','TRA_CH3COCH3',   'GP=1'
+!EMIS_IN() = 'CH3CO2H;NMHCedt', 'import_grid','TRA_CH3CO2H',    'GP=1'
+EMIS_IN(127) = 'CH3OH;NMHCtra,1' ,  'import_grid','TRA_CH3OH',      'GP=1'
+EMIS_IN(128) = 'HCHO;NMHCtra,1' ,   'import_grid','TRA_HCHO',       'GP=1'
+!EMIS_IN() = 'HCOOH' ,  'import_grid','TRA_HCOOH',      'GP=1'
+EMIS_IN(129) = 'MEK;NMHCtra,4' ,    'import_grid','TRA_MEK',        'GP=1'
+EMIS_IN(130) = 'NH3' ,    'import_grid','TRA_NH3',        'GP=1'
+
+
+! ==============================
+! == SOLVENTS (VEU2 + CMIP5) ===
+! ==============================
+!tagging catagory anth. non traffic 
+
+EMIS_IN(131) = 'NO;NOyind' ,     'import_grid','SLV_NO',         'GP=1'
+EMIS_IN(132) = 'CO;COind' ,     'import_grid','SLV_CO',         'GP=1'
+EMIS_IN(133) = 'SO2' ,    'import_grid','SLV_SO2',        'GP=1'
+EMIS_IN(134) = 'C2H4;NMHCind,2' ,   'import_grid','SLV_C2H4',       'GP=1'
+EMIS_IN(135) = 'C2H6;NMHCind,2' ,   'import_grid','SLV_C2H6',       'GP=1'
+EMIS_IN(136) = 'C3H6;NMHCind,3' ,   'import_grid','SLV_C3H6',       'GP=1'
+EMIS_IN(137) = 'C3H8;NMHCind,3' ,   'import_grid','SLV_C3H8',       'GP=1'
+EMIS_IN(138) = 'NC4H10;NMHCind,4',  'import_grid','SLV_NC4H10',     'GP=1'
+!EMIS_IN() = 'CH3CHO;NMHCind', 'import_grid', 'SLV_CH3CHO',     'GP=1'
+EMIS_IN(139) = 'CH3COCH3;NMHCind,3','import_grid','SLV_CH3COCH3',   'GP=1'
+!EMIS_IN() = 'CH3CO2H;NMHCind', 'import_grid','SLV_CH3CO2H',    'GP=1'
+EMIS_IN(140) = 'CH3OH;NMHCind,1' ,  'import_grid','SLV_CH3OH',      'GP=1'
+EMIS_IN(141) = 'HCHO;NMHCind,1' ,   'import_grid','SLV_HCHO',       'GP=1'
+!EMIS_IN() = 'HCOOH' ,  'import_grid','SLV_HCOOH',      'GP=1'
+EMIS_IN(142) = 'MEK;NMHCind,4' ,    'import_grid','SLV_MEK',        'GP=1'
+EMIS_IN(143) = 'NH3' ,    'import_grid','SLV_NH3',        'GP=1'
+
+
+!
+! ===========================
+! == WASTE (VEU2 + CMIP5) ===
+! ===========================
+!
+!tagging catagory anth. non traffic 
+
+EMIS_IN(144) = 'NO;NOyind' ,     'import_grid','WST_NO',         'GP=1'
+EMIS_IN(145) = 'CO;COind' ,     'import_grid','WST_CO',         'GP=1'
+EMIS_IN(146) = 'SO2' ,    'import_grid','WST_SO2',        'GP=1'
+EMIS_IN(147) = 'C2H4;NMHCind,2' ,   'import_grid','WST_C2H4',       'GP=1'
+EMIS_IN(148) = 'C2H6;NMHCind,2' ,   'import_grid','WST_C2H6',       'GP=1'
+EMIS_IN(149) = 'C3H6;NMHCind,3' ,   'import_grid','WST_C3H6',       'GP=1'
+EMIS_IN(150) = 'C3H8;NMHCind,3' ,   'import_grid','WST_C3H8',       'GP=1'
+EMIS_IN(151) = 'NC4H10;NMHCind,4',  'import_grid','WST_NC4H10',     'GP=1'
+!EMIS_IN() = 'CH3CHO;NMHCind', 'import_grid', 'WST_CH3CHO',     'GP=1'
+EMIS_IN(152) = 'CH3COCH3;NMHCind,3','import_grid','WST_CH3COCH3',   'GP=1'
+!EMIS_IN() = 'CH3CO2H;NMHCind', 'import_grid','WST_CH3CO2H',    'GP=1'
+EMIS_IN(153) = 'CH3OH;NMHCind,1' ,  'import_grid','WST_CH3OH',      'GP=1'
+EMIS_IN(154) = 'HCHO;NMHCind,1' ,   'import_grid','WST_HCHO',       'GP=1'
+!EMIS_IN() = 'HCOOH;NMHCind' ,  'import_grid','WST_HCOOH',      'GP=1'
+EMIS_IN(155) = 'MEK;NMHCind,4' ,    'import_grid','WST_MEK',        'GP=1'
+EMIS_IN(156) = 'NH3' ,    'import_grid','WST_NH3',        'GP=1'
+
+
+
+! ==========================================================
+! == AGRICULTURE and AGRIC. WASTE BURNING (VEU2 + CMIP5) ===
+! ==========================================================
+!
+!tagging catagory anth. non traffic 
+
+EMIS_IN(157) = 'NO;NOyind' ,     'import_grid','AGR_NO',         'GP=1'
+EMIS_IN(158) = 'CO;COind' ,     'import_grid','AGR_CO',         'GP=1'
+EMIS_IN(159) = 'SO2' ,    'import_grid','AGR_SO2',        'GP=1'
+EMIS_IN(160) = 'C2H4;NMHCind,2' ,   'import_grid','AGR_C2H4',       'GP=1'
+EMIS_IN(161) = 'C2H6;NMHCind,2' ,   'import_grid','AGR_C2H6',       'GP=1'
+EMIS_IN(162) = 'C3H6;NMHCind,3' ,   'import_grid','AGR_C3H6',       'GP=1'
+EMIS_IN(163) = 'C3H8;NMHCind,3' ,   'import_grid','AGR_C3H8',       'GP=1'
+EMIS_IN(164) = 'NC4H10;NMHCind,4',  'import_grid','AGR_NC4H10',     'GP=1'
+EMIS_IN(165) = 'CH3CHO;NMHCind,2', 'import_grid', 'AGR_CH3CHO',     'GP=1'
+EMIS_IN(166) = 'CH3COCH3;NMHCind,3','import_grid','AGR_CH3COCH3',   'GP=1'
+EMIS_IN(167) = 'CH3CO2H;NMHCind,2', 'import_grid','AGR_CH3CO2H',    'GP=1'
+EMIS_IN(168) = 'CH3OH;NMHCind,1' ,  'import_grid','AGR_CH3OH',      'GP=1'
+EMIS_IN(169) = 'HCHO;NMHCind,1' ,   'import_grid','AGR_HCHO',       'GP=1'
+EMIS_IN(170) = 'HCOOH;NMHCind,1' ,  'import_grid','AGR_HCOOH',      'GP=1'
+EMIS_IN(171) = 'MEK;NMHCind,4' ,    'import_grid','AGR_MEK',        'GP=1'
+EMIS_IN(172) = 'NH3' ,    'import_grid','AGR_NH3',        'GP=1'
+
+! ===================================
+! == RAFFINERIES IN GERMANY (VEU2) ==
+! ===================================
+!
+!tagging category energy for traffic d
+
+EMIS_IN(173) = 'NO;NOyieu' ,     'import_grid','RAFFIN-DE_NO',         'GP=1'
+EMIS_IN(174) = 'CO;COieu' ,     'import_grid','RAFFIN-DE_CO',         'GP=1'
+EMIS_IN(175) = 'SO2' ,    'import_grid','RAFFIN-DE_SO2',        'GP=1'
+EMIS_IN(176) = 'C2H4;NMHCieu,2' ,   'import_grid','RAFFIN-DE_C2H4',       'GP=1'
+EMIS_IN(177) = 'C2H6;NMHCieu,2' ,   'import_grid','RAFFIN-DE_C2H6',       'GP=1'
+EMIS_IN(178) = 'C3H6;NMHCieu,3' ,   'import_grid','RAFFIN-DE_C3H6',       'GP=1'
+EMIS_IN(179) = 'C3H8;NMHCieu,3' ,   'import_grid','RAFFIN-DE_C3H8',       'GP=1'
+EMIS_IN(180) = 'NC4H10;NMHCieu,4',  'import_grid','RAFFIN-DE_NC4H10',     'GP=1'
+!EMIS_IN() = 'CH3CHO;NMHCdet', 'import_grid', 'RAFFIN-DE_CH3CHO',     'GP=1'
+EMIS_IN(181) = 'CH3COCH3;NMHCieu,3','import_grid','RAFFIN-DE_CH3COCH3',   'GP=1'
+!EMIS_IN() = 'CH3CO2H;NMHCdet', 'import_grid','RAFFIN-DE_CH3CO2H',    'GP=1'
+EMIS_IN(182) = 'CH3OH;NMHCieu,1' ,  'import_grid','RAFFIN-DE_CH3OH',      'GP=1'
+EMIS_IN(183) = 'HCHO;NMHCieu,1' ,   'import_grid','RAFFIN-DE_HCHO',       'GP=1'
+!EMIS_IN() = 'HCOOH;NMHCieu' ,  'import_grid','RAFFIN-DE_HCOOH',      'GP=1'
+EMIS_IN(184) = 'MEK;NMHCieu,4' ,    'import_grid','RAFFIN-DE_MEK',        'GP=1'
+EMIS_IN(185) = 'NH3' ,    'import_grid','RAFFIN-DE_NH3',        'GP=1'
+
+! ============================================
+! == ENERGY FOR TRANSPORT IN GERMANY (VEU2) ==
+! ============================================
+!
+!tagging category energy for traffic d
+
+EMIS_IN(186) = 'NO;NOyieu' ,     'import_grid','ENE4TRANS-DE_NO',         'GP=1'
+EMIS_IN(187) = 'CO;COieu' ,     'import_grid','ENE4TRANS-DE_CO',         'GP=1'
+EMIS_IN(188) = 'SO2' ,    'import_grid','ENE4TRANS-DE_SO2',             'GP=1'
+EMIS_IN(189) = 'C2H4;NMHCieu,2' ,   'import_grid','ENE4TRANS-DE_C2H4',    'GP=1'
+EMIS_IN(190) = 'C2H6;NMHCieu,2' ,   'import_grid','ENE4TRANS-DE_C2H6',     'GP=1'
+EMIS_IN(191) = 'C3H6;NMHCieu,3' ,   'import_grid','ENE4TRANS-DE_C3H6',     'GP=1'
+EMIS_IN(192) = 'C3H8;NMHCieu,3' ,   'import_grid','ENE4TRANS-DE_C3H8',     'GP=1'
+EMIS_IN(193) = 'NC4H10;NMHCieu,4',  'import_grid','ENE4TRANS-DE_NC4H10',   'GP=1'
+!EMIS_IN() = 'CH3CHO;NMHCdet', 'import_grid', 'ENE4TRANS-DE_CH3CHO',  'GP=1'
+EMIS_IN(194) = 'CH3COCH3;NMHCieu,3','import_grid','ENE4TRANS-DE_CH3COCH3', 'GP=1'
+!EMIS_IN() = 'CH3CO2H;NMHCdet', 'import_grid','ENE4TRANS-DE_CH3CO2H', 'GP=1'
+EMIS_IN(195) = 'CH3OH;NMHCieu,1' ,  'import_grid','ENE4TRANS-DE_CH3OH',    'GP=1'
+EMIS_IN(196) = 'HCHO;NMHCieu,1' ,   'import_grid','ENE4TRANS-DE_HCHO',     'GP=1'
+!EMIS_IN() = 'HCOOH;NMHCdet' ,  'import_grid','ENE4TRANS-DE_HCOOH',   'GP=1'
+EMIS_IN(197) = 'MEK;NMHCieu,4' ,    'import_grid','ENE4TRANS-DE_MEK',      'GP=1'
+EMIS_IN(198) = 'NH3' ,    'import_grid','ENE4TRANS-DE_NH3',        'GP=1'
+
+
+! ==========================================
+! == FUGITIVE EMISSIONS IN GERMANY (VEU2) ==
+! ==========================================
+!
+!tagging category energy for traffic d
+
+EMIS_IN(199) = 'NO;NOyieu' ,     'import_grid','FUGITIVE-DE_NO',         'GP=1'
+EMIS_IN(200) = 'CO;COieu' ,     'import_grid','FUGITIVE-DE_CO',         'GP=1'
+EMIS_IN(201) = 'SO2' ,    'import_grid','FUGITIVE-DE_SO2',             'GP=1'
+EMIS_IN(202) = 'C2H4;NMHCieu,2' ,   'import_grid','FUGITIVE-DE_C2H4',    'GP=1'
+EMIS_IN(203) = 'C2H6;NMHCieu,2' ,   'import_grid','FUGITIVE-DE_C2H6',     'GP=1'
+EMIS_IN(204) = 'C3H6;NMHCieu,3' ,   'import_grid','FUGITIVE-DE_C3H6',     'GP=1'
+EMIS_IN(205) = 'C3H8;NMHCieu,3' ,   'import_grid','FUGITIVE-DE_C3H8',     'GP=1'
+EMIS_IN(206) = 'NC4H10;NMHCieu,4',  'import_grid','FUGITIVE-DE_NC4H10',   'GP=1'
+!EMIS_IN() = 'CH3CHO;NMHCdet', 'import_grid', 'FUGITIVE-DE_CH3CHO',  'GP=1'
+EMIS_IN(207) = 'CH3COCH3;NMHCieu,3','import_grid','FUGITIVE-DE_CH3COCH3', 'GP=1'
+!EMIS_IN() = 'CH3CO2H;NMHCdet', 'import_grid','FUGITIVE-DE_CH3CO2H', 'GP=1'
+EMIS_IN(208) = 'CH3OH;NMHCieu,1' ,  'import_grid','FUGITIVE-DE_CH3OH',    'GP=1'
+EMIS_IN(209) = 'HCHO;NMHCieu,1' ,   'import_grid','FUGITIVE-DE_HCHO',     'GP=1'
+!EMIS_IN() = 'HCOOH;NMHCdet' ,  'import_grid','FUGITIVE-DE_HCOOH',   'GP=1'
+EMIS_IN(210) = 'MEK;NMHCieu,4' ,    'import_grid','FUGITIVE-DE_MEK',      'GP=1'
+EMIS_IN(211) = 'NH3' ,    'import_grid','FUGITIVE-DE_NH3',        'GP=1'
+
+
+
+
+
+
+
+
+
+
+! ===========================================
+! == GROUND-BASED AIRPORT EMISSIONS (VEU2) ==
+! ===========================================
+!
+!tagging category air???
+! op_mm_20171016
+! Discussion with JH and MR 
+! Thee emissions are treaded as anth. nonm traffic emissions, because
+! they are no part of the VEU 2 traffic  simulations and are not considered for the e.g. CO2 effects. 
+
+!EMIS_IN(212) = 'NO;NOyind' ,     'import_grid','AIRPORTS_NO',         'GP=1'
+!EMIS_IN(213) = 'CO;COind' ,     'import_grid','AIRPORTS_CO',         'GP=1'
+!EMIS_IN(214) = 'SO2' ,    'import_grid','AIRPORTS_SO2',             'GP=1'
+!EMIS_IN(215) = 'C2H4;NMHCind,2' ,   'import_grid','AIRPORTS_C2H4',    'GP=1'
+!EMIS_IN(216) = 'C2H6;NMHCind,2' ,   'import_grid','AIRPORTS_C2H6',     'GP=1'
+!EMIS_IN(217) = 'C3H6;NMHCind,3' ,   'import_grid','AIRPORTS_C3H6',     'GP=1'
+!EMIS_IN(218) = 'C3H8;NMHCind,3' ,   'import_grid','AIRPORTS_C3H8',     'GP=1'
+!EMIS_IN(219) = 'NC4H10;NMHCind,4',  'import_grid','AIRPORTS_NC4H10',   'GP=1'
+!EMIS_IN() = 'CH3CHO;NMHCair', 'import_grid', 'AIRPORTS_CH3CHO',  'GP=1'
+!EMIS_IN(220) = 'CH3COCH3;NMHCind,3','import_grid','AIRPORTS_CH3COCH3', 'GP=1'
+!EMIS_IN() = 'CH3CO2H;NMHCair', 'import_grid','AIRPORTS_CH3CO2H', 'GP=1'
+!EMIS_IN(221) = 'CH3OH;NMHCind,1' ,  'import_grid','AIRPORTS_CH3OH',    'GP=1'
+!EMIS_IN(222) = 'HCHO;NMHCind,1' ,   'import_grid','AIRPORTS_HCHO',     'GP=1'
+!EMIS_IN() = 'HCOOH;NMHCair' ,  'import_grid','AIRPORTS_HCOOH',   'GP=1'
+!EMIS_IN(223) = 'MEK;NMHCind,4' ,    'import_grid','AIRPORTS_MEK',      'GP=1'
+!EMIS_IN(224) = 'NH3' ,    'import_grid','AIRPORTS_NH3',        'GP=1'
+
+!
+! =================================
+! == OTHER MOBILE SOURCES (VEU2) ==
+! =================================
+!
+! tagging catagory anth. non traffic
+
+EMIS_IN(225) = 'NO;NOyieu' ,     'import_grid','OTHERMOBILE_NO',         'GP=1'
+EMIS_IN(226) = 'CO;COieu' ,     'import_grid','OTHERMOBILE_CO',         'GP=1'
+EMIS_IN(227) = 'SO2' ,    'import_grid','OTHERMOBILE_SO2',             'GP=1'
+EMIS_IN(228) = 'C2H4;NMHCieu,2' ,   'import_grid','OTHERMOBILE_C2H4',    'GP=1'
+EMIS_IN(229) = 'C2H6;NMHCieu,2' ,   'import_grid','OTHERMOBILE_C2H6',     'GP=1'
+EMIS_IN(230) = 'C3H6;NMHCieu,3' ,   'import_grid','OTHERMOBILE_C3H6',     'GP=1'
+EMIS_IN(231) = 'C3H8;NMHCieu,3' ,   'import_grid','OTHERMOBILE_C3H8',     'GP=1'
+EMIS_IN(232) = 'NC4H10;NMHCieu,4',  'import_grid','OTHERMOBILE_NC4H10',   'GP=1'
+!EMIS_IN() = 'CH3CHO;NMHCind', 'import_grid', 'OTHERMOBILE_CH3CHO',  'GP=1'
+EMIS_IN(233) = 'CH3COCH3;NMHCieu,3','import_grid','OTHERMOBILE_CH3COCH3', 'GP=1'
+!EMIS_IN() = 'CH3CO2H;NMHCind', 'import_grid','OTHERMOBILE_CH3CO2H', 'GP=1'
+EMIS_IN(234) = 'CH3OH;NMHCieu,1' ,  'import_grid','OTHERMOBILE_CH3OH',    'GP=1'
+EMIS_IN(235) = 'HCHO;NMHCieu,1' ,   'import_grid','OTHERMOBILE_HCHO',     'GP=1'
+!EMIS_IN() = 'HCOOH;NMHCind' ,  'import_grid','OTHERMOBILE_HCOOH',   'GP=1'
+EMIS_IN(236) = 'MEK;NMHCieu,4' ,    'import_grid','OTHERMOBILE_MEK',      'GP=1'
+EMIS_IN(237) = 'NH3' ,    'import_grid','OTHERMOBILE_NH3',        'GP=1'
+
+
+
+! ======================
+! == SHIPPING (CMIP5) ==
+! ======================
+! Here use EDGAR
+
+!EMIS_IN(238) = 'NO;NOyshp' ,     'import_grid','SHIP_NO',         'GP=1'
+!EMIS_IN(239) = 'CO;COshp' ,     'import_grid','SHIP_CO',         'GP=1'
+!EMIS_IN(240) = 'SO2' ,    'import_grid','SHIP_SO2',             'GP=1'
+!EMIS_IN(241) = 'C2H4;NMHCshp,2' ,   'import_grid','SHIP_C2H4',    'GP=1'
+!EMIS_IN(242) = 'C2H6;NMHCshp,2' ,   'import_grid','SHIP_C2H6',     'GP=1'
+!EMIS_IN(243) = 'C3H6;NMHCshp,3' ,   'import_grid','SHIP_C3H6',     'GP=1'
+!EMIS_IN(244) = 'C3H8;NMHCshp,3' ,   'import_grid','SHIP_C3H8',     'GP=1'
+!EMIS_IN(245) = 'NC4H10;NMHCshp,4',  'import_grid','SHIP_NC4H10',   'GP=1'
+!EMIS_IN() = 'CH3CHO;NMHCshp', 'import_grid', 'SHIP_CH3CHO',  'GP=1'
+!EMIS_IN(246) = 'CH3COCH3;NMHCshp,3','import_grid','SHIP_CH3COCH3', 'GP=1'
+!EMIS_IN() = 'CH3CO2H;NMHCshp', 'import_grid','SHIP_CH3CO2H', 'GP=1'
+!EMIS_IN(247) = 'CH3OH;NMHCshp,2' ,  'import_grid','SHIP_CH3OH',    'GP=1'
+!EMIS_IN(248) = 'HCHO;NMHCshp,1' ,   'import_grid','SHIP_HCHO',     'GP=1'
+!EMIS_IN() = 'HCOOH;NMHCshp' ,  'import_grid','SHIP_HCOOH',   'GP=1'
+!EMIS_IN(249) = 'MEK;NMHCshp,4' ,    'import_grid','SHIP_MEK',      'GP=1'
+!!!!EMIS_IN(250) = 'NH3' ,    'import_grid','SHIP_NH3',        'GP=1'
+
+
+! SHIP                                                                                                                                                              
+EMIS_IN(238) = 'NO;NOyshp' ,      'import_grid','EDGARship_NO',       'GP=1'
+EMIS_IN(239) = 'CO;COshp' ,       'import_grid','EDGARship_CO',         'GP=1'
+EMIS_IN(240) = 'SO2' ,            'import_grid','EDGARship_SO2',        'GP=1'
+EMIS_IN(241) = 'C2H4;NMHCshp,2' ,   'import_grid','EDGARship_C2H4',       'GP=1'
+EMIS_IN(242) = 'C2H6;NMHCshp,2' ,   'import_grid','EDGARship_C2H6',       'GP=1'
+EMIS_IN(243) = 'C3H6;NMHCshp,3' ,   'import_grid','EDGARship_C3H6',       'GP=1'
+EMIS_IN(244) = 'C3H8;NMHCshp,3' ,   'import_grid','EDGARship_C3H8',       'GP=1'
+EMIS_IN(245) = 'NC4H10;NMHCshp,4',  'import_grid','EDGARship_NC4H10',     'GP=1'
+EMIS_IN(246) = 'CH3COCH3;NMHCshp,3','import_grid','EDGARship_CH3COCH3',   'GP=1'
+EMIS_IN(247) = 'CH3OH;NMHCshp,1'    'import_grid','EDGARship_CH3OH',      'GP=1'
+EMIS_IN(248) = 'HCHO;NMHCshp,1'     'import_grid','EDGARship_HCHO',       'GP=1'
+EMIS_IN(248) = 'MEK;NMHCshp,4' ,    'import_grid','EDGARship_MEK',        'GP=1'
+!EMIS_IN(281) = 'NH3' ,      
+
+
+
+! ======================
+! == AVIATION (CMIP5) ==
+! ======================
+!tagging category air
+
+EMIS_IN(251) = 'NO;NOyair' ,     'import_grid','AIR_NO',         'GP=1'
+!!EMIS_IN() = 'CO;COair' ,     'import_grid','AIR_CO',         'GP=1'
+!!EMIS_IN() = 'SO2' ,    'import_grid','AIR_SO2',             'GP=1'
+!!EMIS_IN() = 'C2H4;NMHCair' ,   'import_grid','AIR_C2H4',    'GP=1'
+!!EMIS_IN() = 'C2H6;NMHCair' ,   'import_grid','AIR_C2H6',     'GP=1'
+!!EMIS_IN() = 'C3H6;NMHCair' ,   'import_grid','AIR_C3H6',     'GP=1'
+!!EMIS_IN() = 'C3H8;NMHCair' ,   'import_grid','AIR_C3H8',     'GP=1'
+!!EMIS_IN() = 'NC4H10;NMHCair',  'import_grid','AIR_NC4H10',   'GP=1'
+!EMIS_IN() = 'CH3CHO;NMHCair', 'import_grid', 'AIR_CH3CHO',  'GP=1'
+!!EMIS_IN() = 'CH3COCH3;NMHCair','import_grid','AIR_CH3COCH3', 'GP=1'
+!EMIS_IN() = 'CH3CO2H;NMHCair', 'import_grid','AIR_CH3CO2H', 'GP=1'
+!!EMIS_IN() = 'CH3OH;NMHCair' ,  'import_grid','AIR_CH3OH',    'GP=1'
+!!EMIS_IN() = 'HCHO;NMHCair' ,   'import_grid','AIR_HCHO',     'GP=1'
+!EMIS_IN() = 'HCOOH;NMHCair' ,  'import_grid','AIR_HCOOH',   'GP=1'
+!!EMIS_IN() = 'MEK;NMHCair' ,    'import_grid','AIR_MEK',      'GP=1'
+!!EMIS_IN() = 'NH3' ,    'import_grid','AIR_NH3',        'GP=1'
+
+
+
+! --------------------------------
+! BIOGEN (not via ONLEM or AIRSEA)
+!   C2H4;C2H6;C3H6;C3H8;CH3CO2H;CH3COCH3;CH3OH;CO;HCOOH;NC4H10;
+! --------------------------------
+!
+EMIS_IN(252)  =  'C2H4;NMHCsoi,2' ,   'import_grid','biogen_C2H4',      'GP=1'
+EMIS_IN(253)  =  'C2H6;NMHCsoi,2' ,   'import_grid','biogen_C2H6',      'GP=1'
+EMIS_IN(254)  =  'C3H6;NMHCsoi,3' ,   'import_grid','biogen_C3H6',      'GP=1'
+EMIS_IN(255)  =  'C3H8;NMHCsoi,3' ,   'import_grid','biogen_C3H8',      'GP=1'
+EMIS_IN(256)  =  'CH3CO2H;NMHCsoi,2', 'import_grid','biogen_CH3CO2H',   'GP=1'
+EMIS_IN(257)  =  'CH3COCH3;NMHCsoi,3','import_grid','biogen_CH3COCH3',  'GP=1'
+EMIS_IN(258)  =  'CH3OH;NMHCsoi,1' ,  'import_grid','biogen_CH3OH',     'GP=1'
+EMIS_IN(259)  =  'CO;COsoi' ,     'import_grid','biogen_CO',        'GP=1'
+EMIS_IN(260)  =  'HCOOH;NMHCsoi,1' ,  'import_grid','biogen_HCOOH',     'GP=1'
+EMIS_IN(261)  =  'NC4H10;NMHCsoi,4' , 'import_grid','biogen_NC4H10',    'GP=1'
+!
+
+! ---------------
+! OTHER EMISSIONS
+! ---------------
+!
+! VOLCANIC SO2
+!
+EMIS_IN(262) = 'SO2' ,'import_grid','VOLCANIC_SO2_SO2',  'GP=1'
+!
+! TERRESTRIAL DMS
+!
+EMIS_IN(263) = 'DMS' ,'import_grid','TERR_DMS_DMS',      'GP=2'
+!
+! AMMONIA
+!
+EMIS_IN(264) = 'NH3' ,'import_grid','NH3l_NH3',           'GP=1'
+EMIS_IN(265) = 'NH3' ,'import_grid','NH3w_NH3',           'GP=1'
+!
+!
+! HALOCARBONS CHCl2Br;CHClBr2;CH2ClBr;CH2Br2;CHBr3
+! 
+EMIS_IN(266) = 'CHBr3' ,  'import_grid','HALOCARB_CHBr3',        'GP=2'
+EMIS_IN(267) = 'CH2Br2' , 'import_grid','HALOCARB_CH2Br2',       'GP=2'
+EMIS_IN(268) = 'CH2ClBr' ,'import_grid','HALOCARB_CH2ClBr',      'GP=2'
+EMIS_IN(269) = 'CHClBr2' ,'import_grid','HALOCARB_CHClBr2',      'GP=2'
+EMIS_IN(270) = 'CHCl2Br' ,'import_grid','HALOCARB_CHCl2Br',      'GP=2'
+!
+! CH3I
+!
+EMIS_IN(271) = 'CH3I' ,'import_grid','CH3I_CH3I',      'GP=2'
+!
+! MERCURY
+!
+!EMIS_IN(271) = 'Hg',      'import_grid','MERCURY_a_Hg',      'GP=2'
+!EMIS_IN(181) = 'HgO',     'import_grid','MERCURY_a_HgO',     'GP=2'
+!EMIS_IN(182) = 'RGM_cs',  'import_grid','MERCURY_a_RGM_cs',  'GP=2'
+!EMIS_IN(183) = 'Hg',      'import_grid','MERCURY_b_Hg',      'GP=2'
+!
+! CH4_fx
+!
+!!$!EMIS_IN(190) = 'CH4_fx', 'import_grid', 'Mfx_an_CH4', 'GP=2',  ! anth.
+!!$EMIS_IN(191) = 'CH4_fx', 'import_grid', 'Mfx_oc_CH4', 'GP=2',
+!!$EMIS_IN(192) = 'CH4_fx', 'import_grid', 'Mfx_te_CH4', 'GP=2',
+!!$EMIS_IN(193) = 'CH4_fx', 'import_grid', 'Mfx_wl_CH4', 'GP=2',
+!!$EMIS_IN(194) = 'CH4_fx', 'import_grid', 'Mfx_wa_CH4', 'GP=2',
+!!$EMIS_IN(195) = 'CH4_fx', 'import_grid', 'BB_CH4',     'GP=2',  ! bb
+!!$EMIS_IN(196) = 'CH4_fx', 'import_grid', 'ANTHNT_CH4', 'GP=2',  ! anth.no traf
+!!$EMIS_IN(197) = 'CH4_fx', 'import_grid', 'AWB_CH4',    'GP=2',  ! awb
+!!$EMIS_IN(198) = 'CH4_fx', 'import_grid', 'SHIP_CH4',   'GP=2',  ! ship
+!!$EMIS_IN(199) = 'CH4_fx', 'import_grid', 'ROAD_CH4',   'GP=2',  ! road
+!
+! synthetic tracers
+!
+!!$EMIS_IN(210) = 'AOA_NH',   'import_grid', 'SYNT1_vemis',     'GP=1',  ! 3D
+!!$EMIS_IN(211) = 'AOA_CCMI', 'import_grid', 'SYNT1_vemis',     'GP=1',  ! 3D
+!!$EMIS_IN(212) = 'CO_25',    'import_grid', 'SYNT2_CO_flux',   'GP=1',
+!!$EMIS_IN(213) = 'CO_50',    'import_grid', 'SYNT2_CO_flux',   'GP=1',
+!!$EMIS_IN(214) = 'SF6_CCMI', 'import_grid', 'SYNT3_SF6_flux',  'GP=1',
+!!$!
+!!$EMIS_IN(215) = 'SO2t',     'import_grid', 'ANTHNT_SO2',  'GP=1',
+!!$EMIS_IN(216) = 'SO2t',     'import_grid', 'AWB_SO2',     'GP=1',
+!!$EMIS_IN(217) = 'SO2t',     'import_grid', 'SHIP_SO2',    'GP=1',
+!!$EMIS_IN(218) = 'SO2t',     'import_grid', 'ROAD_SO2',    'GP=1',
+!
+
+! European anthropoghenic emissions
+! ============================                                               
+! == ENERGY (VEU2 + CMIP5) ===                                              
+! ============================                                          
+                                                                     
+! tagging category anth non traffic!                                         
+                                                                            
+       
+ 
+EMIS_IN(280) = 'NO;NOyieu' ,     'import_grid','ENEEU_NO',         'GP=1'
+EMIS_IN(281) = 'CO;COieu' ,     'import_grid','ENEEU_CO',         'GP=1'
+EMIS_IN(282) = 'SO2' ,    'import_grid','ENEEU_SO2',        'GP=1'
+EMIS_IN(283) = 'C2H4;NMHCieu,2' ,   'import_grid','ENEEU_C2H4',       'GP=1'
+EMIS_IN(284) = 'C2H6;NMHCieu,2' ,   'import_grid','ENEEU_C2H6',       'GP=1'
+EMIS_IN(285) = 'C3H6;NMHCieu,3' ,   'import_grid','ENEEU_C3H6',       'GP=1'
+EMIS_IN(286) = 'C3H8;NMHCieu,3' ,   'import_grid','ENEEU_C3H8',       'GP=1'
+EMIS_IN(287) = 'NC4H10;NMHCieu,4',  'import_grid','ENEEU_NC4H10',     'GP=1'
+!EMIS_IN() = 'CH3CHO', 'import_grid', 'ENE_CH3CHO',     'GP=1'               
+EMIS_IN(289) = 'CH3COCH3;NMHCieu,3','import_grid','ENEEU_CH3COCH3',   'GP=1'
+!EMIS_IN() = 'CH3CO2H', 'import_grid','ENE_CH3CO2H',    'GP=1'             
+EMIS_IN(290) = 'CH3OH;NMHCieu,1' ,  'import_grid','ENEEU_CH3OH',      'GP=1'
+EMIS_IN(291) = 'HCHO;NMHCieu,1' ,   'import_grid','ENEEU_HCHO',       'GP=1'
+!EMIS_IN() = 'HCOOH' ,  'import_grid','ENE_HCOOH',      'GP=1'              
+EMIS_IN(292) = 'MEK;NMHCieu,4' ,    'import_grid','ENEEU_MEK',        'GP=1'
+EMIS_IN(293) = 'NH3' ,    'import_grid','ENEEU_NH3',        'GP=1'
+
+
+! ==============================                                              
+                                                                       
+!= DOMESTIC (VEU2 + CMIP5) ===                                               
+! ==============================                                        
+                                                                              
+           
+!tagging category anth non traffic!                                          
+EMIS_IN(294) = 'NO;NOyieu' ,     'import_grid','DOMEU_NO',         'GP=1'
+EMIS_IN(295) = 'CO;COieu' ,     'import_grid','DOMEU_CO',         'GP=1'
+EMIS_IN(296) = 'SO2' ,    'import_grid','DOMEU_SO2',        'GP=1'
+EMIS_IN(297) = 'C2H4;NMHCieu,2' ,   'import_grid','DOMEU_C2H4',       'GP=1'
+EMIS_IN(298) = 'C2H6;NMHCieu,2' ,   'import_grid','DOMEU_C2H6',       'GP=1'
+EMIS_IN(299) = 'C3H6;NMHCieu,3' ,   'import_grid','DOMEU_C3H6',       'GP=1'
+EMIS_IN(300) = 'C3H8;NMHCieu,3' ,   'import_grid','DOMEU_C3H8',       'GP=1'
+EMIS_IN(301) = 'NC4H10;NMHCieu,4',  'import_grid','DOMEU_NC4H10',     'GP=1'
+!EMIS_IN() = 'CH3CHO', 'import_grid', 'DOM_CH3CHO',     'GP=1'               
+EMIS_IN(302) = 'CH3COCH3;NMHCieu,3','import_grid','DOMEU_CH3COCH3',   'GP=1'
+!EMIS_IN() = 'CH3CO2H', 'import_grid','DOM_CH3CO2H',    'GP=1'             
+EMIS_IN(303) = 'CH3OH;NMHCieu,1' ,  'import_grid','DOMEU_CH3OH',      'GP=1'
+EMIS_IN(304) = 'HCHO;NMHCieu,1' ,   'import_grid','DOMEU_HCHO',       'GP=1'
+!EMIS_IN() = 'HCOOH' ,  'import_grid','DOM_HCOOH',      'GP=1'              
+EMIS_IN(305) = 'MEK;NMHCieu,4' ,    'import_grid','DOMEU_MEK',        'GP=1'
+EMIS_IN(306) = 'NH3' ,    'import_grid','DOMEU_NH3',        'GP=1'
+
+
+!                                                                           
+! ==============================                                             
+! == INDUSTRY (VEU2 + CMIP5) ===                                            
+! ==============================                                             
+                                                                        
+! tagging category anth non traffic!                                         
+EMIS_IN(307) = 'NO;NOyieu' ,     'import_grid','INDEU_NO',         'GP=1'
+EMIS_IN(308) = 'CO;COieu' ,     'import_grid','INDEU_CO',         'GP=1'
+EMIS_IN(309) = 'SO2' ,    'import_grid','INDEU_SO2',        'GP=1'
+EMIS_IN(310) = 'C2H4;NMHCieu,2' ,   'import_grid','INDEU_C2H4',       'GP=1'
+EMIS_IN(311) = 'C2H6;NMHCieu,2' ,   'import_grid','INDEU_C2H6',       'GP=1'
+EMIS_IN(312) = 'C3H6;NMHCieu,3' ,   'import_grid','INDEU_C3H6',       'GP=1'
+EMIS_IN(313) = 'C3H8;NMHCieu,3' ,   'import_grid','INDEU_C3H8',       'GP=1'
+EMIS_IN(314) = 'NC4H10;NMHCieu,4',  'import_grid','INDEU_NC4H10',     'GP=1'
+!EMIS_IN() = 'CH3CHO', 'import_grid', 'IND_CH3CHO',     'GP=1'                
+EMIS_IN(315) = 'CH3COCH3;NMHCieu,3','import_grid','INDEU_CH3COCH3',   'GP=1'
+!EMIS_IN() = 'CH3CO2H', 'import_grid','IND_CH3CO2H',    'GP=1'               
+EMIS_IN(316) = 'CH3OH;NMHCieu,1' ,  'import_grid','INDEU_CH3OH',      'GP=1'
+EMIS_IN(317) = 'HCHO;NMHCieu,1' ,   'import_grid','INDEU_HCHO',       'GP=1'
+!EMIS_IN() = 'HCOOH' ,  'import_grid','IND_HCOOH',      'GP=1'               
+EMIS_IN(318) = 'MEK;NMHCieu,4' ,    'import_grid','INDEU_MEK',        'GP=1'
+EMIS_IN(319) = 'NH3' ,    'import_grid','INDEU_NH3',        'GP=1'
+
+
+! ==============================                                             
+! == SOLVENTS (VEU2 + CMIP5) ===                                              
+! ==============================                                             
+!tagging catagory anth. non traffic                                          
+                                                                             
+          
+EMIS_IN(320) = 'NO;NOyieu' ,     'import_grid','SLVEU_NO',         'GP=1'
+EMIS_IN(321) = 'CO;COieu' ,     'import_grid','SLVEU_CO',         'GP=1'
+EMIS_IN(322) = 'SO2' ,    'import_grid','SLVEU_SO2',        'GP=1'
+EMIS_IN(323) = 'C2H4;NMHCieu,2' ,   'import_grid','SLVEU_C2H4',       'GP=1'
+EMIS_IN(324) = 'C2H6;NMHCieu,2' ,   'import_grid','SLVEU_C2H6',       'GP=1'
+EMIS_IN(325) = 'C3H6;NMHCieu,3' ,   'import_grid','SLVEU_C3H6',       'GP=1'
+EMIS_IN(326) = 'C3H8;NMHCieu,3' ,   'import_grid','SLVEU_C3H8',       'GP=1'
+EMIS_IN(327) = 'NC4H10;NMHCieu,4',  'import_grid','SLVEU_NC4H10',     'GP=1'
+!EMIS_IN() = 'CH3CHO;NMHCind', 'import_grid', 'SLV_CH3CHO',     'GP=1'       
+EMIS_IN(328) = 'CH3COCH3;NMHCieu,3','import_grid','SLVEU_CH3COCH3',   'GP=1'
+!EMIS_IN() = 'CH3CO2H;NMHCind', 'import_grid','SLV_CH3CO2H',    'GP=1'       
+EMIS_IN(329) = 'CH3OH;NMHCieu,1' ,  'import_grid','SLVEU_CH3OH',      'GP=1'
+EMIS_IN(330) = 'HCHO;NMHCieu,1' ,   'import_grid','SLVEU_HCHO',       'GP=1'
+!EMIS_IN() = 'HCOOH' ,  'import_grid','SLV_HCOOH',      'GP=1'               
+EMIS_IN(331) = 'MEK;NMHCieu,4' ,    'import_grid','SLVEU_MEK',        'GP=1'
+EMIS_IN(332) = 'NH3' ,    'import_grid','SLVEU_NH3',        'GP=1'
+
+! ===========================                                               
+  ! == WASTE (VEU2 + CMIP5) ===                                               
+!  ===========================                                               
+                                                                             
+                                                                           
+!tagging catagory anth. non traffic                                          
+EMIS_IN(323) = 'NO;NOyieu' ,     'import_grid','WSTEU_NO',         'GP=1'
+EMIS_IN(324) = 'CO;COieu' ,     'import_grid','WSTEU_CO',         'GP=1'
+EMIS_IN(325) = 'SO2' ,    'import_grid','WSTEU_SO2',        'GP=1'
+EMIS_IN(326) = 'C2H4;NMHCieu,2' ,   'import_grid','WSTEU_C2H4',       'GP=1'
+EMIS_IN(327) = 'C2H6;NMHCieu,2' ,   'import_grid','WSTEU_C2H6',       'GP=1'
+EMIS_IN(328) = 'C3H6;NMHCieu,3' ,   'import_grid','WSTEU_C3H6',       'GP=1'
+EMIS_IN(329) = 'C3H8;NMHCieu,3' ,   'import_grid','WSTEU_C3H8',       'GP=1'
+EMIS_IN(330) = 'NC4H10;NMHCieu,4',  'import_grid','WSTEU_NC4H10',     'GP=1'
+!EMIS_IN() = 'CH3CHO;NMHCind', 'import_grid', 'WST_CH3CHO',     'GP=1'       
+EMIS_IN(331) = 'CH3COCH3;NMHCieu,3','import_grid','WSTEU_CH3COCH3',   'GP=1'
+!EMIS_IN() = 'CH3CO2H;NMHCind', 'import_grid','WST_CH3CO2H',    'GP=1'       
+EMIS_IN(332) = 'CH3OH;NMHCieu,1' ,  'import_grid','WSTEU_CH3OH',      'GP=1'
+EMIS_IN(333) = 'HCHO;NMHCieu,1' ,   'import_grid','WSTEU_HCHO',       'GP=1'
+!EMIS_IN() = 'HCOOH;NMHCind' ,  'import_grid','WST_HCOOH',      'GP=1'       
+EMIS_IN(334) = 'MEK;NMHCieu,4' ,    'import_grid','WSTEU_MEK',        'GP=1'
+EMIS_IN(335) = 'NH3' ,    'import_grid','WSTEU_NH3',        'GP=1'
+
+
+
+! ==========================================================                 
+! == AGRICULTURE and AGRIC. WASTE BURNING (VEU2 + CMIP5) ===                 
+! ==========================================================                 
+!                                                                   
+!tagging catagory anth. non traffic                                
+                                                                             
+                    
+
+EMIS_IN(336) = 'NO;NOyieu' ,     'import_grid','AGREU_NO',         'GP=1'
+EMIS_IN(337) = 'CO;COieu' ,     'import_grid','AGREU_CO',         'GP=1'
+EMIS_IN(338) = 'SO2' ,    'import_grid','AGREU_SO2',        'GP=1'
+EMIS_IN(339) = 'C2H4;NMHCieu,2' ,   'import_grid','AGREU_C2H4',       'GP=1'
+EMIS_IN(340) = 'C2H6;NMHCieu,2' ,   'import_grid','AGREU_C2H6',       'GP=1'
+EMIS_IN(341) = 'C3H6;NMHCieu,3' ,   'import_grid','AGREU_C3H6',       'GP=1'
+EMIS_IN(342) = 'C3H8;NMHCieu,3' ,   'import_grid','AGREU_C3H8',       'GP=1'
+EMIS_IN(343) = 'NC4H10;NMHCieu,4',  'import_grid','AGREU_NC4H10',     'GP=1'
+EMIS_IN(344) = 'CH3CHO;NMHCieu,2', 'import_grid', 'AGREU_CH3CHO',     'GP=1'
+EMIS_IN(345) = 'CH3COCH3;NMHCieu,3','import_grid','AGREU_CH3COCH3',   'GP=1'
+EMIS_IN(346) = 'CH3CO2H;NMHCieu,2', 'import_grid','AGREU_CH3CO2H',    'GP=1'
+EMIS_IN(347) = 'CH3OH;NMHCieu,1' ,  'import_grid','AGREU_CH3OH',      'GP=1'
+EMIS_IN(348) = 'HCHO;NMHCieu,1' ,   'import_grid','AGREU_HCHO',       'GP=1'
+EMIS_IN(349) = 'HCOOH;NMHCieu,1' ,  'import_grid','AGREU_HCOOH',      'GP=1'
+EMIS_IN(350) = 'MEK;NMHCieu,4' ,    'import_grid','AGREU_MEK',        'GP=1'
+EMIS_IN(351) = 'NH3' ,    'import_grid','AGREU_NH3',        'GP=1'
+
+
+
+
+
+/

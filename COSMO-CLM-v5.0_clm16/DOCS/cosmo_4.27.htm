@@ -1,0 +1,632 @@
+<!DOCTYPE html 
+     PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+     "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xml:lang="en" lang="en">
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="GENERATOR" content="Mozilla/4.7C-SGI [en] (X11; I; IRIX64 6.5 IP27) [Netscape]">
+   <title>Changes in the COSMO-Model 4.27</title>
+<style type="text/css">
+  body { font-family:       Arial;
+         font-size:         12pt;
+         background-repeat: no-repeat; 
+         margin:            1em; }
+
+  tt   { font-size:         12pt;}
+
+  li   { margin-top:         5pt;
+         margin-bottom:      5pt }
+
+  th   { border:           1px solid black;
+         padding:          3pt;
+         vertical-align:   top;
+         background-color: lightblue;}
+
+  td   { border:           1px solid black;
+         padding:          3pt;
+         vertical-align:   top;}
+
+  td.middl   { border:           1px solid black;
+               padding:          3pt;
+               vertical-align:   middle;}
+
+  td.hilit       { border:           1px solid black;
+                   padding:          1pt;
+                   vertical-align:   top;
+                   background-color: lightblue;}
+
+  td.clean       { padding:          0pt;
+                   border-style:     none;
+                   vertical-align:   top;}
+
+  td.notes       { padding:          3pt;
+                   border-style:     none;
+                   vertical-align:   top;}
+
+  td.nomid       { padding:          3pt;
+                   border-style:     none;
+                   vertical-align:   middle;}
+
+  table.note     { border-width:     0pt;
+                   border-style:     none;
+                   margin-left:      5pt;
+                   margin-top:       1pt;
+                   margin-bottom:    1pt;
+                   cell-padding:     5pt;
+                   vertical-align:   top;
+                   text-align:       left;}
+  
+  table.atte     { border-width:     0pt;
+                   border-style:     none;
+                   margin-left:      5pt;
+                   margin-top:       1pt;
+                   margin-bottom:    1pt;
+                   cell-padding:     5pt;
+                   vertical-align:   top;
+                   text-align:       left;
+                   background-color: red;}
+  
+  table.namelist { border-width:  2pt;
+                   border-style:  groove;
+                   border-color:  black;
+                   text-align:    left;
+                   margin-top:    1pt;
+                   margin-bottom: 1pt;
+                   padding:       3pt;
+                   align:         center;}
+  
+  tr.headings    { text-align:       left;
+                   vertical-align:   top;
+                   border-width:     1pt;
+                   border-style:     groove;
+                   border-color:     grey;
+                   padding:          2pt;
+                   font-weight:      bold;}
+
+  .rot           { background-color: red;}
+</style>
+
+</head>
+  <body text="#000000" bgcolor="#FFFFFF" link="#0000EE" vlink="#551A8B" alink="#FF0000">
+
+<center>
+<h1>
+<a NAME="begin">Documentation of the Changes in the COSMO-Model <br /> Version 4.27</a>
+</h1>
+<h3>
+13.03.2013
+</h3>
+</center>
+
+<p>
+This version again is a consolidation version. There are more adaptations for the new 
+fast waves solver and several technical changes. Two bugs have been fixed in the Runge-Kutta
+advection schemes and, as a bigger technical change, the interface for the MESSy system have
+been implemented with ifdefs.
+</p>
+
+<h4><a NAME="content">Contents:</a></h4>
+
+<ol>
+<li><a href="#newfawa">Adaptations for the new Fast Waves Solver</a></li>
+<li><a href="#rkadvec">Advection in the Runge-Kutta scheme</a></li>
+<li><a href="#buggscp">Bug Fix in the Microphysics</a></li>
+<li><a href="#nudging">More Adaptations in the Nudging Code to the 14-digit date format</a></li>
+<li><a href="#messyin">Implementation of MESSy Interfaces</a></li>
+<li><a href="#condcom">Problems with conditional compilation</a></li>
+<li><a href="#bugfixe">Bug Fixes and Technical Changes</a></li>
+<li><a href="#default">Changing default values for several Namelist Variables</a></li>
+<li><a href="#namelis">Changes to the Namelists</a></li>
+<li><a href="#results">Changes of Results</a></li>
+</ol>
+<p>
+<hr>
+
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="newfawa">1. Adaptations for the new fast waves solver</a></h3>
+  <h4>(by Michael Baldauf)</h4>
+
+<p>
+Again, there has been some consolidation work in the new fast-waves solver. 
+The changes are:
+</p>
+
+<p>
+<ul>
+ <li>A new Namelist parameter <tt>divdamp_slope</tt> has been introduced to exceed the theoretical
+     slope stability criterion of the divergence damping (only for <tt>itype_fast_waves=2</tt>).
+     The default value is 20.0, which was hard-coded up to now. But for some tests a different
+     value might be necessary.<br />
+     The modules affected are: <tt>data_runcontrol.f90, fast_waves_sc.f90, organize_dynamics.f90</tt>
+   </li>
+ <li>The new routine has been consolidated regarding the old solver in <tt>fast_waves_rk</tt>:
+     <ul>
+      <li>optional use of the upper boundary damping layer by Klemp et al. (2008)</li>
+      <li><tt>lw_freeslip</tt> can now be used</li>
+      <li>new version of the radiative lateral boundary condition</li>
+     </ul>
+     These items are optional and do not change the results, if they are not used.<br >
+     NOTE: COSMO_EU and COSMO_DE use lw_freeslip=.TRUE., therefore results ARE changed.
+   </li>
+ <li>Setting the lateral boundary conditions for u and v: These are set at the beginning
+     of the small time steps now, because values are used later on. They were set too late
+     before. This also changes the results.
+   </li>
+ <li>Introduced a new action <tt>"cleanup"</tt> in <tt>organize_dynamics</tt> for 
+     deallocation of fields from the new fast-waves solver. This is called at the end of lmorg.
+   </li>
+</ul>
+</p>
+
+<!---------------------------------------------------------------------------->
+
+<p align="right"><a href="#content">Back to Contents</a>
+<hr>
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="rkadvec">2. Advection in the Runge-Kutta scheme</a></h3>
+  <h4>(by Michael Baldauf, Andreas Will)</h4>
+
+<p>
+There have been two corrections in the Runge-Kutta advection scheme (in module 
+<tt>src_advection_rk.f90</tt>), which do change the results:
+</p>
+
+<ul>
+ <li>Bug correction for the earth curvature term in the advection of v:
+     There was an unnecessary averaging factor 0.5, which has been eliminated 
+     (A. Will/J. Ogaja).</li>
+ <li>A limiter for density has been introduced (by Michael Baldauf):<br />
+     In the case, that density is transported additionally in the finite volume
+     advection schemes (as in the Bott-scheme), it can occur, that a grid box is
+     completely emptied due to the direction splitting. This would result in an
+     explosion of the specific mass of cloud variables. Therefore a limiter is
+     introduced, which sets the density to at least 10% of the density of the
+     reference state.</li>
+</ul>
+
+<!---------------------------------------------------------------------------->
+
+<p align="right"><a href="#content">Back to Contents</a>
+<hr>
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="buggscp">3. Bug Fix in the Microphysics</a></h3>
+  <h4>(by Felix Rieper)</h4>
+
+<p>
+In the microphysics, several physical coefficients have been modified, which 
+were wrongly initialized:
+</p>
+
+<p>
+<ul>
+ <li>cloud ice scheme <tt>hydci_pp</tt>:
+   <ul>
+     <li><tt>ccsdxp</tt>: now use variable <tt>zv1s</tt> instead of <tt>zbms</tt>
+         for initialization</li>
+     <li><tt>zbsmel, ccsdep, zbev</tt>: The factor <tt>sqrt(0.5)</tt> must be eliminated</li>
+   </ul></li>
+ <li>graupel scheme <tt>hydci_pp_gr</tt>:
+   <ul>
+     <li><tt>ccsdxp</tt>: now use variable <tt>zv1s</tt> instead of <tt>zbms</tt>
+         for initialization</li>
+   </ul></li>
+</ul>
+</p>
+
+<p>
+Also, the values of variables <tt>zcsdep</tt>, <tt>zsamel</tt> have been 
+adapted to lately modified diffusion coefficient <tt>zdv</tt> in the cloud 
+ice scheme <tt>hydci_pp</tt>
+</p>
+
+<p>
+These changes affect the results of COSMO_EU and COSMO_DE.
+</p>
+
+<!---------------------------------------------------------------------------->
+
+<p align="right"><a href="#content">Back to Contents</a>
+<hr>
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="nudging">4. More Adaptations in the Nudging Code to the 14-digit date format</a></h3>
+  <h4>(by Christoph Schraff)</h4>
+
+<p>
+Several places still had to be adapted to the use of the 14-digit date format.
+This includes the fact that the new version now writes VOF Version 4:<br />
+Affected modules are:
+<ul>
+  <li><tt>data_obs_lib_cosmo.f90</tt></li>
+  <li><tt>src_nudging.f90</tt></li>
+  <li><tt>src_obs_cdfin_comhead.f90</tt></li>
+  <li><tt>src_obs_cdfin_org.f90</tt></li>
+  <li><tt>src_obs_print_vof.f90</tt></li>
+  <li><tt>src_obs_use_org.f90</tt></li>
+</ul>
+</p>
+
+<!---------------------------------------------------------------------------->
+
+<p align="right"><a href="#content">Back to Contents</a>
+<hr>
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="messyin">5. Implementation of MESSy Interfaces</a></h3>
+  <h4>(by Astrid Kerkweg, et al., University of Mainz)</h4>
+
+<p>
+Interfaces have been implemented to use the COSMO within the "Modular Earth Sub-System"
+(MESSy). Especially, the use within this system requires a special treatment of tracers.
+All changes have been introduced using conditional compilation with the 
+pragma <tt>-DMESSY.</tt>
+</p>
+
+<!---------------------------------------------------------------------------->
+
+<p align="right"><a href="#content">Back to Contents</a>
+<hr>
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="condcom">6.  Problems with conditional compilation</a></h3>
+  <h4>(by Uli Sch&auml;ttler)</h4>
+
+<ul>
+<li>
+Problem when compiling without <tt>-DNETCDF</tt>:<br />
+When compiling without the pragma <tt>-DNETCDF</tt>, there was a problem in the compilation of
+<tt>src_output.f90</tt>, because the variable nmsgchan was not defined then. This variable has
+now been introduced as global variable in <tt>data_satellites.f90</tt>, which is used in
+<tt>src_output.f90</tt> and in <tt>netcdf_io.f90</tt>.
+</li>
+
+<li>
+Problem when compiling only with <tt>-DRTTOV</tt> and without <tt>-DNUDGING</tt>:<br />
+In addition, several <tt>ifdef NUDGING</tt> pragmas have been inserted in <tt>src_obs_rad.f90</tt> to
+separate the Nudging part from the SYNSAT part.
+</li>
+</ul>
+
+<!---------------------------------------------------------------------------->
+
+<p align="right"><a href="#content">Back to Contents</a>
+<hr>
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="bugfixe">7. Bug Fixes and Technical Changes</a></h3>
+
+<ul>
+ <li><tt>data_constants.f90</tt>:<br />
+   Moved subroutine <tt>set_constants</tt> from <tt>src_setup</tt> to this module, 
+   so that it can also be used easily by other programs.
+  </li>
+ 
+ <li><tt>data_runcontrol.f90</tt>, <tt>src_setup.f90</tt>:<br />
+   Introduced new logical switch <tt>ldebug_mpe</tt>, for debug prints in 
+   <tt>mpe_io2</tt> module.
+  </li>
+  
+ <li><tt>fast_waves_rk.f90</tt>:<br />
+   Removed unused variables <tt>iup, jup</tt>;<br />
+   Introduced error message, if wrong values for <tt>itype_bbc_w</tt> are used.
+  </li>
+  
+ <li><tt>meteo_utilities.f90</tt>:<br />
+   Used <tt>p0ref</tt> in computations of subroutine <tt>reference_atmosphere_BV<tt>
+   and introduced this variable in the argument list of that subroutine.
+  </li>
+  
+ <li><tt>mpe_io2.f90</tt>:<br />
+   The strategy of the asynchronous output, to sort all grib records in the same way as the
+   usual synchronous output, can use much memory because of the necessary buffering. This lead
+   already to problems on some machines. Therefore the buffering is avoided now.
+  </li>
+  
+ <li><tt>netcdf_io.f90</tt>:<br />
+   <ul>
+    <li>In subroutine <tt>start_ionode</tt>, <tt>now%nextstep</tt> has to be increased 
+        by 1 in order to get the correct output times for the calculation of <tt>time_bnds</tt>. </li>
+    <li>Bug fix in the calculation of </tt>list_out_nsteps</tt>: </tt>nstart</tt> has to be 
+        added to the variable </tt>minamongvars</tt>, otherwise the calculation of 
+        variables </tt>time</tt> and </tt>time_bnds</tt> is wrong.</li>
+   </ul>
+  </li>
+  
+ <li><tt>numeric_utilities.f90</tt>:<br />
+   Modified some error messages for better understanding
+  </li>
+  
+ <li><tt>organize_data.f90</tt>:<br />
+  Split long global attributes <tt>(len=200)</tt> for NetCDF for distribution using 
+  <tt>charbuf (len=100)</tt>
+  </li>
+  
+ <li><tt>src_artifdata.f90</tt>, <tt>src_input.f90</tt>:<br />
+   Introduced <tt>p0ref</tt> in argument list to subroutine <tt>reference_atmosphere_BV</tt>.
+  </li>
+  
+ <li><tt>src_runge_kutta.f90</tt>:<br />
+   Introduced call to new subroutine <tt>init_fast_waves_sc_3</tt>
+      (from module <tt>fast_waves_sc.f90</tt>)
+  </li>
+  
+ <li><tt>src_setup.f90</tt>:<br />
+   Moved subroutine <tt>set_constants</tt> from <tt>src_setup</tt> to 
+   <tt>data_constants</tt>, so that it can also be used easily by other programs.
+  </li>
+  
+ <li><tt>src_setup_vartab.f90</tt>:<br />
+   Adaptation of units of output variables to GRIB standard:
+   The shortly introduced additional albedo fields need to have the grib-factor 100.0,
+   because the GRIB unit is %, while in the model they are used in the interval [0..1].
+   This factor has been forgotten before.
+  </li>
+  
+ <li><tt>src_tracer_metadata.f90</tt>:<br />
+   Some syntax adaptation (due to complaints by Intel Compiler).
+  </li>
+</ul>
+
+<!---------------------------------------------------------------------------->
+<p align="right"><a href="#content">Back to Contents</a>
+<hr>
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="default">8. Changing default values for several Namelist Variables</a></h3>
+
+<p>
+The defaults of some Namelist parameters have been modified, mainly to reflect now the
+usage of the Runge-Kutty dynamical scheme with the new fast-waves solver as standard.
+If values are different depending on the horizontal resolution, most values now reflect
+the settings of COSMO-EU application (with 7 km) at DWD.
+</p>
+
+<p>
+<center>
+<table width="50%" border="1" cellspacing="3" class="namelist">
+ <tbody>
+   <tr>
+     <th>Group</th>
+     <th>Parameter</th>
+     <th align="center">New Default</th>
+     <th align="center">Old Default</th>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td class="hilit" rowspan="4"><tt>/TUNING/</tt></td>
+     <td><tt>v0snow</tt></td>
+     <td align="center">25.0</td>
+     <td align="center">20.0</td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td><tt>wichfakt</tt></td>
+     <td align="center">0.0</td>
+     <td align="center">0.15</td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td><tt>tkhmin</tt></td>
+     <td align="center">0.4</td>
+     <td align="center">1.0</td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td><tt>tkmmin</tt></td>
+     <td align="center">0.4</td>
+     <td align="center">1.0</td>
+   </tr>
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td class="hilit" rowspan="18"><tt>/DYNCTL/</tt></td>
+     <td><tt>l2tls</tt></td>
+     <td align="center"><tt>.TRUE.</tt></td>
+     <td align="center"><tt>.FALSE.</tt></td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td><tt>iadv_order</tt></td>
+     <td align="center">3</td>
+     <td align="center">5</td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td><tt>itype_fast_waves</tt></td>
+     <td align="center">2</td>
+     <td align="center">1</td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td><tt>itype_bbc_w</tt></td>
+     <td align="center">114</td>
+     <td align="center">1</td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td><tt>l_diff_Smag</tt></td>
+     <td align="center"><tt>.TRUE.</tt></td>
+     <td align="center"><tt>.FALSE.</tt></td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td><tt>y_scalar_advect</tt></td>
+     <td align="center"><tt>BOTT2_STRANG</tt></td>
+     <td align="center"><tt>SL3_MF</tt></td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td><tt>lexpl_lbc</tt></td>
+     <td align="center"><tt>.TRUE.</tt></td>
+     <td align="center"><tt>.FALSE.</tt></td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td><tt>rlwidth</tt></td>
+     <td align="center">85000.0</td>
+     <td align="center">50000.0</td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td><tt>nrdtau</tt></td>
+     <td align="center">5</td>
+     <td align="center">10</td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td><tt>ldiabf_lh</tt></td>
+     <td align="center"><tt>.TRUE.</tt></td>
+     <td align="center"><tt>.FALSE.</tt></td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td><tt>hd_corr_u_in</tt></td>
+     <td align="center">0.25</td>
+     <td align="center">1.0</td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td><tt>hd_corr_u_bd</tt></td>
+     <td align="center">0.25</td>
+     <td align="center">1.0</td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td><tt>hd_corr_t_in</tt></td>
+     <td align="center">0.0</td>
+     <td align="center">0.75</td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td><tt>hd_corr_t_bd</tt></td>
+     <td align="center">0.0</td>
+     <td align="center">0.75</td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td><tt>hd_corr_p_in</tt></td>
+     <td align="center">0.0</td>
+     <td align="center">0.75</td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td><tt>hd_corr_p_bd</tt></td>
+     <td align="center">0.0</td>
+     <td align="center">0.75</td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td><tt>hd_corr_trcr_in</tt></td>
+     <td align="center">0.0</td>
+     <td align="center">0.5</td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td><tt>hd_corr_trcr_bd</tt></td>
+     <td align="center">0.0</td>
+     <td align="center">0.5</td>
+   </tr>
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td class="hilit" rowspan="5"><tt>/PHYCTL/</tt></td>
+     <td><tt>limpltkediff</tt></td>
+     <td align="center"><tt>.TRUE.</tt></td>
+     <td align="center"><tt>.FALSE.</tt></td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td><tt>lsso</tt></td>
+     <td align="center"><tt>.TRUE.</tt></td>
+     <td align="center"><tt>.FALSE.</tt></td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td><tt>lseaice</tt></td>
+     <td align="center"><tt>.TRUE.</tt></td>
+     <td align="center"><tt>.FALSE.</tt></td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td><tt>lexpcor</tt></td>
+     <td align="center"><tt>.FALSE.</tt></td>
+     <td align="center"><tt>.TRUE.</tt></td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td><tt>nincconv</tt></td>
+     <td align="center">4</td>
+     <td align="center">10</td>
+   </tr>
+<!---------------------------------------------------------------------------->
+ </tbody>
+</table>
+</center>
+</p>
+
+
+<!---------------------------------------------------------------------------->
+<p align="right"><a href="#content">Back to Contents</a>
+<hr>
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="namelis">9. Changes to the Namelists</a></h3>
+
+<p>There were no changes to the Namelists.</p>
+
+<p align="right"><a href="#content">Back to Contents</a>
+<hr>
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="results">10. Changes of Results</a></h3>
+
+<p>
+The results of COSMO_EU and COSMO_DE are influenced by the following modifications:
+</p>
+
+<ul>
+ <li><tt>fast_waves_sc.f90</tt>:<br />
+   Setting of lateral boundaries for <tt>u, v, w</tt> has been modified compared 
+   to former versions.</li>
+ <li><tt>src_advection_rk.f90</tt>:<br />
+   <ul>
+     <li>bug fix in the advection of v</li>
+     <li>limiter for the density instead of clipping</li>
+   </ul></li>
+ <li><tt>src_gscp.f90</tt>:<br />
+     Bug fix in microphysics (ice and graupel scheme)<br />
+     (These modifications had already be implemented in an intermediate
+     version 4.26.1).</li>
+</ul>
+<!---------------------------------------------------------------------------->
+
+<p align="right"><a href="#content">Back to Contents</a>
+<hr>
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+</body>
+</html>

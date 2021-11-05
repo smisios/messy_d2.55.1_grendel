@@ -1,0 +1,135 @@
+! -*- f90 -*-
+&CPL
+! -------------------------------------------------------------------------------------------------
+! switches whether to calculate rayleigh friciton (damping of horizontal winds)
+!                               newtonian cooling (relaxation of temperature)
+!                               idealized diabatic heating for climate change-like tropical upper-tropospheric warming
+!                               idealized diabatic heating for planetary-wave generation (substitute for topography)
+!                               idealized diabatic heating for monsoon
+!
+lrayfr            = T              ! (T)rue / (F)alse
+lnewco            = T              ! (T)rue / (F)alse
+liheat_cc_tropics = F              ! (T)rue / (F)alse
+liheat_waves      = F              ! (T)rue / (F)alse
+liheat_mons       = F              ! (T)rue / (F)alse for monsoon-like idealized heating op_mn_20180620
+!
+!
+! -------------------------------------------------------------------------------------------------
+! set horizontal wind damping coefficient  kdamp  (rayfr_k_inp),
+!     equilibrium temperature              tequ   (newco_t_inp),
+!     inverse relaxation time scale        kappa  (newco_k_inp)
+! as 'channel','object'
+!
+! options:
+! 1. channel = '#const',        object = 'value'       : set to constant value given by 'value'
+! 2. channel = '#fct',          object = ' ,  ,  , '   : set to functions explained below
+! 3. channel = 'import_rgt',    object = 'var name'    : set to imported field from file (via import nml)
+!
+! -------------------------------------------------------------------------------------------------
+! Explanation of parameters with default values in brackets:
+!         HS                    Held-Suarez set-up
+!         PK                    Polvani-Kushner set-up
+!         EH                    ECHAM-like wind damping in sponge layer
+!
+! ---Rayleigh friction-----------------------------------------------------------------------------
+! wind damping close to surface: [HS]
+! [HS]    kmaxHS    (1.1574e-05 1/s) maximum wind damping at surface
+!         sig0      (0.7)            sigma level at which surface wind damping stops
+!
+! wind damping at model top: [PK,EH]
+! [PK]    kmaxPK    (2.3148e-05 1/s) approximate wind damping at model top
+!         psp       (50 Pa)          sponge layer above which damping starts
+!
+! [EH]    spdrag    (5.0200e-07 1/s) damping prefactor
+!         enfac     (1.5238)         enhancement factor
+!
+! ---Newtonian cooling-----------------------------------------------------------------------------
+! Equilibrium temperature: [HS,PK]
+! [HS]    hfac      (0)         hemispheric factor, hfac>0 winter in NH (January), hfac<0 winter in SH (July)
+!         p0        (101325 Pa) reference pressure
+!         T0        (200 K)     minimum equilibrium temperature
+!         T1        (315 K)     maximum equilibrium temperature in troposphere
+!         Ty        (60 K)      meridional temperature gradient in troposphere
+!         Tz        (10 K)      vertical temperature gradient in troposphere
+!         eps_abs   (0)         absolute value of asymmetry factor in troposphere
+!
+! [PK]    gamma     (4 K/km)    polar vortex lapse rate
+!         hfac      (1)         hemispheric factor, hfac>0 winter in NH (January), hfac<0 winter in SH (July)
+!         p0        (101325 Pa) reference pressure
+!         T1        (315 K)     maximum temperature in troposphere
+!         Ty        (60 K)      meridional temperature gradient in troposphere
+!         Tz        (10 K)      vertical temperature gradient in troposphere
+!         eps_abs   (10 K)      absolute value of asymmetry factor in troposphere
+!         l0_abs    (50)        absolute value of transition latitude from inversion to polar vortex in stratosphere
+!                                  later in messy_relax.f90, the values for x = (eps,l0) are set to:
+!                                  x = sign(hfac) * x_abs
+!         dl        (10)        rapidity of transition from inversion to polar vortex in stratosphere
+!         pT_SH     (10000 Pa)  tropopause pressure in summer hemisphere
+!         pT_WH     (10000 Pa)  tropopause pressure in winter hemisphere
+!
+! Inverse relaxation time: [HS,PK]
+! [HS,PK] ta        (40 days)   relaxation time outside of tropical troposphere
+!         ts        (4 days)    relaxation time at surface of tropical troposphere
+!         sigb      (0.7)       sigma level below which a short relaxation time is used in the tropics
+!
+! ---idealized heating for climate change-like tropical upper-tropospheric warming-----------------
+!         q0_cct    (0.5 K/day) amplitude of heating                               [K/day]
+!         lat0      (0)         latitudinal center of heating                      [degree]
+!         sigma_lat (0.4)       latitudinal half width of heating                  [rad]
+!         z0        (0.3)       sigma level center of heating                      [1]
+!         sigma_z   (0.11)      vertical half width of heating                     [1]
+!
+! ---idealized heating for generation of planetary-wave activity-----------------------------------
+!         q0        (6 K/day)   amplitude of heating for planetary wave generation [K/day]
+!         m_WN      (2)         longitudinal wave number                           [1]
+!         phi0      (45)        latitudinal center of heating                      [degree]
+!         sigma_phi (0.175)     latitudinal decay rate of heating                  [rad]
+!         p_bot     (80000 Pa)  bottom pressure boundary                           [Pa]
+!         p_top     (20000 Pa)  top pressure boundary                              [Pa]
+!
+!
+! ATTENTION: maximum number of characters stored in object file string = 133
+!
+! ATTENTION: You can leave parameters of rayfr_k_inp (except the first [HS] and the fourth [PK,EH])
+!                                     of newco_t_inp (except the first [HS,PK])
+!                                     of newco_k_inp (except the first [HS])
+!                                     of cct_h_inp
+!                                 and of waves_h_inp
+!            empty to use the default values written in brackets above.
+!
+! -------------------------------------------------------------------------------------------------
+!Params kdamp
+!with HS,PK set-up:'HS,kmaxHS,sig0,PK,kmaxPK,psp'
+!rayfr_k_inp='#fct','HS,      ,    ,PK,      ,   '
+!with HS,EH set-up:'HS,kmaxHS,sig0,EH,spdrag,enfac'
+rayfr_k_inp='#fct','HS,      ,    ,EH,      ,     '
+!
+!Params tequ
+!with HS set-up:   'HS,hfac,p0,T0,T1,Ty,Tz,eps_abs'
+!newco_t_inp='#fct','HS,    ,  ,  ,  ,  ,  ,       '
+!with PK set-up:   'PK,gamma,hfac,p0      ,T1   ,Ty  ,Tz  ,eps_abs,l0_abs,dl  ,pT_SH,pT_WH'
+newco_t_inp='#fct','PK,    4,    ,        ,     ,    ,    ,       ,      ,    ,     ,10000'
+! Logical parameter for turn on/off polar vortex; if True, W_function is set to zero in relax_tequpk
+l_no_polar_vortex = F ! (T)rue / (F)alse
+!
+!Params kappa:'[HS,PK],ta,ts,sigb' (both HS and PK represent the same function for inverse relaxation time scale)
+newco_k_inp='#fct','HS,  ,  ,    '
+!
+! -------------------------------------------------------------------------------------------------
+!Params tteh_cc_tropics:'q0_cct,lat0,sigma_lat,z0,sigma_z'
+cct_h_inp='#fct','  ,  ,  ,  ,  '
+! Logical parameter to use shape of Butler heating (True) or log-p in gaussian heating function (False)                       
+l_Butler_heat = T
+!
+! -------------------------------------------------------------------------------------------------
+!Params tteh_waves:'q0, m_WN, phi0, sigma_phi, p_bot, p_top'
+waves_h_inp='#fct','  ,     ,     ,          ,      ,      '   ! (heating for planetary wave generation)
+!
+! -------------------------------------------------------------------------------------------------
+!op_mn_20180620
+!The following parameters are needed for monsoon-like idealized heating
+!Parameter pbot (Pa), ptop (Pa), lat0(deg) , latd , lon0(deg), lond
+reght_h_inp='#fct','80000,10000,20.0,10.0,90.0,30.0'
+!Parameter  offset (K/day), amplitude (K/day), heating period (days), spin up (days)
+tmpht_h_inp='#fct','8.0,0.0,15.0,20.0'     ! offset (K/day), amplitude (K/day), heating period (days), spin up (days)
+/

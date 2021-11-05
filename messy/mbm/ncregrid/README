@@ -1,0 +1,44 @@
+To install NCREGRID:
+--------------------
+1) tar xvf ncregrid.tar
+2) cd ncregrid
+
+3) ./configure VARIABLE_1=VALUE_1 VARIABLE_2=VLAUE_2
+
+     where possible VARIABLES are
+     F90      (optional): fortran-90 compiler
+     F90FLAGS (optional): fortran-90 compiler options
+     NC_INC   (required): path where 'netcdf.mod' is located
+     NC_LIB   (required): path where 'libnetcdf.a' is located
+
+4) gmake
+5) gmake install
+6) gmake clean
+
+The executable is ./bin/ncregrid !
+
+
+Compiler specific hints:
+------------------------
+Lahey/Fujitsu:
+         F90FLAGS="-Cpp"
+
+NAG-F90:
+         F90FLAGS="-fpp -DNAG -I/opt/nag/lib -L/opt/nag/lib"
+
+OSF1:
+         F90FLAGS="-cpp"
+
+INTEL-F90 (8.0.034):
+         F90=ifc
+         F90FLAGS="-static-libcxa -cpp"
+
+SXF90 cross compiler (rev274):
+         F90=sxf90
+         F90FLAGS="-Ep -Wf,-L fmtlist transform map summary -Wl,-Z 1000000 -pi auto nest=3 line=1000 -Chopt"
+         -> gmake -e ARCH=SX6
+         (see specifik.mk !!!)
+
+IBM-xlf:
+         F90=xlf95_r
+         F90FLAGS="-q64 -qsuppress=1518-061:1518-128 -qsuppress=1500-036 -O3 -qstrict -qMAXMEM=-1 -qsuffix=cpp=f90 -qzerosize -WF,-D__ibm__ -d -WF,-qlanglvl=classic -qlanglvl=95pure -qfree=f90 -qspillsize=32648 -qarch=pwr4 -qtune=pwr4 -Q -qhot"

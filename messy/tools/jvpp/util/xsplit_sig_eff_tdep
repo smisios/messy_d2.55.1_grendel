@@ -1,0 +1,21 @@
+#! /bin/tcsh -f
+# Time-stamp: <2008-12-11 21:00:23 sander>
+# Authors:
+# Rolf Sander,     Max-Planck-Institute, Mainz, Germany, 2008
+
+################################################################################
+
+mkdir ../spectra_eff_static_tdep_old
+lf95 -o split_sig_eff_tdep.exe -Cpp --chk a,e,s,u --pca --ap -O0 -g --trap split_sig_eff_tdep.f90
+echo "running split_sig_eff_tdep.exe, please wait..."
+./split_sig_eff_tdep.exe > split_sig_eff_tdep.log
+cd ../spectra_eff_static_tdep_old
+rm dummy*
+foreach filename (*)
+  echo "working on $filename"
+  sed -e "s|^  *||g" $filename | sed -e "s|  *|\n|g" > ../spectra_eff_static_tdep/$filename
+end
+cd ../spectra_eff_static_tdep
+rm -fr ../spectra_eff_static_tdep_old
+
+exit

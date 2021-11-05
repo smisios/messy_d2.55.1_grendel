@@ -1,0 +1,306 @@
+% work areas are denoted by #####
+%
+%
+%new intro chapter starting 31/05/01
+
+%$Source: /server/cvs/mpiom1/mpi-om/doc/tecdoc_mpiom/Attic/c7.tex,v $\\
+%$Revision: 1.1.2.1.4.2.2.2.2.3.2.1 $\\
+%$Date: 2006/03/07 14:50:43 $\\
+%$Name: mpiom_1_2_0 $\\
+
+
+%\pagenumbering{arabic}
+\thispagestyle{empty}
+ 
+\chapter[Diagnostic and Mean Output]
+{\Large{\bf Diagnostic and Mean Output}}
+\label{ch:diagnostic}
+
+
+
+MPI-OM generates a large number of output files. Most of them are mean values of ocean properties (temperate, salinity ...). 
+In addition, there is mean output for diagnostic and flux variables, as well as grid, forcing or coupling (ECAHM) information.
+Time averaging is controlled by the namelist (see \ref{tb:using:namelist}) variable \texttt{IMEAN}.
+The number of output can be controlled with CPP switches (see \ref{ch:using:compiling:conditional}).
+Each code is written into a separate file named \texttt{fort.}\textit{\texttt{unit}} according to the unit the file is written to. 
+The file format is \texttt{EXTRA}. 
+Tables \ref{tb:diagnostic:output:mean} to \ref{tb:diagnostic:output:meanoasis} given an overview over all possible output codes.
+This chapter deals with the structure of the MPI-OM output and the coding behind
+some of the diagnostic variables of which the meaning might not be strait-forward. 
+
+
+\begin{table}[ht]
+\begin{footnotesize}
+        \begin{tabular}[t]{l|p{6cm}|l}
+        \hline
+          SBR name                  & Action            & CPP flag \\ \hline\hline	    
+         \texttt{mo\_commodiag.f90} & Define variables for the mean diagnostic output.   &        \\
+         \texttt{mo\_mean.f90}      & Define all variables for mean model output.        &  MEAN     \\	  
+         \texttt{mo\_commconv.f90}  & Define variables for the mean depth of convection  &  CONVDIAG \\	  
+         \texttt{diag\_ini.f90}     & Diagnostic output for the time-series is initialized. &        \\	
+                                    & begin timestepping &               \\ \hline
+         after \texttt{ocvtot.f90}  & new total velocities $u, v$ and $w$ are available &            \\	
+         \texttt{wrte\_mfl.f90} & write divergence free velocity just after the new velocities are computed    &  MFLDIAG  \\
+         \texttt{diagnosis.f90} & prepare diagnostic output (see \ref{sec:diagnostic:subroutines:diagnosis} )   &          \\  \hline
+
+         after \texttt{octdiff\_trf.f90} & advection and diffusion of tracers is done &           \\	  
+         \texttt{wrte\_mean.f90}         & write mean output                          &  MEAN     \\ \hline
+                                         & end of one day                             &           \\ \hline
+         \texttt{wrte\_amlddiag.f90}     & write max. monthly mixed layer depth       &  AMLDDIAG \\ \hline
+                                         & end of one month                           &		  \\ 
+                                         & end of one year                            &		  \\ \hline
+         \texttt{wrte\_konvdiag.f90}     & write convection overturning               &  KONVDIAG \\		  
+         \texttt{wrte\_gridinfo.f90}     & write grid information                     &  GRIDINFO \\		
+        \end{tabular}
+\end{footnotesize}
+\caption{List of diagnostic and output subroutine calls in the order in which they are called.}
+\label{tb:diagnostic:sbr}
+\end{table}
+
+
+
+\section[Subroutines]
+{\Large{\bf Subroutines}}
+\label{sec:diagnostic:subroutines}
+
+All subroutine calls for diagnostic and mean output in successive order 
+are listed in table \ref{tb:timestepping:sbr}. 
+A complete list of subroutines called during one time-step.
+is given in table \ref{tb:timestepping:sbr}. 
+
+\subsection{diagnosis.f90}
+\label{sec:diagnostic:subroutines:diagnosis}
+Compute diagnostic output for the time-series and mean output.
+Write the time-series once a day.
+
+\subsubsection{mixed layer depth}
+
+Mixed layer depth (variable ZMLD) is computed based on the density difference criterion
+$\sum_{1}^{k}\delta\rho_{insitu}(z) < 0.125 kg/m^3$;
+the depth where the density has 
+increased by 0.125 $kg/m^3$ as compared to the value in the surface box.
+
+The monthly maximum of the variable ZMLD is stored in the variable AMLD (see table \ref{tb:diagnostic:output:mean}).
+
+\subsubsection{barotropic stream function}
+
+The vertically integrated, horizontal barotropic stream function (variable PSIUWE)
+is computed as
+$\Psi_{(i,j)} = \sum_{k} \sum_{2}^{j} \delta x \cdot \delta z \cdot v_y  $.
+The stream function is also used for the time-series output for the golf stream and the Kuroshio,
+as well as for Banda, Drake and Bering strait transports.
+
+\subsection{wrte\_mean.f90}
+\label{sec:diagnostic:subroutines:wrte-mean}
+
+Compute the heat flux and the sea ice transport in x- and y-direction.
+Average (daily, monthly or yearly) and write the mean and diagnostic output.
+
+\subsection{wrte\_mfl.f90}
+\label{sec:diagnostic:subroutines:wrte-mfl}
+
+Average (daily, monthly or yearly) and write the u- and v-velocities just after
+the new total velocities $u, v$ and $w$ have computed in \texttt{ocvtot.f90}.
+At this point in time, the velocity field is divergence free. Velocities written
+in  \texttt{wrte\_mean.f90} at the end of the time-step have already been updated by various processes
+such as the slope-convection.
+
+
+\section[Output Files]
+{\Large{\bf Output Files}}
+\label{sec:diagnostic:output}
+
+The following tables give an overview of all available output fields with variable names, units and the
+EXTRA format code numbers. Most output is optional an can be switched on with CPP compile flags
+(table \ref{tb:using:cpp-flags-diag}).
+
+\begin{table}
+\begin{footnotesize}
+
+\begin{tabular}{r|l|l|l|r|l|c|c}
+
+Code & Content  		       & L.    &  Variable	&   Unit    &	 fort.x &  CPP  &    CP    \\ \hline
+  2  & temperature		       & 40    &  THO (P,R)	&   C	    &	 71	&  M	&    (x)   \\
+  5  & salinity 		       & 40    &  SAO (P,R)	&   psu     &	 72	&  M	&    (x)   \\
+  3  & x velocity		       & 40    &  UKO (P,R)	&   m/s     &	 73	&  M	&    ( )   \\
+  4  & y velocity		       & 40    &  VKE (P,R)	&   m/s     &	 74	&  M	&    ( )   \\
+303  & x velocity (divergence free)    & 40    &  UKOMFL (P,R)  &   m/s     &	303	&  M	&    (x)   \\
+304  & y velocity (divergence free)    & 40    &  VKEMFL (P,R)  &   m/s     &	304	&  M	&    (x)   \\
+  8  & insitu density		       & 40    &  RHO  (D,?)	&   kg/m**3 &		&	&	   \\
+  6  & pressure 		       & 40    &  PO   (?)	&   Pa      &		&	&	   \\
+ 67  & freshwater flux by restoring     &  1    &  EMINPO	&   m/s     &	 79	&  M	&	   \\
+ 70  & total heat-flux		       &  1    &  FLUM  	&   W/m**2  &	 84	&  M	&    (x)   \\
+ 79  & total freshwater flux	       &  1    &  PEM		&   m/s     &	 85	&  M	&    (x)   \\
+ 13  & ice thickness		       &  1    &  SICTHO (P,R)  &   m	    &	 86	&  M	&    (x)   \\
+ 15  & ice compactness  	       &  1    &  SICOMO (P,R)  &   frac.   &	 87	&  M	&    (x)   \\
+ 35  & x ice velocity		       &  1    &  SICUO  (P,R)  &   m/s     &	 88	&  M	&    (x)   \\
+ 36  & y ice velocity		       &  1    &  SICVE  (P,R)  &   m/s     &	 89	&  M	&    (x)   \\
+141  & snow thickness		       &  1    &  SICSNO (P,R)  &   m	    &	136	&  M	&    (x)   \\
+176  & heat flux short-wave	       &  1    &  QSWO   (F)	&   W/m**2  &	137	&  M	&	   \\
+177  & heat flux long-wave	       &  1    &  QLWO   (F)	&   W/m**2  &	138	&  M	&	   \\
+147  & heat flux latent 	       &  1    &  QLAO   (F)	&   W/m**2  &	139	&  M	&	   \\
+146  & heat flux sensible	       &  1    &  QSEO   (F)	&   W/m**2  &	140	&  M	&	   \\
+ 65  & net freshwater flux + runoff    &  1    &  PRECO  (F)	&   m/s     &	141	&  M	&    (x)   \\
+  1  & sea-level 		       &  1    &  ZO	 (P,R)  &   m	    &	 82	&  M	&    (x)   \\ 
+ 82  & sea-level change  	       &  1    &  Z1O		&   m	    &		&	&	   \\
+ 27  & hor. bar. stream-function        &  1    &  PSIUWE  (D)	&   Sv      &	143	&  M	&    (x)   \\
+ 83  & max. monthly mixed layer depth  &  1    &  AMLD    (D)	&   m	    &	142	&  M	&    (x)   \\ 
+142  & sea-ice transport x	       &  1    &  SICTRU	&   m**2/s  &  147      &  M    &    (x)   \\
+143  & sea-ice transport y	       &  1    &  SICTRV	&   m**2/s  &  148      &  M    &    (x)   \\
+183  & mixed layer depth (SJ)	       &  1    &  zmld  	&   m	    &	        &       &	   \\ 
+305  & River Runoff		       &  1    &  rivrun	&   m/s     &  305      &  M    &	   \\
+158  & mon. mean depth of convection   &  1    &  TMCDO 	&   level   &	        &       &	   \\
+
+\end{tabular}
+\end{footnotesize}
+
+\caption{Code Table for MPI-OM mean output. \newline
+(x): Reasonable in the coupled setup.\newline
+ M : Can be switch on with CPP flag MEAN.}
+\label{tb:diagnostic:output:mean}
+\end{table}
+
+\begin{table}
+\begin{footnotesize}
+\begin{tabular}{r|l|l|l|r|l|c|c}
+Code & Content  		       & L.    &  Variable	&   Unit    &	 fort.x &  Cpp  &    CP    \\ \hline
+  7  & ver. velocity		       & 40    &  WO   (P,R)	&   m/s     &	146	&  M D  &    (x)   \\
+ 69  & depth of convection	       &  1    &  KCONDEP (D)	&   level   &	 90	&  K	&    (x)   \\
+110  & vertical momentum diffusion       & 40    &  AVO		&   m**2/s  &  144     &  M D  &    (x)   \\
+111  & vertical T,S diffusion	       & 40    &  DVO		&   m**2/s  &  145     &  M D  &    (x)   \\
+612  & wind mixing		       & 40    &  WTMIX 	&   m**2/s  &  245     &  M D  &    (X)   \\
+207  & GM vertical velocity	       & 40    &  WGO		&   m/s     &  246     &  M G  &    (x)   \\
+?    & GM BolX  		       &  1    &  BOLX  	&   ?	    &  159     &  M G  &    (x)   \\
+?    & GM BolY  		       &  1    &  BOLY  	&   ?	    &  160     &  M G  &    (x)   \\
+\end{tabular}
+\end{footnotesize}
+\caption{Code Table for MPI-OM mean diagnostic output. \newline
+(x): Reasonable in the coupled setup.\newline
+ M : Can be switch on with CPP flag MEAN.\newline
+ D : Can be switch on with CPP flag DIFFDIAG. \newline
+ K : Can be switch on with CPP flag KONVDIAG. \newline
+ G : Can be switch on with CPP flag GRIDINFO.}
+\label{tb:diagnostic:output:mean diag}
+\end{table}
+
+
+\begin{table}
+\begin{footnotesize}
+\begin{tabular}{r|l|l|l|r|l|c|c}
+Code & Content  		       & L.    &  Variable	&   Unit    &	 fort.x &  Cpp  &    CP    \\ \hline
+ 92  & surface air temperature         &  1    &  TAFO   (F)	&   C	    &	131	&  M F  &	   \\ 
+164  & cloud cover		       &  1    &  FCLOU  (F)	&	    &	132	&  M F  &	   \\
+ 52  & surface u-stress 	       &  1    &  TXO	 (F)	&  Pa/1025. &	149	&  M F  &    (X)   \\
+ 53  & surface v-stress 	       &  1    &  TYE	 (F)	&  Pa/1025. &	150	&  M F  &    (X)   \\
+260  & prescr. precipitation	       &  1    &  FPREC  (F)	&   m/s     &	133	&  M F  &	   \\
+ 80  & downward short-wave rad.         &  1    &  FSWR   (F)	&   W/m**2  &	134	&  M F  &	   \\
+ 81  & dew-point temperature	       &  1    &  FTDEW  (F)	&   K	    &	135	&  M F  &	   \\
+171  & 10m wind-speed		       &  1    &  FU10   (F)	&   m/s     &	130	&  M F  &	   \\
+\end{tabular}
+\end{footnotesize}
+\caption{Code Table for MPI-OM mean forcing output. \newline
+(x): Reasonable in the coupled setup.\newline
+ M : Can be switch on with CPP flag MEAN.\newline
+ F : Can be switch on with CPP flag FORCEDIAG.}
+\label{tb:diagnostic:output:meanforc}
+\end{table}
+
+
+
+\begin{table}
+\begin{footnotesize}
+\begin{tabular}{r|l|l|l|r|l|c|c}
+Code & Content  		       & L.    &  Variable	&   Unit    &	fort.x &  Cpp  &    CP   \\ \hline
+247  & heat-flux sw over water	       &  1    &  DQSWO 	&   W/m**2  &	247    &  M H  &	  \\
+248  & heat-flux lw over water	       &  1    &  DQLWO 	&   W/m**2  &	248    &  M H  &	  \\
+249  & heat-flux se over water	       &  1    &  DQSEO 	&   W/m**2  &	249    &  M H  &	  \\
+250  & heat-flux la over water	       &  1    &  DQLAO 	&   W/m**2  &	250    &  M H  &	  \\
+251  & heat-flux net over water         &  1    &  DQTHO 	&   W/m**2  &	251    &  M H  &	  \\
+252  & heat-flux sw over seaice         &  1    &  DQSWI 	&   W/m**2  &	252    &  M H  &	  \\
+253  & heat-flux lw over seaice         &  1    &  DQLWI 	&   W/m**2  &	253    &  M H  &	  \\
+254  & heat-flux se over seaice         &  1    &  DQSEI 	&   W/m**2  &	254    &  M H  &	  \\
+255  & heat-flux la over seaice         &  1    &  DQLAI 	&   W/m**2  &	255    &  M H  &	  \\
+256  & heat-flux net over seaice        &  1    &  DQTHI 	&   W/m**2  &	256    &  M H  &	  \\
+257  & Equi. temp over seaice	       &  1    &  DTICEO	&   K	    &	257    &  M H  &	  \\  
+
+\end{tabular}
+\end{footnotesize}
+\caption{Code Table for MPI-OM mean heat-flux output. \newline
+(x): Reasonable in the coupled setup.\newline
+ M : Can be switch on with CPP flag MEAN.\newline
+ F : Can be switch on with CPP flag TESTOUT\_HFL.}
+\label{tb:diagnostic:output:meanheat}
+\end{table}
+
+
+
+\begin{table}
+\begin{footnotesize}
+\begin{tabular}{r|l|l|l|r|l|c|c}
+Code & Content  		       & L.    &  Variable	&   Unit    &	fort.x &  Cpp  &    CP    \\ \hline
+172  & landseamask (pressure points)   & 40    &  WETO  	&	    &	93     &  G    &    (x)   \\
+507  & landseamask (vector points v)   & 40    &  AMSUE 	&	    &  212     &  G    &    (x)   \\
+508  & landseamask (vector points u)   & 40    &  AMSUO 	&	    &  213     &  G    &    (x)   \\
+ 84  & depth at pressure points        &  1    &  DEPTO 	&   m	    &	96     &  G    &    (x)   \\
+484  & depth at vector points (u)      &  1    &  DEUTO 	&   m	    &  196     &  G    &    (x)   \\
+584  & depth at vector points (v)      &  1    &  DEUTE 	&   m	    &  197     &  G    &    (x)   \\
+184  & level thickness (vector u )     & 40    &  DDUO  	&   m	    &  198     &  G    &    (x)   \\
+284  & level thickness (vector v )     & 40    &  DDUE  	&   m	    &  199     &  G    &    (x)   \\
+384  & level thickness (pressure )     & 40    &  DDPO  	&   m	    &  200     &  G    &    (x)   \\
+ 85  & grid distance x  	       &  1    &  DLXP  	&   m	    &  151     &  G    &    (x)   \\
+ 86  & grid distance y  	       &  1    &  DLYP  	&   m	    &  152     &  G    &    (x)   \\
+185  & grid distance x  (vector u)     &  1    &  DLXU  	&   m	    &  201     &  G    &    (x)   \\ 
+186  & grid distance y  (vector u)     &  1    &  DLYU  	&   m	    &  202     &  G    &    (x)   \\
+285  & grid distance x  (vector v)     &  1    &  DLXV  	&   m	    &  203     &  G    &    (x)   \\
+286  & grid distance y  (vector v)     &  1    &  DLYV  	&   m	    &  204     &  G    &    (x)   \\
+ 54  & latitude in radians	       &  1    &  GILA  	&   rad     &	94     &  G    &    (x)   \\
+ 55  & longitude in radians	       &  1    &  GIPH  	&   rad     &	97     &  G    &    (x)   \\
+354  & latitude in degrees (pressure)  &  1    &  ALAT  	&   deg     &  205     &  G    &    (x)   \\
+355  & longitude in degrees (pressure) &  1    &  ALON  	&   deg     &  206     &  G    &    (x)   \\
+154  & latitude in degrees (vector u)  &  1    &  ALATU 	&   deg     &  208     &  G    &    (x)   \\
+155  & longitude in degrees (vector u) &  1    &  ALONU 	&   deg     &  209     &  G    &    (x)   \\
+254  & latitude in degrees (vector v)  &  1    &  ALATV 	&   deg     &  210     &  G    &    (x)   \\
+255  & longitude in degrees (vector v) &  1    &  ALONV 	&   deg     &  211     &  G    &    (x)   \\ 
+\end{tabular}
+\end{footnotesize}
+\caption{Code Table for MPI-OM grid information output. \newline
+(x): Reasonable in the coupled setup.\newline
+ G : Can be switch on with CPP flag GRIDINFO.}
+\label{tb:diagnostic:output:grid}
+\end{table}
+
+\begin{table}
+\begin{footnotesize}
+\begin{tabular}{r|l|l|l|r|l|c|c}
+Code & Content  		       &  L.   &  Variable	&   Unit    &	fort.x &  Cpp     & CP  \\ \hline
+270  & oasis net heat flux water       &  1    &  AOFLNHWO	&   W/m**2  &	270    &  O M OFD & (x) \\
+271  & oasis downward short wave       &  1    &  AOFLSHWO	&   W/m**2  &	271    &  O M OFD & (x) \\
+272  & oasis residual heat flux ice    &  1    &  AOFLRHIO	&   W/m**2  &	272    &  O M OFD & (x) \\
+273  & oasis conduct. heat flux ice    &  1    &  AOFLCHIO	&   W/m**2  &	273    &  O M OFD & (x) \\
+274  & oasis fluid fresh water flux    &  1    &  AOFLFRWO	&   m/s     &	274    &  O M OFD & (x) \\
+275  & oasis solid fresh water flux    &  1    &  AOFLFRIO	&   m/s     &	275    &  O M OFD & (x) \\
+276  & oasis wind stress water x       &  1    &  AOFLTXWO	&   Pa/1025 &	276    &  O M OFD & (x) \\
+277  & oasis wind stress water y       &  1    &  AOFLTYWO	&   Pa/1025 &	277    &  O M OFD & (x) \\
+278  & oasis wind stress ice x         &  1    &  AOFLTXIO	&   Pa/1025 &	278    &  O M OFD & (x) \\
+279  & oasis wind stress ice x         &  1    &  AOFLTYIO	&   Pa/1025 &	279    &  O M OFD & (x) \\
+280  & oasis wind speed 	       &  1    &  AOFLWSVO	&   m/s     &	280    &  O M OFD & (x) \\
+
+\end{tabular}
+\end{footnotesize}
+\caption{Code Table for MPI-OM/ECHAM5 mean coupler output. \newline
+(x): Reasonable in the coupled setup.\newline
+ M : Can be switch on with CPP flag MEAN.\newline
+ O : Can be switch on with CPP flag OASIS. \newline
+ OFD : Can be switch on with CPP flag OASIS\_FLUX\_DAYLY.}
+\label{tb:diagnostic:output:meanoasis}
+\end{table}
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\clearpage
+
+
+
+  

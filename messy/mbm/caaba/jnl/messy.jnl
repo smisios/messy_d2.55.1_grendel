@@ -1,0 +1,75 @@
+\CANCEL MODE verify ! like "unset echo" under unix
+CANCEL DATA/ALL
+CANCEL VARIABLE/ALL
+CANCEL SYMBOL/ALL
+
+! argument checking
+DEFINE SYMBOL dim         = $1"0d|0d|1d|2d"
+DEFINE SYMBOL jnlfile     = messy
+DEFINE SYMBOL argv        = ($dim)
+
+! set makepdf to TRUE only for 1-page plots:
+!DEFINE SYMBOL makepdf = TRUE
+
+go setmodelrun
+go initialize
+! sensi first
+DEFINE SYMBOL dsensi = 1 !data set number of first sensi (try `,RETURN=dsetnum`)
+IF `($nsensi) GT 0` THEN ! for PLOT/OVER
+  REPEAT/range=1:($nsensi)/name=dnum ( \
+    DEFINE SYMBOL dnum = `dnum` ; \ ! convert VARIABLE to SYMBOL
+    USE "($run($dnum))/caaba_messy.nc" )
+ENDIF
+! base last because it must be the current data set
+USE "($run0)/caaba_messy.nc"
+DEFINE SYMBOL dbase = `($nsensi)+1`
+say base run = data set number ($dbase)
+
+GO initviewport 3 6 header
+IF ($dim%|2d>TRUE|*>FALSE|%) THEN
+ GO initviewport 2 4 header
+ENDIF
+
+DEFINE SYMBOL pagetitle = pressure, temperature, sza
+LET conv = 1  ! leave DATA as it is [1/s]
+DEFINE SYMBOL unit = fromdataset
+SAY unit = [($unit)]
+LET factor = conv
+
+! SET verbosity (higher values of v produce more plots)
+LET v = 1
+
+!-------------------------------------------------------------------------------
+
+IF `v GE 1` THEN GO _plot_($dim) press
+IF `v GE 1` THEN GO _plot_($dim) temp
+IF `v GE 1` THEN GO _plot_($dim) sza
+
+! ! TRAJECT output:
+! IF `v GE 2` THEN GO _plot_($dim) lon
+! IF `v GE 2` THEN GO _plot_($dim) lat
+
+! GO nextviewport
+! LET/TITLE="LAT" lat = lat
+! LET/TITLE="LON" lon = IF (lon GT 0) THEN lon-360 ELSE lon
+! !plot/color=2/set/hlimits=-360:0/vlimits=30:90/vs lon, lat
+! plot/color=2/set/hlimits=-200:-100/vlimits=60:80/vs lon, lat
+! go ppl_mylayout
+! PPL PLOT
+! go land
+
+! IF `v GE 2` THEN GO _plot_($dim) iceconc     
+! IF `v GE 2` THEN GO _plot_($dim) icetype     
+! IF `v GE 2` THEN GO _plot_($dim) relhum      
+! IF `v GE 9` THEN GO _plot_($dim) localtime   
+! IF `v GE 9` THEN GO _plot_($dim) year_loc    
+! IF `v GE 9` THEN GO _plot_($dim) month_loc   
+! IF `v GE 9` THEN GO _plot_($dim) day_loc     
+! IF `v GE 9` THEN GO _plot_($dim) hour_loc    
+! IF `v GE 9` THEN GO _plot_($dim) min_loc     
+! IF `v GE 9` THEN GO _plot_($dim) sec_loc     
+
+GO exitviewport
+
+EXIT
+

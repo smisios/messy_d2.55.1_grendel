@@ -1,0 +1,361 @@
+# -*- Makefile -*- Time-stamp: <2019-02-11 14:46:45 joec_pa>
+###############################################################################
+##### PLATFORM SPECIFIC SETTINGS (LINUX64) ####################################
+###############################################################################
+ARCH       = LINUX64
+
+###########################################################################
+### DEFAULTS
+###########################################################################
+#### DEFAULT COMPILE MODE
+if test -z "$RUNMODE" ; then
+   RUNMODE=PRODUCTION
+fi
+
+#### SET DEFAULT PROFILING MODE
+if test -z "$PROFILEMODE" ; then
+   PROFILEMODE=NONE
+fi
+
+##### TOOLS
+#AR       = ar
+#ARFLAGS  = cvr
+#NMFLAGS  = 
+
+##### F95 EXTENSIONS
+DEFOPT   = -D
+MODOPT   = -I
+
+
+  #########################################################################
+  ### FUB - Berlin ATOS at HLRN
+  #########################################################################
+     ### (1) MESSAGE PASSING INTERFACE (options a and b are exclusive!)
+     ####    a) use mpi-compiler wrappers (preferable!) and keep
+     ####       MPIROOT and MPI_LIB unset.
+     ####    b) set MPIROOT and MPI_LIB (e.g. for MPI-1 
+     ###        MPI_LIB = mpichf90nc mpich)
+     MPIROOT    =
+     MPI_LIB    = 
+     #
+     ##############################
+     ### detect mpi environment ###
+     ##############################
+     CENV = `echo $LOADEDMODULES | tr ':' '\n' | grep mpi | awk -F '/' '{print $1}'`
+     # CENV = openmpi
+     # CENV = impi
+     #
+     case $CENV in
+       openmpi)
+          ### ### (2) GNU:   gcc/9.2.0    openmpi/gcc.9/3.1.5
+          ENVOPT = 2
+          MPIF90 = mpif90
+          MPICC = mpicc
+          zMPICXX = mpicxx
+          LIBCXX  = -lstdc++ -lmpi_cxx
+          ;;
+       impi)
+          ### ### (3) INTEL: intel/18.0.6 impi/2018.5
+          ENVOPT = 3
+          MPIF90 = mpiifort
+          MPICC = mpiicc
+          zMPICXX = mpiicpc
+          LIBCXX  = -lstdc++
+          ;;
+      *)
+          ERRSTR='Error: MPI module could not be determined'
+          ;;
+     esac
+     #
+     #
+     #######################
+     ### detect compiler ###
+     #######################
+     TMPF90=`$MPIF90 -show | awk '{print $1}' | awk -F '/' '{print $NF}'`
+     case $TMPF90 in
+          ifort*)
+            COMPILER = INTEL
+            ;;
+          gfortran*)
+            COMPILER = GFORTRAN
+            ;;
+          nagfor*)
+            COMPILER = NAG
+            ;;
+          *)
+            ERRSTR='Error: no matching mpi module loaded!'
+            ;;
+     esac
+     #
+     case $COMPILER in
+     INTEL)
+         ### ------------------------------------------------------------
+         CXX      = g++
+         CC       = $MPICC
+         #
+         ### (2) NETCDF LIBRARY (options a and b are exclusive!)
+         ###     a) set NETCDFROOT (must contain lib/libnetcdf.a and
+         ###        include/netcdf.inc) (for necdf-3)
+         ###     b) set SPEC_NETCDF_INC to include path and
+         ###        SPEC_NETCDF_LIB to ld-options (-L ...  -l...)
+         #
+         case $ENVOPT in
+          2)
+            # with module netcdf/gcc.8/4.7.3
+            # NETCDFFVERS = 4.7.3
+            # with self compiled netcdf
+            NETCDFFVERS = 4.3.2
+            NCPATH = netcdf/netcdf-${NETCDFFVERS}_ifc_64            
+            # NCPATH = netcdf/gcc.8.3.0
+            # with netcdf-parallel/ompi/gcc.9/4.7.3
+            NCPATHP = netcdf-parallel/ompi/gcc.9.2.0
+            # NCPATH = ${NCPATHP}
+            ;;
+          3)
+            NETCDFFVERS = 4.7.3
+            NCPATH = netcdf/intel.19/${NETCDFFVERS}
+            #
+            # with module netcdf-parallel/impi/intel/4.7.3
+            # NCPATHP = netcdf-parallel/impi/intel.18
+            # NCPATH = ${NCPATHP}
+            #
+            SZ_ROOT=/sw/dataformats/szip/intel.18/2.1.1/skl
+            ;;
+         esac
+         ###
+         #NETCDFROOT = `/sw/dataformats/${NCPATH}/skl/bin/nf-config --prefix`
+         NETCDFROOT = `${HOME}/local/${NCPATH}/bin/nc-config --prefix`
+         ###
+         CFLAGS   = -g -O -Df2cFortran -xCORE-AVX2 `${NETCDFROOT}/bin/nc-config --cflags`
+         ###
+         F90 = `which $MPIF90`
+         F90VERS  = `$F90 --version | awk '{if (NR == 1) print}'`
+         ##### F95 EXTENSIONS
+         DEFOPT   = -D
+         MODOPT   = -I
+         ##### F95 COMPILER FLAG TO OBTAIN DOUBLE PRECISION
+         F90R8    = -autodouble
+         ##### F77 OPTIONS
+         FFLAGS   = -g -fpp -O2 -fp-model strict -xCORE-AVX2
+         ##### OpenMP options
+         F90OMP    = -qopenmp -heap-arrays
+         F90OMPLIB = -qopenmp -heap-arrays
+         ##### MPI C++ compiler, flags and libs (for GUESS)
+         MPICXX  = $zMPICXX
+         ###
+         MPIROOT    = ${I_MPI_ROOT}
+         MPI_LIB    =
+         ## For some strange reason (file system synchronisation)
+         ## the corresponding tests in configure fail; thus these two
+         ## variables need to be set explicitely:
+         FORT_INTEGER_LEN=4
+         FORT_REAL_LEN=4
+         #
+         ### blogin ###
+         #
+         SPEC_NETCDF_INC = `${NETCDFROOT}/bin/nf-config --fflags | sed 's|-I||g'`
+         SPEC_NETCDF_LIB = `${NETCDFROOT}/bin/nf-config --flibs`
+         #
+         # PNETCDFROOT = `/sw/dataformats/${NCPATHP}/${NETCDFFVERS}/skl/bin/nf-config --prefix`
+         #
+         case $ENVOPT in
+          2)
+            #YAXTROOT = /sw/rhel6-x64/dkrz/yaxt-0.5.1-openmpi-hpcx-intel14
+            #YAXTROOT = /sw/rhel6-x64/dkrz/yaxt-0.6.0-openmpi2-intel14
+            continue
+            ;;
+          3)
+            YAXTROOT = /home/bekklabi/local/yaxt/intel.19/0.6.2
+            continue
+            ;;
+         esac
+         ###
+         ### (3) BLAS and LAPACK LIBRARIES (options a, b and are exclusive)
+         ###     a) keep all entries empty -> blas/lapack contained in 
+         ###        distribution will be compiled and used
+         ###     b) specify *ROOT (path to library) and
+         ###        and *_LIB (name of library without "-llib" and ".a",
+         ###        e.g., BLASROOT=/usr/lib and BLAS_LIB=blas for
+         ###        /usr/lib/libblas.a)
+         ###     c) specifiy SPEC_LABLA_LIB with full ld options)
+         ###
+         # BLASROOT   =`/sw/numerics//gsl/intel.18/2.6/skl/bin/gsl-config --prefix`
+         # BLAS_LIB   = gslcblas
+         #BLASROOT   =
+         #BLAS_LIB   =
+         #LAPACKROOT =
+         #LAPACK_LIB =
+         # SPEC_LABLA_LIB =
+         # SPEC_LIB   = -Wl,-rpath,${PNETCDFROOT}/lib
+         SPEC_LIB   = -Wl,-rpath,${NETCDFROOT}/lib -Wl,-rpath,${HDF5_ROOT}/lib -Wl,-rpath,${SZ_ROOT}/lib
+         ###
+         ### (4) EMOS and SPHERE LIBRARIES (for INTERA only); 
+         ###     a) keep empty, if not available
+         ###     b) similar as option b) for BLAS/LAPACK
+         EMOSROOT   =
+         EMOS_LIB   =
+         SPHEREROOT =
+         SPHERE_LIB = 
+         ### (5) ADDITONAL LIBRARIES REQUIRED FOR LINKING (full ld options)
+         #SPEC_LIB   =
+         ### (6) SPECIAL LIBRARIES FOR FORCHECK
+         FCKLIBS    =     
+         #
+         case $RUNMODE in
+            DEBUG)
+               F90FLAGS = -sox -fpp -g -O0 -xCORE-AVX512 -traceback -debug all -check all -check noarg_temp_created -fp-model strict -align all -save-temps ${SPEC_LIB} -no-wrap-margin
+# -Bstatic
+# -fno-alias -no-ansi-alias 
+# -static
+               MPICXXFLAGS = -std=c++98 -g -xCORE-AVX512 -qopt-zmm-usage=high-traceback -O0 -DDEBUG -fp-model strict
+               ;;
+            DEBUGOPT)
+               F90FLAGS = -sox -g -traceback -debug all -check all -fpp -O2 -xCORE-AVX2 -fp-model strict -align all -save-temps ${SPEC_LIB} -no-wrap-margin
+#-Bstatic
+# -fno-alias -no-ansi-alias 
+# -static
+               MPICXXFLAGS = -std=c++98 -O2 -xCORE-AVX512 -qopt-zmm-usage=high -DNODEBUG -fp-model strict -fp-model source -fp-speculation=off -fno-alias -no-fma -fimf-arch-consistency=true -align -fno-alias -lpthread
+               ;;
+            PRODUCTION)
+               #F90FLAGS = -sox -fpp -g -O1 -xCORE-AVX512 -qopt-zmm-usage=high -fp-model strict -align all -save-temps ${SPEC_LIB} -no-wrap-margin
+               F90FLAGS = -sox -fpp -g -O1 -xCORE-AVX512 -fp-model strict -align all -save-temps ${SPEC_LIB} -no-wrap-margin
+
+# -qopt-report-per-object
+#
+# -Bstatic
+# -no-prec-sqrt
+# -qlargepage -blpdata
+# -fno-alias -no-ansi-alias 
+# -static
+               #MPICXXFLAGS = -std=c++98 -O2 -xCORE-AVX512 -qopt-zmm-usage=high -DNODEBUG -fp-model strict -fp-model source -fp-speculation=off -fno-alias -no-fma -fimf-arch-consistency=true -align -fno-alias -lpthread
+               MPICXXFLAGS = -std=c++98 -O1 -xCORE-AVX512 -qopt-zmm-usage=high -DNODEBUG -fp-model strict -fp-model source -fp-speculation=off -fno-alias -no-fma -fimf-arch-consistency=true -align -fno-alias -lpthread
+               ;;
+            *)
+               ERRSTR='Error: wrong run-time mode selected! To solve ./configure [options] RUNMODE=DEBUG|PRODUCTION'
+               ;;
+         esac
+        ;;
+      GFORTRAN)
+         #
+         GCC_VERSION = 9.2.0
+         #
+         ### (2) NETCDF LIBRARY (options a and b are exclusive!)
+         ###     a) set NETCDFROOT (must contain lib/libnetcdf.a and
+         ###        include/netcdf.inc) (for necdf-3)
+         ###     b) set SPEC_NETCDF_INC to include path and
+         ###        SPEC_NETCDF_LIB to ld-options (-L ...  -l...)
+         case $ENVOPT in
+          2)
+            # with module netcdf/gcc.8/4.7.3
+            # NETCDFFVERS = 4.7.3
+            # NCPATH = gcc.8.3.0
+            #
+            # NETCDFFVERS = 4.7.3
+            # NCPATH = ompi/gcc.9.2.0
+            #
+            NETCDFFVERS = 4.7.3
+            NCPATH = netcdf/gcc.${GCC_VERSION}/${NETCDFFVERS}
+            #
+            SZ_ROOT=/sw/dataformats/szip/gcc.${GCC_VERSION}/2.1.1/skl
+            ;;
+          3)
+            NETCDFFVERS = intel.18
+            NCPATH = 4.7.3
+            ;;
+         esac
+         ### ### 
+         #NETCDFROOT = `/sw/dataformats/${NCPATH}/skl/bin/nf-config --prefix`
+         NETCDFROOT = `${HOME}/local/${NCPATH}/bin/nc-config --prefix`
+         ### ### gcc/4.8.2
+         CXX      = g++
+         CC       = mpicc
+         CFLAGS   = -O -march=skylake-avx512 -Df2cFortran `${NETCDFROOT}/bin/nc-config --cflags`
+         F90      = `which ${MPIF90}`
+         F90VERS  = `$F90 --version | awk '{if (NR == 1) print}'`
+         ##### F95 EXTENSIONS
+         DEFOPT   = -D
+         MODOPT   = -I
+         ##### F95 COMPILER FLAG TO OBTAIN DOUBLE PRECISION
+         F90R8    = -fdefault-real-8
+         ##### F77 OPTIONS
+         FFLAGS   = -fno-second-underscore -ffree-line-length-none -fno-range-check
+         ##### OpenMP options
+         F90OMP    = -fopenmp -heap-arrays
+         F90OMPLIB = -fopenmp -heap-arrays
+         ##### MPI C++ compiler, flags and libs (for GUESS)
+         MPICXX = $zMPICXX -std=c++1y
+         #####
+         MPIROOT    =
+         MPI_LIB    = 
+         #
+         SPEC_NETCDF_INC = `${NETCDFROOT}/bin/nf-config --fflags | sed 's|-I||g'`
+         SPEC_NETCDF_LIB = `${NETCDFROOT}/bin/nf-config --flibs`
+         #
+         # PNETCDFROOT = /sw/dataformats/netcdf-parallel/impi/${NETCDFFVERS}/${NCPATH}/skl
+         #
+         case $ENVOPT in
+          2)
+            #YAXTROOT = /sw/rhel6-x64/dkrz/yaxt-0.5.1-openmpi2-gcc64
+            continue
+            ;;
+          3)
+            #YAXTROOT = /sw/rhel6-x64/dkrz/yaxt-0.5.1-impi2017-intel14/
+            continue
+            ;;
+         esac
+         ###
+         ### (3) BLAS and LAPACK LIBRARIES (options a, b and are exclusive)
+         ###     a) keep all entries empty -> blas/lapack contained in 
+         ###        distribution will be compiled and used
+         ###     b) specify *ROOT (path to library) and
+         ###        and *_LIB (name of library without "-llib" and ".a",
+         ###        e.g., BLASROOT=/usr/lib and BLAS_LIB=blas for
+         ###        /usr/lib/libblas.a)
+         ###     c) specifiy SPEC_LABLA_LIB with full ld options)
+         ###
+         #BLASROOT   = ${OPENBLAS_DIR}
+         #BLAS_LIB   = openblas
+         #LAPACKROOT = ${SCLAPACK_DIR}
+         #LAPACK_LIB = scalapack
+         #SPEC_LABLA_LIB =
+         # SPEC_LIB   = -Wl,-rpath,${NETCDFROOT}/lib -Wl,-rpath,${HDF5_ROOT}/lib -Wl,-rpath,${SZ_ROOT}/lib -Wl,-rpath,${LAPACKROOT}/lib -Wl,-rpath,${BLASROOT}/lib 
+         SPEC_LIB   = -Wl,-rpath,${NETCDFROOT}/lib -Wl,-rpath,${HDF5_ROOT}/lib -Wl,-rpath,${SZ_ROOT}/lib
+         ###
+         ### (4) EMOS and SPHERE LIBRARIES (for INTERA only); 
+         ###     a) keep empty, if not available
+         ###     b) similar as option b) for BLAS/LAPACK
+         EMOSROOT   =
+         EMOS_LIB   =
+         SPHEREROOT =
+         SPHERE_LIB = 
+         ### (5) ADDITONAL LIBRARIES REQUIRED FOR LINKING (full ld options)
+         #SPEC_LIB   =
+         ### (6) SPECIAL LIBRARIES FOR FORCHECK
+         FCKLIBS    =     
+         #
+         case $RUNMODE in
+            DEBUG)
+               ### for debugging:
+               F90FLAGS = -cpp -D__linux__ -march=skylake-avx512 -fno-second-underscore -ffree-line-length-none -fno-range-check -fbacktrace -fbounds-check -fdump-core -g -O0 -Wall ${SPEC_LIB}
+               # -pedantic
+               # -DNOENDIANCONVERT
+               # -std=f95
+               ;;
+            DEBUGOPT)
+               ### for debugging:
+               F90FLAGS = -cpp -D__linux__ -march=skylake-avx512 -fno-second-underscore -ffree-line-length-none -fno-range-check -fbacktrace -fbounds-check -fdump-core -g -O -Wall ${SPEC_LIB}
+               ;;
+            PRODUCTION)
+               ### fast, optimized model run:
+               F90FLAGS = -cpp -D__linux__ -march=skylake-avx512 -fno-second-underscore -ffree-line-length-none -fno-range-check -O ${SPEC_LIB}
+               ;;
+            *)
+               ERRSTR='Error: wrong run-time mode selected! To solve ./configure [options] RUNMODE=DEBUG|PRODUCTION'
+               ;;
+         esac
+         ;;
+     esac
+
+###########################################################################
+###########################################################################
+###########################################################################

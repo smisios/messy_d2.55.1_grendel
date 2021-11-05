@@ -1,0 +1,84 @@
+#! /bin/tcsh -f
+
+### CHECK f90 FILES FOR MESSy-CONFORMITY:
+### 01: SMCL-files MUST NOT USE 
+###       - SMIL
+###       - BMIL
+###       - BML
+###     - MODULES
+###
+### Author: Patrick Jöckel, MPICH, Mainz, Germany, Mar 2004
+
+if ($# != 2) then
+   echo "USAGE: `basename $0` <BASEMODEL> <f90-file>"
+   exit 1
+endif
+
+set BASEMODEL = $1
+set file = $2
+set checkid = 01
+
+### BASEMODEL SETTINGS
+if ( -r messy/$BASEMODEL/messy_setup != 0 ) then
+   source messy/$BASEMODEL/messy_setup
+else
+   echo "ERROR: MESSY SETUP messy/$BASEMODEL/messy_setup IS UNREADABLE\!"
+   exit 1
+endif
+
+# SET SUBMODEL
+set smodel = `echo $file | awk -F '_' '{print tolower($2)}' | sed 's|\.f90||g'`
+
+# CHECK IF SMCL; exclude SMIL _$SMILEXT.f90
+set sel=`echo $SMILEXT | awk '{print length($0)+4}'`
+set suffix = `echo $file | awk '{l=length($0); print substr($0,l-'$sel')}'`
+if ($suffix == "_$SMILEXT.f90") then
+   ### SMIL FILE
+   exit 0
+endif
+
+# LIST OF MODULES IN USE STATEMENTS
+set q_use = `grep -iE "^ *USE " $file  | sed 's|\,| |g' | awk '{print tolower($2)}'`
+# NUMBER OF USE STATEMENTS
+set n = ${#q_use}
+
+#######################################
+set wrong = ()
+@ count = 1
+while($count <= $n)
+# echo $q_use[$count]
+  # CHECK FOR SMIL, BMIL
+  set sel=`echo $SMILEXT | awk '{print length($0)}'`
+  set sf = `echo $q_use[$count] | awk '{l=length($0); sf=substr($0,l-'$sel'); if (sf=="_$SMILEXT") print}' `
+  set wrong = ($sf $wrong)
+
+  # CHECK FOR BML
+  set bel=`echo $BMLPRE | awk '{print length($0)}'`
+  set sf = `echo $q_use[$count] | awk '{sf=substr($0,1,'$bel'); if (sf=="$BMLPRE") print}' `
+  set wrong = ($wrong $sf)
+
+@ count++
+end
+#######################################
+
+#######################################
+switch ($smodel)
+   ### EXCLUDE INFRASTRUCTURE
+   case "ncregrid":
+   case "main":
+	breaksw
+   default:
+        if (${#wrong} > 0) then
+            echo '-----------------------------------------------------'
+            echo 'SUBMODEL: '$smodel
+	    echo 'CHECK-ID: '$checkid
+            echo 'FILE    : '$file
+            echo ${#wrong}' NON-MESSy-CONFORM USE-STATEMENT(S) FOUND: '
+            echo ${wrong} | tr ' ' '\n'
+            echo '-----------------------------------------------------'
+        endif
+        breaksw
+endsw
+#######################################
+
+exit 0

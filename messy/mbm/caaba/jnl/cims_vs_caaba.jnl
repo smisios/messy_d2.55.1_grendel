@@ -1,0 +1,145 @@
+! ****************************************************************************
+
+\CANCEL MODE verify ! like "unset echo" under unix
+CANCEL DATA/ALL
+CANCEL VARIABLE/ALL
+CANCEL SYMBOL/ALL
+
+DEFINE SYMBOL nopause = TRUE
+!DEFINE SYMBOL landscape = TRUE
+!DEFINE SYMBOL makepdf = TRUE
+GO initviewport 2 6 noheader
+
+! ****************************************************************************
+
+USE NO_NOx_O3.nc         ! d=1
+USE cims.nc              ! d=2
+USE "../caaba_sappho.nc" ! d=3
+USE "../caaba_mecca.nc"  ! d=4
+
+!DEFINE SYMBOL TIMERANGE = "24-NOV-2010 09:18:30":"25-NOV-2010 08:17:24" !sample time d=1
+!DEFINE SYMBOL TIMERANGE = "24-NOV-2010 11:23:39":"25-NOV-2010 00:06:13" !sample time d=2
+!DEFINE SYMBOL TIMERANGE = "24-NOV-2010 11:23:39":"24-NOV-2010 15:23:39" !!2.aerosol injection trucated!!
+DEFINE SYMBOL TIMERANGE = "24-NOV-2010 11:23:39":"24-NOV-2010 15:23:39" !only aerosol injection 1
+!DEFINE SYMBOL TIMERANGE = "24-NOV-2010 11:23:39":"24-NOV-2010 19:23:39" !both aerosol injections and light on
+!DEFINE SYMBOL TIMERANGE = "24-NOV-2010 11:23:39":"24-NOV-2010 22:23:39" !... plus depletion of HNO3, Bra, BrO_a and BrClc
+
+! ****************************************************************************
+
+LET licht2 = J_O1D[d=3]/4E-5
+GO _plot licht licht2
+
+! GO _plot O3
+GO nextviewport
+PLOT/TITLE="log(O3)"/SET/d=1/T=($TIMERANGE) log(O3[l=@SBX:25])
+GO ppl_mylayout
+PPL PLOT
+! show model data:
+plot/T=($TIMERANGE)/THICK=3/OVER/NOLABELS log(O3)
+! vertical lines:
+plot/D=2/T=($TIMERANGE)/COLOR=green/OVER/NOLABELS ($yaxis_max)*licht[l=@SBX:25]
+plot/D=2/T=($TIMERANGE)/COLOR=blue/OVER/NOLABELS ($yaxis_max)*dummy2[l=@SBX:25]
+GO nextviewport
+PLOT/TITLE="O3"/SET/d=1/VLIMITS=0:4E-7/T=($TIMERANGE) O3[l=@SBX:25]
+GO ppl_mylayout
+PPL PLOT
+! show model data:
+plot/T=($TIMERANGE)/THICK=3/OVER/NOLABELS O3
+! vertical lines:
+plot/D=2/T=($TIMERANGE)/COLOR=green/OVER/NOLABELS ($yaxis_max)*licht[l=@SBX:25]
+plot/D=2/T=($TIMERANGE)/COLOR=blue/OVER/NOLABELS ($yaxis_max)*dummy2[l=@SBX:25]
+
+! GO _plot NO
+GO nextviewport
+PLOT/TITLE="log(NO)"/SET/d=1/T=($TIMERANGE) log(NO[l=@SBX:25])
+GO ppl_mylayout
+PPL PLOT
+! show model data:
+plot/T=($TIMERANGE)/THICK=3/OVER/NOLABELS log(NO)
+! vertical lines:
+plot/D=2/T=($TIMERANGE)/COLOR=green/OVER/NOLABELS ($yaxis_max)*licht[l=@SBX:25]
+plot/D=2/T=($TIMERANGE)/COLOR=blue/OVER/NOLABELS ($yaxis_max)*dummy2[l=@SBX:25]
+GO nextviewport
+PLOT/TITLE="NO"/SET/d=1/VLIMITS=0:4E-9/T=($TIMERANGE) NO[l=@SBX:25]
+GO ppl_mylayout
+PPL PLOT
+! show model data:
+plot/T=($TIMERANGE)/THICK=3/OVER/NOLABELS NO
+! vertical lines:
+plot/D=2/T=($TIMERANGE)/COLOR=green/OVER/NOLABELS ($yaxis_max)*licht[l=@SBX:25]
+plot/D=2/T=($TIMERANGE)/COLOR=blue/OVER/NOLABELS ($yaxis_max)*dummy2[l=@SBX:25]
+
+! GO _plot NOx
+GO nextviewport
+PLOT/TITLE="log(NOx)"/SET/d=1/T=($TIMERANGE) log(NOx[l=@SBX:25])
+GO ppl_mylayout
+PPL PLOT
+! show model data:
+plot/T=($TIMERANGE)/THICK=3/OVER/NOLABELS log(NO+NO2)
+! vertical lines:
+plot/D=2/T=($TIMERANGE)/COLOR=green/OVER/NOLABELS ($yaxis_max)*licht[l=@SBX:25]
+plot/D=2/T=($TIMERANGE)/COLOR=blue/OVER/NOLABELS ($yaxis_max)*dummy2[l=@SBX:25]
+GO nextviewport
+PLOT/TITLE="NOx"/SET/d=1/VLIMITS=0:2.6E-8/T=($TIMERANGE) NOx[l=@SBX:25]
+GO ppl_mylayout
+PPL PLOT
+! show model data:
+plot/T=($TIMERANGE)/THICK=3/OVER/NOLABELS 0.5*HONO  + NO+NO2
+! vertical lines:
+plot/D=2/T=($TIMERANGE)/COLOR=green/OVER/NOLABELS ($yaxis_max)*licht[l=@SBX:25]
+plot/D=2/T=($TIMERANGE)/COLOR=blue/OVER/NOLABELS ($yaxis_max)*dummy2[l=@SBX:25]
+
+GO _plot N2O5       N2O5
+GO _plot HONO       HONO
+GO _plot HNO3       HNO3
+
+!GO _plot C2H6       C2H6  !Not in sample data set
+
+GO _plot HCla       HCl
+GO _plot HClb       HCl
+GO _plot HOCla      HOCl
+GO _plot dummy7     HOCl
+GO _plot HOClb      HOCl
+GO _plot Cl2        Cl2
+GO _plot Cla        Cl
+GO _plot Clb        Cl
+GO _plot ClOa       ClO
+GO _plot ClOb       ClO
+
+GO _plot ClNO2      ClNO2
+GO _plot ClNO2b     ClNO2
+GO _plot ClONO2a    ClNO3
+GO _plot ClONO2b    ClNO3
+
+GO _plot HOBra      HOBr
+GO _plot dummy8     HOBr
+GO _plot HOBrb      HOBr
+GO _plot Br2_total  Br2
+GO _plot Br2a       Br2
+GO _plot Br2b       Br2
+GO _plot Br2c       Br2
+GO _plot dummy5     Br2
+GO _plot dummy6     Br2
+GO _plot Bra        Br
+GO _plot Brb        Br
+GO _plot BrO_a      BrO
+GO _plot BrO_b      BrO
+GO _plot BrOa       BrO
+GO _plot BrOb       BrO
+
+GO _plot BrNO2      BrNO2
+GO _plot BrNO2a     BrNO2
+GO _plot BrNO2b     BrNO2
+
+GO _plot BrCl_total BrCl
+GO _plot BrCla      BrCl
+GO _plot BrClb      BrCl
+GO _plot BrClc      BrCl
+
+! GO _plot propgly   
+! GO _plot dummy2    
+GO _plot H2O        H2O
+  
+GO exitviewport
+
+! ****************************************************************************

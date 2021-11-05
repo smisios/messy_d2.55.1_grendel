@@ -1,0 +1,83 @@
+! -*- f90 -*-
+&CTRL
+! ########## BASIC SETTINGS ########################################
+!  NUMBER OF CHUNKS INTO WHICH THE PARALLELIZED LOOPS ARE SPLITTED, DEFAULT=48
+NCHUNK=1,
+!  AVERAGE NUMBER OF CELLS PER GRID-BOX (DEFAULT 2.2)
+CPGBAVE=3.0,
+! PRINT OUT SOME MORE INFORMATION, DEFAULT=F
+LLTINFO= F
+! HOW TO CALCULATE FIRST LAYER IN FREE TROPOSPHERE: 0: ATTILA, 1: EXTERNAL
+I_PBLH_METHOD      = 1
+! ##################################################################
+! ########## PROCESS SETTINGS ######################################
+! DIFF COEFFICENTS FOR MONTE CARLO DIFF.
+!    ADICO(1) HORIZ. DIFF. COEFF. [m^2/s] IN FREE ATMOSPHERE
+!    ADICO(2) HORIZ. DIFF. COEFF. [m^2/s] IN BOUNDARY LAYER
+!    ADICO(3) VERTICAL DIFF. COEFF. [1/s]
+!    FORMERLY (/  5300./4.,  5300.,  7.E-11 /)
+!    SEE DISSERTATION CH. REITHMEIER PAGE 22!!
+!    IF ADICO()== 0 --> NO MONTE CARLO DIFF.                                
+ADICO= 0.0, 0.0, 7.E-11,
+! BOUNDARY LAYER TURBULENCE
+LLTBLTURB = T
+! CONVECTIVE TREATMENT OF TRAJECTORIES
+!   UP TO NOW THE CONVECTIVE ROUTINES DO NOT PRODUCE SATISFYING RESULTS
+LLCONV    = T
+! TURBULENT TREATMENT OF TRAJECTORIES IN CLEAR-AIR-TURBULENCE AREAS 
+LLCAT     = F
+! VERTICAL VELOCITY SCHEME (1: etadot (default), 2: thetadot, 3: sigmadot)
+I_VERT = 2
+! REFERENCE PRESSURE FOR I_VERT=2 
+! (pressure in Pa or -1.0 for tropopause (default))
+press_ref = -1.0
+! ##################################################################
+! ########## ADDITIONAL DIAGNOSTICS ################################
+! ADDITIONAL VELOCITY DIAGNOSTICS
+LVDIAG    = T
+! ##################################################################
+! ########## SPECIAL MODI ##########################################
+! #### RESOLUTION INDEPENDENT NUMBER OF CELLs ###
+! <=0: DEPENDING ON GRIDPOINT RESOLUTION; >0: RESOLUTION INDEPENDENT
+I_NCELL = -1
+!I_NCELL = 82944
+! T42L31ECMWF: 128 x 64 x 31 x 2.5 = 634880, 256 tasks with 4 chunks
+! T42L31ECMWF: 128 x 64 x 31 x 3.0 = 761856, 256 tasks with 4 chunks
+!I_NCELL = 634880
+!I_NCELL = 761856
+!I_NCELL = 1000000
+!I_NCELL = 786432 ! 2^12 * 192
+! #### TRAJECTORY MODE ########################## 
+!   SWITCH 
+LTRAJEC = F
+!   OVERWRITE INDIVIDUAL START DATES ?
+LTRAJEC_SAME_DATE = F
+!   DATE (yyyy, m, d, h, mi) TO INITIALIZE POSITIONS IN TRAJEC MOD 
+LTRAJEC_DATE = 1978, 1, 1, 1, 0
+! ##################################################################
+/
+
+&CPL
+!
+L_INI_PARALLEL = T,                    !# initialisation in parallel mode
+!
+! RANDOM NUMBERS: 0: F90-INTRINSIC, 1: MERSENNE TWISTER, 2: LUXURY
+I_RANDOM_METHOD    = 1
+I_RANDOM_PARALLEL  = 3 ! (3 or 4; see messy_main_rnd_bi.f90, RND_MP_[PSJ,PIJ]
+L_RANDOM_TEST = F      ! create ch.object with random numbers (for testing)
+!
+C_PBLH_INDEX   = 'tropop', 'pblh_i',   !# ONLY IF I_PBLH_METHOD = 1
+C_CONV_UFLX    = 'convect','massfu',   !# CONV
+C_CONV_DFLX    = 'convect','massfd',   !# CONV
+C_CONV_TYPE    = 'convect','conv_type',!# CONV  
+!C_TURB_CATI    = 'statatt','TI2',      !# CAT
+/
+
+&TRAJ
+! AP( ) = LAT, LON, PRES, YYYY, MM, DD, HH, MI
+! LAT : LATITUDE (-90 ... 90 = S-POLE ... N-POLE ), 
+! LON : LONGITUDE (0 ... 360)
+! PRES: PRESSURE HEIGHT [Pa]
+! YYYY, MM, DD, HH, MI: START DATE = LTRAJEC_DATE IF OMITTED
+!
+/

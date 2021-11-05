@@ -1,0 +1,115 @@
+! -*- f90 -*-
+&CPL
+!#####################################
+!# A. DEFINITION OF VERTICAL AXES
+!#####################################
+!# SYNTAX:
+!# - axis(dimension) name, channel, object, scaling (default=1.0), unit,
+!#   positive_down (T,F), logarithmic (T) default: F, 
+!#   dimension length, axes values (max. 100)
+!
+! PRESSURE
+VAX(1) = 'pax','COSMO','press',0.01,'hPa',T, F, 9, 900.0, 800.0, 700.0, 600.0, 500.0,400.0,300.0,200.0,150.0, 91*0.0,
+VAX(2) = 'pax2','COSMO','press',0.01,'hPa',T, F, 10, 900.0,800.0, 700.0, 600.0, 500.0,400.0,300.0,250.0,200.0,150.0, 90*0.0
+!
+!VAX(2) = 'logpax','ECHAM5','press',0.01,'hPa',T, T, 16, 1000.0, 900.0, 800.0, 700.0, 600.0, 500.0, 400.0, 300.0, 200.0, 100.0, 90.0, 80.0, 70.0, 60.0, 50.0, 25.0, 84*0.0,
+!
+! ALTITUDE (geopot / g=9.81 m/s)
+!VAX(3) = 'zax','ECHAM5','geopot',0.101936799185,'m', F, F, 17, 0.0, 2.0, 10.0, 100.0, 500.0, 1000.0, 2000.0, 3000.0, 4000.0, 5000.0, 6000.0, 7000.0, 8000.0, 9000.0, 10000.0, 20000.0, 25000.0, 83*0.0,
+!
+! POTENTIAL TEMPERATURE
+!VAX(4) = 'thax', 'ECHAM5','tpot', ,'K', F, F, 18, 340.0, 360.0, 380.0, 390.0, 400.0, 420.0, 430.0, 440.0, 500.0, 550.0, 600.0, 625.0, 700.0, 775.0, 800.0, 850.0, 900.0, 1000.0, 82*0.0,
+!
+!#
+!#########################################
+!# B. FIELDS TRANSFORMED TO VERTICAL AXES
+!#########################################
+!# SYNTAX:
+!# - name, channel, object, axis, missing value (default: -1.0E+34)
+!
+! TEST SUITE: TRANSFORM THE AXIS DEFINING FIELDS:
+!
+TRA(1) = 'press',    'COSMO', 'press',   'pax',    ,
+!TRA(2) = 'lgpress',  'ECHAM5', 'press',   'logpax', ,
+!TRA(3) = 'geopot',   'ECHAM5', 'geopot',  'zax',    ,
+!TRA(4) = 'tpot',     'ECHAM5', 'tpot',    'thax',   ,
+!
+! A MORE REALISTIC CASE
+TRA(5) = 'O3',   'tracer_gp', 'O3',    'pax2',    ,
+TRA(6) = 'CO', 'tracer_gp', 'CO',  'pax',    ,
+TRA(7) = 'CONVECT',  'tracer_gp', 'CONVECT',   'pax',    ,
+TRA(8) = 'NA5',  'tracer_gp', 'NA5',   'pax',    ,
+TRA(9) = 'EA5',  'tracer_gp', 'EA5',   'pax',    ,
+TRA(10) = 'EU5',   'tracer_gp', 'EU5',    'pax',    ,
+TRA(11) = 'AIR5', 'tracer_gp', 'AIR5',  'pax',    ,
+TRA(12) = 'NA15',  'tracer_gp', 'NA15',   'pax',    ,
+TRA(13) = 'EU15',  'tracer_gp', 'EU15',   'pax',    ,
+TRA(14) = 'EA15',  'tracer_gp', 'EA15',   'pax2',    ,
+TRA(15) = 'AIR15',   'tracer_gp', 'AIR15',    'pax2',    ,
+TRA(16) = 'NO', 'tracer_gp', 'NO',  'pax',    ,
+TRA(17) = 'NO2',  'tracer_gp', 'NO2',   'pax',    ,
+TRA(18) = 'SO2',  'tracer_gp', 'SO2',   'pax',    ,
+!
+!The next lines are the relative contributions (0 -1 ) to odd oxygen
+!stratosphere
+TRA(19) = 'fracODDstr',  'tagging', 'fracODDstr',   'pax',    ,
+!industry Resto of the world
+TRA(20) = 'fracODDind',   'tagging', 'fracODDind',    'pax',    ,
+!traffic rest of the world
+TRA(21) = 'fracODDtra', 'tagging', 'fracODDtra',  'pax',    ,
+!shipping
+TRA(22) = 'fracODDshp',  'tagging', 'fracODDshp',   'pax',    ,
+!aviation
+TRA(23) = 'fracODDair',  'tagging', 'fracODDair',   'pax2',    ,
+!traffic EU
+TRA(24) = 'fracODDteu',  'tagging', 'fracODDteu',   'pax',    ,
+!Industry EU
+TRA(25) = 'fracODDieu', 'tagging', 'fracODDieu',  'pax',    ,
+!Traffic NA
+TRA(26) = 'fracODDtna',  'tagging', 'fracODDtna',   'pax',    ,
+!Industry NA
+TRA(27) = 'fradODDina',  'tagging', 'fracODDina',   'pax',    ,
+!Traffic EA
+TRA(28) = 'fracODDtea',  'tagging', 'fracODDtea',   'pax',    ,
+!industry EA
+TRA(29) = 'fracODDiea',  'tagging', 'fracODDiea',   'pax',    ,
+
+! NOy tagged contributions
+TRA(30) = 'NOystr',  'tracer_gp', 'NOystr',   'pax2',    ,
+TRA(31) = 'NOylig',  'tracer_gp', 'NOylig',   'pax2',    ,
+TRA(32) = 'NOyN2O',  'tracer_gp', 'NOyN2O',   'pax2',    ,
+TRA(33) = 'NOysoi',  'tracer_gp', 'NOysoi',   'pax2',    ,
+TRA(34) = 'NOyCH4',  'tracer_gp', 'NOyCH4',   'pax2',    ,
+TRA(35) = 'NOyind',  'tracer_gp', 'NOyind',   'pax2',    ,
+TRA(36) = 'NOytra',  'tracer_gp', 'NOytra',   'pax2',    ,
+TRA(37) = 'NOyshp',  'tracer_gp', 'NOyshp',   'pax2',    ,
+TRA(38) = 'NOyair',  'tracer_gp', 'NOyair',   'pax2',    ,
+TRA(39) = 'NOybio',  'tracer_gp', 'NOybio',   'pax2',    ,
+TRA(40) = 'NOyteu',  'tracer_gp', 'NOyteu',   'pax2',    ,
+TRA(41) = 'NOyieu',  'tracer_gp', 'NOyieu',   'pax2',    ,
+TRA(42) = 'NOytna',  'tracer_gp', 'NOytna',   'pax2',    ,
+TRA(43) = 'NOyina',  'tracer_gp', 'NOyina',   'pax2',    ,
+TRA(44) = 'NOytea',  'tracer_gp', 'NOytea',   'pax2',    ,
+TRA(45) = 'NOyiea',  'tracer_gp', 'NOyiea',   'pax2',    ,
+
+
+
+
+
+!float fracODDieu(time, lev, rlat, rlon) ;
+!float fracODDieu_ave(time, lev, rlat, rlon) ;
+!float fracODDtna(time, lev, rlat, rlon) ;
+!float fracODDtna_ave(time, lev, rlat, rlon) ;
+!float fracODDina(time, lev, rlat, rlon) ;
+!float fracODDina_ave(time, lev, rlat, rlon) ;
+!float fracODDtea(time, lev, rlat, rlon) ;
+!float fracODDtea_ave(time, lev, rlat, rlon) ;
+!float fracODDiea(time, lev, rlat, rlon) ;
+!float fracODDiea_ave(time, lev, rlat, rlon) ;
+
+
+
+
+
+!
+/

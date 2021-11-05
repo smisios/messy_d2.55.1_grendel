@@ -1,0 +1,155 @@
+SUBROUTINE CUENTR &
+ & ( KIDIA,    KFDIA,    KLON,     KTDIA,    KLEV,&
+ & KK,       KLWMIN,   KTYPE,    KCBOT,    KCTOP0,&
+ & LDCUM,    LDWORK,&
+ & PTENH,    PQENH,    PQSEN,    PAPH,     PGEOH,&
+ & PMFU,     PENTR,&
+ & PCBASE,   PDMFEN,   PDMFDE )  
+
+!          M.TIEDTKE         E.C.M.W.F.     12/89
+!          P.BECHTOLD        E.C.M.W.F.     06/07
+
+!          PURPOSE.
+!          --------
+!          THIS ROUTINE CALCULATES ENTRAINMENT/DETRAINMENT RATES
+!          FOR UPDRAFTS IN CUMULUS PARAMETERIZATION
+
+!          INTERFACE
+!          ---------
+
+!          THIS ROUTINE IS CALLED FROM *CUASC*.
+!          INPUT ARE ENVIRONMENTAL VALUES T,Q ETC
+!          AND UPDRAFT VALUES T,Q ETC
+!          IT RETURNS ENTRAINMENT/DETRAINMENT RATES
+
+!          METHOD.
+!          --------
+!          TURBULENT ENTRAINMENT IS SIMULATED BY A CONSTANT
+!          MULTIPLIED BY A VERTICAL SCALING FUNCTION
+
+!     PARAMETER     DESCRIPTION                                   UNITS
+!     ---------     -----------                                   -----
+!     INPUT PARAMETERS (INTEGER):
+
+!    *KIDIA*        START POINT
+!    *KFDIA*        END POINT
+!    *KLON*         NUMBER OF GRID POINTS PER PACKET
+!    *KTDIA*        START OF THE VERTICAL LOOP
+!    *KLEV*         NUMBER OF LEVELS
+!    *KK*           CURRENT LEVEL
+!    *KLWMIN*       LEVEL OF MAXIMUM VERTICAL VELOCITY
+!    *KTYPE*        TYPE OF CONVECTION
+!                       1 = PENETRATIVE CONVECTION
+!                       2 = SHALLOW CONVECTION
+!                       3 = MIDLEVEL CONVECTION
+!    *KCBOT*        CLOUD BASE LEVEL
+!    *KCTOP0*       FIRST GUESS OF CLOUD TOP LEVEL
+
+!    INPUT PARAMETERS (LOGICAL):
+
+!    *LDCUM*        FLAG: .TRUE. FOR CONVECTIVE POINTS
+
+!    INPUT PARAMETERS (REAL):
+
+!    *PTENH*        ENV. TEMPERATURE (T+1) ON HALF LEVELS         K
+!    *PQENH*        ENV. SPEC. HUMIDITY (T+1) ON HALF LEVELS    KG/KG
+!    *PQSEN*        SATURATION SPEC. HUMIDITY                   KG/KG
+!    *PAPH*         PROVISIONAL PRESSURE ON HALF LEVELS          PA
+!    *PGEOH*        PROVISIONAL GEOPOTENTIAL ON HALF LEVELS      PA
+!    *PMFU*         MASSFLUX IN UPDRAFTS                        KG/(M2*S)
+!    *PENTR*        FRACTIONAL MASS ENTRAINMENT RATE             1/M
+
+!    OUTPUT PARAMETERS (REAL):
+
+!    *PCBASE*       PRESSURE AT CLOUD BASE                       PA
+!    *PDMFEN*       ENTRAINMENT RATE                            KG/(M2*S)
+!    *PDMFDE*       DETRAINMENT RATE                            KG/(M2*S)
+
+!          EXTERNALS
+!          ---------
+!          NONE
+
+!----------------------------------------------------------------------
+
+USE PARKIND1  ,ONLY : JPIM     ,JPRB
+USE YOMHOOK_IFS   ,ONLY : LHOOK,   DR_HOOK
+
+USE YOMCST   , ONLY : RG
+
+IMPLICIT NONE
+
+INTEGER(KIND=JPIM),INTENT(IN)    :: KLON 
+INTEGER(KIND=JPIM),INTENT(IN)    :: KLEV 
+INTEGER(KIND=JPIM),INTENT(IN)    :: KIDIA 
+INTEGER(KIND=JPIM),INTENT(IN)    :: KFDIA 
+INTEGER(KIND=JPIM)               :: KTDIA ! Argument NOT used
+INTEGER(KIND=JPIM),INTENT(IN)    :: KK 
+INTEGER(KIND=JPIM),INTENT(IN)    :: KLWMIN(KLON) 
+INTEGER(KIND=JPIM),INTENT(IN)    :: KTYPE(KLON) 
+INTEGER(KIND=JPIM),INTENT(IN)    :: KCBOT(KLON) 
+INTEGER(KIND=JPIM),INTENT(IN)    :: KCTOP0(KLON) 
+LOGICAL           ,INTENT(IN)    :: LDCUM(KLON) 
+LOGICAL           ,INTENT(IN)    :: LDWORK 
+REAL(KIND=JPRB)   ,INTENT(IN)    :: PTENH(KLON,KLEV) 
+REAL(KIND=JPRB)   ,INTENT(IN)    :: PQENH(KLON,KLEV) 
+REAL(KIND=JPRB)   ,INTENT(IN)    :: PQSEN(KLON,KLEV) 
+REAL(KIND=JPRB)   ,INTENT(IN)    :: PAPH(KLON,KLEV+1) 
+REAL(KIND=JPRB)   ,INTENT(IN)    :: PGEOH(KLON,KLEV+1) 
+REAL(KIND=JPRB)   ,INTENT(IN)    :: PMFU(KLON,KLEV) 
+REAL(KIND=JPRB)   ,INTENT(IN)    :: PENTR(KLON) 
+REAL(KIND=JPRB)   ,INTENT(OUT)   :: PCBASE(KLON) 
+REAL(KIND=JPRB)   ,INTENT(OUT)   :: PDMFEN(KLON) 
+REAL(KIND=JPRB)   ,INTENT(OUT)   :: PDMFDE(KLON) 
+
+LOGICAL ::  LLO1
+
+INTEGER(KIND=JPIM) :: JL, IK1
+
+REAL(KIND=JPRB) :: ZDZ, ZENTR, ZENTR2, ZRG
+REAL(KIND=JPRB) :: ZHOOK_HANDLE
+
+!----------------------------------------------------------------------
+
+!*    1.           CALCULATE ENTRAINMENT AND DETRAINMENT RATES
+!                  -------------------------------------------
+
+IF (LHOOK) CALL DR_HOOK('CUENTR',0,ZHOOK_HANDLE)
+IF(LDWORK) THEN
+
+  ZRG=1.0_JPRB/RG
+  DO JL=KIDIA,KFDIA
+    PDMFEN(JL)=0.0_JPRB
+    PDMFDE(JL)=0.0_JPRB
+    IF(LDCUM(JL)) THEN
+      IK1=MAX(1,KCBOT(JL))
+      PCBASE(JL)=PAPH(JL,IK1)
+    ENDIF
+  ENDDO
+
+!*    1.1          SPECIFY ENTRAINMENT RATES
+!                  -------------------------
+
+  DO JL=KIDIA,KFDIA
+    IF(LDCUM(JL)) THEN
+      ZDZ=(PGEOH(JL,KK)-PGEOH(JL,KK+1))*ZRG
+      ZENTR=PENTR(JL)*PMFU(JL,KK+1)*ZDZ
+      LLO1=KK < KCBOT(JL)
+      IF(LLO1) THEN
+        PDMFDE(JL)=ZENTR
+        PDMFEN(JL)=ZENTR
+
+        IK1=MAX(1,KCBOT(JL))
+        ZENTR2=PQSEN(JL,KK)/PQSEN(JL,IK1)
+        ZENTR2=MIN(1.0_JPRB,ZENTR2)
+        ZENTR2=4.0_JPRB*ZENTR2**2
+
+        PDMFEN(JL)=PDMFEN(JL)*ZENTR2
+        PDMFDE(JL)=PDMFDE(JL)*1.2_JPRB
+      ENDIF
+    ENDIF
+  ENDDO
+
+ENDIF
+
+IF (LHOOK) CALL DR_HOOK('CUENTR',1,ZHOOK_HANDLE)
+END SUBROUTINE CUENTR

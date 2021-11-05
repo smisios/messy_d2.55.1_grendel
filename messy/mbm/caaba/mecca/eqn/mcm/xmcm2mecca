@@ -1,0 +1,112 @@
+#! /bin/tcsh -f
+# -*- Shell-script -*- Time-stamp: <2019-01-18 11:06:42 sander>
+# Authors: Sebastian Tauer, Hartwig Harder, Rolf Sander (MPI Mainz, 2017)
+
+if ( "$1" == "" ) then
+  echo "Create MECCA *.spc and *.eqn files from MCM-generated kpp file"
+  echo "Usage:"
+  echo "  $0 <myfilename>"
+  echo "  Type <myfilename> with or without suffix kpp"
+  echo "Example:"
+  echo "  $0 limonene"
+  exit
+endif
+
+# type the MCM-generated *.kpp with or without extension .kpp:
+set basefilename = `echo $1 | sed 's/.kpp$//'`
+set kppfile = "$basefilename.kpp"
+set spcfile = "$basefilename.spc"
+set eqnfile = "$basefilename.eqn"
+set logfile = "xmcm2mecca.log"
+
+set tmpfile1 = "tmp_1.kpp"
+set tmpfile2 = "tmp_2.kpp"
+
+echo "xmcm2mecca log file" > $logfile
+
+# ----------------------------------------------------------------------------
+
+# Make some adjustments to $kppfile:
+# 1) remove \r in case the file comes from a DOS environment:
+tr -d '\r' < $kppfile > $tmpfile1
+# 2) expand tabs to spaces:
+expand $tmpfile1 > $tmpfile2
+# 3) rm "USE constants":
+
+grep -iEv '^ *USE constants *$'  $tmpfile2 > $tmpfile1
+# next line should be deactivated because M, N2, and O2 are defined via mcm2mecca.awk:
+# sed 's/^ *USE constants *$/M = cair\nN2 = 0.78*M\nO2 = 0.21*M/g' $tmpfile2 > $tmpfile1
+
+# 4) rm "CALL mcm_constants":
+grep -iEv '^ *CALL mcm_constants.*$'  $tmpfile1 > $tmpfile2
+# 5) put negative Exponents in parentheses, e.g.
+#    (TEMP/300)**-6.87 --> (TEMP/300)**(-6.87)
+sed 's/\*\*\(-[0-9.]*\)/**(\1)/g' $tmpfile2 > $tmpfile1
+# 6) change some species names from MCM to MECCA:
+sed 's/\<HO2NO2\>/HNO4/g' $tmpfile1 > $tmpfile2
+sed 's/\<O\>/O3P/g'       $tmpfile2 > $tmpfile1
+
+# ----------------------------------------------------------------------------
+
+# Generate new eqn file:
+gawk -f mcm2mecca.awk -v unkfile=tmp_unknown.kpp -v jsubstfile=Jsubstitution.txt -v spcfile=tmp_allnew.spc -v eqnfile=$eqnfile -v logfile=$logfile $tmpfile1
+echo "----- start of unkfile" >> $logfile
+cat tmp_unknown.kpp           >> $logfile
+echo "----- end of unkfile"   >> $logfile
+
+# change photolysis variables:
+# http://mcm.leeds.ac.uk/MCM/parameters/photolysis.htt
+# http://mcm.leeds.ac.uk/MCM/parameters/photolysis_param.htt
+sed -i 's/J(1)/jx(ip_O1D)/g'           $eqnfile
+sed -i 's/J(2)/jx(ip_O3P)/g'           $eqnfile
+sed -i 's/J(3)/jx(ip_H2O2)/g'          $eqnfile
+sed -i 's/J(4)/jx(ip_NO2)/g'           $eqnfile
+sed -i 's/J(5)/jx(ip_NOO2)/g'          $eqnfile
+sed -i 's/J(6)/jx(ip_NO2O)/g'          $eqnfile
+sed -i 's/J(7)/jx(ip_HONO)/g'          $eqnfile
+sed -i 's/J(8)/jx(ip_N2O5)/g'          $eqnfile
+sed -i 's/J(11)/jx(ip_CHOH)/g'         $eqnfile
+sed -i 's/J(12)/jx(ip_COH2)/g'         $eqnfile
+sed -i 's/J(13)/jx(ip_CH3CHO)/g'       $eqnfile
+sed -i 's/J(14)/jx(ip_CH3OOH)/g'       $eqnfile
+sed -i 's/J(15)/jx(ip_C3H7CHO2HCO)/g'  $eqnfile
+sed -i 's/J(16)/jx(ip_C3H7CHO2VINY)/g' $eqnfile
+sed -i 's/J(17)/jx(ip_IPRCHO2HCO)/g'   $eqnfile
+sed -i 's/J(18)/0.5*jx(ip_MACR)/g'     $eqnfile # J18,J19: two MACR reactions in MCM
+sed -i 's/J(19)/0.5*jx(ip_MACR)/g'     $eqnfile # J18,J19: in mecca only one for both
+sed -i 's/J(20)/256.41*jx(ip_MACR)/g'  $eqnfile # jx(ip_MACR)/(2*1.95e-3) from MCM
+sed -i 's/J(21)/jx(ip_CH3COCH3)/g'     $eqnfile
+sed -i 's/J(22)/0.42*jx(ip_CHOH)/g'    $eqnfile
+sed -i 's/J(23)/0.5*jx(ip_MVK)/g'      $eqnfile # J23,J24: two MVK reactions in MCM
+sed -i 's/J(24)/0.5*jx(ip_MVK)/g'      $eqnfile # J23,J24: in mecca only one for both
+sed -i 's/J(31)/jx(ip_GLYOX)/g'        $eqnfile # currently only one path added to mecca
+sed -i 's/J(32)/jx(ip_GLYOX)/g'        $eqnfile # currently only one path added to mecca
+sed -i 's/J(33)/jx(ip_GLYOX)/g'        $eqnfile # currently only one path added to mecca
+sed -i 's/J(34)/jx(ip_MGLYOX)/g'       $eqnfile
+sed -i 's/J(35)/2.15*jx(ip_MGLYOX)/g'  $eqnfile
+sed -i 's/J(41)/jx(ip_CH3OOH)/g'       $eqnfile
+sed -i 's/J(51)/jx(ip_CH3NO3)/g'       $eqnfile
+sed -i 's/J(52)/jx(ip_C2H5NO3)/g'      $eqnfile
+sed -i 's/J(53)/0.59*3.7*jx(ip_PAN)/g' $eqnfile # J_IC3H7NO3 = 3.7*jx(ip_PAN) from gas.eqn
+sed -i 's/J(54)/3.7*jx(ip_PAN)/g'      $eqnfile # J_IC3H7NO3 = 3.7*jx(ip_PAN) from gas.eqn
+sed -i 's/J(55)/2.84*3.7*jx(ip_PAN)/g' $eqnfile # J_IC3H7NO3 = 3.7*jx(ip_PAN) from gas.eqn
+sed -i 's/J(56)/jx(ip_NOA)/g'          $eqnfile
+
+# Generate new spc file:
+# From tmp_allnew.spc, extract those species that are not yet in gas.spc
+# and put them into tmp_additional.spc:
+echo "" >> $logfile
+./spcmerge.py tmp_allnew.spc tmp_additional.spc >> $logfile
+echo "// created automatically by xmcm2mecca, DO NOT EDIT\!" > $spcfile
+echo "// PART 1: A copy of gas.eqn:" >> $spcfile
+cat gas.spc >> $spcfile
+echo "// PART 2: New species from MCM mechanism:" >> $spcfile
+cat tmp_additional.spc >> $spcfile
+
+# ----------------------------------------------------------------------------
+
+echo "$spcfile and $eqnfile were generated from $kppfile" | tee -a $logfile
+
+rm tmp_*
+
+exit

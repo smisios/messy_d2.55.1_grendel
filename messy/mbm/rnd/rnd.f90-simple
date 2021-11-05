@@ -1,0 +1,47 @@
+PROGRAM rnd
+
+  USE messy_main_constants_mem, ONLY: DP
+  USE messy_main_rnd,           ONLY: RND_F90, RND_MTW, RND_LUX, &
+                                      rnd_init, rnd_number, rnd_finish
+
+  IMPLICIT NONE
+
+  INTEGER, PARAMETER :: SEED = 211169
+  INTEGER :: j, id_rnd, status
+  REAL(DP), DIMENSION(3) :: harvest
+  REAL(DP) :: old
+
+  ! --------------------------------------------------------------------------
+
+  ! choose one of the methods:
+  !CALL rnd_init(status, id_rnd, RND_F90, SEED)
+  CALL rnd_init(status, id_rnd, RND_MTW, SEED)
+  !CALL rnd_init(status, id_rnd, RND_LUX, SEED)
+  IF (status/=0) STOP
+
+  ! --------------------------------------------------------------------------
+
+  ! Call the generator 100 times; each call produces 3 numbers:
+  DO j = 1, 100
+    CALL rnd_number(id_rnd, harvest(:))
+    PRINT *, j, harvest(:)
+    WRITE (10,*) INT(HUGE(1)*harvest(2))
+  ENDDO
+
+  ! --------------------------------------------------------------------------
+
+  ! print consecutive random numbers to fort.20 for a test with rnd_pairs.jnl:
+  old = 0.
+  DO j = 1, 100000
+    CALL rnd_number(id_rnd, harvest(:))
+    WRITE (20,*) old, harvest(2)
+    old = harvest(2)
+  ENDDO
+
+  ! --------------------------------------------------------------------------
+
+  CALL rnd_finish(id_rnd)
+
+  ! --------------------------------------------------------------------------
+
+END PROGRAM rnd

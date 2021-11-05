@@ -1,0 +1,358 @@
+! -*- f90 -*-
+&CTRL
+! ---------------------------------------------------------------------
+! EXPERIMENT NAME
+! ---------------------------------------------------------------------
+EXP_NAME='$EXP_NAME',
+EXEC_CHECKSUM='$EXEC_CHECKSUM',
+! ---------------------------------------------------------------------
+! # FLUSH I/O BUFFER IN EVERY TIME STEP (DEFAULT: T (true))
+! # NOTE: F (false) might increase the overall performance
+!L_FLUSH_IOBUFFER = F,
+! ---------------------------------------------------------------------
+! # OUTPUT TO LOG-FILE 
+! #  0: only error
+! #  1: initialze and finalize
+! #  2: 1 and time loop  (default)
+!I_VERBOSE_LEVEL = 3
+! ---------------------------------------------------------------------
+! # ADD NEW OUTPUT CHANNELS (MAX. 50)
+! ---------------------------------------------------------------------
+ADD_CHANNEL(1)   = 'rad01_flx',
+ADD_CHANNEL(2)   = 'rad01_hr',
+ADD_CHANNEL(3)   = 'rad01_flx_dm',
+ADD_CHANNEL(4)   = 'rad01_hr_dm',
+
+!!$ADD_CHANNEL(3)   = 'rad02_flx',
+!!$ADD_CHANNEL(4)   = 'rad02_hr',
+! ---------------------------------------------------------------------
+! # ADD NEW CHANNEL OBJECT REFERENCES (MAX. 500)
+! # NOTES: 
+! #  - SOURCE OBJECT NAME MAY CONTAIN WILDCARDS '?' AND '*'
+! #    (in this case, target object name is ignored)
+! #  - TARGET CHANNEL NAME MAY CONTAIN WILDCARDS '?' AND '*'
+! #  - TARGET OBJECT NAME SET TO SOURCE OBJECT NAME, IF ''
+! ---------------------------------------------------------------------
+ADD_REF(1)  = 'import_grid',  'INP_aps_aps','*',        'aps',
+ADD_REF(2)  = 'rad01',        'dtdt_sw',    'rad01_hr',    '',
+ADD_REF(3)  = 'rad01',        'dtdt_lw',    'rad01_hr',    '',
+ADD_REF(4)  = 'rad01',        'heatni',     'rad01_hr',    '',
+ADD_REF(5)  = 'rad01',        'heats1',     'rad01_hr',    '',
+ADD_REF(6)  = 'rad01',        'tte',        'rad01_hr',    '',
+ADD_REF(7)  = 'rad01_fubrad', 'heato3flux', 'rad01_hr',    '',
+ADD_REF(8)  = 'rad01_fubrad', 'heatherz',   'rad01_hr',    '',
+ADD_REF(9)  = 'rad01_fubrad', 'heathart',   'rad01_hr',    '',
+ADD_REF(10) = 'rad01_fubrad', 'heathug',    'rad01_hr',    '',
+ADD_REF(11) = 'rad01_fubrad', 'heatchap',   'rad01_hr',    '',
+ADD_REF(12) = 'rad01_fubrad', 'heatsrc',    'rad01_hr',    '',
+ADD_REF(13) = 'rad01_fubrad', 'heatsrb',    'rad01_hr',    '',
+ADD_REF(14) = 'rad01_fubrad', 'heatlya',    'rad01_hr',    '',
+ADD_REF(15) = 'rad01_fubrad', 'heatsw',     'rad01_hr',    '',
+ADD_REF(16) = 'import_grid',  'INP_O3_O3',  'rad01_hr',   'O3',
+ADD_REF(17) = 'import_grid',  'INP_CH4_CH4','rad01_hr',   'CH4',
+ADD_REF(18) = 'import_grid',  'INP_qm1_q',  'rad01_hr',   'qm1',
+!
+ADD_REF(21) = 'rad02',        'dtdt_sw',    'rad02_hr',    '',
+ADD_REF(22) = 'rad02',        'dtdt_lw',    'rad02_hr',    '',
+ADD_REF(23) = 'rad02',        'heatni',     'rad02_hr',    '',
+ADD_REF(24) = 'rad02',        'heats1',     'rad02_hr',    '',
+ADD_REF(25) = 'rad02',        'tte',        'rad02_hr',    '',
+ADD_REF(26) = 'rad02_fubrad', 'heato3flux', 'rad02_hr',    '',
+ADD_REF(27) = 'rad02_fubrad', 'heatherz',   'rad02_hr',    '',
+ADD_REF(28) = 'rad02_fubrad', 'heathart',   'rad02_hr',    '',
+ADD_REF(29) = 'rad02_fubrad', 'heathug',    'rad02_hr',    '',
+ADD_REF(30) = 'rad02_fubrad', 'heatchap',   'rad02_hr',    '',
+ADD_REF(31) = 'rad02_fubrad', 'heatsrc',    'rad02_hr',    '',
+ADD_REF(32) = 'rad02_fubrad', 'heatsrb',    'rad02_hr',    '',
+ADD_REF(33) = 'rad02_fubrad', 'heatlya',    'rad02_hr',    '',
+ADD_REF(34) = 'rad02_fubrad', 'heatsw',     'rad02_hr',    '',
+!
+ADD_REF(42) = 'rad01',        'trsol',      'rad01_flx',  '',
+ADD_REF(44) = 'rad01',        'trsof',      'rad01_flx',  '',
+ADD_REF(45) = 'rad01',        'flxs',       'rad01_flx',  '',
+ADD_REF(46) = 'rad01',        'flxt',       'rad01_flx',  '',
+ADD_REF(47) = 'rad01',        'flxsf',      'rad01_flx',  '',
+ADD_REF(48) = 'rad01',        'flxtf',      'rad01_flx',  '',
+ADD_REF(49) = 'rad01',        'trnir',      'rad01_flx',  '',
+ADD_REF(50) = 'rad01',        'trnif',      'rad01_flx',  '',
+ADD_REF(51) = 'rad01',        'trsw1',      'rad01_flx',  '',
+ADD_REF(52) = 'rad01',        'trs1f',      'rad01_flx',  '',
+ADD_REF(53) = 'rad01',        'flxnir',     'rad01_flx',  '',
+ADD_REF(54) = 'rad01',        'flxsw1',     'rad01_flx',  '',
+ADD_REF(55) = 'rad01',        'addsth',     'rad01_flx',  '',
+ADD_REF(56) = 'rad01_fubrad', 'flxfub',     'rad01_flx',  '',
+ADD_REF(57) = 'rad01_fubrad', 'flxup',      'rad01_flx',  '',
+ADD_REF(58) = 'rad01_fubrad', 'flxdo',      'rad01_flx',  '',
+ADD_REF(59) = 'rad01_fubrad', 'flxhart',    'rad01_flx',  '',
+ADD_REF(60) = 'rad01_fubrad', 'fllya',      'rad01_flx',  '',
+ADD_REF(61) = 'rad01_fubrad', 'flupc',      'rad01_flx',  '',
+ADD_REF(62) = 'rad01_fubrad', 'flhuup',     'rad01_flx',  '',
+ADD_REF(63) = 'rad01_fubrad', 'flhudo',     'rad01_flx',  '',
+ADD_REF(64) = 'rad01_fubrad', 'flchup',     'rad01_flx',  '',
+ADD_REF(65) = 'rad01_fubrad', 'flchdo',     'rad01_flx',  '',
+ADD_REF(66) = 'rad01_fubrad', 'flhz',       'rad01_flx',  '',
+ADD_REF(67) = 'rad01_fubrad', 'flsrc',      'rad01_flx',  '',
+ADD_REF(68) = 'rad01_fubrad', 'flsrb',      'rad01_flx',  '',
+ADD_REF(69) = 'rad01_fubrad', 'trfub',      'rad01_flx',  '',
+ADD_REF(70) = 'rad01_fubrad', 'trfubc',     'rad01_flx',  '',
+ADD_REF(71) = 'rad01_fubrad', 'po3c',       'rad01_flx',  '',
+ADD_REF(72) = 'rad01_fubrad', 'po2c',       'rad01_flx',  '',
+ADD_REF(73) = 'MBM_RAD',      'geopoti',    'rad01_flx',  '',
+ADD_REF(74) = 'import_grid',  'INP_tsl_tsl',       'MBM_RAD', 'tsl',
+ADD_REF(75) = 'import_grid',  'INP_tsw_tsw',       'MBM_RAD', 'tsw',
+ADD_REF(76) = 'import_grid',  'INP_tsi_tsi',       'MBM_RAD', 'tsi',
+ADD_REF(77) = 'import_grid',  'INP_slm_slm',       'MBM_RAD', 'slm',
+ADD_REF(78) = 'import_grid',  'INP_alb_alb',       'MBM_RAD', 'alb',
+ADD_REF(79) = 'import_grid',  'INP_geosp_geosp',   'MBM_RAD', 'geosp',
+ADD_REF(80) = 'import_grid',  'INP_cvs_cvs',       'MBM_RAD', 'cvs',
+ADD_REF(81) = 'import_grid',  'INP_cvsc_cvsc',     'MBM_RAD', 'cvsc',
+ADD_REF(82) = 'import_grid',  'INP_forest_forest', 'MBM_RAD', 'forest',
+ADD_REF(83) = 'import_grid',  'INP_icecov_icecov', 'MBM_RAD', 'icecov',
+ADD_REF(84) = 'import_grid',  'INP_seacov_seacov', 'MBM_RAD', 'seacov',
+ADD_REF(85) = 'import_grid',  'INP_seaice_seaice', 'MBM_RAD', 'seaice',
+ADD_REF(86) = 'import_grid',  'INP_vlt_vlt',       'MBM_RAD', 'vlt',
+ADD_REF(87) = 'import_grid',  'INP_tm1_st',        'MBM_RAD', 'tm1_imp',
+ADD_REF(88) = 'import_grid',  'INP_qm1_q',         'MBM_RAD', 'qm1',
+ADD_REF(89) = 'import_grid',  'INP_clc_aclcac',    'MBM_RAD', 'clc',
+!!$ADD_REF(90) = 'import_grid',  'INP_cdn_acdnc',     'MBM_RAD', 'cdn',
+!!$ADD_REF(91) = 'import_grid',  'INP_xlm1_xl',       'MBM_RAD', 'xlm1',
+!!$ADD_REF(92) = 'import_grid',  'INP_xim1_xi',       'MBM_RAD', 'xim1',
+!
+ADD_REF(95)  = 'rad02',        'trsol',      'rad02_flx',  '',
+ADD_REF(96)  = 'rad02',        'trsof',      'rad02_flx',  '',
+ADD_REF(97)  = 'rad02',        'flxs',       'rad02_flx',  '',
+ADD_REF(98)  = 'rad02',        'flxt',       'rad02_flx',  '',
+ADD_REF(99)  = 'rad02',        'flxsf',      'rad02_flx',  '',
+ADD_REF(100) = 'rad02',        'flxtf',      'rad02_flx',  '',
+ADD_REF(101) = 'rad02',        'trnir',      'rad02_flx',  '',
+ADD_REF(102) = 'rad02',        'trnif',      'rad02_flx',  '',
+ADD_REF(103) = 'rad02',        'trsw1',      'rad02_flx',  '',
+ADD_REF(104) = 'rad02',        'trs1f',      'rad02_flx',  '',
+ADD_REF(105) = 'rad02',        'flxnir',     'rad02_flx',  '',
+ADD_REF(106) = 'rad02',        'flxsw1',     'rad02_flx',  '',
+ADD_REF(107) = 'rad02',        'addsth',     'rad02_flx',  '',
+ADD_REF(108) = 'rad02_fubrad', 'flxfub',     'rad02_flx',  '',
+ADD_REF(109) = 'rad02_fubrad', 'flxup',      'rad02_flx',  '',
+ADD_REF(110) = 'rad02_fubrad', 'flxdo',      'rad02_flx',  '',
+ADD_REF(111) = 'rad02_fubrad', 'flxhart',    'rad02_flx',  '',
+ADD_REF(112) = 'rad02_fubrad', 'fllya',      'rad02_flx',  '',
+ADD_REF(113) = 'rad02_fubrad', 'flupc',      'rad02_flx',  '',
+ADD_REF(114) = 'rad02_fubrad', 'flhuup',     'rad02_flx',  '',
+ADD_REF(115) = 'rad02_fubrad', 'flhudo',     'rad02_flx',  '',
+ADD_REF(116) = 'rad02_fubrad', 'flchup',     'rad02_flx',  '',
+ADD_REF(117) = 'rad02_fubrad', 'flchdo',     'rad02_flx',  '',
+ADD_REF(118) = 'rad02_fubrad', 'flhz',       'rad02_flx',  '',
+ADD_REF(119) = 'rad02_fubrad', 'flsrc',      'rad02_flx',  '',
+ADD_REF(120) = 'rad02_fubrad', 'flsrb',      'rad02_flx',  '',
+ADD_REF(121) = 'rad02_fubrad', 'trfub',      'rad02_flx',  '',
+ADD_REF(122) = 'rad02_fubrad', 'trfubc',     'rad02_flx',  '',
+ADD_REF(123) = 'rad02_fubrad', 'po3c',       'rad02_flx',  '',
+ADD_REF(124) = 'rad02_fubrad', 'po2c',       'rad02_flx',  '',
+!
+ADD_REF(125) = 'rad01',        'dtdt_sw',    'rad01_hr_dm',    '',
+ADD_REF(126) = 'rad01',        'dtdt_lw',    'rad01_hr_dm',    '',
+ADD_REF(127) = 'rad01',        'heatni',     'rad01_hr_dm',    '',
+ADD_REF(128) = 'rad01',        'heats1',     'rad01_hr_dm',    '',
+ADD_REF(129) = 'rad01',        'tte',        'rad01_hr_dm',    '',
+ADD_REF(130) = 'rad01_fubrad', 'heato3flux', 'rad01_hr_dm',    '',
+ADD_REF(131) = 'rad01_fubrad', 'heatherz',   'rad01_hr_dm',    '',
+ADD_REF(132) = 'rad01_fubrad', 'heathart',   'rad01_hr_dm',    '',
+ADD_REF(133) = 'rad01_fubrad', 'heathug',    'rad01_hr_dm',    '',
+ADD_REF(134) = 'rad01_fubrad', 'heatchap',   'rad01_hr_dm',    '',
+ADD_REF(135) = 'rad01_fubrad', 'heatsrc',    'rad01_hr_dm',    '',
+ADD_REF(136) = 'rad01_fubrad', 'heatsrb',    'rad01_hr_dm',    '',
+ADD_REF(137) = 'rad01_fubrad', 'heatlya',    'rad01_hr_dm',    '',
+ADD_REF(138) = 'rad01_fubrad', 'heatsw',     'rad01_hr_dm',    '',
+ADD_REF(139) = 'import_grid',  'INP_O3_O3',  'rad01_hr_dm',   'O3',
+ADD_REF(140) = 'import_grid',  'INP_CH4_CH4','rad01_hr_dm',   'CH4',
+ADD_REF(141) = 'import_grid',  'INP_qm1_q',  'rad01_hr_dm',   'qm1',
+!
+ADD_REF(143) = 'rad02',        'dtdt_sw',    'rad02_hr_dm',    '',
+ADD_REF(144) = 'rad02',        'dtdt_lw',    'rad02_hr_dm',    '',
+ADD_REF(145) = 'rad02',        'heatni',     'rad02_hr_dm',    '',
+ADD_REF(146) = 'rad02',        'heats1',     'rad02_hr_dm',    '',
+ADD_REF(147) = 'rad02',        'tte',        'rad02_hr_dm',    '',
+ADD_REF(148) = 'rad02_fubrad', 'heato3flux', 'rad02_hr_dm',    '',
+ADD_REF(149) = 'rad02_fubrad', 'heatherz',   'rad02_hr_dm',    '',
+ADD_REF(150) = 'rad02_fubrad', 'heathart',   'rad02_hr_dm',    '',
+ADD_REF(151) = 'rad02_fubrad', 'heathug',    'rad02_hr_dm',    '',
+ADD_REF(152) = 'rad02_fubrad', 'heatchap',   'rad02_hr_dm',    '',
+ADD_REF(153) = 'rad02_fubrad', 'heatsrc',    'rad02_hr_dm',    '',
+ADD_REF(154) = 'rad02_fubrad', 'heatsrb',    'rad02_hr_dm',    '',
+ADD_REF(155) = 'rad02_fubrad', 'heatlya',    'rad02_hr_dm',    '',
+ADD_REF(156) = 'rad02_fubrad', 'heatsw',     'rad02_hr_dm',    '',
+!
+ADD_REF(162) = 'rad01',        'trsol',      'rad01_flx_dm',  '',
+ADD_REF(164) = 'rad01',        'trsof',      'rad01_flx_dm',  '',
+ADD_REF(165) = 'rad01',        'flxs',       'rad01_flx_dm',  '',
+ADD_REF(166) = 'rad01',        'flxt',       'rad01_flx_dm',  '',
+ADD_REF(167) = 'rad01',        'flxsf',      'rad01_flx_dm',  '',
+ADD_REF(168) = 'rad01',        'flxtf',      'rad01_flx_dm',  '',
+ADD_REF(169) = 'rad01',        'trnir',      'rad01_flx_dm',  '',
+ADD_REF(170) = 'rad01',        'trnif',      'rad01_flx_dm',  '',
+ADD_REF(171) = 'rad01',        'trsw1',      'rad01_flx_dm',  '',
+ADD_REF(172) = 'rad01',        'trs1f',      'rad01_flx_dm',  '',
+ADD_REF(173) = 'rad01',        'flxnir',     'rad01_flx_dm',  '',
+ADD_REF(174) = 'rad01',        'flxsw1',     'rad01_flx_dm',  '',
+ADD_REF(175) = 'rad01',        'addsth',     'rad01_flx_dm',  '',
+ADD_REF(176) = 'rad01_fubrad', 'flxfub',     'rad01_flx_dm',  '',
+ADD_REF(177) = 'rad01_fubrad', 'flxup',      'rad01_flx_dm',  '',
+ADD_REF(178) = 'rad01_fubrad', 'flxdo',      'rad01_flx_dm',  '',
+ADD_REF(179) = 'rad01_fubrad', 'flxhart',    'rad01_flx_dm',  '',
+ADD_REF(180) = 'rad01_fubrad', 'fllya',      'rad01_flx_dm',  '',
+ADD_REF(181) = 'rad01_fubrad', 'flupc',      'rad01_flx_dm',  '',
+ADD_REF(182) = 'rad01_fubrad', 'flhuup',     'rad01_flx_dm',  '',
+ADD_REF(183) = 'rad01_fubrad', 'flhudo',     'rad01_flx_dm',  '',
+ADD_REF(184) = 'rad01_fubrad', 'flchup',     'rad01_flx_dm',  '',
+ADD_REF(185) = 'rad01_fubrad', 'flchdo',     'rad01_flx_dm',  '',
+ADD_REF(186) = 'rad01_fubrad', 'flhz',       'rad01_flx_dm',  '',
+ADD_REF(187) = 'rad01_fubrad', 'flsrc',      'rad01_flx_dm',  '',
+ADD_REF(188) = 'rad01_fubrad', 'flsrb',      'rad01_flx_dm',  '',
+ADD_REF(189) = 'rad01_fubrad', 'trfub',      'rad01_flx_dm',  '',
+ADD_REF(190) = 'rad01_fubrad', 'trfubc',     'rad01_flx_dm',  '',
+ADD_REF(191) = 'rad01_fubrad', 'po3c',       'rad01_flx_dm',  '',
+ADD_REF(192) = 'rad01_fubrad', 'po2c',       'rad01_flx_dm',  '',
+ADD_REF(193) = 'MBM_RAD',      'geopoti',    'rad01_flx_dm',  '',
+!
+ADD_REF(200) = 'import_grid',  'OPT-LW_AOD_LW_B01',  'import_grid', 'AOD_LW_B01',
+ADD_REF(201) = 'import_grid',  'OPT-LW_AOD_LW_B02',  'import_grid', 'AOD_LW_B02',
+ADD_REF(202) = 'import_grid',  'OPT-LW_AOD_LW_B03',  'import_grid', 'AOD_LW_B03',
+ADD_REF(203) = 'import_grid',  'OPT-LW_AOD_LW_B04',  'import_grid', 'AOD_LW_B04',
+ADD_REF(204) = 'import_grid',  'OPT-LW_AOD_LW_B05',  'import_grid', 'AOD_LW_B05',
+ADD_REF(205) = 'import_grid',  'OPT-LW_AOD_LW_B06',  'import_grid', 'AOD_LW_B06',
+ADD_REF(206) = 'import_grid',  'OPT-LW_AOD_LW_B07',  'import_grid', 'AOD_LW_B07',
+ADD_REF(207) = 'import_grid',  'OPT-LW_AOD_LW_B08',  'import_grid', 'AOD_LW_B08',
+ADD_REF(208) = 'import_grid',  'OPT-LW_AOD_LW_B09',  'import_grid', 'AOD_LW_B09',
+ADD_REF(209) = 'import_grid',  'OPT-LW_AOD_LW_B10',  'import_grid', 'AOD_LW_B10',
+ADD_REF(210) = 'import_grid',  'OPT-LW_AOD_LW_B11',  'import_grid', 'AOD_LW_B11',
+ADD_REF(211) = 'import_grid',  'OPT-LW_AOD_LW_B12',  'import_grid', 'AOD_LW_B12',
+ADD_REF(212) = 'import_grid',  'OPT-LW_AOD_LW_B13',  'import_grid', 'AOD_LW_B13',
+ADD_REF(213) = 'import_grid',  'OPT-LW_AOD_LW_B14',  'import_grid', 'AOD_LW_B14',
+ADD_REF(214) = 'import_grid',  'OPT-LW_AOD_LW_B15',  'import_grid', 'AOD_LW_B15',
+ADD_REF(215) = 'import_grid',  'OPT-LW_AOD_LW_B16',  'import_grid', 'AOD_LW_B16',
+ADD_REF(216) = 'import_grid',  'OPT-SW_AOD_SW_B01',  'import_grid', 'AOD_SW_B01',
+ADD_REF(217) = 'import_grid',  'OPT-SW_AOD_SW_B02',  'import_grid', 'AOD_SW_B02',
+ADD_REF(218) = 'import_grid',  'OPT-SW_AOD_SW_B03',  'import_grid', 'AOD_SW_B03',
+ADD_REF(219) = 'import_grid',  'OPT-SW_AOD_SW_B04',  'import_grid', 'AOD_SW_B04',
+ADD_REF(220) = 'import_grid',  'OPT-SW_GAMMA_SW_B01',  'import_grid', 'AOD_GAMMA_B01',
+ADD_REF(221) = 'import_grid',  'OPT-SW_GAMMA_SW_B02',  'import_grid', 'AOD_GAMMA_B02',
+ADD_REF(222) = 'import_grid',  'OPT-SW_GAMMA_SW_B03',  'import_grid', 'AOD_GAMMA_B03',
+ADD_REF(223) = 'import_grid',  'OPT-SW_GAMMA_SW_B04',  'import_grid', 'AOD_GAMMA_B04',
+ADD_REF(224) = 'import_grid',  'OPT-SW_OMEGA_SW_B01',  'import_grid', 'AOD_OMEGA_B01',
+ADD_REF(225) = 'import_grid',  'OPT-SW_OMEGA_SW_B02',  'import_grid', 'AOD_OMEGA_B02',
+ADD_REF(226) = 'import_grid',  'OPT-SW_OMEGA_SW_B03',  'import_grid', 'AOD_OMEGA_B03',
+ADD_REF(227) = 'import_grid',  'OPT-SW_OMEGA_SW_B04',  'import_grid', 'AOD_OMEGA_B04',
+!
+! ---------------------------------------------------------------------
+! # SET DEFAULT OUTPUT AND RESTART HANDLING
+!      - ''
+!      - OUTPUT-FILETYPE, RERUN-FILETYPE, NO. OF STEPS PER OUTPUT-FILE,
+!      - RERUN, IGNORE, INST, AVE, STD, MIN, MAX, CNT, CAV, RANGE(2)
+! # NOTES:
+! #    IGNORE = T  FORCES THE MODEL TO IGNORE POTENTIAL lrestreq FLAGS
+! #                FOR PSEUDO-INITIAL RUNS FROM RESTART FILES
+! ---------------------------------------------------------------------
+OUT_DEFAULT      = '', 3, 2, -1, T,F, F,T,F,F,F, F,F, , ,
+! ---------------------------------------------------------------------
+! # OUTPUT PRECISION (ASCII, (P)NETCDF, (P)NETCDF, GRIB, HDF4, HDF5)
+! # NOTES: - ONLY (P)NETCDF CURRENTLY IMPLEMENTED;
+! #        - (P)NETCDF: 1=NF(90)_FLOAT; 2=NF(90)_DOUBLE
+OUT_PREC = 1, 1, 1, 1, 1, 1   ! for production
+!OUT_PREC = 1, 2, 2, 1, 1, 1   ! for tests
+! ---------------------------------------------------------------------
+! # SET CHANNEL SPECIFIC DEFAULT OUTPUT AND RESTART HANDLING (MAX. 500)
+!      - channel-name
+!      - OUTPUT-FILETYPE, RERUN-FILETYPE, NO. OF STEPS PER OUTPUT-FILE,
+!      - RERUN, IGNORE, INST, AVE, STD, MIN, MAX, CNT, CAV, RANGE(2)
+! # NOTE: IF NO. OF STEPS PER OUTPUT-FILE <= 0, THE EVENT TRIGGER
+!         (CPL-NAMELIST, TIMER_TNF BELOW) CONTROLS THE FILE CONTENT
+! ---------------------------------------------------------------------
+! MESSy STANDARD
+! GRIDPOINT TRACER OUTPUT
+OUT_CHANNEL( 12)   = 'tracer_gp',      2, 2, -1, F,F, T,F,F,F,F, F,F, , ,
+OUT_CHANNEL( 13)   = 'tracer_gp_te',   2, 2, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL( 14)   = 'tracer_gp_m1',   2, 2, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL( 15)   = 'tracer_gp_x*',   2, 2, -1, F,F, F,F,F,F,F, F,F, , ,
+!OUT_CHANNEL( 16)   = 'tracer_pdef_gp', 2, 2, -1, F,F, F,T,F,F,F, F,F, , ,
+!
+! MESSy SUBMODELS
+OUT_CHANNEL(49)     = 'MBM_RAD',     2, 2, -1, T,F, F,T,F,F,F, F,F, , ,
+OUT_CHANNEL(50)     = 'rad??',       2, 2, -1, T,F, F,T,F,F,F, F,F, , ,
+OUT_CHANNEL(51)     = 'rad??_fubrad',2, 2, -1, T,F, F,T,F,F,F, F,F, , ,
+OUT_CHANNEL(52)     = 'orbit',       2, 2, -1, T,F, T,F,F,F,F, F,F, , ,
+OUT_CHANNEL(53)     = 'aeropt*',     2, 2, -1, T,F, F,T,F,F,F, F,F, , ,
+OUT_CHANNEL(54)     = 'cloudopt*',   2, 2, -1, T,F, F,T,F,F,F, F,F, , ,
+OUT_CHANNEL(55)     = 'rad??_hr',    2, 2, -1, F,F, F,T,F,F,F, F,F, , ,
+OUT_CHANNEL(56)     = 'rad??_hr_dm', 2, 2, -1, F,F, F,T,F,F,F, F,F, , ,
+OUT_CHANNEL(57)     = 'rad??_flx',   2, 2, -1, F,F, F,T,F,F,F, F,F, , ,
+OUT_CHANNEL(58)     = 'import_grid', 2, 2, -1, T,F, F,T,F,F,F, F,F, , ,
+!
+! ---------------------------------------------------------------------
+! # SET CHANNEL OBJECT SPECIFIC OUTPUT AND RESTART HANDLING (MAX. 1000)
+!      - channel-name
+!      - object-name
+!      - RERUN, IGNORE, INST, AVE, STD, MIN, MAX, CNT, CAV, RANGE(2)
+! ---------------------------------------------------------------------
+! --------------------------------------------------------------------------
+!OUT_OBJECT(1)  = 'tracer_pdef_gp', 'MC*',    F,F, F,F,F,F,F, F,F, , ,
+! --------------------------------------------------------------------------
+OUT_OBJECT(1)  = 'rad??',         'dtdt_*',      F,F, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(3)  = 'rad??',         'heat*',       F,F, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(5)  = 'rad??',         'tte',         F,F, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(6)  = 'rad??',         'emt*',        F,F, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(7)  = 'rad??',         'tr*',         F,F, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(10)  = 'rad??',        'flx*',        F,F, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(14)  = 'rad??',        'addsth',      F,F, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(21)  = 'rad??_fubrad', 'heat*',       F,F, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(30)  = 'rad??_fubrad', 'fl*',         F,F, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(37)  = 'rad??_fubrad', 'tr*',         F,F, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(39)  = 'rad??_fubrad', 'po3c',        F,F, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(39)  = 'rad??_fubrad', 'po2c',        F,F, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(45)  = 'import_grid',  'INP_O3_O3',   F,F, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(50)  = 'import_grid',  'INP_CH4_CH4', F,F, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(51)  = 'import_grid',  'INP_qm1_q',   F,F, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(52)  = 'import_grid',  'OPT-LW_*',    F,F, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(53)  = 'import_grid',  'OPT-SW_*',    F,F, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(60)  = 'MBM_RAD',      'tm1',         T,F, F,T,F,F,F, F,F, , ,
+OUT_OBJECT(61)  = 'MBM_RAD',      'geopoti',     T,F, F,F,F,F,F, F,F, , ,
+! --------------------------------------------------------------------------
+/
+! #########################################################################
+&CPL
+! --------------------------------------------------------------------------
+! ENABLE ADDITIONAL ECHAM5 STANDARD STREAM OUTPUT ?
+! (e.g, needed for GRIB-template generation)
+! -> OUTPUT TIME INTERVAL => PUTDATA in ECHAM5.nml
+!L_BM_ORIG_OUTPUT = T,
+! --------------------------------------------------------------------------
+!===========================================================================
+! --------------------------------------------------------------------------
+! SET OUTPUT INTERVALS FOR ALL CHANNELS (DEFAULT + INDIVIDUAL)
+! NOTE: CHANNEL OUTPUT OF tdiag, tdiag_gp, nudg, nudg_gp
+!       WILL BE SYNCHRONIZED TO THE SHORTEST OUTPUT INTERVAL (IF PRESENT !)
+! NOTE: First match (wildcard) counts 
+! --------------------------------------------------------------------------
+!TIMER_DEFAULT    = '',     1, 'steps',  'first', 0,
+!TIMER_DEFAULT    = '',     1, 'days',  'first', 0,
+TIMER_DEFAULT    = '',     1, 'months', 'last', 0, 
+!TIMER_DEFAULT    = '',     5, 'hours',  'first', 0,
+!TIMER_DEFAULT    = '',      15, 'minutes',  'first', 0,
+! --------------------------------------------- 
+!TIMER_CHANNEL( 1) = 'qtimer', 1, 'steps',   'first', 0,
+!---------------------------------------------------------------------------
+!TIMER_CHANNEL( 2) = 'g3b', 30, 'minutes',   'first', 0,
+!TIMER_CHANNEL( 1) = 'import_grid', 1, 'months',   'last', 0,
+TIMER_CHANNEL( 1) = 'orbit',        1, 'steps', 'first', 0,
+TIMER_CHANNEL( 2) = 'rad??_hr_dm',  1, 'days',  'first', 0,
+TIMER_CHANNEL( 3) = 'rad??_flx_dm', 1, 'days',  'first', 0,
+!===========================================================================
+!---------------------------------------------------------------------------
+! SET TIMER EVENTS FOR NEW FILENAMES
+! (IF NO. OF STEPS PER OUTPUT-FILE <= 0 ABOVE !!!)
+! NOTE: First match (wildcard) counts 
+!---------------------------------------------------------------------------
+TIMER_TNF_DEFAULT = '', 1, 'months', 'first', 0,
+!---------------------------------------------------------------------------
+!TIMER_TNF_CHANNEL( 1) = 'qtimer', 1, 'days', 'first', 0
+!---------------------------------------------------------------------------
+/

@@ -1,0 +1,107 @@
+# This is a typical input file for OASIS 3.0, using netCDF format
+# for restart input files.  Oasis reads in
+# this file at run-time. Don't hesitate to ask precisions or make
+# suggestions (oasishelp@cerfacs.fr). This file can be used AS IT IS
+# to run the CLIM toy model (toyclim).
+#
+# Any line beginning with # is ignored. Blank lines are not allowed.
+#
+#########################################################################
+ \$NFIELDS
+# This is the total number of fields being exchanged. 
+# For the definition of the fields, see under \$STRINGS keyword
+#
+       18
+ \$END
+##########################################################################
+## \$NBMODEL
+# This gives you the number of models running in this experiment +
+# their names (6 characters) + , in option, the maximum Fortran unit
+# number used by each model; 1024 will be used if none are given.
+#
+##  2  cosmoc   clmxxx   99  99
+## \$END
+###########################################################################
+ \$RUNTIME
+# This gives you the total simulated time for this run in seconds (here 6 days)
+#
+##  _runtime_
+## 86400
+7200
+ \$END
+###########################################################################
+ \$NLOGPRT
+# Index of printing level in output file cplout: 0 = no printing
+#  1 = main routines and field names when treated, 2 = complete output
+  30 1
+ \$END
+###########################################################################
+ \$STRINGS
+#
+# The above variables are the general parameters for the experiment.
+# Everything below has to do with the fields being exchanged.
+#
+############################################################################
+#                      ATMOSPHERE  --->>>  SOIL
+#                      --------------------
+############################################################################
+#########################################################################
+#########################################################################
+
+# --- start Field TEST :  lon_2d
+# 
+##CLMALBED COSALBED 17 ${OASIS_CPL_DT}  2  clm.nc EXPORTED
+EMACLON REMACLON 1 ${OASIS_CPL_DT}  2  oasis_restart_echam.nc EXPORTED
+ echam01   cosmo02   LAG=${OASIS_LAG_COSMO} SEQ=2
+P  0  R  0
+#
+LOCTRANS   SCRIPR 
+#
+ ${OASIS_CPL_MODE}
+ DISTWGT U SCALAR LATLON 10 4
+#
+# --- end field 17 ---
+#########################################################################
+# --- start Field TEST :  lon_2d
+# 
+EMACLAT REMACLAT 1 ${OASIS_CPL_DT}  2  oasis_restart_echam.nc EXPORTED
+ echam01   cosmo02   LAG=${OASIS_LAG_COSMO} SEQ=2
+P  0  R  0
+#
+LOCTRANS   SCRIPR 
+#
+ ${OASIS_CPL_MODE}
+ DISTWGT U SCALAR LATLON 10 4
+#
+# --- end field 17 ---
+#########################################################################
+#########################################################################
+# --- start Field TEST :  lon_2d
+# 
+COSMOLAT RCOSMOLAT 1 ${OASIS_CPL_DT}  2  oasis_restart_echam.nc EXPORTED
+cosmo02 echam01   LAG=${OASIS_LAG_COSMO} SEQ=2
+P  0  R  0
+#
+LOCTRANS   SCRIPR 
+#
+${OASIS_CPL_MODE}
+CONSERV U SCALAR LATLON 10 FRACAREA 1
+#
+# --- end field 17 ---
+#########################################################################
+#########################################################################
+# --- start Field TEST :  lon_2d
+# 
+COSMOLON RCOSMOLON 1 ${OASIS_CPL_DT}  2  oasis_restart_echam.nc EXPORTED
+cosmo02 echam01   LAG=${OASIS_LAG_COSMO} SEQ=2
+P  0  R  0
+#
+LOCTRANS   SCRIPR 
+#
+ ${OASIS_CPL_MODE}
+ CONSERV LR SCALAR LATLON 10 DESTAREA 1
+#
+# --- end field 17 ---
+#########################################################################
+
+\$END

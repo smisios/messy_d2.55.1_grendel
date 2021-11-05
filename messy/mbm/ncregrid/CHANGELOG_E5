@@ -1,0 +1,87 @@
+-----------------------------------------------------
+changes from v1.4b to v1.5b
+-----------------------------------------------------
+* messy_ncregrid_tools_e5.f90:
+  simpler handling of lok with less p_bcasts
+
+-----------------------------------------------------
+changes from v1.3b to v1.4b
+-----------------------------------------------------
+
+-----------------------------------------------------
+changes from v1.2b to v1.3b
+-----------------------------------------------------
+* messy_ncregrid_tools_e5.f90: bug fix in SUBROUTINE
+  RGTOOL_E5_READ_NCFILE (allocation of global field
+  (not scattered))
+
+-----------------------------------------------------
+changes from v1.1b to v1.2b
+-----------------------------------------------------
+* SUBROUTINE RGTEVENT_INIT_NML(messy_ncregrid_tools_e5.f90):
+  active RG_TRIG(.) in RGTEVENTS-namelists must not longer have
+  successive numbers
+* SUBROUTINE RGTEVENT_READ (messy_ncregrid_tools_e5.f90):
+  new optional INTENT(OUT) parameter for event status
+* mo_mz_regrid* renamed to messy_ncregrid*
+  since ncregrid is now essential part of the
+  Modular Earth Submodel System (MESSy)
+  (http://www.messy-interface.org)
+* mo_mz_regrid_tools_e5.f90 (SUBROUTINE TRACER_INIT):
+  initialization of LAGRANGIAN tracers
+* mo_mz_regrid_tools_e5.f90 (SUBROUTINE TRACER_INIT):
+  regridding of tracers is skipped, if all tracers
+  have been initialized from rerun-files
+
+-----------------------------------------------------
+changes from v1.0b to v1.1b
+-----------------------------------------------------
+* mo_mz_regrid_interface_echam5.f90:
+  adaption to echam5.1.07: gmu -> gl_gmu
+* mo_mz_regrid_tools_e5.f90:
+  - changes for vectorization: nglon -> nproma
+  - factor (1. - eps) in tracer initialisation at t-1
+    after restart (SUBROUTINE TRACER_INIT)
+  - changes for MPI-parallelisation:
+    - 3D(4D) fields are now distributed by scatter_gp,
+      if regridding was performed in all dimensions
+      (otherwise the complete field is distributed via p_bcast)
+    - The 2D surface pressure (ps) is now distributed by scatter_gp,
+      if regridding was performed along the horizontal dimensions
+      (otherwise the complete field is distributed via p_bcast)
+    (SUBROUTINES RGTOOL_E5_READ_NCVAR and RGTOOL_E5_READ_NCFILE)
+* mo_mz_regrid_tools_e5.f90:
+  'CALL finish' moved to within I/O-processor blocks
+
+-----------------------------------------------------
+changes from v0.9a1.10 to v1.0b
+-----------------------------------------------------
+* minor bug fixes + better f90/f95 standard conformance
+* New SUBROUTINE RGTEVENT_READ (mo_mz_regrid_tools_e5.f90):
+  RGTEVENT-status testing and NCREGRID data input
+  via RGTOOL_E5_READ_NCVAR or RGTOOL_E5_READ_NCFILE
+* Two new PUBLIC INTEGER PARAMETERS:
+  RGREAD_NCVAR and RGREAD_NCFILE to control RGTEVENT_READ
+* 'vname' in SUBROUTINE RGTOOL_E5_READ_NCFILE is renamed  
+  to 'vars'.
+* The maximum number of RGTEVENTS per module is now 500 instead of
+  100 (PARAMETER NMAXRGTE in mo_mz_regrid_tools_e5.f90)
+* New parameter (LOGICAL, OPTIONAL, INTENT(IN)) in 
+  SUBROUTINE RGTEVENT_STATUS (mo_mz_regrid_tools_e5.f90):
+  lstop = .true.  -> STOP echam5 in case the event is not found
+  lstop = .false. -> output WARNING message
+
+-----------------------------------------------------
+changes from v0.9a1.09 to v0.9a1.10 (15 November 2002)
+-----------------------------------------------------
+* New module in examples/tools (mo_mz_regrid_tools_e5.f90)
+  with ECHAM-5 specific routines for coupling NCREGRID
+  to ECHAM-5:
+   RGTEVENT              ! RG-TRIGGER EVENT STRUCTURE
+   RGTOOL_E5_READ_NCVAR  ! READ ONE FIELD WITH NCREGRID
+   RGTOOL_E5_READ_NCFILE ! READ ONE FIELD WITH NCREGRID
+   RGTEVENT_INIT_NML     ! READ RGT-EVENT INFORMATION FROM NAMELIST
+   RGTEVENT_STATUS       ! GET STATUS OF NAMED/INDEXED EVENT AND
+                         ! UPDATE RESTART FILE
+   TRACER_INIT           ! INITIALIZE TRACER
+

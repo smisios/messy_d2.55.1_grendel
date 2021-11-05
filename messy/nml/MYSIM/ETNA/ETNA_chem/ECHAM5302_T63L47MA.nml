@@ -1,0 +1,83 @@
+! -*- f90 -*-
+
+&RUNCTL
+!# NOTES:
+!# 1. The following entries are meaningless, because they are overwritten
+!#    by TIMER (see timer.nml):
+!#    DT_START, DT_STOP, NO_DAYS, NO_STEPS, LRESUME, NO_CYCLES, PUTRERUN,
+!#    LABORT 
+!# 2. PUTDATA is only meaningful, if you switch L_BM_ORIG_OUTPUT = T
+!#    in channel.nml; all output is controlled in channel.nml
+!#
+!-  LRESUME      = $MSH_LRESUME        ! do not change; set by run-script
+  out_expname  = "$EXP_NAME"
+  out_filetype = 2                   ! GRIB=1, NetCDF=2
+! LTDIAG       = T                   ! tendency diagnostics
+! IADVEC       = 0                   ! no advection for quick runs
+  NMWICFI      = 8       ! number of mass-wind-inconsistency fixer iterations
+  LAMIP        = $ECHAM5_LAMIP
+  LNUDGE       = $LNUDGE             ! nudging 
+  LNMI         = $LNMI               ! normal mode filtering for nudging
+  LMIDATM      = $ECHAM5_LMIDATM     ! middle atmosphere setup
+!-  DT_START     = $START_YEAR,$START_MONTH,$START_DAY,0,0,0
+!-  DT_STOP      = $STOP_YEAR,$STOP_MONTH,$STOP_DAY,0,0,0
+!-  PUTDATA      = 5,'hours','first',0
+!-  TRIGFILES    = 1,'days','first',0
+!-  PUTRERUN     = 1,'months','last',0  ! default: 1,'months','last',0
+!-  NO_CYCLES    = 5,                  ! number of rerun cycles
+!-  LABORT       = F
+  NPROMA       = $NPROMA             ! change value in xmessy, not here
+  NPROCA       = $NPROCA             ! change value in xmessy, not here
+  NPROCB       = $NPROCB             ! change value in xmessy, not here
+/
+
+&DYNCTL
+  VCHECK=235.             ! activate for L90MA
+  SPDRAG=0.926E-4         ! activate for L90MA
+/
+
+&NMICTL
+/
+
+&NDGCTL
+!
+DT_NUDG_START =${START_YEAR},${START_MONTH},${START_DAY},${START_HOUR},0,0
+DT_NUDG_STOP  =${STOP_YEAR},${STOP_MONTH},${STOP_DAY},${STOP_HOUR},0,0
+! for additional diagnostics
+LNUDGDBX      = F
+LNUDGINI      = F
+!NUDGTRUN      = 0
+!for storing additional fields
+LNUDGWOBS     = F
+!LNUDGFRD      = F
+!
+!inudgformat= 2
+nudgsmin =  0  ! skip global mean
+!nudgsmin = -1   ! incl. global mean
+
+!!# netCDF+
+!!# for usage of new nudging data in netCDF format
+!!# Notes: - SST/SIC usage from file <NDG_FILE_SST>.nc,
+!!#          but only if NSSTINC > 0 (default: 24 hours)
+!!#        - SIC usage only, if sic is available in <NDG_FILE_SST>.nc
+!!#        - INUDGFORMAT set via xmessy_mmd (ECHAM5_NUDGING_DATA_FORMAT)
+!!#          (0: old IEEE, 1: not used, 2: netCDF)
+!!#
+NSSTINC     = 6
+NDG_FILE_NC  = "$INPUTDIR_NUDGE/${FNAME_NUDGE}.nc"
+NDG_FILE_SST = "$INPUTDIR_NUDGE/${FNAME_NUDGE}_sst"
+INUDGFORMAT  = $ECHAM5_NUDGING_DATA_FORMAT
+
+! L47MA
+! Festgelegt aus interpolation "per Auge" der L90MA Nudgingkoeffizienten (K.Pankatz)
+NUDGD         = 21*0,0.0394,0.1186,0.2215,0.3811,16*0.5787,0.2894,0.1447,0.0723,3*0
+NUDGV         = 21*0,0.3156,0.9596,1.7724,3.0480,16*4.6296,2.3148,1.1574,0.5787,3*0
+NUDGT         = 21*0,0.0789,0.2541,0.4431,0.7620,16*1.1574,0.5787,0.2894,0.1447,3*0
+NUDGP         = 1.1574
+! L47 (817hPa-1.93 hPa)
+!NUDGD         = 1*0,0.0723,0.1023,0.1447,0.2046,0.2894,0.4093,34*0.5787,0.2894,0.1447,0.0723,3*0
+!NUDGV         = 1*0,0.5787,0.8184,1.1574,1.6368,2.3148,3.2736,34*4.6296,2.3148,1.1574,0.5787,3*0
+!NUDGT         = 1*0,0.1447,0.2046,0.2894,0.4092,0.5787,0.8184,34*1.1574,0.5787,0.2894,0.1447,3*0
+!NUDGP         = 1.1574
+
+/

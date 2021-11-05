@@ -1,0 +1,125 @@
+Readme - Feb 2007
+
+INSTALLATION
+------------
+
+MPIOM (incl. HAMOCC) release_1_3 (beta)
+
+MPIOM can be either run stand alone or coupled to HAMOCC. This tar
+file provides everything needed to run omip type experiments with a 3
+deg. 40 level setup either MPIOM or MPIOM+HAMOCC on the DKRZ SX-6.
+
+Both MPIOM and HAMOCC use MPI2 library for internal communication (see
+http://www-unix.mcs.anl.gov/mpi/mpich2) and are partly doing IO for the 
+initial, restart and output files based on UCAR's netCDF 
+(see http://www.unidata.ucar.edu/packages/netcdf).
+
+ The user has to edit config/mh-xxx for the machine dependent settings,
+e.g. the user has to set the variables NETCDFROOT and  MPIROOT to the 
+netcdf and mpich2 root directory on his machine. The "mh-xxx" files for 
+linux, solaris and the DKRZ SX (called mh-nec) are working, the others
+ are copies from echam5 and can be used as guide line if the model is
+  ported to one of these platforms. 
+
+In order to create a Makefile for MPIOM type:
+
+configure 
+
+
+Note: MPI can be disabled by typing:
+
+configure --enable-MPI=no
+
+Note: In case MPI2 is not available cpp keyword <use_com_MPI1> can be used to force MPI1. 
+
+
+In order to create a Makefile for MPIOM+HAMOCC type
+
+configure --enable-HAMOCC=yes
+
+
+
+Cross compiling on the on the DKRZ cross : 
+
+configure --host=sx6 
+
+to build an executable for DKRZ NEC SX6
+
+
+
+In order to compile type:  
+
+make
+
+
+RUNNING
+-------
+
+To run mpi-om change to mpi-om/run and edit the file prepare_run_mpiom_omip
+The user needs to change EXPNO and the pathes to the WRKDIR, ARCHIVE, etc.
+
+The user can change cpu's and parallelization strategy
+e.g for using MPI parallelization on 4 cpus:
+
+	ncpus=4
+	nprocx=2
+	nprocy=2
+	MPIOM_THREADS=1
+
+
+e.g. for using OpenMP parallelization on 4 cpus:
+
+	ncpus=1
+	nprocx=1
+	nprocy=1
+	MPIOM_THREADS=4
+
+
+Note: The variable OMP_NUM_THREADS is now ignored by MPIOM, please use MPION_THREADS instead.
+
+Edit machine specific items like qsub options, cpu hours, cpu numbers,
+etc and run the prepare script. It will create some directories and an
+example jobsript run_mpiom in $WRKDIR.
+
+Forcing fields (omip 365 days) and initial data (restart file after 200 
+years integration) for the 3 deg setup called GR30 can be found in the 
+included pool directory. Other setups and tools for setting up new grids can be
+ made available on request.
+
+TEST FOR CORRECTNESS
+--------------------
+
+coming one day ...
+
+ADDITIONAL INFORMATION
+----------------------
+
+Bug reports/info/comments to: haak@dkrz.de, jungclaus@dkrz.de
+
+VISUALISATION 
+-------------
+
+Cdo package (http://www.mpimet.mpg.de/%7Ecdo/) can be used to create
+NetCDF files outouf MPIOM EXTRA Files; grid description files for
+scalar and vector points can be found in the pool directory, e.g.
+
+ cdo -t mpiom1 -f nc -setgrid,GR30s.nc \
+-selindexbox,2,121,1,101 -setgrid,r122x101 file.ext file.nc
+
+'-t mpiom1' usues a predefined table to create variable names ouf of
+codenumber 
+
+'-f nc' set output format to netCDF 
+
+'-setgrid,GR30s.nc' grid description file for scalar points 
+
+'-selindexbox,2,121,1,101' removes cyclic boundaries from the 
+output file 
+
+'-setgrid,r122x101' tells cdo the number of lat and lons of the input grid
+
+Note that for some plotting packages (e.g. ferret) vector properties 
+needs to be rotated back onto a N/S/E/W grid. A GMT based plotting utility
+ is available on request.
+
+

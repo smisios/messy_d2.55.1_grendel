@@ -1,0 +1,488 @@
+! -*- f90 -*-
+
+!###############################################################################
+!##  NOTE: Comment format `!>' is used for generation of code documentation   ##
+!##        from source file via `doxygen'.                                    ##
+!##  Time-stamp: <2019-12-09 12:58:17 b309057 made3_BCtag.nml>                      ##
+!###############################################################################
+
+!> \page namelist Namelist file
+!>
+!>   made3.nml contains three Fortran namelists. 'CTRL' and 'CPL' contain
+!>   user-set parameters for the submodel core layer (SMCL) and submodel
+!>   interface layer (SMIL), respectively, as required by the MESSy
+!>   standard. The third namelist, 'BOXINIT', is used to initialize box model
+!>   runs; most users will not have to enter anything here. If parameters are
+!>   not set explicitly in the CTRL and CPL namelists, default values as
+!>   defined in the code will be used.
+!>
+!>   An example namelist is provided in \c messy/nml/EXAMPLES/.
+!>
+!>   \section ctrl The CTRL namelist
+!>
+!>     The CTRL namelist includes the following parameters:
+!>     - \link messy_made3::sigma sigma \endlink\n
+!>       geometric mean standard deviations (widths) of the nine lognormal modes
+!>       (ks, km, ki, as, am, ai, cs, cm, ci), used to convert between aerosol
+!>       masses, numbers, and diameters; default values are:
+!>       - 1.7 for Aitken modes,
+!>       - 2.0 for accumulation modes, and
+!>       - 2.2 for coarse modes
+!>       .
+!>       \note If you change these values, you will also need new lookup
+!>       tables for \ref aeropt if you want it to calculate aerosol optical
+!>       properties accurately!
+!>     - \link messy_made3::alpha alpha \endlink\n
+!>       accommodation coefficients (sticking probabilities) for gas molecules
+!>       upon collision with aerosol particles from the individual modes, used
+!>       in calculation of condensation rates; default values are
+!>       - 1.0 for H<sub>2</sub>SO<sub>4</sub> and SOA precursor,
+!>       - 0.1 for NH<sub>3</sub>, HNO<sub>3</sub>, and HCl;
+!>       .
+!>       all modes are treated in the same way by default
+!>     - \link messy_made3::diff diff \endlink\n
+!>       gas diffusivities in air, used in calculation of condensation rates;
+!>       default values are:
+!>       - 9.4 x 10<sup>-6</sup> for H<sub>2</sub>SO<sub>4</sub>,
+!>       - 5.2 x 10<sup>-6</sup> for SOA precursor, and
+!>       - 1.0 x 10<sup>-5</sup> for the other condensable gases
+!>     - \link messy_made3::epsilon_max epsilon_max \endlink\n
+!>       set the maximum allowed fraction of soluble matter in insoluble modes
+!>       (the so-called aging criterion); default is 0.10
+!>     - \link messy_made3::rset_nucsize rset_nucsize \endlink\n
+!>       set an assumed "dry" diameter for newly nucleated particles (to
+!>       account for unresolved time and spatial scales of new particle
+!>       formation events); default is ("True", 10.0 nm); former behavior can be
+!>       restored by setting the first entry to "False"
+!>     - \link messy_made3::l_eqsam l_eqsam \endlink\n
+!>       switch for gas-particle partitioning of semivolatile gases; default is
+!>       "True"
+!>     - \link messy_made3::l_coag l_coag \endlink\n
+!>       switch for coagulation; default is "True"
+!>     - \link messy_made3::l_cond l_cond \endlink\n
+!>       switch for H<sub>2</sub>SO<sub>4</sub> condensation; default is "True"
+!>     - \link messy_made3::l_nuc l_nuc \endlink\n
+!>       switch for (binary homogeneous
+!>       H<sub>2</sub>SO<sub>4</sub>-H<sub>2</sub>O) nucleation; default is
+!>       "True"
+!>     - \link messy_made3::l_rename l_rename \endlink\n
+!>       switch for renaming, i.e., assignment of large particles in the Aitken
+!>       modes to the accumulation modes (for details see \cite Kaiser2014);
+!>       default is "True"
+!>
+!>   \section cpl The CPL namelist
+!>
+!>     The CPL namelist contains the following parameters:
+!>     - \link messy_made3_si::gas_cpl gas_cpl \endlink\n
+!>       list of five tuples of the the form &lt;tracer basename&gt;,&lt;tracer
+!>       subname&gt;,&lt;submodel&gt; for H<sub>2</sub>SO<sub>4</sub>,
+!>       NH<sub>3</sub>, HNO<sub>3</sub>, HCl, and an optional
+!>       H<sub>2</sub>SO<sub>4</sub> production "tracer", where &lt;submodel&gt;
+!>       will usually be either empty (= no coupling to the gas phase
+!>       chemistry), or "mecca" (if submodel MECCA is used for gas phase
+!>       chemistry); default: no coupling to gas phase chemistry
+!>       \warning The coupling to a chemistry submodel-supplied
+!>       H<sub>2</sub>SO<sub>4</sub> production "tracer" has not been tested so
+!>       far and may therefore not work properly!
+!>     - \link messy_made3_si::emis_cpl emis_cpl \endlink\n
+!>       array for specification of online emissions, whose elements of the form
+!>       &lt;type&gt;,&lt;channel&gt;,&lt;object&gt;,&lt;tracername&gt;,&lt;scale&gt;
+!>       are set individually; default: no online emissions
+!>       - &lt;type&gt;: one of "SS" (sea spray), "DU" (mineral dust), "OPOM"
+!>         (oceanic organic aerosol), or "SOA" (secondary organic aerosol
+!>         precursor emissions to condense)
+!>         \warning The "DU" and "OPOM" couplings have not been tested so far
+!>           and may therefore not work properly!
+!>       - &lt;channel&gt;, &lt;object&gt;: channel object that contains the
+!>         corresponding emissions
+!>         \note The units check in the code is disabled for "DU" from channel
+!>           \c onemis, as some schemes provide only mass and the conversion to
+!>           number is done via this namelist, so make sure that the units
+!>           supplied are [kg m<sup>-2</sup> s<sup>-1</sup>] for mass emissions
+!>           and [m<sup>-2</sup> s<sup>-1</sup>] for number emissions!
+!>       - &lt;tracername&gt;: full name, i.e., &lt;basename&gt;_&lt;subname&gt;
+!>         if applicable, of the tracer to which the emission shall be assigned;
+!>         set to empty string for "SOA"
+!>       - &lt;scale&gt;: scaling factor that shall be applied to the emission
+!>         before actually adding it to the specified tracer; can, e.g., be used
+!>         to split emissions among different tracers; default: 0
+!>     - \link messy_made3_si::orogr_thr_4DUemis orogr_thr_4DUemis \endlink\n
+!>       upper threshold for orography (m) in online DU emission calc. (switch, value)
+!>     - \link messy_made3_si::l_bctime l_bctime \endlink\n
+!>       switch to enable diagnostic output of burden and loss of externally
+!>       mixed BC and DU to the \c made3_gp channel in order to enable (offline)
+!>       calculation of BC and DU half-life against transformation from a
+!>       hydrophobic to a hydrophilic state; default is "False"; if you enable
+!>       it, do not forget to also enable output of \c burden_BCext, \c
+!>       sink_BCext, \c burden_DUext, and \c sink_DUext to the \c made3_gp
+!>       channel in your \c channel.nml.
+!>       \warning The BC half-life calculation has not been tested so far. It is
+!>       therefore likely that it will not work properly!
+!>     - \link messy_made3_si::notrac notrac \endlink\n
+!>       list of full names of tracers, i.e., &lt;basename&gt;_&lt;subname&gt;
+!>       if applicable, that do not have to be created because the compound that
+!>       they represent does not have to be considered (e.g. \c DU_ks, because
+!>       DU particles are usually larger than typical Aitken mode sizes, and
+!>       insoluble anyway); this is used to save memory; default: empty
+!>
+!>   \section boxinit The BOXINIT namelist
+!>
+!>     ... has not been documented yet.
+!>
+!#>     The \c BOXINIT namelist contains the following parameters:
+!#>     - \link messy_made3_box::timesteps timesteps \endlink\n
+!#>       
+!#>     - \link messy_made3_box::tmst tmst \endlink\n
+!#>       
+!#>     - \link messy_made3_box::pressure pressure \endlink\n
+!#>       
+!#>     - \link messy_made3_box::temperature temperature \endlink\n
+!#>       
+!#>     - \link messy_made3_box::relhum relhum \endlink\n
+!#>       
+!#>     - \link messy_made3_box::cloudcover cloudcover \endlink\n
+!#>       
+!#>     - \link messy_made3_box::rh_hist rh_hist \endlink\n
+!#>       
+!#>     - \link messy_made3_box::so4rat so4rat \endlink\n
+!#>       
+!#>     - \link messy_made3_box::no3rat no3rat \endlink\n
+!#>       
+!#>     - \link messy_made3_box::soa soa \endlink\n
+!#>       
+!#>     - \link messy_made3_box::em_bc_mass em_bc_mass \endlink\n
+!#>       
+!#>     - \link messy_made3_box::em_bc_num em_bc_num \endlink\n
+!#>       
+!#>     - \link messy_made3_box::tracer tracer \endlink\n
+!#>       
+!#>     - \link messy_made3_box::ltest_mcon ltest_mcon \endlink\n
+!#>       
+!#>     - \link messy_made3_box::ltest_ncon ltest_ncon \endlink\n
+!#>       
+!#>     - \link messy_made3_box::ltest_so4 ltest_so4 \endlink\n
+!#>       
+!#>     - \link messy_made3_box::ltest_adapdt ltest_adapdt \endlink\n
+!#>       
+
+! Mode names: xy, where x = k,a,c (Aitken, accumulation, coarse mode) and
+!                       y = s,m,i (soluble, mixed, insoluble)
+! NOTE: Make sure that ordering of modes and species in this namelist
+!       corresponds to the ordering in the code!
+
+&CTRL
+!
+! Commented lines: default values
+!
+!###############################################################################
+! Geometric standard deviations (mode widths)
+!###############################################################################
+!          ks, km, ki, as, am, ai, cs, cm, ci
+!sigma   = 1.7,1.7,1.7,2.0,2.0,2.0,2.2,2.2,2.2,
+!
+!
+!###############################################################################
+! Gas accommodation coefficients
+!###############################################################################
+! -------------------------------------------
+!       |  ks, km, ki, as, am, ai, cs, cm, ci
+! -------------------------------------------
+! H2SO4 |
+! NH3   |
+! HNO3  |
+! HCl   |
+! SOA   |
+! -------------------------------------------
+!alpha   = 1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,&
+!          0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,&
+!          0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,&
+!          0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1,&
+!          1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,
+!
+!
+!###############################################################################
+! Gas diffusivities [m2 s-1]
+!###############################################################################
+!          H2SO4,       NH3,   HNO3,  HCl,   SOA
+!diff    = 9.362223e-06,1.0e-5,1.0e-5,1.0e-5,5.151174e-06,
+!
+!###############################################################################
+! Maximum fraction of soluble matter in insoluble modes (aging criterion)
+!###############################################################################
+!
+!epsilon_max = 0.10,
+!
+!###############################################################################
+! Switch on/off and set "dry" diameter of newly nucleated particles [nm]
+!###############################################################################
+!
+!rset_nucsize = .true., 3.5,
+!
+!###############################################################################
+! Switches for individual processes
+!###############################################################################
+!
+!--------------------------------------------
+! Gas-particle partitioning of semivolatiles
+!--------------------------------------------
+!l_eqsam  = .true.,
+!
+!-------------
+! Coagulation
+!-------------
+!l_coag   = .true.,
+!
+!--------------------
+! H2SO4 condensation
+!--------------------
+!l_cond   = .true.,
+!
+!------------------------------
+! H2SO4-H2O droplet nucleation
+!------------------------------
+!l_nuc    = .true.,
+!
+!----------
+! Renaming
+!----------
+!l_rename = .true.
+!
+/
+
+&CPL
+!
+!###############################################################################
+! Coupling to chemistry submodel(s) (gas phase)
+!###############################################################################
+! -------------------------------------
+!          | basename, subname, submodel
+! -------------------------------------
+!  H2SO4   |
+!  NH3     |
+!  HNO3    |
+!  HCl     |
+!  H2SO4pr |  <-- H2SO4 production rate tracer (from SO2 + OH -> H2SO4)
+! -------------------------------------
+! NOTE: If no submodel is given, a dummy tracer will be created, except for
+!       H2SO4 production.
+gas_cpl    = 'H2SO4',  '',      'mecca',
+             'NH3',    '',      '',
+             'HNO3',   '',      'mecca',
+             'HCl',    '',      '',
+             '',       '',      '',
+!
+!
+!###############################################################################
+! Emissions
+!###############################################################################
+!
+! Syntax:
+! emis_cpl(NN) = TYPE, INCHANNEL, INOBJECT, TRACER, SCALE
+!     TYPE:      identifier (string)
+!     INCHANNEL: channel from which to read the flux (string)
+!     INOBJECT:  object that contains the flux (string)
+!     TRACER:    tracer (full)name to which to assign the flux (string; empty
+!                for special handling (in the code))
+!     SCALE:     scaling factor (double)
+!     
+!------------------
+! 1. Sea salt flux
+!------------------
+! LSCE
+! - split into ``Na'' and Cl according to EQSAM SS assumptions
+emis_cpl( 1) = 'SS', 'onemis', 'mss_as_lsce', 'Na_as', 0.4496,
+emis_cpl( 2) = 'SS', 'onemis', 'mss_as_lsce', 'Cl_as', 0.5504,
+emis_cpl( 3) = 'SS', 'onemis', 'nss_as_lsce', 'N_as', 1.0,
+emis_cpl( 4) = 'SS', 'onemis', 'mss_cs_lsce', 'Na_cs', 0.4496,
+emis_cpl( 5) = 'SS', 'onemis', 'mss_cs_lsce', 'Cl_cs', 0.5504,
+emis_cpl( 6) = 'SS', 'onemis', 'nss_cs_lsce', 'N_cs', 1.0,
+!
+!--------------
+! 2. Dust flux
+!--------------
+! Tegen
+! - numbers derived under the assumption of median diameters 420 nm and 1.3 um,
+!   mode widths 1.59 and 2.0 (as in AEROCOM), and rho = 2.5 g cm-3 (MADE3)
+emis_cpl( 7) = 'DU', 'onemis', 'du_emflux_T_ai', 'DU_ai', 1.0,
+emis_cpl( 8) = 'DU', 'onemis', 'du_emflux_T_ai', 'N_ai', 3.917756e+15,
+emis_cpl( 9) = 'DU', 'onemis', 'du_emflux_T_ci', 'DU_ci', 1.0,
+emis_cpl(10) = 'DU', 'onemis', 'du_emflux_T_ci', 'N_ci', 4.001933e13,
+!
+!---------------------------
+! 3. Primary oceanic carbon
+!---------------------------
+! SEAWIFS (with LSCE SS emissions)
+!!$emis_cpl(11) = 'OPOM', 'onemis', 'emis_poc_swifs_mss_as_lsce', 'POM_as', 1.0,
+!
+!------------------------------------------------------------------
+! 4. SOA ``emissions'' (*MUST* be provided in [molecules m-2 s-1])
+!------------------------------------------------------------------
+emis_cpl(12) = 'SOA', 'import_grid', 'BIO_SOA_soa_emiss', '', 1.0,
+!
+!
+!###############################################################################
+! Upper threshold for orography (m) in online DU emission calculation
+!###############################################################################
+!
+orogr_thr_4DUemis = .true., 4000.,
+!
+!###############################################################################
+! Switch to enable calc. of BC and DU lifetime (hydrophobic -> hydrophilic)
+!###############################################################################
+!l_bctime = F,
+!
+!
+!###############################################################################
+! Names of unnecessary tracers
+!###############################################################################
+notrac = 'BC_ks','BC_as','BC_cs','BCtag_ks','BCtag_as','BCtag_cs','DU_ks','DU_km','DU_ki','DU_as','DU_cs',,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+!
+/
+
+&BOXINIT
+!
+!###############################################################################
+! Time control
+!###############################################################################
+!
+!-----------------
+! Number of steps
+!-----------------
+timesteps = 48
+!
+!---------------------------
+! duration of each step [s]
+!---------------------------
+tmst      = 1800.
+!
+!
+!###############################################################################
+! Meteorological parameters
+!###############################################################################
+!
+!---------------
+! Pressure [Pa]
+!---------------
+pressure    = 101537.3
+!
+!-----------------
+! Temperature [K]
+!-----------------
+temperature = 285.8112
+!
+!-------------------------
+! Relative humidity [0-1]
+!-------------------------
+relhum      = 0.770946
+!
+!------------------------------
+! Fractional cloud cover [0-1]
+!------------------------------
+cloudcover  = 0.
+!
+!
+!###############################################################################
+! Aerosol deliquescence history [1-2]
+!###############################################################################
+! values:
+!    1.0 -> all particles solid
+!    2.0 -> all particles/particle coatings liquid
+!    intermediate values for mixture of solid and liquid particles/coatings
+!
+!         ks, km, ki, as, am, ai, cs, cm, ci
+rh_hist = 2., 2., 2., 2., 2., 2., 2., 2., 2.,
+!
+!
+!###############################################################################
+! Chemical production rates [ug m-3 s-1]
+!###############################################################################
+!
+!----------
+! H2SO4(g)
+!----------
+so4rat = 1.538e-05
+!
+!---------
+! HNO3(g)
+!----------
+no3rat = 1.727e-05
+!
+!----------------
+! SOA precursors
+!----------------
+soa    = 0.
+!
+!
+!###############################################################################
+! BC emission rates
+!###############################################################################
+!
+!-------------------
+! mass [ug m-3 s-1]
+!-------------------
+!              ki,       ai,      ci
+em_bc_mass = 1.941e-7, 4.988e-8, 0.0e0,
+!
+!--------------------
+! number [# m-3 s-1]
+!--------------------
+!              ki,      ai,     ci
+em_bc_num  = 2.639e2, 1.969e0, 0.0e0,
+!
+!
+!###############################################################################
+! Initial tracer concentrations
+! (masses: [mol mol-1(air)], numbers: [# mol-1(air)])
+!###############################################################################
+! -------------------------------------------------------------
+!     | SO4(H2SO4),NH4(NH3),NO3(HNO3),Na(HCl),Cl,POM,BC,BCtag,DU,H2O,N,MOM3
+! -------------------------------------------------------------
+! ks  |
+! km  |
+! ki  |
+! as  |
+! am  |
+! ai  |
+! cs  |
+! cm  |
+! ci  |
+! gas |
+! -------------------------------------------
+tracer = 5.741404e-14, 1.14716e-13, 4.075354e-30, 0., 0., 5.372691e-15, 0., 0., 0., 2.759986e-30, 1.717707e+06, 0.,&
+         2.808254e-16, 5.688654e-16, 1.0e-30, 0., 0., 5.089415e-17, 2.186641e-15, 1.675584e-29, 0., 1.018152e-30, 2.4914e+02, 0.,&
+         2.75785e-23, 5.38947e-23, 1.0e-30, 0., 0., 1.085131e-25, 1.62412e-20, 1.0e-30, 0., 1.0e-30, 2.53223e-02, 0.,&
+         8.016124e-12, 3.672723e-17, 5.862306e-12, 1.62760359210314e-10, 1.31321150328769e-10, 6.490823e-15, 0., 0., 0., 1.526028e-09, 8.180048e+04, 0.,&
+         2.330007e-12, 3.567035e-19, 1.979943e-13, 8.15180959851987e-13, 6.57718512623493e-13, 5.613673e-15, 1.410933e-14, 8.14188e-30, 1.410562e-15, 4.849971e-11, 3.76196e+02, 0.,&
+         2.459662e-22, 2.357416e-25, 1.985624e-23, 8.61862397743755e-24, 6.9538284411484e-24, 1.302141e-21, 1.016992e-18, 1.001566e-30, 3.172762e-19, 3.84871e-21, 2.461971e-03, 0.,&
+         0., 0., 0., 3.3136067000721e-09, 2.67354192201248e-09, 0., 0., 0., 0., 2.86613445792368e-08, 4.02926259060987e4, 0.,&
+         0., 0., 0., 3.3136067000721e-09, 2.67354192201248e-09, 0., 0., 0., 7.75989e-13, 2.86613445792368e-08, 4.02934695045182e4, 0.,&
+         0., 0., 0., 0., 0., 0., 0., 0., 7.75989e-13, 9.08294514891157e-14, 9.5458922303867e-1, 0.,&
+         8.958165e-17, 3.292622e-10, 1.0e-30, 0., 0., 0., 0., 0., 0., 0., 0.,
+!
+!
+!###############################################################################
+! Test switches
+!###############################################################################
+!
+!------------------------------------------------------------
+! Mass conservation of species other than H2SO4(g), SO4, H2O
+!------------------------------------------------------------
+ltest_mcon   = .false.
+!
+!--------------------
+! Number consistency
+!--------------------
+ltest_ncon   = .false.
+!
+!-------------------------------------------------------------------------------
+! Deviation of actual total (i.e., gaseous and condensed) (H2)SO4 production
+! from SO4RAT * TMST * MWSO4 / MWH2SO4
+!-------------------------------------------------------------------------------
+ltest_so4    = .false.
+!
+!-----------------------------
+! Usage of adaptive time step
+!-----------------------------
+ltest_adapdt = .false.
+!
+/

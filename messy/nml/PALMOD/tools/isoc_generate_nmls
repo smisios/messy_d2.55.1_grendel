@@ -1,0 +1,72 @@
+#! /bin/tcsh -f
+
+set dst   = ./species
+mkdir $dst
+
+set isos  = (I12 I13)
+
+goto AE_nobb
+
+echo warning! specify dataset
+exit 1
+
+# EFT32
+set dset  = ISOC_EFT32
+set specs = (CH3OH HCHO CO HCOOH C2H4 C2H6 C3H6 C3H8 C4H10 CH3CHO CH3COOH CH3COCH3 MEK) #CH4
+set rgtno = "100"
+goto proc
+
+# BIO
+bio:
+set dset  = ISOC_BIO
+set specs = (CH3OH CO HCOOH C2H4 C2H6 C3H6 C3H8 C4H10 CH3COOH CH3COCH3)
+set rgtno = "130"
+goto proc
+
+# GFEDv2
+gfed2:
+set dset  = ISOC_GFEDv2
+set specs = (CH3OH HCHO CO HCOOH C2H4 C2H6 C3H6 C3H8 C4H10 CH3CHO CH3COOH CH3COCH3 MEK) #CH4
+set rgtno = "150"
+goto proc
+
+# FCF EFT32
+fcf_eft32:
+set dset  = FCF_EFT32
+set specs = (CH3OH HCHO CO HCOOH C2H4 C2H6 C3H6 C3H8 C4H10 CH3CHO CH3COOH CH3COCH3 MEK) #CH4
+set isos  = (FF)
+set rgtno = "190"
+goto proc
+
+# nobb = EFT32 + BIO
+nobb:
+set dset  = ISOC_nobb
+set specs = (CH3OH HCHO CO HCOOH C2H4 C2H6 C3H6 C3H8 C4H10 CH3CHO CH3COOH CH3COCH3 MEK) #CH4
+set rgtno = "101"
+goto proc
+
+# AE_nobb = BIO + EFT32 (adjusted)
+AE_nobb:
+set dset  = ISOC_AE_nobb
+set specs = (CH3OH HCHO CO HCOOH C2H4 C2H6 C3H6 C3H8 C4H10 CH3CHO CH3COOH CH3COCH3 MEK) #CH4
+set rgtno = "101"
+goto proc
+
+
+proc:
+rm -f emis_${dset}.2offlem
+foreach spec ($specs)
+  foreach iso ($isos)
+    gawk -v iso=$iso -v spec=$spec '{ while (sub(/<iso>/, iso,$0)) {}; \
+                                      while (sub(/<spec>/,spec,$0)) {}; \
+                                      print $0 }' emis_$dset.spec > $dst/emis_${dset}_$iso$spec.nml 
+    gawk -v dset=$dset -v iso=$iso -v spec=$spec -v rgtno=$rgtno '{ while (sub(/<dset>/, dset,$0)) {}; \
+                                                                    while (sub(/<iso>/,  iso,$0)) {};  \
+                                                                    while (sub(/<spec>/, spec,$0)) {}; \
+                                                                    while (sub(/<rgtno>/,rgtno,$0)) {}; \
+                                                                    print $0 }' emis_$dset.call >> emis_${dset}.2offlem 
+    @ rgtno++
+  end
+end
+
+exit

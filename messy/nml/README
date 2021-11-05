@@ -1,0 +1,126 @@
+
+The subdirectories with specific setups must contain
+self-consistent sets of namelist files of all submodels involved.
+
+The namelist file for switching the MESSy submodels ON / OFF is required:
+   switch.nml
+
+The namelist files of the generic submodels are required:
+   channel.nml
+   tracer.nml
+   qtimer.nml
+   timer.nml
+   import.nml
+   tendency.nml (if configured with --enable-MESSYTENDENCY)
+
+If MMD is involved,
+   mmd2way.nml
+is also required.
+
+The namelist file(s) for the chosen basemodel(s) are required, e.g.,
+   ECHAM5302_${ECHAM5_HRES}${ECHAM5_VRES}.nml  (including nudging namelist !)
+
+Further, since in ECHAM5 AEROPT, CLOUD, CLOUDOPT, CONVECT, ORBIT, RAD
+SURFACE, E5VDIFF, OROGW and GWAVE (the latter for MA setups) are usually NOT 
+switched off, also the respective namelist files are required:
+   aeropt.nml
+   cloud.nml
+   cloudopt.nml
+   convect.nml
+   e5vdiff.nml
+   gwave.nml
+   orbit.nml
+   orogw.nml
+   rad.nml
+   surface.nml
+
+If tracers are to be transported, CVTRANS should be used for convective tracer
+transport:
+   cvtrans.nml
+
+NOTES:
+ 1)  The subdirectory EXAMPLES does not contain a complete, working setup,
+     but rather exemplary  namelist files for individual submodels.
+ 2)  The subdirectoy DEFAULTS contains some namelist files which are unlikely
+     to be changed, except for very specific studies.
+ 3)  'Old' namelist files need to be modified w.r.t. the run-script variables
+      which are replaced by copynml, e.g.:
+      ESH_LRESUME -> MSH_LRESUME
+      HRES        -> ECHAM5_HRES
+      VRES        -> ECHAM5_VRES
+      LAMIP       -> ECHAM5_LAMIP
+      LMIDATM     -> ECHAM5_LMIDATM      
+ 4)  'nudge.nml' does not exist anymore, its contents needs to be 
+     appended to ECHAM5302_${ECHAM5_HRES}${ECHAM5_VRES}.nml
+ 5)  A pre-defined setup for "ECHAM5 only" is in subdirectory E5.
+ 6) Important:
+     - lnox.nml   : scaling factors are resolution dependent
+     - channel.nml: 5h output frequency not allowed for all resolutions
+     - import.nml : correct time indices (in netCDF files) need to be set,
+                    depending on the start date
+     - tracer.nml : the tracer initialisation might depend on the start date
+ 7) For testing the consistency of the namelist setup some scripts are
+    available in the messy/util subdirectory (check script headers for some
+    more information):
+    - check_trac_out.tcsh   to check the completeness of tracer output
+                            redirection
+    - check_import_ts.tcsh  to check the consistency of requested and imported
+                            time series
+    - check_import_rgt.tcsh to check the consistency of the import.nml with
+                            its dependent (NCREGRID) namelist files 
+                            (import/*.nml) and the corresponding netCDF files
+    - check_objects.tcsh    to check the availability of requested objects
+                            (delivered by import.nml) as requested by
+                            TNUDGE, OFFEMIS, ONEMIS, CH4
+                            Note: this script requires check_import_rgt.tcsh
+ 8) HOWTO update NML-SETUPS from rad4all to rad:
+    a) switch.nml: comment USE_RAD4ALL=.TRUE.
+                   activate USE RAD=.TRUE.
+                   activate USE_AEROPT
+                   activate USE_CLOUDOPT
+                   activate USE_ORBIT
+    b) - link aeropt.nml   to DEFAULTS/aeropt.nml
+       - link cloudopt.nml to DEFAULTS/cloudopt.nml
+       - link orbit.nml    to DEFAULTS/orbit.nml (instead of orbit_old.nml)
+    c) translate rad4all.nml into rad.nml
+    d) import.nml: add ozone climatology (e.g.,Fortuin&Kelder), if required  
+    e) grep all *nml for "-i rad4all" and "ECHAM5" 
+       and modify for rad accordingly;
+       Note: Theses objects are not longer available in channel 'ECHAM5':
+             relo3     --
+             cossza    (now orbit)
+             albedo    (now rad)
+             zi0       (now rad)
+             trflw     (now rad01)
+             trfli     (now rad01)
+             soflw     (now rad01)
+             sofli     (now rad01)
+             flxs      (now rad01)
+             flxt      (now rad01)
+ 9) HOWTO update NML-SETUPS from submodel H2O-usage to direct feedback:
+    a) tracer*nml:
+       &CPL
+        !...
+        ! initialize specific humidity ('q') with input variable 'H2O' and 
+        ! convert from mol/mol into kg/kg (option 1)
+        ini_pvar(1) = 'ECHAM5','q','H2O',1,
+        !...
+       /
+       (of from qm1 with option 0 (no unit conversion))
+    b) switch*nml:
+       &CTRL
+        !...
+        !!$USE_H2O=.TRUE.
+        !...
+       /
+    c) mecca*nml, e4chem*nml, ch4*nml:
+       &CPL
+        ! ...
+        i_H2O_feedback = 1
+        ! ...
+       /
+    d) [optional; e.g., for stratobud, mm for QCTM, etc.] channel*nml:
+       ...
+       ADD_REF(...)       = 'ECHAM5',   'qm1',        'tr_O3_sbud', '',
+       etc.
+       ...

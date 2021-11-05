@@ -1,0 +1,2045 @@
+! -*- f90 -*-
+
+! Authors: Rolf Sander,     MPICH,  2002-2004
+!          Patrick Joeckel, MPICH,  2004
+!
+! The module messy_main_data_bi defines channels to transfer data
+! between the ECHAM5 base model (physc.f90, vdiff.f90, etc.) and the MESSy
+! submodels. Several quantities needed here are already
+! defined in g2a or g3b. Submodels can and should still access them via
+! messy_main_data_bi since they are linked here with
+! new_channel_object_reference.
+
+! WARNING: Do not use values in mo_memory_g1a or mo_memory_g1b (e.g. tf)
+! because of problems with leap frog and time filter!
+
+  ! NON-FIELD PARAMETER TRANSFER
+  ! - TIME CONTROL AND TIME FILTER
+  USE messy_main_timer, ONLY: time_step_len
+
+  USE mo_semi_impl,     ONLY: eps                  ! REAL
+
+  ! - GRID CONTROL
+  USE mo_control,       ONLY: lcouple           &  ! LOGICAL
+                            , lnudge               ! LOGICAL
+
+  USE mo_clim,          ONLY: tslclim
+
+  USE mo_geoloc,        ONLY: coriol_2d
+
+  ! - DECOMPOSITION -> nproma, npromz, ngpblks, nllev, nllevp1, lnsp, nlm, snsp
+  USE messy_main_mpi_bi,    ONLY: p_pe, dcl
+
+  ! + required for MLOCEAN only:
+  USE mo_interpo,           ONLY: wgt1, wgt2, nmw1cl, nmw2cl, nmw1, nmw2
+  USE mo_sst,               ONLY: sst, aice
+  ! -
+  ! TENDENCY DIAGNOSTIC
+  USE mo_control,          ONLY: ltdiag
+
+  ! -----------------------------------------------------------------
+  ! - FOR USE OUTSIDE 'LOCAL LOOP'
+  ! -----------------------------------------------------------------
+  ! ... at t
+  USE mo_scan_buffer, ONLY:   &
+       alnpr_scb   => alnpr   &
+       , alpha_scb => alpha   &
+       , alps_scb  => alps    & ! SURFACE PRES.
+       , alpste_scb=> alpste  & ! SURFACE PRES. TEND.
+       , d_scb     => d       & ! DIVERGENCE
+       , vo_scb    => vo      & ! VORTICITY
+       , qte_scb   => qte     & ! SPECIFIC HUMIDITY TENDENCY
+       , rh_scb    => rh      & ! SURFACE GEOPOTENTIAL
+       , t_scb     => t       & ! TEMPERATURE
+       , tte_scb   => tte     & ! TEMPERATURE TENDENCY
+       , u_scb     => u       & ! U-WIND
+       , dudl_scb  => dudl    &
+       , v_scb     => v       & ! V-WIND
+       , dvdl_scb  => dvdl    &
+       , vervel_scb=> vervel  &
+       , vol_scb   => vol     & ! WIND TENDENCY
+       , vom_scb   => vom     & ! WIND TENDENCY
+       , xlte_scb  => xlte    & ! LIQUID WATER TENDENCY
+       , xite_scb  => xite    & ! ICE TENDENCY
+       , dalpsl_scb => dalpsl &
+       , dalpsm_scb => dalpsm &
+       , dtm_scb    => dtm    &
+       , dtl_scb    => dtl
+
+  ! Pointers for consistence with other MESSy basemodels
+  USE mo_scan_buffer, ONLY:   &
+       vervel_3d => vervel    &
+       , vol_3d  => vol       & ! WIND TENDENCY
+       , vom_3d  => vom      ! & ! WIND TENDENCY
+
+  USE mo_memory_gl,   ONLY:   &
+       q                      & ! SPECIFIC HUMIDITY
+       , xl                   & ! LIQUID WATER
+       , xi                     ! ICE
+  ! -----------------------------------------------------------------
+  ! ... at t-1
+  USE mo_memory_g1a,  ONLY:   &
+       vom1                   & ! VORTICITY
+       , dm1                  & ! DIVERGENCE
+       , tm1                  &
+       , alpsm1               & ! SURFACE PRESSURE
+       , dalpslm1             &
+       , dalpsmm1             &
+       , qm1                  & ! SPECIFIC HUMIDITY
+       , xlm1                 & ! LIQUID WATER
+       , xim1                   ! ICE
+  USE mo_memory_g2a,  ONLY:   &
+       um1                    & ! U-WIND * cos(lat)
+       , vm1                  & ! V-WIND * cos(lat)
+       , dtlm1                &
+       , dtmm1                &
+       , dudlm1               &
+       , dvdlm1
+  ! -----------------------------------------------------------------
+  ! .. at ???
+  USE mo_memory_g3b, ONLY: geosp, slf, slm, seaice, forest, vgrat        &
+                         , siced, fluxres, ahfres, ahfice, ahfcon        &
+                         , qres, sni, tsi, alb                           &
+                         , vlt, aclc, u10, v10, tsoil, wsmx, ws          &
+                         , tslm1, aps, alake      &
+                         , acdnc, aclcac, aclcov, relhum, rintop         &
+                         , xvar, xskew, aprl, aprs, qvi, xlvi, topmax    &
+                         , aprc, xtec, tsw, xivi                         &
+                         , glac, siced, aprflux, tsl,  tslm,  wl         &
+                         , sn, snmel, gld, snc, runoff, rogl, drain      &
+                         , apmegl, snacl, orostd, rgcgn, grndcapc        &
+                         , grndhflx, grndflux, grndc, grndd              &
+                         , sodif
+
+  ! -----------------------------------------------------------------
+
+  ! MESSy
+  USE messy_main_constants_mem, ONLY: dp
+
+  IMPLICIT NONE
+  PUBLIC
+  SAVE
+
+  ! ECHAM5 PARAMETERS
+  CHARACTER(LEN=*), PARAMETER :: modstr = 'ECHAM5'
+  CHARACTER(LEN=*), PARAMETER :: modver = '5.3.02'
+  CHARACTER(LEN=*), PARAMETER :: scb = ''
+  REAL(DP), POINTER :: vo(:,:)       => NULL()
+  REAL(DP), POINTER :: d(:,:)        => NULL()
+  REAL(DP), POINTER :: t(:,:)        => NULL()
+  REAL(DP), POINTER :: alps(:)       => NULL()
+  REAL(DP), POINTER :: u(:,:)        => NULL()
+  REAL(DP), POINTER :: dudl(:,:)     => NULL()
+  REAL(DP), POINTER :: v(:,:)        => NULL()
+  REAL(DP), POINTER :: dvdl(:,:)     => NULL()
+  REAL(DP), POINTER :: rh(:,:)       => NULL()
+  REAL(DP), POINTER :: xtte(:,:,:)   => NULL()
+  REAL(DP), POINTER :: xtte_a(:,:,:) => NULL()
+  REAL(DP), POINTER :: alpste(:)     => NULL()
+  REAL(DP), POINTER :: alnpr(:,:)    => NULL()
+  REAL(DP), POINTER :: alpha(:,:)    => NULL()
+  ! mo_tmp_buffer
+  REAL(dp),POINTER, DIMENSION(:,:) :: aphm1  => NULL()
+  REAL(dp),POINTER, DIMENSION(:,:) :: aphp1  => NULL()
+  REAL(dp),POINTER, DIMENSION(:,:) :: apm1   => NULL()
+  REAL(dp),POINTER, DIMENSION(:,:) :: app1   => NULL()
+#ifdef OASIS3MCT
+  ! fractional ocean mask (required for FESOM coupling) ... move to surface ?
+  REAL(dp),POINTER, DIMENSION(:,:) :: sof    => NULL()
+  ! MASKS required for FESOM coupling : TODO: mv elsewhere?
+  REAL(dp),POINTER, DIMENSION(:,:) :: zzwat  => NULL()
+  REAL(dp),POINTER, DIMENSION(:,:) :: zznow  => NULL()
+  REAL(dp),POINTER, DIMENSION(:,:) :: zznoi  => NULL()
+  REAL(dp),POINTER, DIMENSION(:,:) :: zzice  => NULL()
+#endif
+
+  LOGICAL, PARAMETER :: l2tls = .FALSE.
+
+  ! extension in ionosphere/thermosphere ?
+  LOGICAL :: ledith  = .FALSE.
+
+  ! LOGICAL (needed for MMD COULPLING ECHAM5<->COSMO<->COSMO)
+  LOGICAL :: L_IS_CHILD = .FALSE.
+
+  ! LOGICAL SWITCHES FOR EXTERNAL MODEL COUPLING
+  LOGICAL   :: lcpl_land  = .FALSE. ! couple to land model,
+  LOGICAL   :: lcpl_ocean = .FALSE. ! couple to Community land model
+
+  ! 2-dimensional fields
+  REAL(dp), DIMENSION(:,:), POINTER :: &
+    qflux       => NULL(), &
+    rho_surf    => NULL(), &
+    cdni        => NULL(), &
+    cdnl        => NULL(), &
+    cdnw        => NULL(), &
+    cfmi        => NULL(), &
+    cfml        => NULL(), &
+    cfmw        => NULL(), &
+    cfnci       => NULL(), &
+    cfncl       => NULL(), &
+    cfncw       => NULL(), &
+    cvs         => NULL(), &
+    cvsc        => NULL(), &
+    cvw         => NULL(), &
+    fws         => NULL(), &
+    icecov      => NULL(), &
+    seacov      => NULL(), &
+    landcov     => NULL(), &
+    prc         => NULL(), &
+    prl         => NULL(), &
+    rco_leaf    => NULL(), &
+    rh_2m       => NULL(), &
+    rii         => NULL(), &
+    ril         => NULL(), &
+    riw         => NULL(), &
+    srfl        => NULL(), &
+    tsurf_2d    => NULL(), &
+    tvi         => NULL(), &
+    tvir        => NULL(), &
+    tvl         => NULL(), &
+    tvw         => NULL()
+
+  REAL(dp), DIMENSION(:,:), POINTER :: &
+    radflxw_2d  => NULL(), &
+    aros_2d     => NULL(), &  ! for HD model
+    adrain_2d   => NULL(), &  ! ...
+    apmecal_2d  => NULL(), &  ! ...
+    disch_2d    => NULL(), &  ! ...
+    zcdh_2d     => NULL(), &
+    zlatkf_2d   => NULL(), &
+    zsenkf_2d   => NULL(), &
+    zust_2d     => NULL(), &
+    tslnew      => NULL(), &
+    rsfl_2d     => NULL(), &
+    rsfc_2d     => NULL(), &
+    ssfl_2d     => NULL(), &
+    ssfc_2d     => NULL()
+
+    LOGICAL, DIMENSION(:,:), POINTER  :: &
+    loland_2d    => NULL(), &
+    loglac_2d    => NULL()
+
+  REAL(dp), DIMENSION(:,:), POINTER :: &
+    srfl_2d     => NULL(), &
+    cvsi        => NULL(), &
+    fsnet       => NULL()
+
+  ! 2-dimensional fields
+  REAL(dp), DIMENSION(:,:), POINTER :: &
+       snc_surf=> NULL(), &
+       gld_surf=> NULL(), &
+       qsl     => NULL(), &
+       qsw     => NULL(), &
+       qsi     => NULL(), &
+       phum    => NULL(), &
+       chl     => NULL(), &
+       cfhl    => NULL(), &
+       cfhw    => NULL(), &
+       cfhi    => NULL(), &
+       qslnew  => NULL(), &
+       cair    => NULL(), &
+       evwsd   => NULL(), &
+       nvb_tmp => NULL()
+
+  CHARACTER(LEN=12)                  :: vdicha = ''
+  REAL(DP), DIMENSION(:,:), POINTER  :: &
+       ! required for 'hydrology collect' (see physc.f90), but only in 5.3.02
+       ! and not anymore in 5.3.02_c
+       ahflw     => NULL(), &      ! E5VDIFF: for physc.f90 (hydro-collect)
+       ahfsw     => NULL(), &      ! ..
+       ustri     => NULL(), &      ! ..
+       vstri     => NULL(), &      ! ..
+       ustrw     => NULL(), &      ! ..
+       vstrw     => NULL(), &      ! ..
+       evapw     => NULL(), &      ! ..
+       evapi     => NULL()         ! ..
+
+  ! USEage of these pointers must be replaced by local pointers set
+  ! via get_channel_object in the corresponding submodels ...
+  REAL(DP), DIMENSION(:,:), POINTER  :: &
+       az0        => NULL(), &      ! g3b: for AIRSEA, ...
+       ocu        => NULL(), &      ! g3b: for A2O, ...
+       ocv        => NULL(), &      ! g3b: for A2O, ...
+       s_heatflux => NULL(), &      ! vdiff -> CONVECT
+       l_heatflux => NULL()         ! vdiff -> CONVECT
+
+  REAL(DP), DIMENSION(:,:,:), POINTER  :: &
+       tke       => NULL()         ! for CLOUD
+
+  ! 3-dimensional fields
+  REAL(dp), DIMENSION(:,:,:), POINTER :: &
+    etadot_3d  => NULL(), &
+    sigmadot   => NULL(), &
+    geopot_3d  => NULL(), &
+    geopoti_3d => NULL(), &
+    ilab       => NULL(), &
+    press_3d   => NULL(), &
+    pressi_3d  => NULL(), &
+    qm1_3d     => NULL(), &
+    qte_3d     => NULL(), &
+    qtec       => NULL(), &
+    rhum_3d    => NULL(), &
+    rinum_3d   => NULL(), &
+    tm1_3d     => NULL(), &
+    tpot_3d    => NULL(), &
+    tpoteq_3d  => NULL(), &
+    tpoteq2_3d => NULL(), &
+    tte_3d     => NULL(), &
+    tvirt_3d   => NULL(), &
+    xim1_3d    => NULL(), &
+    xite_3d    => NULL(), &
+    xlm1_3d    => NULL(), &
+    xlte_3d    => NULL(), &
+    vmixtau    => NULL(), &
+    vdiffp     => NULL(), &
+    xtecl      => NULL(), &
+    xteci      => NULL(), &
+    xtecnl     => NULL(), &
+    xtecni     => NULL(), &
+    rho_air_dry_3d => NULL()
+
+  REAL(dp), DIMENSION(:,:,:), POINTER :: &
+    um1_3d => NULL(), &
+    vm1_3d => NULL()
+
+  ! 3-dimensional fields
+  REAL(dp), DIMENSION(:,:,:), POINTER :: &
+       cfh       => NULL(), &
+       cfm       => NULL(), &
+       ebsh      => NULL(), &
+       betaa_tmp => NULL(), &
+       betab_tmp => NULL(), &
+       betass_tmp=> NULL()
+
+  ! 4-dimensional fields
+  REAL(dp), DIMENSION(:,:,:,:), POINTER :: &
+    pxtems     => NULL()
+
+  ! SPECIAL FOR ECHAM5 NUDGING; TO BE SAVED OVER RESTART
+  ! (see mo_nudging_io.f90)
+  REAL(dp), POINTER :: rndgcount => NULL()
+  REAL(dp), POINTER :: rndtsc    => NULL()
+
+  ! SUBROUTINES
+  !PUBLIC :: main_data_initialize
+  !PUBLIC :: main_data_init_memory
+  !PUBLIC :: main_data_init_coupling
+  !PUBLIC :: main_data_local_start
+  !PUBLIC :: main_data_global_start
+  !PUBLIC :: main_data_free_memory
+  !
+
+CONTAINS
+
+  !***************************************************************************
+  SUBROUTINE main_data_initialize
+
+    USE messy_main_grid_def_mem_bi, ONLY: vct
+    USE messy_main_timer,           ONLY: timer_set_time_step_len
+
+    IMPLICIT NONE
+
+    ledith   = ( (vct(1) + vct(2))/2.0_dp ) < 0.1_dp ! extension above 0.1 Pa ?
+
+    ! set integration time step length
+    CALL timer_set_time_step_len(l2tls)
+
+  END SUBROUTINE main_data_initialize
+  !***************************************************************************
+
+  !***************************************************************************
+  SUBROUTINE main_data_init_memory
+
+    USE messy_main_channel_error_bi, ONLY: channel_halt
+    USE messy_main_tracer_mem_bi,    ONLY: ntrac_gp
+    USE messy_main_channel,          ONLY: new_channel, new_channel_object   &
+                                         , new_channel_object_reference      &
+                                         , new_attribute, get_channel_object &
+                                         , set_channel_object_inst
+    USE messy_main_channel_repr,     ONLY: get_representation_id
+
+    IMPLICIT NONE
+    INTRINSIC :: SIN, COS
+
+    ! LOCAL
+    CHARACTER(LEN=*), PARAMETER :: substr = 'main_data_init_memory'
+    INTEGER :: status
+    INTEGER :: reprid
+
+    ! create new channel
+    CALL new_channel (status, modstr, lrestreq=.TRUE.)
+    CALL channel_halt(substr, status)
+
+    ! ########################################################################
+    ! ---------------------------- GP_1D_LEV ---------------------------------
+    ! ########################################################################
+    ! ------------------------------------------------------------------------
+
+    ! ########################################################################
+    ! ---------------------------- GP_2D_HORIZONTAL --------------------------
+    ! ########################################################################
+    CALL get_representation_id(status, 'GP_2D_HORIZONTAL', reprid)
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    ! --- CHANNEL OBJECT REFERENCES ------------------------------------------
+    ! ------------------------------------------------------------------------
+    CALL new_channel_object_reference(status, 'g3b', 'u10', modstr, 'u10')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'u10', 'long_name', c='10m u-velocity')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'u10', 'units', c='m s-1')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    CALL new_channel_object_reference(status, 'g3b', 'v10', modstr, 'v10')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'v10', 'long_name', c='10m v-velocity')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'v10', 'units', c='m s-1')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    CALL new_channel_object_reference(status, 'g3b', 'tsoil', modstr, 'tsoil')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'tsoil', &
+         'long_name', c='deep soil temperatures')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'tsoil', 'units', c='K')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    CALL new_channel_object_reference(status, 'g3b', 'wsmx', modstr, 'wsmx')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'wsmx', &
+         'long_name', c='field capacity of soil')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'wsmx', 'units', c='m')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    CALL new_channel_object_reference(status, 'g3b', 'ws', modstr, 'ws')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'ws', 'long_name', c='soil wetness')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'ws', 'units', c='m')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    CALL new_channel_object_reference(status, 'g3b', 'geosp', modstr, 'geosp')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'geosp', &
+         'long_name', c='surface geopotential')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'geosp', 'units', c='m2 s-2')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    CALL new_channel_object_reference(status, 'g3b', 'slf', modstr, 'slf')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'slf', 'long_name', c='land fraction')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'slf', 'units', c='-')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    ! read from initial file (unit.24, see ioinitial.f90)
+    CALL new_channel_object_reference(status, 'g3b', 'alb', modstr, 'alb')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'alb', 'long_name', &
+         c='surface background albedo')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'alb', 'units', c='-')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    CALL new_channel_object_reference(status, 'g3b', 'tsi', modstr, 'tsi')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'tsi', 'long_name', &
+         c='surface temperature of ice')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'tsi', 'units', c='K')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    CALL new_channel_object_reference(status, 'g3b', 'tsw', modstr, 'tsw')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'tsw', 'long_name', &
+         c='surface temperature of water')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'tsw', 'units', c='K')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    CALL new_channel_object_reference(status, 'g3b', 'sni', modstr, 'sni')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'sni', 'long_name', &
+         c='water equivalent of snow on ice')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'sni', 'units', c='m')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    ! 0 = sea, 1 = land
+    CALL new_channel_object_reference(status, 'g3b', 'slm', modstr, 'slm')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'slm', 'long_name', c='land mask')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'slm', 'units', c='-')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    CALL new_channel_object_reference(status, 'g3b', 'glac',modstr, 'glac')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'glac', 'long_name', &
+         c='fraction of land covered by glaciers')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'glac', 'units', c='-')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    ! 0 = lake, 1 = land
+    CALL new_channel_object_reference(status, 'g3b', 'alake', modstr, 'alake')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'alake', &
+         'long_name', c='lake fraction of grid box')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'alake', 'units', c='-')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    ! 0 = liquid ocean, 1 = ice
+    ! This value is set to 0 over land, although it is actually undefined there
+    CALL new_channel_object_reference(status, &
+         'g3b', 'seaice', modstr, 'seaice')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'seaice', &
+         'long_name', c='seaice fraction rel to ocean')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'seaice', 'units', c='-')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    CALL new_channel_object_reference(status, &
+         'g3b', 'siced', modstr, 'siced')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'siced', &
+         'long_name', c='ice depth')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'siced', 'units', c='m')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    CALL new_channel_object_reference(status, &
+         'g3b', 'fluxres', modstr, 'fluxres')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'fluxres', &
+         'long_name', c='')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'fluxres', 'units', c='')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+
+    ! ------------------------------------------------------------------------
+    ! calculated in SURFACE and/or MLOCEAN (!!! qqq???)
+!qqq check: intent(out) in licetemp AND sicetemp (overwritten ???)
+!qqq        intent(out) in mlocean_mlicetemp
+    CALL new_channel_object_reference(status, &
+         'g3b', 'ahfice', modstr, 'ahfice')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'ahfice', &
+         'long_name', c='conductive heat flux')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'ahfice', 'units', c='W m-2')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    ! calculated in SURFACE (sicetemp), required for A2O/MPIOM (as aiqre)
+    CALL new_channel_object_reference(status, &
+         'g3b', 'qres', modstr, 'qres')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'qres', &
+         'long_name', c='residual heat flux for melting sea ice')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'qres', 'units', c='W m-2')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    CALL new_channel_object_reference(status, &
+         'g3b', 'forest', modstr, 'forest')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'forest', &
+         'long_name', c='forest fraction')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'forest', 'units', c='-')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    CALL new_channel_object_reference(status, 'g3b', 'vgrat', modstr, 'vgrat')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'vgrat', &
+         'long_name', c='vegetation fraction rel to land')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'vgrat', 'units', c='-')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    CALL new_channel_object_reference(status, 'g3b', 'vlt', modstr, 'vlt')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'vlt', &
+         'long_name', c='leaf area index (LAI)')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'vlt', 'units', c='-')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    CALL new_channel_object_reference(status, 'g3b', 'tslm1', modstr, 'tslm1')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'tslm1', &
+         'long_name', c='surface temperature of land')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'tslm1', 'units', c='K')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+#ifdef OASIS3MCT
+    ! fractional ocean mask, required for FESOM2 coupling
+    CALL new_channel_object(status, modstr, 'sof', p2=sof, reprid=reprid)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'sof', &
+         'long_name', c='fractional ocean mask')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'sof', 'units', c='-')
+    CALL channel_halt(substr, status)
+    ! MASKs required for FESOM coupling:  move elsewhere?
+    ! WATER
+    CALL new_channel_object(status, modstr, 'zzwat', p2=zzwat, reprid=reprid)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'zzwat', &
+         'long_name', c='integer mask water points 1= water')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'zzwat', 'units', c='-')
+    CALL channel_halt(substr, status)
+    ! NO WATER
+    CALL new_channel_object(status, modstr, 'zznow', p2=zznow, reprid=reprid)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'zznow', &
+         'long_name', c='integer mask water points 1 = no water')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'zznow', 'units', c='-')
+    CALL channel_halt(substr, status)
+
+    ! ICE
+    CALL new_channel_object(status, modstr, 'zzice', p2=zzice, reprid=reprid)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'zzice', &
+         'long_name', c='integer mask ice  1= ice')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'zzice', 'units', c='-')
+    CALL channel_halt(substr, status)
+    ! NO ICE
+    CALL new_channel_object(status, modstr, 'zznoi', p2=zznoi, reprid=reprid)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'zznoi', &
+         'long_name', c='integer mask ice 1 = no ice')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'zznoi', 'units', c='-')
+    CALL channel_halt(substr, status)
+#endif
+    ! ------------------------------------------------------------------------
+    !
+    ! ------------------------------------------------------------------------
+    ! --- NEW CHANNEL OBJECTS ------------------------------------------------
+    ! ------------------------------------------------------------------------
+    ! (from vdiff.f90); local variable converted to pointer
+    CALL new_channel_object(status, modstr, 'cdnl', p2=cdnl, reprid=reprid)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'cdnl', &
+         'long_name', c='neutral drag coeff., land')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'cdnl', 'units', c='-')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    ! (from vdiff.f90); local variable converted to pointer
+    CALL new_channel_object(status, modstr,  'cdnw', p2=cdnw, reprid=reprid)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'cdnw', &
+         'long_name', c='neutral drag coeff., water')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'cdnw', 'units', c='-')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    ! (from vdiff.f90); local variable converted to pointer
+    CALL new_channel_object(status, modstr,  'cdni', p2=cdni, reprid=reprid)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'cdni', &
+         'long_name', c='neutral drag coeff., ice')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'cdni', 'units', c='-')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    ! (from vdiff.f90); local variable converted to pointer
+    CALL new_channel_object(status, modstr,  'cfml', p2=cfml, reprid=reprid)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'cfml', &
+         'long_name', c='momentum drag coeff., land')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'cfml', 'units', c='-')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    ! (from vdiff.f90); local variable converted to pointer
+    CALL new_channel_object(status, modstr,  'cfmw', p2=cfmw, reprid=reprid)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'cfmw', &
+         'long_name', c='momentum drag coeff., water')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'cfmw', 'units', c='-')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    ! (from vdiff.f90); local variable converted to pointer
+    CALL new_channel_object(status, modstr,  'cfmi', p2=cfmi, reprid=reprid)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'cfmi', &
+         'long_name', c='momentum drag coeff., ice')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'cfmi', 'units', c='-')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    ! (from vdiff.f90); local variable converted to pointer
+    ! pressure thickness terms over land used to calculate momentum and
+    ! heat exchange. See page 48, equations 3.3.3.2.b and 3.3.3.3.a in
+    ! DKRZ Report No. 6: The ECHAM3 Atmospheric General Circulation Model,
+    ! http://www.mpimet.mpg.de/en/extra/models/echam/echam3_DKRZ-ReportNo.6.pdf
+    CALL new_channel_object(status, modstr,  'cfncl', p2=cfncl, reprid=reprid)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'cfncl', &
+         'long_name', c='exchange parameter, land')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'cfncl', 'units', c='kg m-2 s-1')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    ! (from vdiff.f90); local variable converted to pointer
+    ! over water
+    CALL new_channel_object(status, modstr,  'cfncw', p2=cfncw, reprid=reprid)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'cfncw', &
+         'long_name', c='exchange parameter, water')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'cfncw', 'units', c='kg m-2 s-1')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    ! (from vdiff.f90); local variable converted to pointer
+    ! over ice
+    CALL new_channel_object(status, modstr,  'cfnci', p2=cfnci, reprid=reprid)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'cfnci', &
+         'long_name', c='exchange parameter, ice')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'cfnci', 'units', c='kg m-2 s-1')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    ! (from vdiff.f90); local variable converted to pointer
+    CALL new_channel_object(status, modstr,  'ril', p2=ril, reprid=reprid)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'ril', &
+         'long_name', c='Richardson number (land)')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'ril', 'units', c='1')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    ! (from vdiff.f90); local variable converted to pointer
+    CALL new_channel_object(status, modstr,  'riw', p2=riw, reprid=reprid)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'riw', &
+         'long_name', c='Richardson number (water)')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'riw', 'units', c='1')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    ! (from vdiff.f90); local variable converted to pointer
+    CALL new_channel_object(status, modstr,  'rii', p2=rii, reprid=reprid)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'rii', &
+         'long_name', c='Richardson number (ice)')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'rii', 'units', c='1')
+    CALL channel_halt(substr, status)
+
+    !============================================
+    ! for H2OISO - start!!!!!!
+    !============================================
+    ! ------------------------------------------------------------------------
+    ! (from surface); new pointer for temp result
+    CALL new_channel_object(status, modstr,  'snc_surf', p2=snc_surf &
+         , reprid=reprid)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'snc_surf', &
+         'long_name', c='temp result of psnc in surf')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'snc_surf', 'units', c='1')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    ! (from surface); new pointer for temp result
+    CALL new_channel_object(status, modstr,  'gld_surf', p2=gld_surf &
+         , reprid=reprid)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'gld_surf', &
+         'long_name', c='temp result of pgld in surf')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'gld_surf', 'units', c='1')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    ! (from surface); local variable converted to pointer
+    CALL new_channel_object(status, modstr,  'evwsd', p2=evwsd, reprid=reprid)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'evwsd', &
+         'long_name', c='zevwsd in surf, evaporation from soil+skin reservoir')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'evwsd', 'units', c='1')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    ! (from vdiff.f90); local variable converted to pointer
+    CALL new_channel_object(status, modstr,  'qsl', p2=qsl, reprid=reprid)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'qsl', &
+         'long_name', c='hum. sat. over land')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'qsl', 'units', c='1')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    ! (from vdiff.f90); local variable converted to pointer
+    CALL new_channel_object(status, modstr,  'qsw', p2=qsw, reprid=reprid)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'qsw', &
+         'long_name', c='hum. sat. over water')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'qsw', 'units', c='1')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    ! (from vdiff.f90); local variable converted to pointer
+    CALL new_channel_object(status, modstr,  'qsi', p2=qsi, reprid=reprid)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'qsi', &
+         'long_name', c='hum. sat. over ice')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'qsi', 'units', c='1')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    ! (from vdiff.f90); local variable converted to pointer
+    CALL new_channel_object(status, modstr,  'phum', p2=phum, reprid=reprid)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'phum', &
+         'long_name', c='some humidity, look up zhum in vdiff')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'phum', 'units', c='1')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    ! (from vdiff.f90); local variable converted to pointer
+    CALL new_channel_object(status, modstr,  'chl', p2=chl, reprid=reprid)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'chl', &
+         'long_name', c='look up zchl in vdiff')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'chl', 'units', c='1')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    ! (from vdiff.f90); local variable converted to pointer
+    CALL new_channel_object(status, modstr,  'cfhl', p2=cfhl, reprid=reprid)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'cfhl', &
+         'long_name', c='look up zcfhl in vdiff')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'cfhl', 'units', c='1')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    ! (from vdiff.f90); local variable converted to pointer
+    CALL new_channel_object(status, modstr,  'cfhw', p2=cfhw, reprid=reprid)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'cfhw', &
+         'long_name', c='look up zcfhw in vdiff')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'cfhw', 'units', c='1')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    ! (from vdiff.f90); local variable converted to pointer
+    CALL new_channel_object(status, modstr,  'cfhi', p2=cfhi, reprid=reprid)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'cfhi', &
+         'long_name', c='look up zcfhi in vdiff')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'cfhi', 'units', c='1')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    ! (from vdiff.f90); local variable converted to pointer
+    CALL new_channel_object(status, modstr,  'qslnew', p2=qslnew, reprid=reprid)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'qslnew', &
+         'long_name', c='new hum. sat. over land')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'qslnew', 'units', c='1')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    ! (from vdiff); variable converted to pointer
+    CALL new_channel_object(status, modstr,  'cair', p2=cair, reprid=reprid)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'cair', &
+         'long_name', c='vapour coefficient zcair in vdiff')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'cair', 'units', c='1')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    ! (from cloud_si); variable converted to pointer
+    CALL new_channel_object(status, modstr,  'nvb_tmp', p2=nvb_tmp &
+         , reprid=reprid)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'nvb_tmp', &
+         'long_name' &
+         , c='additional pointer to store temp result of invb in cloud_si.f90')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'nvb_tmp', 'units', c='1')
+    CALL channel_halt(substr, status)
+    !============================================
+    ! for H2OISO - end!!!!!!
+    !============================================
+
+    ! ------------------------------------------------------------------------
+    ! (from vdiff.f90); not convertible, rank is lower than local
+    CALL new_channel_object(status, modstr,  'tvir', p2=tvir, reprid=reprid)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'tvir', &
+         'long_name', c='surface virtual temperature')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'tvir', 'units', c='K')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    ! (from vdiff.f90); local variable converted to pointer
+    CALL new_channel_object(status, modstr,  'tvl', p2=tvl, reprid=reprid)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'tvl', &
+         'long_name', c='surface virtual temperature (land)')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'tvl', 'units', c='K')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    ! (from vdiff.f90); local variable converted to pointer
+    CALL new_channel_object(status, modstr,  'tvw', p2=tvw, reprid=reprid)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'tvw', &
+         'long_name', c='surface virtual temperature (water)')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'tvw', 'units', c='K')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    ! (from vdiff.f90); local variable converted to pointer
+    CALL new_channel_object(status, modstr,  'tvi', p2=tvi, reprid=reprid)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'tvi', &
+         'long_name', c='surface virtual temperature (ice)')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'tvi', 'units', c='K')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    ! (from vdiff.f90); local variable converted to pointer
+    ! output from vdiff required for ONEMIS, ...
+    CALL new_channel_object(status, modstr,  'srfl', p2=srfl, reprid=reprid)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'srfl', &
+         'long_name', c='net surface radiative flux')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'srfl', 'units', c='W m-2')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    ! (from vdiff.f90); not convertible
+    CALL new_channel_object(status, modstr,  'fws', p2=fws, reprid=reprid)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'fws', &
+         'long_name', c='soil moisture stress function')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'fws', 'units', c='-')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    ! (from vdiff.f90); not convertible
+    CALL new_channel_object(status, modstr,  'rco_leaf', &
+         p2=rco_leaf, reprid=reprid)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'rco_leaf', &
+         'long_name', c='leaf stomatal resistance')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'rco_leaf', 'units', c='s m-1')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    ! (from vdiff.f90); not convertible
+    CALL new_channel_object(status, modstr,  'rh_2m' &
+         , p2=rh_2m, reprid=reprid, lrestreq=.TRUE.)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'rh_2m', &
+         'long_name', c='relative humidity at 2m')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'rh_2m', 'units', c='-')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    ! (from vdiff.f90); not convertible
+    CALL new_channel_object(status, modstr,  'zust' &
+         , p2=zust_2d, reprid=reprid, lrestreq=.TRUE.)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'zust', &
+         'long_name', c='surface friction velocity')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'zust', 'units', c='m s-1')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    ! (from vdiff.f90); not convertible
+    CALL new_channel_object(status, modstr, 'heat', &
+         p2=zsenkf_2d, reprid=reprid, lrestreq=.TRUE.)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'heat', &
+         'long_name', c='surface kinematic heat flux')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'heat', 'units', c='K m/s')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    ! (from vdiff.f90); not convertible
+    CALL new_channel_object(status, modstr, 'qflx', &
+         p2=zlatkf_2d, reprid=reprid, lrestreq=.TRUE.)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'qflx', &
+         'long_name', c='surface kinematic moisture flux')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'qflx', 'units', c='m s-1')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    ! (from vdiff.f90); not convertible
+    CALL new_channel_object(status, modstr,  'cdh', p2=zcdh_2d, reprid=reprid)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'cdh', &
+         'long_name', c='transfer coefficient for heat exchange ')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'cdh', 'units', c='-')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    ! calculated in SURFACE, required in HD
+!qqq this should be moved to SURFACE, and then coupled in HD from there
+!    (with get_channel_object)
+    CALL new_channel_object(status, modstr,  'aros', &
+         p2=aros_2d, reprid=reprid, lrestreq=.TRUE.)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'aros', &
+         'long_name', c='atmospheric runoff')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'aros', 'units', c='m')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    ! calculated in SURFACE, required in HD
+!qqq this should be moved to SURFACE, and then coupled in HD from there
+!    (with get_channel_object)
+    CALL new_channel_object(status, modstr,  'adrain', &
+         p2=adrain_2d, reprid=reprid, lrestreq=.TRUE.)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'adrain', &
+         'long_name', c='atmospheric drainage')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'adrain', 'units', c='m')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    ! calculated by SURFACE, required in HD
+!qqq this should be moved to SURFACE, and then coupled in HD from there
+!    (with get_channel_object)
+    CALL new_channel_object(status, modstr,  'apmecal', &
+         p2=apmecal_2d, reprid=reprid, lrestreq=.TRUE.)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'apmecal', &
+         'long_name', c='(p - e) at glacier points')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'apmecal', 'units', c='m')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    CALL new_channel_object(status, modstr,  'disch', &
+         p2=disch_2d, reprid=reprid, lrestreq=.TRUE.)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'disch', &
+         'long_name', &
+         c='inflow on ocean grid (without ice melting [calvin model])')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'disch', 'units', c='m/s')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    ! qqq to be created in rad and read in A2O with
+    ! get_channel_object (already present in A2O)
+    CALL new_channel_object(status, modstr,  'radflxw', &
+         p2=radflxw_2d, reprid=reprid, lrestreq=.TRUE.)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'radflxw', &
+         'long_name', c='radiation flux (lw + sw) over water')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'radflxw', 'units', c='W m-2')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    ! calculated in CLOUD, required for SURFACE and physc
+    CALL new_channel_object(status, modstr,  'rsfl_2d', &
+         p2=rsfl_2d, reprid=reprid, lrestreq=.TRUE.)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'rsfl_2d', &
+         'long_name', c='large-scale rain rate')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'rsfl_2d', 'units', c='kg m-2 s-1')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    ! calculated in CONVECT, required for SURFACE and physc
+    CALL new_channel_object(status, modstr,  'rsfc_2d', &
+         p2=rsfc_2d, reprid=reprid, lrestreq=.TRUE.)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'rsfc_2d', &
+         'long_name', c='convective rain rate')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'rsfc_2d', 'units', c='kg m-2 s-1')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    ! calculated in CLOUD, required for SURFACE and physc
+    CALL new_channel_object(status, modstr,  'ssfl_2d', &
+         p2=ssfl_2d, reprid=reprid, lrestreq=.TRUE.)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'ssfl_2d', &
+         'long_name', c='large-scale snow rate')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'ssfl_2d', 'units', c='kg m-2 s-1')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    ! calculated in CONVECT, required for SURFACE and physc
+    CALL new_channel_object(status, modstr,  'ssfc_2d', &
+         p2=ssfc_2d, reprid=reprid, lrestreq=.TRUE.)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'ssfc_2d', &
+         'long_name', c='convective snow rate')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'ssfc_2d', 'units', c='kg m-2 s-1')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    ! (from physc.f90); local variable converted to pointer
+    ! calculated in vdiff
+    CALL new_channel_object(status, modstr,  'qflux', &
+         p2=qflux, reprid=reprid, lrestreq=.TRUE.)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'qflux', &
+         'long_name', c='moisture flux at the surface')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'qflux', 'units', c='kg m-2 s-1')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    CALL new_channel_object(status, modstr,  'rho_surf', &
+         p2=rho_surf, reprid=reprid)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'rho_surf', &
+         'long_name', c='air density at the surface')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'rho_surf', 'units', c='kg m-3')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    ! (from physc.f90); local variable converted to pointer
+    CALL new_channel_object(status, modstr,  'tsurf', &
+         p2=tsurf_2d, reprid=reprid, lrestreq=.TRUE.)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'tsurf', &
+         'long_name', c='surface temperature')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'tsurf', 'units', c='K')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    ! (from physc.f90); local variable converted to pointer
+    CALL new_channel_object(status, modstr,  'icecov', &
+         p2=icecov, reprid=reprid)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'icecov', &
+         'long_name', c='ice cover fraction')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'icecov', 'units', c='-')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    ! (from physc.f90); local variable converted to pointer
+    CALL new_channel_object(status, modstr,  'seacov', &
+         p2=seacov, reprid=reprid)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'seacov', &
+         'long_name', c='sea cover fraction')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'seacov', 'units', c='-')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    ! (from physc.f90); local variable converted to pointer
+    CALL new_channel_object(status, modstr,  'landcov', &
+         p2=landcov, reprid=reprid)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'landcov', &
+         'long_name', c='land cover fraction')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'landcov', 'units', c='-')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    ! (from physc.f90); not convertible
+    CALL new_channel_object(status, modstr,  'prc',  &
+         p2=prc, reprid=reprid, lrestreq=.TRUE.)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'prc', &
+         'long_name', c='convective precipitation')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'prc', 'units', c='m')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    ! (from physc.f90); not convertible
+    CALL new_channel_object(status, modstr,  'prl', &
+         p2=prl, reprid=reprid, lrestreq=.TRUE.)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'prl', &
+         'long_name', c='large-scale precipitation')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'prl', 'units', c='m')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    ! (from physc.f90); local variable converted to pointer
+    CALL new_channel_object(status, modstr,  'cvs', p2=cvs, reprid=reprid)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'cvs', 'long_name', c='snow cover')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'cvs', 'units', c='fraction')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    ! (from physc.f90); local variable converted to pointer
+    CALL new_channel_object(status, modstr,  'cvsc', p2=cvsc, reprid=reprid)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'cvsc', 'long_name', &
+         c='snow covered canopy')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'cvsc', 'units', c='fraction')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    ! (from physc.f90); local variable converted to pointer
+    CALL new_channel_object(status, modstr,  'cvw', p2=cvw, reprid=reprid)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'cvw', &
+         'long_name', c='wet skin fraction')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'cvw', 'units', c='fraction')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    ! (from physc.f90); local variable converted to pointer
+    CALL new_channel_object(status, modstr,  'tslnew', &
+         p2=tslnew, reprid=reprid)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'tslnew', &
+         'long_name', c='land surface temperature for sensible heat flux')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'tslnew', 'units', c='K')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    ! calculated in RAD as input for vdiff (in physc.f90)
+    CALL new_channel_object(status, modstr,  'srfl_physc', &
+         p2=srfl_2d, reprid=reprid)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'srfl_physc', &
+         'long_name', c='solar surface flux')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'srfl_physc', 'units', c='W m-2')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    ! (from physc.f90); local variable converted to pointer
+    CALL new_channel_object(status, modstr,  'cvsi', &
+         p2=cvsi, reprid=reprid)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'cvsi', &
+         'long_name', c='snow cover ice')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'cvsi', 'units', c='fraction')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    CALL new_channel_object(status, modstr,  'fsnet', &
+         p2=fsnet, reprid=reprid)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'fsnet', &
+         'long_name', c='net surface flux')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'fsnet', 'units', c='W m-2')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+
+    ! ########################################################################
+    ! ----------------------------- GP_3D_MID --------------------------------
+    ! ########################################################################
+    CALL get_representation_id(status, 'GP_3D_MID', reprid)
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    ! --- CHANNEL OBJECT REFERENCES ------------------------------------------
+    ! ------------------------------------------------------------------------
+    ! wind speed u-component
+    CALL new_channel_object(status, modstr,  'um1', p3=um1_3d, reprid=reprid)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'um1', 'long_name', c= 'u-wind')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'um1', 'units', c='m s-1')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'um1', 'positive', c='eastward')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    ! wind speed v-component
+    CALL new_channel_object(status, modstr,  'vm1', p3=vm1_3d, reprid=reprid)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'vm1', 'long_name', c= 'v-wind')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'vm1', 'units', c='m s-1')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'vm1', 'positive', c='northward')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    CALL new_channel_object_reference(status, 'g3b', 'aclc', modstr, 'aclc')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'aclc', &
+         'long_name', c='large scale cloud cover')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'aclc', 'units', c='-')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    CALL new_channel_object_reference(status, 'g3b', 'acdnc', modstr, 'acdnc')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    !
+    ! ------------------------------------------------------------------------
+    ! --- NEW CHANNEL OBJECTS ------------------------------------------------
+    ! ------------------------------------------------------------------------
+    ! (from main_data_global_start)
+    !                   pointer
+    ! pressure at middle of box ("full level pressure")
+    CALL new_channel_object(status, modstr,  'press', &
+         p3=press_3d, reprid=reprid)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'press', 'long_name', c='pressure')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'press', 'units', c='Pa')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    ! (from vdiff.f90); local variable converted to pointer
+    CALL new_channel_object(status, modstr,  'tpot', &
+         p3=tpot_3d, reprid=reprid, lrestreq=.TRUE.)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'tpot', &
+         'long_name', c='potential temperature')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'tpot', 'units', c='K')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    CALL new_channel_object(status, modstr,  'tpoteq', &
+         p3=tpoteq_3d, reprid=reprid, lrestreq=.true.)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'tpoteq', &
+         'long_name', c='equivalent potential temperature')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'tpoteq', 'units', c='K')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    CALL new_channel_object(status, modstr,  'tpoteq2', &
+         p3=tpoteq2_3d, reprid=reprid, lrestreq=.true.)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'tpoteq2', &
+         'long_name', c='equivalent potential temperature simple')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'tpoteq2', 'units', c='K')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    CALL new_channel_object_reference(status, 'g1a', 'vom1', modstr, 'vom1')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'vom1', &
+         'long_name', c='vorticity')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'vom1', 'units', c='s-1')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    ! (from vdiff.f90); not convertible
+    CALL new_channel_object(status, modstr,  'rinum', &
+         p3=rinum_3d, reprid=reprid, lrestreq=.TRUE.)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'rinum', &
+         'long_name', c='bulk Richardson number')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'rinum', 'units', c='-')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    ! (from vdiff.f90); local variable converted to pointer
+    CALL new_channel_object(status, modstr,  'vdiffp', &
+         p3=vdiffp, reprid=reprid)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'vdiffp', &
+         'long_name', c='rate of change of q due to vdiff scheme')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'vdiffp', 'units', c='1/s')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    ! (from vdiff.f90); local variable converted to pointer
+    CALL new_channel_object(status, modstr,  'vmixtau', &
+         p3=vmixtau, reprid=reprid)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'vmixtau', &
+         'long_name', c='inverse mixing timescale for vertical turbulence')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'vmixtau', 'units', c='1/s')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    ! (from physc.f90); pointer already used
+!qqq check, if this is still required here and connot be moved to CONVECT
+!    (OR CLOUD); in physc zilab is only set to zero, if bybassed
+    CALL new_channel_object(status, modstr,  'ilab', p3=ilab, reprid=reprid)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'ilab', &
+         'long_name', c='index: below or in convective cloud')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'ilab', 'units', c='-')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    ! (from physc.f90); pointer already used
+!qqq this should potentially be moved to CLOUD or CONVECT (where it is
+!    calculated (and coupled correspondingly in CONVECT or CLOUD)
+!    Note: the usage on physc.f90 is obsolete (zqtec is only used #ifndef MESSY)
+    CALL new_channel_object(status, modstr,  'qtec', p3=qtec, reprid=reprid)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'qtec', &
+         'long_name', c='convective detrained humidity')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'qtec', 'units', c='kg/kg')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    ! (from physc.f90); pointer already used
+    CALL new_channel_object(status, modstr,  'xtecl', p3=xtecl, reprid=reprid)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'xtecl', &
+         'long_name', c='convective detrained liquid')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'xtecl', 'units', c='kg/kg')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    ! (from physc.f90); pointer already used
+    CALL new_channel_object(status, modstr,  'xteci', p3=xteci, reprid=reprid)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'xteci', &
+         'long_name', c='convective detrained ice')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'xteci', 'units', c='kg/kg')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    ! (from physc.f90); pointer already used
+    CALL new_channel_object(status, modstr,  'xtecnl', p3=xtecnl, reprid=reprid)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'xtecnl', &
+         'long_name', c='convective detrained liquid numbers')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'xtecnl', 'units', c='1/kg')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    ! (from physc.f90); pointer already used
+    CALL new_channel_object(status, modstr,  'xtecni', p3=xtecni, reprid=reprid)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'xtecni', &
+         'long_name', c='convective detrained ice')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'xtecni', 'units', c='1/kg')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    ! (from physc.f90, now from main_data_global_start)
+    ! copy; only for output
+    CALL new_channel_object(status, modstr,  'tm1', &
+         p3=tm1_3d, reprid=reprid, lrestreq=.TRUE.)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'tm1', &
+         'long_name', c='dry air temperature (tm1)')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'tm1', 'units', c='K')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    CALL new_channel_object_reference(status, 'scnbuf', 'tte'//scb &
+         , modstr, 'tte')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'tte', &
+         'long_name', c='dry air temperature tendency (tte)')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'tte', 'units', c='K s-1')
+    CALL channel_halt(substr, status)
+    CALL get_channel_object(status, modstr, 'tte', p3=tte_3d)
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    ! (from physc.f90); local variable (from mo_tmp_buffer.f90)  converted to
+    !                   pointer
+    CALL new_channel_object(status, modstr,  'geopot', &
+         p3=geopot_3d, reprid=reprid, lrestreq=.TRUE.)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'geopot', &
+         'long_name', c='geopotential')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'geopot', 'units', c='m2 s-2')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    ! (from physc.f90, now from main_data_global_start)
+    ! copy; only for output
+    CALL new_channel_object(status, modstr,  'qm1', p3=qm1_3d, reprid=reprid)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'qm1', &
+         'long_name', c='specific humidity (qm1)')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'qm1', 'units', c='kg kg-1')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    CALL new_channel_object_reference(status, 'scnbuf', 'qte'//scb &
+         , modstr, 'qte')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'qte', &
+         'long_name', c='specific humidity tendency (qte)')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'qte', 'units', c='kg kg-1 s-1')
+    CALL channel_halt(substr, status)
+    CALL get_channel_object(status, modstr, 'qte', p3=qte_3d)
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    ! (from physc.f90, now from main_data_global_start)
+    ! copy; only for output
+    CALL new_channel_object(status, modstr,  'xlm1', p3=xlm1_3d, reprid=reprid)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'xlm1', &
+         'long_name', c='cloud water (xlm1)')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'xlm1','units', c='kg kg-1')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    CALL new_channel_object_reference(status, 'scnbuf', 'xlte'//scb &
+         , modstr, 'xlte')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'xlte', &
+         'long_name', c='cloud water tendency (xlte)')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'xlte', 'units', c='kg kg-1 s-1')
+    CALL channel_halt(substr, status)
+    CALL get_channel_object(status, modstr, 'xlte', p3=xlte_3d)
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    ! (from physc.f90, now from main_data_global_start)
+    ! copy; only for output
+    CALL new_channel_object(status, modstr,  'xim1', p3=xim1_3d, reprid=reprid)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'xim1', &
+         'long_name', c='cloud ice (xim1)')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'xim1', 'units', c='kg kg-1')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    CALL new_channel_object_reference(status, 'scnbuf', 'xite'//scb &
+         , modstr, 'xite')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'xite', &
+         'long_name', c='cloud ice tendency (xite)')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'xite', 'units', c='kg kg-1 s-1')
+    CALL channel_halt(substr, status)
+    CALL get_channel_object(status, modstr, 'xite', p3=xite_3d)
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    ! ------------------------------------------------------------------------
+    ! (from dyn.f90); local variable converted to pointer
+    CALL new_channel_object(status, modstr, 'tvirt', &
+         p3=tvirt_3d, reprid=reprid, lrestreq=.TRUE.)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'tvirt', &
+         'long_name', c='virtual temperature')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'tvirt', 'units', c='degC')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    CALL new_channel_object(status, modstr, 'rhum', &
+         p3=rhum_3d, reprid=reprid, lrestreq=.TRUE.)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'rhum', &
+         'long_name', c='relative humidity')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'rhum', 'units', c='%')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    CALL new_channel_object(status, modstr,  'rho_air_dry', &
+         p3=rho_air_dry_3d, reprid=reprid)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'rho_air_dry', 'long_name' &
+         , c='density of dry air')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'rho_air_dry', 'units', c='kg/m^3')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+
+    ! ########################################################################
+    ! ----------------------------- GP_3D_INT --------------------------------
+    ! ########################################################################
+    CALL get_representation_id(status, 'GP_3D_INT', reprid)
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    ! --- CHANNEL OBJECT REFERENCES ------------------------------------------
+    ! ------------------------------------------------------------------------
+    !
+    ! ------------------------------------------------------------------------
+    ! --- NEW CHANNEL OBJECTS ------------------------------------------------
+    ! ------------------------------------------------------------------------
+    ! (from main_data_global_start)
+    ! pressure at level interfaces ("half level pressure")
+    CALL new_channel_object(status, modstr,  'pressi', &
+         p3=pressi_3d, reprid=reprid, lrestreq=.TRUE.)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'pressi', &
+         'long_name', c='interface pressure')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'pressi', 'units', c='Pa')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    ! (from physc.f90); local variable (from mo_tmp_buffer.f90)  converted to
+    !                   pointer
+    ! geopotential height at interface below current level
+    CALL new_channel_object(status, modstr,  'geopoti', &
+         p3=geopoti_3d, reprid=reprid, lrestreq=.TRUE.)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'geopoti', &
+         'long_name', c='interface geopotential')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'geopoti', 'units', c='m2 s-2')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    ! (from scan1.f90); local variable converted to pointer
+    CALL new_channel_object(status, modstr, 'etadot', &
+         p3=etadot_3d, reprid=reprid, lrestreq=.TRUE.)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'etadot', &
+         'long_name', c='vertical wind velocity')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'etadot', 'units', c='1 s-1')
+    CALL channel_halt(substr, status)
+
+    !============================================
+    ! for H2OISO - start!!!!!!
+    !============================================
+    ! ------------------------------------------------------------------------
+    ! (from vdiff.f90); local variable converted to pointer
+    CALL new_channel_object(status, modstr,  'cfh', p3=cfh, reprid=reprid)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'cfh', &
+         'long_name', c='eddy diffusivity K_h')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'cfh', 'units', c='m2 s-1')
+    CALL channel_halt(substr, status)
+    ! (from vdiff.f90); local variable converted to pointer
+    CALL new_channel_object(status, modstr,  'cfm', p3=cfm, reprid=reprid)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'cfm', &
+         'long_name', c='eddy viscosity K_m')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'cfm', 'units', c='m2 s-1')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    ! (from vdiff.f90); local variable converted to pointer
+    CALL new_channel_object(status, modstr,  'ebsh', p3=ebsh, reprid=reprid)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'ebsh', &
+         'long_name', c='look up zebsh in vdiff')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'ebsh', 'units', c='1')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    ! (from cloud_si); pointer to store temporary result
+    CALL new_channel_object(status, modstr,  'betaa_tmp', p3=betaa_tmp &
+         , reprid=reprid)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'betaa_tmp', &
+         'long_name',  &
+         c='additional pointer to store temp result of zbetaa in cloud_si.f90')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'betaa_tmp', 'units', c='1')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    ! (from cloud_si); pointer to store temporary result
+    CALL new_channel_object(status, modstr,  'betab_tmp', p3=betab_tmp &
+         , reprid=reprid)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'betab_tmp', &
+         'long_name' &
+       , c='additional pointer to store temp result of zbetab in cloud_si.f90')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'betab_tmp', 'units', c='1')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+    ! (from cloud_si); pointer to store temporary result
+    CALL new_channel_object(status, modstr,  'betass_tmp', p3=betass_tmp &
+         , reprid=reprid)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'betass_tmp', &
+         'long_name' &
+      , c='additional pointer to store temp result of zbetass in cloud_si.f90')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'betass_tmp', 'units', c='1')
+    CALL channel_halt(substr, status)
+    !============================================
+    ! for H2OISO - end!!!!!!
+    !============================================
+
+    ! ------------------------------------------------------------------------
+    CALL new_channel_object(status, modstr, 'sigmadot', &
+         p3=sigmadot, reprid=reprid, lrestreq=.TRUE.)
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'sigmadot', &
+         'long_name', c='vertical wind velocity in sigma vertical coordinate')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'sigmadot', 'units', c='1 s-1')
+    CALL channel_halt(substr, status)
+    ! ------------------------------------------------------------------------
+
+    ! ------------------------------------------------------------------------
+    ! SPECIAL FOR ECHAM5 NUDGING, TO BE SAVED OVER THE RESTART
+    ! (see mo_nudging_io.f90)
+    IF (lnudge) THEN
+       CALL get_representation_id(status, 'SCALAR', reprid)
+       CALL channel_halt(substr, status)
+
+       CALL new_channel_object(status, 'nudg', 'rndgcount', &
+            p0 = rndgcount, reprid=reprid, lrestreq=.TRUE.)
+       CALL channel_halt(substr, status)
+
+       CALL new_channel_object(status, 'nudg', 'rndtsc', &
+            p0 = rndtsc, reprid=reprid, lrestreq=.TRUE.)
+       CALL channel_halt(substr, status)
+    END IF
+    ! ------------------------------------------------------------------------
+
+    ! ########################################################################
+    ! -------------------- NON-CHANNEL-OBJECT MEMORY -------------------------
+    ! ########################################################################
+    ! ------------------------------------------------------------------------
+    ! pxtems (from vdiff.f90); local variable converted to pointer
+    ! ! long_name = vertical flux
+    ! ! units     = (mol mol-1)*(kg m-2 s-1)
+    ALLOCATE(pxtems(dcl%nproma, 1, ntrac_gp, dcl%ngpblks))
+    ! ------------------------------------------------------------------------
+    ALLOCATE(loland_2d(dcl%nproma,dcl%ngpblks))
+    ALLOCATE(loglac_2d(dcl%nproma,dcl%ngpblks))
+    loland_2d(:,:) = .FALSE.
+    loglac_2d(:,:) = .FALSE.
+    ! ------------------------------------------------------------------------
+
+  END SUBROUTINE main_data_init_memory
+  !***************************************************************************
+
+  !***************************************************************************
+  SUBROUTINE main_data_init_coupling
+
+    USE messy_main_channel_error_bi, ONLY: channel_halt
+    USE messy_main_blather_bi,       ONLY: warning_bi
+    USE messy_main_channel,          ONLY: new_channel_object_reference    &
+                                         , new_attribute, get_channel_object &
+                                         , get_channel_info
+
+    IMPLICIT NONE
+
+    ! LOCAL
+    CHARACTER(LEN=*), PARAMETER :: substr = 'main_data_init_coupling'
+    INTEGER :: status
+    LOGICAL :: l_vd = .TRUE.
+
+    ! THIS IS SUPPOSED TO BE ONLY A TEMPORARY SOLUTION
+    ! THE OBJECTS REFERENCED HERE ARE REQUIRED IN THE
+    ! COLLECTOR (see physc.f90) for A2O/MPIOM ...
+
+    CALL get_channel_info(status, 'e5vdiff')
+    IF (status /= 0) THEN
+       CALL warning_bi( &
+            'channel e5vdiff not available, trying vertex ...' &
+            , substr)
+       CALL get_channel_info(status, 'vertex')
+       IF (status /= 0) THEN
+          CALL warning_bi(' ... vertex also not available!', substr)
+          l_vd = .FALSE.
+       ELSE
+          vdicha = 'vertex'
+       ENDIF
+    ELSE
+       vdicha = 'e5vdiff'
+    ENDIF
+
+    IF (l_vd) THEN
+
+       ! ----------------------------------------------------------------------
+       ! FOR CLOUD, ...
+       CALL new_channel_object_reference(status, &
+            TRIM(vdicha), 'tke', modstr, 'tke')
+       CALL channel_halt(substr, status)
+       CALL get_channel_object(status, modstr, 'tke', p3=tke)
+       CALL channel_halt(substr, status)
+       ! ----------------------------------------------------------------------
+       ! FOR CONVECT
+       CALL new_channel_object_reference(status, &
+            TRIM(vdicha), 'ahfs', modstr, 's_heatflux')
+       CALL channel_halt(substr, status)
+       CALL get_channel_object(status, modstr, 's_heatflux', p2=s_heatflux)
+       CALL channel_halt(substr, status)
+
+       CALL new_channel_object_reference(status, &
+            TRIM(vdicha), 'ahfl', modstr, 'l_heatflux')
+       CALL channel_halt(substr, status)
+       CALL get_channel_object(status, modstr, 'l_heatflux', p2=l_heatflux)
+       CALL channel_halt(substr, status)
+       ! ----------------------------------------------------------------------
+
+       ! FOR AIRSEA, ONEMIS, ...
+       ! qqq: They should be modified to set local pointer via
+       ! get_channel_object.
+       ! This is, however, basemodel dependent and should therefore be a
+       ! CPL namelist parameter ...
+       ! ----------------------------------------------------------------------
+       CALL new_channel_object_reference(status, &
+            TRIM(vdicha), 'wind10', modstr, 'wind10')
+       CALL channel_halt(substr, status)
+       CALL new_attribute(status, modstr, 'wind10', &
+            'long_name', c='10 m wind speed')
+       CALL channel_halt(substr, status)
+       CALL new_attribute(status, modstr, 'wind10', 'units', c='m s-1')
+       CALL channel_halt(substr, status)
+    ! ----------------------------------------------------------------------
+    END IF
+
+    ! ----------------------------------------------------------------------
+    CALL new_channel_object_reference(status, 'g3b', 'az0', modstr, 'az0')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'az0', &
+         'long_name', c='roughness length')
+    CALL channel_halt(substr, status)
+    CALL new_attribute(status, modstr, 'az0', 'units', c='m')
+    CALL channel_halt(substr, status)
+
+    CALL get_channel_object(status, modstr, 'az0', p2=az0)
+    CALL channel_halt(substr, status)
+    ! ----------------------------------------------------------------------
+
+    ! FOR A2O, ...
+    ! qqq: They should be modified to set local pointer via get_channel_object.
+    ! This is, however, basemodel dependent and should therefore be a
+    ! CPL namelist parameter ...
+    CALL new_channel_object_reference(status, &
+         'g3b', 'ocu', modstr, 'ocu')
+    CALL channel_halt(substr, status)
+    CALL get_channel_object(status, modstr, 'ocu', p2=ocu)
+    CALL channel_halt(substr, status)
+    !
+    CALL new_channel_object_reference(status, &
+         'g3b', 'ocv', modstr, 'ocv')
+    CALL channel_halt(substr, status)
+    CALL get_channel_object(status, modstr, 'ocv', p2=ocv)
+    CALL channel_halt(substr, status)
+
+  END SUBROUTINE main_data_init_coupling
+  !***************************************************************************
+
+  !***************************************************************************
+  SUBROUTINE main_data_local_start
+
+    USE messy_main_data_wiso_bi,    ONLY: main_data_wiso_local_start
+    USE messy_main_grid_def_mem_bi, ONLY: jrow
+
+    ! main_data_local_start must be called after main_grid_def_local_start
+
+    IMPLICIT NONE
+
+    CALL m_buftrow(jrow)
+
+    CALL main_data_wiso_local_start(jrow)
+
+  END SUBROUTINE main_data_local_start
+  !***************************************************************************
+
+  !***************************************************************************
+  SUBROUTINE main_data_global_start
+
+    ! Author: Patrick Joeckel, MPICH, Nov 2004
+
+    USE messy_main_grid_def_mem_bi, ONLY: nlev, nlevp1, nvclev, vct
+    USE messy_main_timer,           ONLY: timer_set_time_step_len
+    USE messy_main_blather_bi,      ONLY: error_bi
+    USE messy_main_constants_mem,   ONLY: g, M_air, R_gas &
+                                        , rd, cp_air, MM_eps
+    USE messy_main_tools,           ONLY: spec2relhum_q
+
+    USE mo_geoloc,                  ONLY: sqcst_2d
+
+    IMPLICIT NONE
+
+    ! LOCAL
+    CHARACTER(LEN=*), PARAMETER :: substr = 'main_data_global_start'
+    REAL(DP), DIMENSION(:,:),   ALLOCATABLE :: zaps
+    REAL(DP), DIMENSION(:,:,:), ALLOCATABLE :: temp
+    INTEGER                                 :: jk, zjrow, jl, status
+    INTEGER                                 :: zkproma
+    REAL(DP), DIMENSION(:,:,:), ALLOCATABLE :: zq
+    REAL(DP), DIMENSION(:,:,:), ALLOCATABLE :: tlcl
+#ifdef OASIS3MCT
+    REAL(dp)                                :: tmp1
+    INTEGER                                 :: jp
+#endif
+
+    ! set integration time step length
+    CALL timer_set_time_step_len(l2tls)
+
+#ifdef OASIS3MCT
+    WHERE (slf+alake.LT.1.0_dp)  ! not completely land AND not a lake
+       sof = 1._dp - slf - alake
+    ELSEWHERE
+       sof = 0._dp
+    ENDWHERE
+    ! MASKS FOR FESOM COUPLING: move ELSEWHERE
+    zzwat = 0._dp
+    zznow = 0._dp
+    zzice = 0._dp
+    zznoi = 0._dp
+    DO zjrow=1, dcl%ngpblks
+       IF ( zjrow == dcl%ngpblks ) THEN
+          zkproma = dcl%npromz
+       ELSE
+          zkproma = dcl%nproma
+       END IF
+       DO jp = 1,zkproma
+          IF (slf(jp,zjrow)+alake(jp,zjrow) .LT. 1.0_dp) THEN
+             tmp1 = 1._dp-seaice(jp,zjrow)
+             zznoi(jp,zjrow) = AINT(tmp1,dp)
+             zzice(jp,zjrow) = 1._dp - zznoi(jp,zjrow)
+             zznow(jp,zjrow) = AINT(seaice (jp,zjrow),dp)
+             zzwat(jp,zjrow) = 1._dp - zznow(jp,zjrow)
+          END IF
+       END DO
+    END DO
+#endif
+
+    ! Copy t-1 values for output (moved to here from physc.f90).
+    ! These are used in some submodels to calculate the initial value
+    ! x(t) = x(t-1) + xte(t)*dt. This should become obsolete with
+    ! MESSY_TENDENCY.
+    ! However, for consistency (output variables) they must be kept anyway.
+    qm1_3d(:,:,:)    = qm1(:,:,:)
+    xim1_3d(:,:,:)   = xim1(:,:,:)
+    xlm1_3d(:,:,:)   = xlm1(:,:,:)
+    tm1_3d(:,:,:)    = tm1(:,:,:)
+
+    DO zjrow=1, dcl%ngpblks
+       IF ( zjrow == dcl%ngpblks ) THEN
+          zkproma = dcl%npromz
+       ELSE
+          zkproma = dcl%nproma
+       END IF
+       DO jk=1, nlev
+          um1_3d(1:zkproma,jk,zjrow) = um1(1:zkproma,jk,zjrow) &
+               / sqcst_2d(1:zkproma,zjrow)
+          vm1_3d(1:zkproma,jk,zjrow) = vm1(1:zkproma,jk,zjrow) &
+               / sqcst_2d(1:zkproma,zjrow)
+       END DO
+    END DO
+
+    ! INIT
+    ALLOCATE(zaps(dcl%nproma, dcl%ngpblks))
+    ALLOCATE(temp(dcl%nproma, dcl%nlev, dcl%ngpblks))
+    ALLOCATE(zq(dcl%nproma, dcl%nlev, dcl%ngpblks))
+    ALLOCATE(tlcl(dcl%nproma, dcl%nlev, dcl%ngpblks))
+
+    ! CALCULATE PRESSURE
+    ! WHAT ABOUT surface pressure tendency ???
+    zaps(:,:)  = exp(alps_scb(:,:) + alpste_scb(:,:)*time_step_len) ! [Pa]
+    ! PRESSURE AT LAYER INTERFACES
+    DO jk=1, nlevp1
+       pressi_3d(:,jk,:) = vct(jk) + vct(nvclev+jk) * zaps(:,:) ! [Pa]
+    END DO
+    ! PRESSURE AT LAYER MID
+    DO jk=1, nlev
+       press_3d(:,jk,:) = (pressi_3d(:,jk,:) + pressi_3d(:,jk + 1,:)) / 2.0_DP
+    END DO
+
+    ! METRIC VOLUME OF GRID BOX
+    temp(:,:,:) = t_scb(:,:,:) + tte_scb(:,:,:)*time_step_len
+    !
+    ! CALCULATE RELATIVE HUMIDITY AND DENSITY OF DRY AIR
+    rho_air_dry_3d(:,:,:) = 1.0_dp ! init, to allow 1/rho
+    DO zjrow=1, dcl%ngpblks
+       IF ( zjrow == dcl%ngpblks ) THEN
+          zkproma = dcl%npromz
+       ELSE
+          zkproma = dcl%nproma
+       END IF
+       ! EPSILON(1.) serves to avoid water vapour content in a layer
+       !          of less than EPSILON(1.).
+       zq(1:zkproma,:,zjrow)= &
+            MAX( qm1(1:zkproma,:,zjrow) &
+            + time_step_len*qte_scb(1:zkproma,:,zjrow) &
+            , EPSILON(1._dp) )
+       ! density of dry air
+       rho_air_dry_3d(1:zkproma,:,zjrow) = ( (1.0E-03_dp * M_air) / R_gas) * &
+            press_3d(1:zkproma,:,zjrow)/temp(1:zkproma,:,zjrow)
+       !
+#ifndef MESSYIDTC
+       DO jk = 1, nlev
+          DO jl = 1, zkproma
+             CALL spec2relhum_q(status, rhum_3d(jl,jk,zjrow), zq(jl,jk,zjrow) &
+                  , temp(jl,jk,zjrow), press_3d(jl,jk,zjrow))
+             IF (status == 2) &
+                  CALL error_bi('Lookup overflow in spec2relhum_q call.', &
+                  substr)
+             IF (status /= 0) &
+                  CALL error_bi('Could not obtain valid RH value.', substr)
+          END DO
+       END DO
+#else
+       rhum_3d(:,:,zjrow) = 0._dp
+#endif
+
+       rhum_3d(1:zkproma,:,zjrow) = 100._dp * rhum_3d(1:zkproma,:,zjrow)
+    END DO
+
+    ! CALCULATE EQUIVALENT POTENTIAL TEMPERATURE (after Bolton 1980)
+    tlcl(:,:,:) = 1 / (1/(tm1_3d(:,:,:) - 55._dp) - &
+         log(rhum_3d(:,:,:)/100._dp)/2840._dp) + 55._dp
+    !
+    tpoteq_3d(:,:,:) = tm1_3d(:,:,:) * &
+         (100000._dp/press_3d(:,:,:))**(0.2854_dp *  &
+         (1.0_dp - 0.00028_dp*zq(:,:,:)*1000._dp)) * &
+         exp((3.376_dp/tlcl(:,:,:) - &
+         0.00254_dp) * zq(:,:,:) * &
+         1000._dp*(1.0_dp + 0.00081*zq(:,:,:)*1000._dp))
+
+    ! (after Stull 1988)
+    ! corrected formula
+    tpoteq2_3d(:,:,:) = (tm1_3d(:,:,:) * &
+         (1. + MM_eps*zq(:,:,:))) * (100000._dp/press_3d(:,:,:))**(rd/cp_air)
+
+    ! CLEAN UP
+    DEALLOCATE(zaps)
+    DEALLOCATE(temp)
+    DEALLOCATE(zq)
+    DEALLOCATE(tlcl)
+
+  END SUBROUTINE main_data_global_start
+  !***************************************************************************
+
+  !***************************************************************************
+  SUBROUTINE main_data_free_memory
+
+    IMPLICIT NONE
+
+    ! CLEANUP NON-CHANNEL OBJECT MEMORY
+    DEALLOCATE(pxtems)
+    DEALLOCATE(loland_2d)
+    DEALLOCATE(loglac_2d)
+
+  END SUBROUTINE main_data_free_memory
+  !***************************************************************************
+
+  ! -------------------------------------------------------------------
+  SUBROUTINE m_buftrow(krow)
+
+    USE messy_main_tracer_mem_bi, ONLY: xtte_scb=>xtte, xtte_a_scb=>xtte_a &
+                                      , L_LG
+
+    IMPLICIT NONE
+    SAVE
+
+    INTEGER, INTENT(IN) :: krow
+
+    vo            => vo_scb(:,:,krow)
+    d             => d_scb(:,:,krow)
+    t             => t_scb(:,:,krow)
+    alps          => alps_scb(:,krow)
+    u             => u_scb(:,:,krow)
+    dudl          => dudl_scb(:,:,krow)
+    v             => v_scb(:,:,krow)
+    dvdl          => dvdl_scb(:,:,krow)
+    rh            => rh_scb(:,:,krow)
+    xtte          => xtte_scb(:,:,:,krow)
+
+    ! KROW = 1 -> INIT AT START OF THE LOOP
+    IF (L_LG) THEN
+       IF (krow == 1) THEN
+          xtte_a     => xtte_a_scb(:,:,:,1)
+       ENDIF
+    END IF
+
+    alpste        => alpste_scb(:,krow)
+    alnpr         => alnpr_scb(:,:,krow)
+    alpha         => alpha_scb(:,:,krow)
+
+  END SUBROUTINE m_buftrow
+  ! -------------------------------------------------------------------
+
+!==============================================================================

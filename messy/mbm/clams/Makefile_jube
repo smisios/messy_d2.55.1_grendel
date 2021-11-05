@@ -1,0 +1,70 @@
+# -*- Makefile -*-
+##############################################################################
+
+SHELL = /bin/sh
+
+### choose Fortran90 compiler and options
+
+SYSTEM := $(shell uname)
+NODENAME := $(shell uname -n)
+NODENAME := $(subst ., ,$(NODENAME))
+NODENAME := $(word 1, $(NODENAME))
+NODENAME := $(subst jr,jr ,$(NODENAME))
+NODENAME := $(word 1, $(NODENAME))
+
+ifeq ($(SYSTEM),OSF1)
+  ### f90 on alphas
+  F90      = f90
+  F90FLAGS = -O -cpp -D_alpha
+  DEFOPT   = -D
+  MODOPT = -I
+  EXTMODCASE = asis
+  #
+  NETCDF_INCLUDE  = -I/soft/netcdf/v3.6.0b6/include
+  NETCDF_LIB      = -L/soft/netcdf/v3.6.0b6/lib -lnetcdf
+  #
+else
+  ifeq ($(SYSTEM),Linux)
+
+    # F90 = ifort
+    F90 = !scorep! mpif90
+    ### -fpp2  = run preprocessor before compiling
+    ###         (necessary because of some compiler directives in the code)
+    F90FLAGS = -fpp -O2 !gprofflag!
+    #F90FLAGS = -fpp -g -check bounds -check all -fpe0 -traceback #-warn unused -pg -zero -CB  
+    DEFOPT = -D
+    MODOPT = -I
+    EXTMODCASE = asis
+
+    ### NetCDF-Library, QHULL-Library:
+    # JURECA:
+    ifeq ($(NODENAME),jr)
+      F90FLAGS = -fpp -O2
+      NETCDF_INCLUDE  = 
+      NETCDF_LIB      = -lnetcdff -lnetcdf -lhdf5_hl -lhdf5 -lz
+      QHULLLIB = -L/homec/jicg11/jicg1108/clams_lib -lqhull
+    else
+      NETCDF_INCLUDE  = -I/usr/nfs/local/mod/mod_linux_ifc64_17.0.1
+      NETCDF_LIB      = -L/usr/nfs/local/lib/lib_linux_ifc64_17.0.1 -lnetcdff -lnetcdf -lhdf5_hl -lhdf5 -lz
+      QHULLLIB = -L/usr/nfs/local/lib/lib_linux_ifc64_17.0.1 -lqhull
+    endif
+
+  else
+	ERROR
+  endif
+endif
+
+##############################################################################
+
+### The above block defines the variables F90, F90FLAGS, INCLUDES, and
+### LIBS. The if...else...endif constructs try to find suitable values
+### for different architectures and machines. To implement the
+### boxmodel on a new machine, you can simply overwrite the above
+### definitions by activating the following block and entering
+### appropriate values:
+### F90      = 
+### F90FLAGS = 
+
+##############################################################################
+
+include main.mk

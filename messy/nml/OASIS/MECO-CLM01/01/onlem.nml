@@ -1,0 +1,255 @@
+! -*- f90 -*-
+&CPL 
+L_LG       = F  ! EMISSIONS FOR LAGRANGIAN TRACERS
+! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! !!! NOTE: SWITCH EMISSIONS VIA &RGTEVENTS BELOW !!!
+! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+! CONNECT EMISSIONS TO TRACERS
+!         M : emission method
+!             GRIDPOINT:
+!                1: -> tendency of lowest layer
+!                2: -> lower boundary condition for flux
+!             LAGRANGE:
+!                1: -> into CELLs in lowest layer
+!                2: -> into lowest CELLs within boundary layer
+!                3: -> into all CELLs in boundary layer (vertical gradient)
+!                4: -> into all CELLs in boundary layer (no vertical gradient)
+!         SC: scaling factor (NOTE: does only scale flux into tracer;
+!                                   not calculated flux)
+! SYNTAX:
+!         CHANNEL OBJECT, GP-TRACER(S),       LG-TRACER(S)         ! TYPE
+!F2T(1) = 'emis_dms_sea','DMS:M=2,SC=1.0;',   'DMS:M=2,SC=1.0;',   ! DMS
+ F2T(2) = 'O3_emflux',   'O3:M=2,SC=1.0;',    'O3:M=2,SC=1.0;',    ! O3ice
+ F2T(3) = 'CH4_emflux',  'CH4:M=2,SC=1.0;',   'CH4:M=2,SC=1.0;',   ! CH4
+ F2T(4) = 'ISOP_emflux', 'C5H8:M=2,SC=0.6;',  'C5H8:M=2,SC=0.6;',  ! VOC
+ F2T(5) = 'MTERP_emflux','MTERP:M=2,SC=1.0;', 'MTERP:M=2,SC=1.0;', ! VOC
+ F2T(6) = 'NO_emflux',   'NO:M=2,SC=0.6;',    'NO:M=2,SC=0.6;',    ! NO
+!! EXAMPLE FOR MULTIPLE TRACERS
+!F2T(6) = 'NO_emflux',   'NO:M=2,SC=0.6;NO2:M=2,SC=0.4;', '',      ! NO + NO2
+!
+!F2T( 9) = 'SO2emflux_high', 'SO2:M=1,SC=0.975;', 'SO2:M=1,SC=0.975;', ! SO2_ant
+!F2T(10) = 'SO2emflux_low',  'SO2:M=1,SC=0.975;', 'SO2:M=1,SC=0.975;', ! SO2_ant
+!
+! NOTE: the sea salt mass flux  kg / (m^2s) =>  molec./( m^2 s) => 6.022e23*/M
+! Br (released) =0.5 * 1.5e-3 * mss_xs/M(NaCl) * 6.022e23
+! M(NaCl) = 22.99+35.45 = 58.44e-3 kg/mol
+! ... Br from SS
+!F2T(11)  = 'mss_as_lsce', 'Br:M=2,SC=7.73e21;',  'Br:M=2,SC=7.73e21;',
+! ... Br from SS
+ F2T(12) = 'mss_cs_lsce', 'Br:M=2,SC=7.73e21;',   'Br:M=2,SC=7.73e21;',
+!
+!!$! Bioaerosols (Olson)
+!!$ F2T(11) = 'olson_emis_seas',      'BIOAERO_SEAS:M=2,SC=1.0;',      'BIOAERO_SEAS:M=2,SC=1.0;',      ! BIOAERO - SEAS
+!!$ F2T(12) = 'olson_emis_landice',   'BIOAERO_LANDICE:M=2,SC=1.0;',   'BIOAERO_LANDICE:M=2,SC=1.0;',   ! BIOAERO - LANDICE
+!!$ F2T(13) = 'olson_emis_deserts',   'BIOAERO_DESERTS:M=2,SC=1.0;',   'BIOAERO_DESERTS:M=2,SC=1.0;',   ! BIOAERO - DESERTS
+!!$ F2T(14) = 'olson_emis_forests',   'BIOAERO_FORESTS:M=2,SC=1.0;',   'BIOAERO_FORESTS:M=2,SC=1.0;',   ! BIOAERO - FORESTS
+!!$ F2T(15) = 'olson_emis_grasslands','BIOAERO_GRASSLANDS:M=2,SC=1.0;','BIOAERO_GRASSLANDS:M=2,SC=1.0;',! BIOAERO - GRASSLANDS
+!!$ F2T(16) = 'olson_emis_crops',     'BIOAERO_CROPS:M=2,SC=1.0;',     'BIOAERO_CROPS:M=2,SC=1.0;',     ! BIOAERO - CROPS
+!!$ F2T(17) = 'olson_emis_wetlands',  'BIOAERO_WETLANDS:M=2,SC=1.0;',  'BIOAERO_WETLANDS:M=2,SC=1.0;',  ! BIOAERO - WETLANDS
+!!$ F2T(18) = 'olson_emis_shrubs',    'BIOAERO_SHRUBS:M=2,SC=1.0;',    'BIOAERO_SHRUBS:M=2,SC=1.0;',    ! BIOAERO - SHRUBS
+!!$ F2T(19) = 'olson_emis_coastal',   'BIOAERO_COASTAL:M=2,SC=1.0;',   'BIOAERO_COASTAL:M=2,SC=1.0;',   ! BIOAERO - COASTAL
+!!$ F2T(20) = 'olson_emis_urban',     'BIOAERO_URBAN:M=2,SC=1.0;',     'BIOAERO_URBAN:M=2,SC=1.0;',     ! BIOAERO - URBAN
+!!$ F2T(21) = 'olson_emis_tundra',    'BIOAERO_TUNDRA:M=2,SC=1.0;',    'BIOAERO_TUNDRA:M=2,SC=1.0;',    ! BIOAERO - TUNDRA
+!
+!!$! Bioaerosols (MODIS)
+!!$ F2T(22) = modis_emis_water,'BIOAERM_WATER:M=2,SC=1.0;',                   'BIOAERM_WATER:M=2,SC=1.0;',         ! BIOAERM - WATER
+!!$ F2T(23) = modis_emis_ever_need,'BIOAERM_EVER_NEED:M=2,SC=1.0;',           'BIOAERM_EVER_NEED:M=2,SC=1.0;',     ! BIOAERM - EVERGREEN NEEDLE
+!!$ F2T(24) = modis_emis_ever_broad,'BIOAERM_EVER_BROAD:M=2,SC=1.0;',         'BIOAERM_EVER_BROAD:M=2,SC=1.0;',    ! BIOAERM - EVERGREEN BROADLEAF
+!!$ F2T(25) = modis_emis_deci_need,'BIOAERM_DECI_NEED:M=2,SC=1.0;',           'BIOAERM_DECI_NEED:M=2,SC=1.0;',     ! BIOAERM - DECIDUOUS NEEDLE
+!!$ F2T(26) = modis_emis_deci_broad,'BIOAERM_DECI_BROAD:M=2,SC=1.0;',         'BIOAERM_DECI_BROAD:M=2,SC=1.0;',    ! BIOAERM - DECIDUOUS BROADLEAF
+!!$ F2T(27) = modis_emis_mixed_forest,'BIOAERM_MIXED_FOREST:M=2,SC=1.0;',     'BIOAERM_MIXED_FOREST:M=2,SC=1.0;',  ! BIOAERM - MIXED FOREST
+!!$ F2T(28) = modis_emis_closed_shrubs,'BIOAERM_CLOSED_SHRUBS:M=2,SC=1.0;',   'BIOAERM_CLOSED_SHRUBS:M=2,SC=1.0;', ! BIOAERM - CLOSED SHRUBLANDS
+!!$ F2T(29) = modis_emis_open_shrubs,'BIOAERM_OPEN_SHRUBS:M=2,SC=1.0;',       'BIOAERM_OPEN_SHRUBS:M=2,SC=1.0;',   ! BIOAERM - OPEN SHRUBLANDS
+!!$ F2T(30) = modis_emis_woody_savannas,'BIOAERM_WOODY_SAVANNAS:M=2,SC=1.0;', 'BIOAERM_WOODY_SAVANNAS:M=2,SC=1.0;',! BIOAERM - WOODY SAVANNAS
+!!$ F2T(31) = modis_emis_savannas,'BIOAERM_SAVANNAS:M=2,SC=1.0;',             'BIOAERM_SAVANNAS:M=2,SC=1.0;',      ! BIOAERM - SAVANNAS
+!!$ F2T(32) = modis_emis_grasslands,'BIOAERM_GRASSLANDS:M=2,SC=1.0;',         'BIOAERM_GRASSLANDS:M=2,SC=1.0;',    ! BIOAERM - GRASSLANDS
+!!$ F2T(33) = modis_emis_perm_wetlands,'BIOAERM_WETLANDS:M=2,SC=1.0;',        'BIOAERM_WETLANDS:M=2,SC=1.0;',      ! BIOAERM - PERMANENT WETLANDS
+!!$ F2T(34) = modis_emis_crops,'BIOAERM_CROPS:M=2,SC=1.0;',                   'BIOAERM_CROPS:M=2,SC=1.0;',         ! BIOAERM - CROPS
+!!$ F2T(35) = modis_emis_urban,'BIOAERM_URBAN:M=2,SC=1.0;',                   'BIOAERM_URBAN:M=2,SC=1.0;',         ! BIOAERM - URBAN
+!!$ F2T(36) = modis_emis_crop_nature,'BIOAERM_CROP_NATURE:M=2,SC=1.0;',       'BIOAERM_CROP_NATURE:M=2,SC=1.0;',   ! BIOAERM - CROP/NATURE MIX
+!!$ F2T(37) = modis_emis_snow_ice,'BIOAERM_SNOW_ICE:M=2,SC=1.0;',             'BIOAERM_SNOW_ICE:M=2,SC=1.0;',      ! BIOAERM - SNOW AND ICE
+!!$ F2T(38) = modis_emis_barren,'BIOAERM_BARREN:M=2,SC=1.0;',                 'BIOAERM_BARREN:M=2,SC=1.0;',        ! BIOAERM - BARREN
+!!$ F2T(39) = modis_emis_unclass,'BIOAERM_UNCLASS:M=2,SC=1.0;',               'BIOAERM_UNCLASS:M=2,SC=1.0;',       ! BIOAERM - UNCLASSIFIED
+!
+!!$! MECCA-TAG/DBL
+!!$! ISOC: STABLE ISOTOPIC CARBON
+!!$! data: online emission of VOCs
+!!$!
+!!$! isotopic ISOPRENE @ d13C = -27.0 o/oo 
+!!$! d13C(emis_C5H8) = 27.5 o/oo  =>  F12=0.945922297, A12=0.6*F12=0.5675533779
+!!$! R13C(-''-) = 1.0934E-02          F13=0.054077703, A13=0.6*F13=0.0324466221
+!!$!
+!!$! isotopic ISOPRENE @ d13C = -32.2 o/oo 
+!!$! d13C(emis_C5H8) = 32.2 o/oo  =>  F12=0.9462082, A12=0.6*F12=0.5677249167
+!!$! R13C(-''-) = 1.1012E-02          F13=0.0537918, A13=0.6*F13=0.0322750833
+!!$!
+!!$  !F2T(50) = 'ISOP_emflux', 'I12C5H8:M=2,SC=0.5675533779;', 'I12C5H8:M=2,SC=0.5675533779;',
+!!$  !F2T(51) = 'ISOP_emflux', 'I13C5H8:M=2,SC=0.0324466221;', 'I13C5H8:M=2,SC=0.0324466221;',
+!!$!
+!!$! isotopic ISOPRENE @ d13C from terrestrial 13C estimation
+!!$  F2T(52) = 'I12ISOP_emflux', 'I12C5H8:M=2,SC=0.6;', 'I12C5H8:M=2,SC=0.6;',
+!!$  F2T(53) = 'I13ISOP_emflux', 'I13C5H8:M=2,SC=0.6;', 'I13C5H8:M=2,SC=0.6;',
+!!$!
+!!$! tagged ISOPRENE carbon (FCIS)
+!!$  !F2T(27) = 'FIC5H8', 'C5H8:M=2,SC=0.6;', 'C5H8:M=2,SC=0.6;',
+!
+/
+&RGTEVENTS
+! INFO: FILE, VAR, NML: specified as in OFFLEM (see offlem.nml)
+!       NO_RGT: inserted if the online emission needs no input from offline
+!               data sets
+!       TYPE  : needed to associate the input fields with the apropriate online
+!               emission (DO NOT CHANGE !!!)
+!******************************************************************************
+!******************************************************************************
+! GAS PHASE EMISSIONs
+!******************************************************************************
+!******************************************************************************
+!==============================================================================
+! DMS emissions over water
+!==============================================================================
+RG_TRIG(10) = 1, 'months', 'first', 0, 'emis_DMS_sea', 1,1,12,$START_MONTH, 'TYPE=DMS; NML=./onlem/seawater_DMS.nml'
+!------------------------------------------------------------------------------
+
+!==============================================================================
+! ozone emission over ice
+!==============================================================================
+RG_TRIG(20) = , , , ,'O3ice',1,1,1,1, 'TYPE=O3ice; NO_RGT'
+!------------------------------------------------------------------------------
+
+!==============================================================================
+! CH4 
+!==============================================================================
+RG_TRIG(30) = 1,'months','first',0,'CH4_conc',    1,1,12,$START_MONTH, 'TYPE=CH4; NML=./onlem/CH4_clim.nml'
+!------------------------------------------------------------------------------
+
+!==============================================================================
+! VOC = isoprene, monoterpene
+!==============================================================================
+RG_TRIG(40) =  1,'months','first',0,'surf_para',  1,1,12,$START_MONTH,'TYPE=VOC;NML=./onlem/surf_para_4l.nml'
+RG_TRIG(41) =  1,'months','first',0,'emis_VOC',   1,1,12,$START_MONTH,'TYPE=VOC;NML=./onlem/emis_VOC.nml'
+!------------------------------------------------------------------------------
+
+!==============================================================================
+! NO biogenic emission (including pulsing)
+!==============================================================================
+!! pls event must be called before the other NO events (can not be called alone)
+!RG_TRIG(50) = , , , ,'NO pulsing',1,1,1,1,'TYPE=NOpls; NO_RGT'
+!------------------------------------------------------------------------------
+!RG_TRIG(51) = 1,'months','first',0,'emis_NO',   1,1,12,$START_MONTH,'NML=./onlem/emis_NO.nml; TYPE=NO;'
+!RG_TRIG(52) = 1,'months','first',0,'noemclass1',1,1,12,$START_MONTH,'TYPE=NO; VAR=noemclass1; NML=./onlem/NOemisclass1.nml'
+!RG_TRIG(53) = 1,'months','first',0,'noemclass2',1,1,12,$START_MONTH,'TYPE=NO; VAR=noemclass2; NML=./onlem/NOemisclass2.nml'
+!RG_TRIG(54) = 1,'months','first',0,'lai',       1,1,12,$START_MONTH,'TYPE=NO;VAR=lai; NML=./onlem/surf_para_4l.nml'
+!------------------------------------------------------------------------------
+
+!==============================================================================
+! new NO biogenic emission (STILL UNDER DEVELOPMENT, DO NOT SWITCH ON !!! )
+!==============================================================================
+!!$RG_TRIG(25) = , , , ,'NO_yl95sl10',1,1,1,1,'TYPE=NO_yl95sl10; NO_RGT'
+!!$RG_TRIG(26) = 1,'years', 'first',0,'NOemclass_yl95sl10',1,1,1,1,'TYPE=NO_yl95sl10; VAR=NOemclass_yl95sl10; NML=./onlem/yl95sl10_NOemclass.nml'
+!!$RG_TRIG(27) = 1,'years' ,'first',0,'fertil_yl95sl10',   1,1,28,13,'TYPE=NO_yl95sl10; VAR=fertil_yl95sl10; NML=./onlem/yl95sl10_fertil.nml'
+!!$RG_TRIG(28) = 1,'months','first',0,'lai_yl95sl10',      1,1,12,$START_MONTH,'TYPE=NO_yl95sl10;VAR=lai_yl95sl10; NML=./onlem/yl95sl10_lai.nml'
+!!$RG_TRIG(29) = 1,'years', 'first',0,'root_depth',        1,1,1,1,'TYPE=NO_yl95sl10; NML=./onlem/yl95sl10_root_depth.nml'
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+!******************************************************************************
+
+!******************************************************************************
+! AEROSOL  EMISSIONs (only channel output possible)
+!******************************************************************************
+!******************************************************************************
+!==============================================================================
+! sea salt emissions
+!==============================================================================
+!------------------------------------------------------------------------------
+! seasalt emission after M. Schulz
+RG_TRIG(100) = , , , , 'SSemisMS',  1,1,1,1, 'TYPE=SS_lsce; NO_RGT'
+!------------------------------------------------------------------------------
+! seasalt emission after Monahan
+RG_TRIG(101) = , , , , 'SSemisMo', 1,1,1,1, 'TYPE=SS_monahan; NO_RGT'
+!------------------------------------------------------------------------------
+! seasalt emission by aerocom data
+!RG_TRIG(102) = 1,'days','first',0 ,'SSemisAer' ,1,1,365,1, 'TYPE=SS_aerocom; NML=./onlem/emis_SS_aerocom.nml'
+!------------------------------------------------------------------------------
+!------------------------------------------------------------------------------
+
+!==============================================================================
+! OC/BC emissions use all files of one scenario always together
+!==============================================================================
+!!------------------------------------------------------------------------------
+! first scenario (unknown input file source)
+!!-----------------------------------------------------------------------------
+RG_TRIG(110) = 1, 'years', 'first', 0, 'BC_ag',  1,1,1,1, 'TYPE=OC/BC; NML=./onlem/emis_BC_ag.nml'
+RG_TRIG(111) = 1, 'years', 'first', 0, 'BC_ant', 1,1,1,1, 'TYPE=OC/BC; NML=./onlem/emis_BC_ant.nml'
+RG_TRIG(112) = 1, 'years', 'first', 0, 'BC_wf',  1,1,1,1, 'TYPE=OC/BC; NML=./onlem/emis_BC_wf.nml'
+RG_TRIG(113) = 1, 'years', 'first', 0, 'OC_ag',  1,1,1,1, 'TYPE=OC/BC; NML=./onlem/emis_OC_ag.nml'
+RG_TRIG(114) = 1, 'years', 'first', 0, 'OC_ant', 1,1,1,1, 'TYPE=OC/BC; NML=./onlem/emis_OC_ant.nml'
+RG_TRIG(115) = 1, 'years', 'first', 0, 'OC_bge', 1,1,1,1, 'TYPE=OC/BC; NML=./onlem/emis_OC_bge.nml'
+RG_TRIG(116) = 1, 'years', 'first', 0, 'OC_wf',  1,1,1,1, 'TYPE=OC/BC; NML=./onlem/emis_OC_wf.nml'
+!!-----------------------------------------------------------------------------
+! second scenario: AEROCOM data 
+! ATTENTION: use offline emission wildfire in addition 
+!!-----------------------------------------------------------------------------
+!RG_TRIG(120) = 1, 'years', 'first', 0, 'C_ag',  1,1,1,1,             'TYPE=OC/BC; NML=./onlem/aerocom_ag.nml'
+!RG_TRIG(121) = 1, 'years', 'first', 0, 'C_ant', 1,1,1,1,             'TYPE=OC/BC; NML=./onlem/aerocom_ant.nml'
+!RG_TRIG(122) = 1, 'months', 'first', 0, 'C_bge', 1,1,12,$START_MONTH, 'TYPE=OC/BC; NML=./onlem/aerocom_bge.nml'
+!------------------------------------------------------------------------------
+
+!==============================================================================
+! Dust emissions
+!==============================================================================
+!-----------------------------------------------------------------------------
+! first emission scheme: Balkanski
+!-----------------------------------------------------------------------------
+RG_TRIG(130) = 1,'years','first',0,'emis_DU', 1,1,1,1,'TYPE=DU;NML=./onlem/emis_DU.nml'
+!-----------------------------------------------------------------------------
+! second emission scheme: Tegen
+!-----------------------------------------------------------------------------
+RG_TRIG(131) = 1,'years','first',0,'dut_mat_s2', 1,1,1,1,'TYPE=DU_tegen;NML=./onlem/emis_dut_mat_s2.nml'
+RG_TRIG(132) = 1,'years','first',0,'dut_mat_s3', 1,1,1,1,'TYPE=DU_tegen;NML=./onlem/emis_dut_mat_s3.nml'
+RG_TRIG(133) = 1,'years','first',0,'dut_mat_s4', 1,1,1,1,'TYPE=DU_tegen;NML=./onlem/emis_dut_mat_s4.nml'
+RG_TRIG(134) = 1,'years','first',0,'dut_mat_s6', 1,1,1,1,'TYPE=DU_tegen;NML=./onlem/emis_dut_mat_s6.nml'
+RG_TRIG(135) = 1,'years','first',0,'dut_mat_psrc', 1,1,1,1,'TYPE=DU_tegen;NML=./onlem/emis_dut_mat_psrc.nml'
+RG_TRIG(136) = 1,'months','first',0,'dut_k_fpar_eff', 1,1,12,$START_MONTH,'TYPE=DU_tegen;NML=./onlem/emis_dut_k_fpar_eff.nml'
+!------------------------------------------------------------------------------
+
+!==============================================================================
+! SO2 emissions and Sulphate aerosol emissions 
+!==============================================================================
+RG_TRIG(140) = 1,'months','first',0,'emis_SO2', 1,1,1,1,'TYPE=SO2_ant;NML=./onlem/emis_SO2.nml'
+!------------------------------------------------------------------------------
+
+!==============================================================================
+! Bacterial aerosol emissions
+!==============================================================================
+!RG_TRIG(145) = 80,'years','first',0,'Olson',    1,1,1,1,'TYPE=BIOO; VAR=Olson; NML=./onlem/olson.nml'
+!RG_TRIG(146) = 80,'years','first',0,'mod12c1f', 1,1,1,1,'TYPE=BIOM; VAR=mod12c1f; NML=./onlem/modis.nml'
+!------------------------------------------------------------------------------
+
+!==============================================================================
+! 13C
+!==============================================================================
+!RG_TRIG(150) = 1,'months','first',0,'terr13C', 1,1,1,1,'TYPE=terr13C;NML=./onlem/terr13C.nml'
+!------------------------------------------------------------------------------
+
+/
+&CTRL
+! ################################################################
+! THIS PART OF THE NAMELST IS ONLY RELEVANT, IF yl95sl10 is active
+! ################################################################
+! original YL95 factors:
+!noemfact_wet_v2(1) = 0., 0., 0., 0., 0., 0., 0., 0., 0.05, 0.05, 0.05, 0.36, 0.36, 0.17, 0.03, 0.03, 0.03, 0.03, 0.03, 0.06, 2.6, 0., 0., 0.,
+!noemfact_dry_v2(1) = 0., 0., 0., 0., 0., 0., 0., 0., 0.37, 0.37, 0.37, 2.65, 2.65, 1.44, 0.22, 0.22, 0.22, 0.22, 0.22, 0.40, 8.6, 0., 0., 0.,
+! mz_js_20100507: adopted factors based on Steinkamp and Lawrence (2010)
+! landcover types decidous needleleaved (17) and evergreen needleleaved 
+! forest (18) are interchanged here !!!
+!                           0   1   2   3   4     5     6     7     8     9    10    11    12    13    14    15    16    17    18    19    20    21    22    23
+noemfact_wet_yl95sl10(1)  = 0., 0., 0., 0., 0., 0.06, 0.09, 0.09, 0.01, 0.84, 0.84, 0.24, 0.42, 0.62, 0.02, 0.36, 0.36, 1.35, 0.36, 0.08, 0.44, 0.52, 0.52, 0.52,
+noemfact_dry_yl95sl10(1)  = 0., 0., 0., 0., 0., 0.43, 0.65, 0.65, 0.05, 6.17, 6.17, 1.76, 3.06, 5.28, 0.12, 2.39, 2.39, 9.88, 2.39, 0.62, 2.47, 0.,    0.,   0.,
+! which method to use for distinguishing between dry and wet soil moisture state
+! 0: precipitation history (as originally in YL95; not tested here!)
+! 1: soil water column (as previously by ONLEM and EMDEP)
+! 2: volumetric soil moisture (as described in Steinkamp and Lawrence, 2010); default
+!smoist_method = 2
+/

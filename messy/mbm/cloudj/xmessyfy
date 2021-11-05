@@ -1,0 +1,48 @@
+#! /bin/tcsh -f
+
+foreach f90file (*.f90)
+  # rename MODULE names:
+  sed -ri 's/module +cld_sub_mod/MODULE messy_cloudj_cld_sub_mod/I'   $f90file
+  sed -ri 's/module +fjx_cmn_mod/MODULE messy_cloudj_fjx_cmn_mod/I'   $f90file
+  sed -ri 's/module +fjx_init_mod/MODULE messy_cloudj_fjx_init_mod/I' $f90file
+  sed -ri 's/module +fjx_sub_mod/MODULE messy_cloudj_fjx_sub_mod/I'   $f90file
+  # rename USE statements:
+  sed -ri 's/use +cld_sub_mod/USE messy_cloudj_cld_sub_mod/I'   $f90file
+  sed -ri 's/use +fjx_cmn_mod/USE messy_cloudj_fjx_cmn_mod/I'   $f90file
+  sed -ri 's/use +fjx_init_mod/USE messy_cloudj_fjx_init_mod/I' $f90file
+  sed -ri 's/use +fjx_sub_mod/USE messy_cloudj_fjx_sub_mod/I'   $f90file
+end
+
+# rename files:
+mv cld_sub_mod.f90  messy_cloudj_cld_sub_mod.f90
+mv fjx_cmn_mod.f90  messy_cloudj_fjx_cmn_mod.f90
+mv fjx_init_mod.f90 messy_cloudj_fjx_init_mod.f90
+mv fjx_sub_mod.f90  messy_cloudj_fjx_sub_mod.f90
+
+diff -s bak/cld_sub_mod.f90  messy_cloudj_cld_sub_mod.f90
+diff -s bak/fjx_cmn_mod.f90  messy_cloudj_fjx_cmn_mod.f90
+diff -s bak/fjx_init_mod.f90 messy_cloudj_fjx_init_mod.f90
+diff -s bak/fjx_sub_mod.f90  messy_cloudj_fjx_sub_mod.f90
+diff -s bak/cloudj.f90       cloudj.f90
+diff -s bak/messy_cloudj.f90 messy_cloudj.f90
+
+# rename input files:
+mv atmos_std.dat    atmos_std.txt    
+mv FJX_j2j.dat      FJX_j2j.txt      
+mv FJX_scat-aer.dat FJX_scat-aer.txt 
+mv FJX_scat-cld.dat FJX_scat-cld.txt 
+mv FJX_scat-UMa.dat FJX_scat-UMa.txt 
+mv FJX_spec.dat     FJX_spec.txt
+
+# rename input files in fortran code:
+foreach f90file (*.f90)
+  sed -i 's/\.dat/.txt/' $f90file
+end
+diff -s bak/messy_cloudj_cld_sub_mod.f90  messy_cloudj_cld_sub_mod.f90
+diff -s bak/messy_cloudj_fjx_cmn_mod.f90  messy_cloudj_fjx_cmn_mod.f90
+diff -s bak/messy_cloudj_fjx_init_mod.f90 messy_cloudj_fjx_init_mod.f90
+diff -s bak/messy_cloudj_fjx_sub_mod.f90  messy_cloudj_fjx_sub_mod.f90
+diff -s bak/cloudj.f90                    cloudj.f90
+diff -s bak/messy_cloudj.f90              messy_cloudj.f90
+
+exit

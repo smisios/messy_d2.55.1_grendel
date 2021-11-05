@@ -1,0 +1,149 @@
+! -*- f90 -*-
+&CTRL
+! GAS
+!EMIS_TYPE(1) = 'DMS'     
+!EMIS_TYPE(2) = 'O3_ice'   
+!EMIS_TYPE(3) = 'CH4'
+!EMIS_TYPE(4) = 'VOC'     
+!EMIS_TYPE(5) = 'NO'
+EMIS_TYPE(6)  = 'OC/BC'
+! AEROSOL
+!EMIS_TYPE(10) = 'SS_lsce'
+/
+&CPL_IMPORT
+! DMS
+!imp_seawater_dms    = 'import_rgt','emis_DMS_sea_seawater_DMS'
+! CH4
+!imp_CH4_conc_clim   = 'mxl','CH4_conc'
+! VOC
+!imp_drymatter       = 'import_rgt','emis_VOC_dm'
+imp_NOemisclass1    = 'mxl','NOemisclass1'
+imp_NOemisclass2    = 'mxl','NOemisclass2'
+imp_cultiv          = 'mxl','emis_NO_cult'
+imp_fertil          = 'mxl','emis_NO_fert'
+imp_lai             = 'mxl','LAI' ! define only if not VOC
+
+! OC/BC
+!imp_BC_ag           = '',''
+!imp_OC_ant          = 'mxl',''
+/
+
+&CPL 
+L_LG       = F  ! EMISSIONS FOR LAGRANGIAN TRACERS
+! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! !!! NOTE: SWITCH EMISSIONS VIA &RGTEVENTS BELOW !!!
+! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+! CONNECT EMISSIONS TO TRACERS
+!         M : emission method
+!             GRIDPOINT:
+!                1: -> tendency of lowest layer
+!                2: -> lower boundary condition for flux
+!             LAGRANGE:
+!                1: -> into CELLs in lowest layer
+!                2: -> into lowest CELLs within boundary layer
+!                3: -> into all CELLs in boundary layer (vertical gradient)
+!                4: -> into all CELLs in boundary layer (no vertical gradient)
+!         SC: scaling factor (NOTE: does only scale flux into tracer;
+!                                   not calculated flux)
+! SYNTAX:
+!         CHANNEL OBJECT, GP-TRACER(S),       LG-TRACER(S)         ! TYPE
+!F2T(1) = 'DMS_sea_seawater_DMS','DMS_sea_seawater_DMS:M=2,SC=1.0;',   'DMS:M=2,SC=1.0;',   ! DMS
+! F2T(2) = 'O3_emflux',   'O3:M=2,SC=1.0;',    'O3:M=2,SC=1.0;',    ! O3ice
+! F2T(3) = 'CH4_emflux',  'CH4:M=2,SC=1.0;',   'CH4:M=2,SC=1.0;',   ! CH4
+! F2T(4) = 'ISOP_emflux', 'C5H8:M=2,SC=0.6;',  'C5H8:M=2,SC=0.6;',  ! VOC
+! F2T(5) = 'MTERP_emflux','MTERP:M=2,SC=1.0;', 'MTERP:M=2,SC=1.0;', ! VOC
+! F2T(6) = 'NO_emflux',   'NO:M=2,SC=0.6;',    'NO:M=2,SC=0.6;',    ! NO
+!! EXAMPLE FOR MULTIPLE TRACERS
+!F2T(6) = 'NO_emflux',   'NO:M=2,SC=0.6;NO2:M=2,SC=0.4;', '',      ! NO + NO2
+!
+!F2T( 9) = 'SO2emflux_high', 'SO2:M=1,SC=0.975;', 'SO2:M=1,SC=0.975;', ! SO2_ant
+!F2T(10) = 'SO2emflux_low',  'SO2:M=1,SC=0.975;', 'SO2:M=1,SC=0.975;', ! SO2_ant
+!
+! NOTE: the sea salt mass flux  kg / (m^2s) =>  molec./( m^2 s) => 6.022e23*/M
+! Br (released) =0.5 * 1.5e-3 * mss_xs/M(NaCl) * 6.022e23
+! M(NaCl) = 22.99+35.45 = 58.44e-3 kg/mol
+! ... Br from SS accumulation mode
+!F2T(11)  = 'mss_as_lsce', 'Br:M=2,SC=7.73e21;',  'Br:M=2,SC=7.73e21;',
+! ... Br from SS coarse mode
+!F2T(12) = 'mss_cs_lsce', 'Br:M=2,SC=7.73e21;',   'Br:M=2,SC=7.73e21;',
+!
+!!$! Bioaerosols (Olson)
+!!$ F2T(11) = 'olson_emis_seas',      'BIOAERO_SEAS:M=2,SC=1.0;',      'BIOAERO_SEAS:M=2,SC=1.0;',      ! BIOAERO - SEAS
+!!$ F2T(12) = 'olson_emis_landice',   'BIOAERO_LANDICE:M=2,SC=1.0;',   'BIOAERO_LANDICE:M=2,SC=1.0;',   ! BIOAERO - LANDICE
+!!$ F2T(13) = 'olson_emis_deserts',   'BIOAERO_DESERTS:M=2,SC=1.0;',   'BIOAERO_DESERTS:M=2,SC=1.0;',   ! BIOAERO - DESERTS
+!!$ F2T(14) = 'olson_emis_forests',   'BIOAERO_FORESTS:M=2,SC=1.0;',   'BIOAERO_FORESTS:M=2,SC=1.0;',   ! BIOAERO - FORESTS
+!!$ F2T(15) = 'olson_emis_grasslands','BIOAERO_GRASSLANDS:M=2,SC=1.0;','BIOAERO_GRASSLANDS:M=2,SC=1.0;',! BIOAERO - GRASSLANDS
+!!$ F2T(16) = 'olson_emis_crops',     'BIOAERO_CROPS:M=2,SC=1.0;',     'BIOAERO_CROPS:M=2,SC=1.0;',     ! BIOAERO - CROPS
+!!$ F2T(17) = 'olson_emis_wetlands',  'BIOAERO_WETLANDS:M=2,SC=1.0;',  'BIOAERO_WETLANDS:M=2,SC=1.0;',  ! BIOAERO - WETLANDS
+!!$ F2T(18) = 'olson_emis_shrubs',    'BIOAERO_SHRUBS:M=2,SC=1.0;',    'BIOAERO_SHRUBS:M=2,SC=1.0;',    ! BIOAERO - SHRUBS
+!!$ F2T(19) = 'olson_emis_coastal',   'BIOAERO_COASTAL:M=2,SC=1.0;',   'BIOAERO_COASTAL:M=2,SC=1.0;',   ! BIOAERO - COASTAL
+!!$ F2T(20) = 'olson_emis_urban',     'BIOAERO_URBAN:M=2,SC=1.0;',     'BIOAERO_URBAN:M=2,SC=1.0;',     ! BIOAERO - URBAN
+!!$ F2T(21) = 'olson_emis_tundra',    'BIOAERO_TUNDRA:M=2,SC=1.0;',    'BIOAERO_TUNDRA:M=2,SC=1.0;',    ! BIOAERO - TUNDRA
+!
+!F2T(40) = 'du_emflux_ai','DUST_AI:M=2,SC=1.0;',   ! DUST
+!F2T(41) = 'du_emflux_ci','DUST_CI:M=2,SC=1.0;',   ! DUST
+
+!!$! MECCA-TAG/DBL
+!!$! ISOC: STABLE ISOTOPIC CARBON
+!!$! data: online emission of VOCs
+!!$!
+!!$! isotopic ISOPRENE @ d13C = -27.0 o/oo 
+!!$! d13C(emis_C5H8) = 27.5 o/oo  =>  F12=0.945922297, A12=0.6*F12=0.5675533779
+!!$! R13C(-''-) = 1.0934E-02          F13=0.054077703, A13=0.6*F13=0.0324466221
+!!$!
+!!$! isotopic ISOPRENE @ d13C = -32.2 o/oo 
+!!$! d13C(emis_C5H8) = 32.2 o/oo  =>  F12=0.9462082, A12=0.6*F12=0.5677249167
+!!$! R13C(-''-) = 1.1012E-02          F13=0.0537918, A13=0.6*F13=0.0322750833
+!!$!
+!!$  !F2T(50) = 'ISOP_emflux', 'I12C5H8:M=2,SC=0.5675533779;', 'I12C5H8:M=2,SC=0.5675533779;',
+!!$  !F2T(51) = 'ISOP_emflux', 'I13C5H8:M=2,SC=0.0324466221;', 'I13C5H8:M=2,SC=0.0324466221;',
+!!$!
+!!$! isotopic ISOPRENE @ d13C from terrestrial 13C estimation
+!!$  F2T(52) = 'I12ISOP_emflux', 'I12C5H8:M=2,SC=0.6;', 'I12C5H8:M=2,SC=0.6;',
+!!$  F2T(53) = 'I13ISOP_emflux', 'I13C5H8:M=2,SC=0.6;', 'I13C5H8:M=2,SC=0.6;',
+!!$!
+!!$! tagged ISOPRENE carbon (FCIS)
+!!$  !F2T(27) = 'FIC5H8', 'C5H8:M=2,SC=0.6;', 'C5H8:M=2,SC=0.6;',
+
+
+/
+&CTRL_NOsl10
+! ################################################################
+! THIS PART OF THE NAMELST IS ONLY RELEVANT, IF yl95sl10 is active
+! ################################################################
+! original YL95 factors:
+!noemfact_wet_v2(1) = 0., 0., 0., 0., 0., 0., 0., 0., 0.05, 0.05, 0.05, 0.36, 0.36, 0.17, 0.03, 0.03, 0.03, 0.03, 0.03, 0.06, 2.6, 0., 0., 0.,
+!noemfact_dry_v2(1) = 0., 0., 0., 0., 0., 0., 0., 0., 0.37, 0.37, 0.37, 2.65, 2.65, 1.44, 0.22, 0.22, 0.22, 0.22, 0.22, 0.40, 8.6, 0., 0., 0.,
+! mz_js_20100507: adopted factors based on Steinkamp and Lawrence (2010)
+! landcover types decidous needleleaved (17) and evergreen needleleaved 
+! forest (18) are interchanged here !!!
+!                           0   1   2   3   4     5     6     7     8     9    10    11    12    13    14    15    16    17    18    19    20    21    22    23
+!noemfact_wet_yl95sl10(1)  = 0., 0., 0., 0., 0., 0.06, 0.09, 0.09, 0.01, 0.84, 0.84, 0.24, 0.42, 0.62, 0.02, 0.36, 0.36, 1.35, 0.36, 0.08, 0.44, 0.52, 0.52, 0.52,
+!noemfact_dry_yl95sl10(1)  = 0., 0., 0., 0., 0., 0.43, 0.65, 0.65, 0.05, 6.17, 6.17, 1.76, 3.06, 5.28, 0.12, 2.39, 2.39, 9.88, 2.39, 0.62, 2.47, 0.,    0.,   0.,
+! which method to use for distinguishing between dry and wet soil moisture state
+! 0: precipitation history (as originally in YL95; not tested here!)
+! 1: soil water column (as previously by ONLEM and EMDEP)
+! 2: volumetric soil moisture (as described in Steinkamp and Lawrence, 2010); default
+!smoist_method = 2
+/
+&CTRL_DU
+! Scale factor for wind stress threshold to adjust dust emission occurence
+! (Tegen et al., 2004) -> cuscale
+! smaller cuscale => larger emissions
+! default = 0.86 (Glaeser et al. 2012, ACP)
+! Set cuscale_in = -1. to use resolution dependent calculation of cuscale
+! cuscale_in    = -1.0
+! reasonalbe range = [0.6,1.0]
+! for values < 0.6 or > 1.0 the resolution dependent approach is used
+!cuscale_in    = 0.7
+!cuscale_in = 0.86 ! default, consistent with prior implementation
+!
+! wind velocities differ between nudged and free running simulations,
+! therefore cuscale should be different too.
+! l_nudging = T  this difference is taken into account
+! l_nudging = F  produces same cuscale for both applications
+! this switch is only of importance for cuscale_in = -1
+! here the logical is set from the runscript for consistency reasons
+!l_nudging=$LNUDGE 
+/

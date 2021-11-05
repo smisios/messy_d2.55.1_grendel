@@ -1,0 +1,291 @@
+#!@PERL@
+#
+# Usage: createMakefiles.pl
+#
+# Generate a Makefile in the modules and src directory from ECHAM.
+# To run createMakefiles, it will be necessary to modify the first line of 
+# this script to point to the actual location of Perl on your system.
+#
+# Written by Uwe Schulzweida <schulzweida@dkrz.de> June, 1999
+#
+$EXECUTABLE="mpiom.x";
+#
+$PROG=`basename "$0"`;
+#
+# Create Makefile in modules
+#
+chdir 'make' or die();
+rename "Makefile", "Makefile.old";
+open(MAKEFILE, ">Makefile")
+    or die();
+print "create new Makefile in: $dir\n";
+print MAKEFILE "# Generated automatically by $PROG \n";
+
+print MAKEFILE "PROG =\t../bin/$EXECUTABLE\n\n";
+
+print MAKEFILE "VPATH = @srcdir@/../src : @srcdir@/../src_hamocc : @srcdir@/../src_dummy  \n\n";
+
+# Source listing
+print MAKEFILE "SRCS =\t";
+@srcs = map { s:.*/::; $_ } <@srcdir@/../src/*.f90 @srcdir@/../src/*.f @srcdir@/../src/*.F @srcdir@/../src/*.c>;
+
+&PrintWords(8, 0, @srcs);
+print MAKEFILE "\n\n";
+print MAKEFILE "SRCS2 =\t";
+@srcs2 = map { s:.*/::; $_ } <@srcdir@/../src_hamocc/*.f90 *.f *.F *.c>;
+&PrintWords(8, 0, @srcs2);
+print MAKEFILE "\n\n";
+
+
+# Object listing
+@objs = @srcs;
+foreach (@objs) { s/\.[^.]+$/.o/ };
+@mobjs = @objs;
+print MAKEFILE 'OBJS := $(SRCS:.f90=.o)';
+print MAKEFILE "\n\n";
+
+# Object listing
+
+#print MAKEFILE "OBJS2 =\t";
+@objs2 = @srcs2;
+foreach (@objs2) { s/\.[^.]+$/.o/ };
+print MAKEFILE 'OBJS2 := $(SRCS2:.f90=.o)';
+print MAKEFILE "\n\n";
+
+
+# make
+#
+print MAKEFILE "all: \$(PROG)\n\n";
+print MAKEFILE "\$(PROG) : \$(OBJS) \$(OBJS2) \n";
+print MAKEFILE "\t\$(", &LanguageCompiler($ARGV[1], @srcs);
+print MAKEFILE ") \$(LDFLAGS) -o \$@ \$(OBJS) \$(OBJS2) \$(LIBS)\n\n";
+
+
+#
+# make clean
+#
+print MAKEFILE "clean:\n";
+print MAKEFILE "\trm -f \$(PROG) \$(OBJS) \$(OBJS2) *.mod i.*.L\n\n";
+#
+# Make .f90 a valid suffix
+#
+print MAKEFILE ".SUFFIXES: \$(SUFFIXES) .f90\n\n";
+#
+# .f90 -> .o
+#
+print MAKEFILE "%.o: %.f90\n";
+print MAKEFILE "\t\$(FC) \$(FCFLAGS) \$(CPPFLAGS) -c \$<\n\n";
+#
+# Dependency listings
+#
+&MakeDependsf90mod($ARGV[1],"@srcdir@/../src_hamocc","@srcdir@/../src");
+&MakeDependsf90mod($ARGV[1],"@srcdir@/../src","@srcdir@/../src_hamocc");
+
+close MAKEFILE;
+
+exit;
+
+
+# &PrintWords(current output column, extra tab?, word list); --- print words nicely
+
+sub PrintWords {
+   local($columns) = 78 - shift(@_);
+   local($extratab) = shift(@_);
+   local($wordlength);
+   #
+   print MAKEFILE @_[0];
+   $columns -= length(shift(@_));
+   foreach $word (@_) {
+      $wordlength = length($word);
+      if ($wordlength + 1 < $columns) {
+         print MAKEFILE " $word";
+         $columns -= $wordlength + 1;
+         }
+      else {
+         #
+         # Continue onto a new line
+         #
+         if ($extratab) {
+            print MAKEFILE " \\\n\t\t$word";
+            $columns = 62 - $wordlength;
+            }
+         else {
+            print MAKEFILE " \\\n\t$word";
+            $columns = 70 - $wordlength;
+            }
+         }
+      }
+   }
+
+#
+# &LanguageCompiler(compiler, sources); --- determine the correct language
+#    compiler
+#
+sub LanguageCompiler {
+   local($compiler) = &toLower(shift(@_));
+   local(@srcs) = @_;
+   #
+   if (length($compiler) > 0) {
+      CASE: {
+         grep(/^$compiler$/, ("fc", "f77")) &&
+            do { $compiler = "FC"; last CASE; };
+         grep(/^$compiler$/, ("cc", "c"))   &&
+            do { $compiler = "CC"; last CASE; };
+         $compiler = "FC";
+         }
+      }
+   else {
+      CASE: {
+         grep(/\.f90$/, @srcs)   && do { $compiler = "FC"; last CASE; };
+         grep(/\.(f|F)$/, @srcs) && do { $compiler = "FC";  last CASE; };
+         grep(/\.c$/, @srcs)     && do { $compiler = "CC";  last CASE; };
+         $compiler = "???";
+         }
+      }
+   $compiler;
+   }
+
+#
+# &toLower(string); --- convert string into lower case
+#
+sub toLower {
+   local($string) = @_[0];
+   $string =~ tr/A-Z/a-z/;
+   $string;
+   }
+
+#
+# &uniq(sorted word list); --- remove adjacent duplicate words
+#
+sub uniq {
+   local(@words);
+   foreach $word (@_) {
+      if ($word ne $words[$#words]) {
+         push(@words, $word);
+         }
+      }
+   @words;
+   }
+
+#
+# &MakeDepends(language pattern, include file sed pattern); --- dependency
+#    maker
+#
+sub MakeDepends {
+   local(@incs);
+   local($lang) = @_[0];
+   local($pattern) = @_[1];
+   local(@modules);
+   #
+   foreach $file (<${lang}>) {
+      open(FILE, $file) || warn "Cannot open $file: $!\n";
+      while (<FILE>) {
+         /$pattern/i && push(@incs, "\$(INCLUDE)/$1");
+         /^\s*use\s+([^\s,!]+)/i && push(@modules, "\$(MODULES)/$1.o");
+      }
+      if (defined @incs || defined @modules) {
+         $file =~ s/\.[^.]+$/.o/;
+         print MAKEFILE "$file: ";
+         &PrintWords(length($file) + 2, 0, @modules, @incs);
+         print MAKEFILE "\n";
+         undef @incs;
+         undef @modules;
+         }
+      }
+   }
+#
+# &MakeDependsf90(f90 compiler); --- FORTRAN 90 dependency maker
+#
+sub MakeDependsf90mod {
+   local(@dependencies);
+   local(%filename);
+   local(@incs);
+   local(@modules);
+   local($objfile);
+   $spath1=@_[1];
+   #
+   # Associate each module with the name of the file that contains it
+   #
+   foreach $file (glob("${spath1}/*.f90")) {
+      open(FILE, $file) || warn "Cannot open $file: $!\n";
+      while (<FILE>) {
+         if (/^\s*module\s+([^\s!]+)/i)
+         {
+            my $modname = lc $1;
+            ($filename{$modname} = $file) =~ s/\.f90$/.o/;
+            $filename{$modname} =~ s:.*/::;
+         }
+      }
+   }
+   $spath2=@_[2];
+   foreach $file (glob("${spath2}/*.f90")) {
+      open(FILE, $file) || warn "Cannot open $file: $!\n";
+      while (<FILE>) {
+         if (/^\s*module\s+([^\s!]+)/i)
+         {
+            my $modname = lc $1;
+             ($filename{$modname} = "$file") =~ s/\.f90$/.o/;
+            $filename{$modname} =~ s:.*/::;
+         }
+      }
+   }
+   #
+   # Print the dependencies of each file that has one or more include's or
+   # references one or more modules
+   #
+   foreach $file (<$spath1/*.f90>) {
+      ($objfile = $file) =~ s/\.f90$/.o/;
+      $objfile =~ s{.*/}{};
+      open(FILE, $file);
+      while (<FILE>) {
+         /^\s*#*include\s+["\']([^"\']+)["\']/i && push(@incs, $1);
+         /^\s*use\s+([^\s,!]+)/i && push(@modules, &toLower($1));
+         }
+
+      if (defined @incs) {
+          $jn = $#incs;
+          while ($jn >= 0) {
+             if (-e "@srcdir@/../include/$incs[$jn]") {
+                $incs[$jn] = "\$(INCLUDE)/$incs[$jn]";
+             }
+             else {
+                print "  $file: include file $incs[$jn] not found\n";
+                pop(@incs);
+             }
+             $jn--;
+          }
+      }
+      if (defined @incs && $#incs < 0) {undef @incs;}
+
+      if (defined @modules) {
+          $jn = $#modules;
+          while ($jn >= 0) {
+             if ("$objfile" eq "$filename{$modules[$jn]}") {
+#                print "  $objfile: $modules[$jn]\n";
+                pop(@modules);
+             }
+             $jn--;
+          }
+      }
+      if (defined @modules && $#modules < 0) {undef @modules;}
+
+      if (defined @incs || defined @modules) {
+         print MAKEFILE "$objfile: ";
+         undef @dependencies;
+         foreach $module (@modules) {
+            if ($filename{$module})  {
+               push(@dependencies, $filename{$module});
+            }
+            else {
+               print "  $file: module $module not found\n";
+            }
+         }
+         @dependencies = &uniq(sort(@dependencies));
+         &PrintWords(length($objfile) + 2, 0,
+                     @dependencies, &uniq(sort(@incs)));
+         print MAKEFILE "\n";
+         undef @incs;
+         undef @modules;
+         }
+      }
+   }

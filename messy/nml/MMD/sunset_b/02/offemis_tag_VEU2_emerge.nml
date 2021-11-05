@@ -1,0 +1,481 @@
+! -*- f90 -*-
+
+&CPL
+L_GP       = T  ! EMISSIONS FOR GRIDPOINT TRACERS
+L_LG       = F  ! EMISSIONS FOR LAGRANGIAN TRACERS
+l_lg_tend  = F  ! LAGRANGIAN TRACER TENDENCY AS CHANNEL OBJECT ?
+! ### SYNTAX:
+!     (SPECIFIERS MUST BE UPPERCASE !)
+! ###         GP=    Gridpoint  Emission Method (0,1,2) (SURFACE ONLY)
+!                    1: 2D (SURFACE EM.) -> lowest layer
+!                       3D (VOLUME  EM.) -> emission ON
+!                       Nx2D (MULTI LEVEL EM.) -> internally converted to 3D
+!                    SURFACE EMISSIONS ONLY:
+!                    2: lower boundary condition for flux
+!
+! ###         LG=    Lagrangian Emission Method (0,1,2,3,4)
+!                    1: 2D (SURFACE EM.)       -> into CELLs in lowest layer
+!                       3D (VOLUME  EM.)       -> emission ON
+!                       Nx2D (MULTI LEVEL EM.) -> internally converted to 3D
+!                    SURFACE EMISSIONS ONLY:
+!                    2: into lowest CELLs within boundary layer
+!                    3: into all CELLs in boundary layer (vertical gradient)
+!                    4: into all CELLs in boundary layer (no vertical gradient)
+!
+!NOTEs:  (1) Surface emission fluxes (2D) must be in  molecules m-2 s-1.
+!        (2) Volume emissions (3D)        must be in  molecules m-3 s-1.
+!        (3) Multi level emissions (Nx2D) must be in  molecules m-2 s-1.
+!        (4) For volume emissions (3D), the corresponding channel object 
+!            must be in the GP_3D_MID representation
+!        (5) The trigger for multi level emissions (Nx2D) is the presence
+!            of the channel object attribute heights
+!
+! EMISSION: 'TRACER[_SUBNAME][,scaling];...', CHANNEL NAME, CHANNEL OBJECT, 
+!           EMISSION METHOD
+!
+! LOWER BOUNDARY CONDITIONS (SEE tnudge.nml)
+!
+! ###########################################
+! DIRECT EMISSIONS
+! ###########################################
+! ---------------
+! biomass burning
+! ---------------
+EMIS_IN(20)  =  'CO;CObio',        'import_grid','BB_CO',            'GP=1'
+EMIS_IN(21)  =  'NO;NOybio',       'import_grid','BB_NO',            'GP=1'
+!!EMIS_IN(22)  =  'N2O',      '', 'import_grid','BB_N2O',           'GP=1'
+EMIS_IN(23)  =  'SO2',            'import_grid','BB_SO2',           'GP=1'
+!!EMIS_IN(24)  =  'H2',       '', 'import_grid','BB_H2',            'GP=1'
+!!EMIS_IN(25)  =  'CO2',      '', 'import_grid','BB_CO2',           'GP=1'
+!EMIS_IN(26)  =  'CH4',      '', 'import_grid','BB_CH4',           'GP=1'
+EMIS_IN(27)  =  'NH3',            'import_grid','BB_NH3',           'GP=1'
+!
+EMIS_IN(28)  =  'C2H4;NMHCbio,2',      'import_grid','BB_NMHC_C2H4',     'GP=1'
+EMIS_IN(29)  =  'C2H6;NMHCbio,2',      'import_grid','BB_NMHC_C2H6',     'GP=1'
+EMIS_IN(30)  =  'C3H6;NMHCbio,3',      'import_grid','BB_NMHC_C3H6',     'GP=1'
+EMIS_IN(31)  =  'C3H8;NMHCbio,3',      'import_grid','BB_NMHC_C3H8',     'GP=1'
+EMIS_IN(32)  =  'NC4H10;NMHCbio,4',    'import_grid','BB_NMHC_NC4H10',   'GP=1'
+EMIS_IN(33)  =  'CH3CHO;NMHCbio,2',    'import_grid','BB_NMHC_CH3CHO',   'GP=1'
+EMIS_IN(34)  =  'CH3COCH3;NMHCbio,3',  'import_grid','BB_NMHC_CH3COCH3', 'GP=1'
+EMIS_IN(35)  =  'CH3CO2H;NMHCbio,2',   'import_grid','BB_NMHC_CH3CO2H',  'GP=1'
+EMIS_IN(36)  =  'CH3OH;NMHCbio,1',     'import_grid','BB_NMHC_CH3OH',    'GP=1'
+EMIS_IN(37)  =  'HCHO;NMHCbio,1',      'import_grid','BB_NMHC_HCHO',     'GP=1'
+EMIS_IN(38)  =  'HCOOH;NMHCbio,1',     'import_grid','BB_NMHC_HCOOH',    'GP=1'
+EMIS_IN(39)  =  'MEK;NMHCbio,4',       'import_grid','BB_NMHC_MEK',      'GP=1'
+
+! --------------------------------
+! BIOGEN (not via ONLEM or AIRSEA)
+!   C2H4;C2H6;C3H6;C3H8;CH3CO2H;CH3COCH3;CH3OH;CO;HCOOH;NC4H10;
+! --------------------------------
+!
+!EMIS_IN(80)  =  'C2H4' ,   'import_grid','biogen_C2H4',      'GP=1'
+!EMIS_IN(81)  =  'C2H6' ,   'import_grid','biogen_C2H6',      'GP=1'
+!EMIS_IN(82)  =  'C3H6' ,   'import_grid','biogen_C3H6',      'GP=1'
+!EMIS_IN(83)  =  'C3H8' ,   'import_grid','biogen_C3H8',      'GP=1'
+!EMIS_IN(84)  =  'CH3CO2H', 'import_grid','biogen_CH3CO2H',   'GP=1'
+!EMIS_IN(85)  =  'CH3COCH3','import_grid','biogen_CH3COCH3',  'GP=1'
+!EMIS_IN(86)  =  'CH3OH' ,  'import_grid','biogen_CH3OH',     'GP=1'
+!EMIS_IN(87)  =  'CO' ,     'import_grid','biogen_CO',        'GP=1'
+!EMIS_IN(88)  =  'HCOOH' ,  'import_grid','biogen_HCOOH',     'GP=1'
+!EMIS_IN(89)  =  'NC4H10' , 'import_grid','biogen_NC4H10',    'GP=1'
+! op_mm_20150320 after discussion with vg also add this emissions to the soil tagging category
+EMIS_IN(80)  =  'C2H4;NMHCsoi,2' ,   'import_grid','biogen_C2H4',      'GP=1'
+EMIS_IN(81)  =  'C2H6;NMHCsoi,2' ,   'import_grid','biogen_C2H6',      'GP=1'
+EMIS_IN(82)  =  'C3H6;NMHCsoi,3' ,   'import_grid','biogen_C3H6',      'GP=1'
+EMIS_IN(83)  =  'C3H8;NMHCsoi,3' ,   'import_grid','biogen_C3H8',      'GP=1'
+EMIS_IN(84)  =  'CH3CO2H;NMHCsoi,2', 'import_grid','biogen_CH3CO2H',   'GP=1'
+EMIS_IN(85)  =  'CH3COCH3;NMHCsoi,2','import_grid','biogen_CH3COCH3',  'GP=1'
+EMIS_IN(86)  =  'CH3OH;NMHCsoi,1' ,  'import_grid','biogen_CH3OH',     'GP=1'
+EMIS_IN(87)  =  'CO;COsoi' ,     'import_grid','biogen_CO',        'GP=1'
+EMIS_IN(88)  =  'HCOOH;NMHCsoi,1' ,  'import_grid','biogen_HCOOH',     'GP=1'
+EMIS_IN(89)  =  'NC4H10;NMHCsoi,4' , 'import_grid','biogen_NC4H10',    'GP=1'
+!  
+
+
+!
+! ---------------
+! TRAFFIC EMISSIONS
+! ---------------
+!
+! AIRCRAFT (NOx); QUANTIFY; 3-D emission
+!
+EMIS_IN(95) = 'NO;NOyair' ,    'import_grid','airc_NOx_NO',               'GP=1'
+!
+! SHIP
+!
+ 
+! SHIP                                                                        
+EMIS_IN(96) = 'NO;NOyshp' ,      'import_grid','SHIP_NO',       'GP=1'
+EMIS_IN(97) = 'CO;COshp' ,       'import_grid','SHIP_CO',         'GP=1'
+EMIS_IN(98) = 'SO2' ,            'import_grid','SHIP_SO2',        'GP=1'
+EMIS_IN(99) = 'C2H4;NMHCshp,2' ,   'import_grid','SHIP_C2H4',       'GP=1'
+EMIS_IN(100) = 'C2H6;NMHCshp,2' ,   'import_grid','SHIP_C2H6',       'GP=1'
+EMIS_IN(101) = 'C3H6;NMHCshp,3',   'import_grid','SHIP_C3H6',       'GP=1'
+EMIS_IN(102) = 'C3H8;NMHCshp,3' ,   'import_grid','SHIP_C3H8',       'GP=1'
+EMIS_IN(103) = 'NC4H10;NMHCshp,4',  'import_grid','SHIP_NC4H10',     'GP=1'
+EMIS_IN(104) = 'CH3COCH3;NMHCshp,3','import_grid','SHIP_CH3COCH3',   'GP=1'
+EMIS_IN(105) = 'CH3OH;NMHCshp,1'    'import_grid','SHIP_CH3OH',      'GP=1'
+EMIS_IN(106) = 'HCHO;NMHCshp,1'     'import_grid','SHIP_HCHO',       'GP=1'
+EMIS_IN(107) = 'MEK;NMHCshp,4' ,    'import_grid','SHIP_MEK',        'GP=1'
+!EMIS_IN(281) = 'NH3' ,            'import_grid','SHIP_NH3',        'GP=1'
+
+!+++++++++++
+! Cropped IPCC emisions (for backfilling) 
+!+++++++++++
+!agr
+EMIS_IN(108) = 'NO;NOyind' ,      'import_grid','agr_NO',         'GP=1'
+EMIS_IN(109) = 'CO;COind' ,       'import_grid','agr_CO',         'GP=1'
+EMIS_IN(110) = 'SO2' ,            'import_grid','agr_SO2',        'GP=1'
+EMIS_IN(111) = 'C2H4;NMHCind,2' ,   'import_grid','agr_C2H4',       'GP=1'
+EMIS_IN(112) = 'C2H6;NMHCind,2' ,   'import_grid','agr_C2H6',       'GP=1'
+EMIS_IN(113) = 'C3H6;NMHCind,3' ,   'import_grid','agr_C3H6',       'GP=1'
+EMIS_IN(114) = 'C3H8;NMHCind,3' ,   'import_grid','agr_C3H8',       'GP=1'
+EMIS_IN(115) = 'NC4H10;NMHCind,4',  'import_grid','agr_NC4H10',     'GP=1'
+EMIS_IN(116) = 'CH3COCH3;NMHCind,3','import_grid','agr_CH3COCH3',   'GP=1'
+EMIS_IN(117) = 'CH3OH;NMHCind,1'    'import_grid','agr_CH3OH',      'GP=1'
+EMIS_IN(118) = 'HCHO;NMHCind,1'     'import_grid','agr_HCHO',       'GP=1'
+EMIS_IN(119) = 'MEK;NMHCind,4' ,    'import_grid','agr_MEK',        'GP=1'
+EMIS_IN(120) = 'NH3' ,            'import_grid','agr_NH3',        'GP=1'
+!dom
+EMIS_IN(121) = 'NO;NOyind' ,      'import_grid','dom_NO',         'GP=1'
+EMIS_IN(122) = 'CO;COind' ,       'import_grid','dom_CO',         'GP=1'
+EMIS_IN(123) = 'SO2' ,            'import_grid','dom_SO2',        'GP=1'
+EMIS_IN(124) = 'C2H4;NMHCind,2' ,   'import_grid','dom_C2H4',       'GP=1'
+EMIS_IN(125) = 'C2H6;NMHCind,2' ,   'import_grid','dom_C2H6',       'GP=1'
+EMIS_IN(126) = 'C3H6;NMHCind,3' ,   'import_grid','dom_C3H6',       'GP=1'
+EMIS_IN(127) = 'C3H8;NMHCind,3' ,   'import_grid','dom_C3H8',       'GP=1'
+EMIS_IN(128) = 'NC4H10;NMHCind,4',  'import_grid','dom_NC4H10',     'GP=1'
+EMIS_IN(129) = 'CH3COCH3;NMHCind,3','import_grid','dom_CH3COCH3',   'GP=1'
+EMIS_IN(130) = 'CH3OH;NMHCind,1'    'import_grid','dom_CH3OH',      'GP=1'
+EMIS_IN(131) = 'HCHO;NMHCind,1'     'import_grid','dom_HCHO',       'GP=1'
+EMIS_IN(132) = 'MEK;NMHCind,4' ,    'import_grid','dom_MEK',        'GP=1'
+EMIS_IN(133) = 'NH3' ,            'import_grid','dom_NH3',        'GP=1'
+!ene
+EMIS_IN(134) = 'NO;NOyind' ,      'import_grid','ene_NO',         'GP=1'
+EMIS_IN(135) = 'CO;COind' ,       'import_grid','ene_CO',         'GP=1'
+EMIS_IN(136) = 'SO2' ,            'import_grid','ene_SO2',        'GP=1'
+EMIS_IN(137) = 'C2H4;NMHCind,2' ,   'import_grid','ene_C2H4',       'GP=1'
+EMIS_IN(138) = 'C2H6;NMHCind,2' ,   'import_grid','ene_C2H6',       'GP=1'
+EMIS_IN(139) = 'C3H6;NMHCind,3' ,   'import_grid','ene_C3H6',       'GP=1'
+EMIS_IN(140) = 'C3H8;NMHCind,3' ,   'import_grid','ene_C3H8',       'GP=1'
+EMIS_IN(141) = 'NC4H10;NMHCind,4',  'import_grid','ene_NC4H10',     'GP=1'
+EMIS_IN(142) = 'CH3COCH3;NMHCind,3','import_grid','ene_CH3COCH3',   'GP=1'
+EMIS_IN(143) = 'CH3OH;NMHCind,1'    'import_grid','ene_CH3OH',      'GP=1'
+EMIS_IN(144) = 'HCHO;NMHCind,1'     'import_grid','ene_HCHO',       'GP=1'
+EMIS_IN(145) = 'MEK;NMHCind,4' ,    'import_grid','ene_MEK',        'GP=1'
+EMIS_IN(146) = 'NH3' ,            'import_grid','ene_NH3',        'GP=1'
+!ind
+EMIS_IN(147) = 'NO;NOyind' ,      'import_grid','ind_NO',         'GP=1'
+EMIS_IN(148) = 'CO;COind' ,       'import_grid','ind_CO',         'GP=1'
+EMIS_IN(149) = 'SO2' ,            'import_grid','ind_SO2',        'GP=1'
+EMIS_IN(150) = 'C2H4;NMHCind,2' ,   'import_grid','ind_C2H4',       'GP=1'
+EMIS_IN(151) = 'C2H6;NMHCind,2' ,   'import_grid','ind_C2H6',       'GP=1'
+EMIS_IN(152) = 'C3H6;NMHCind,3' ,   'import_grid','ind_C3H6',       'GP=1'
+EMIS_IN(153) = 'C3H8;NMHCind,3' ,   'import_grid','ind_C3H8',       'GP=1'
+EMIS_IN(154) = 'NC4H10;NMHCind,4',  'import_grid','ind_NC4H10',     'GP=1'
+EMIS_IN(155) = 'CH3COCH3;NMHCind,2','import_grid','ind_CH3COCH3',   'GP=1'
+EMIS_IN(156) = 'CH3OH;NMHCind,2'    'import_grid','ind_CH3OH',      'GP=1'
+EMIS_IN(157) = 'HCHO;NMHCind,1'     'import_grid','ind_HCHO',       'GP=1'
+EMIS_IN(158) = 'MEK;NMHCind,4' ,    'import_grid','ind_MEK',        'GP=1'
+EMIS_IN(159) = 'NH3' ,            'import_grid','ind_NH3',        'GP=1'
+!slv
+EMIS_IN(160) = 'NO;NOyind' ,      'import_grid','slv_NO',         'GP=1'
+EMIS_IN(161) = 'CO;COind' ,       'import_grid','slv_CO',         'GP=1'
+EMIS_IN(162) = 'SO2' ,            'import_grid','slv_SO2',        'GP=1'
+EMIS_IN(163) = 'C2H4;NMHCind,2' ,   'import_grid','slv_C2H4',       'GP=1'
+EMIS_IN(164) = 'C2H6;NMHCind,2' ,   'import_grid','slv_C2H6',       'GP=1'
+EMIS_IN(165) = 'C3H6;NMHCind,3' ,   'import_grid','slv_C3H6',       'GP=1'
+EMIS_IN(166) = 'C3H8;NMHCind,3' ,   'import_grid','slv_C3H8',       'GP=1'
+EMIS_IN(167) = 'NC4H10;NMHCind,4',  'import_grid','slv_NC4H10',     'GP=1'
+EMIS_IN(168) = 'CH3COCH3;NMHCind,3','import_grid','slv_CH3COCH3',   'GP=1'
+EMIS_IN(169) = 'CH3OH;NMHCind,1'    'import_grid','slv_CH3OH',      'GP=1'
+EMIS_IN(170) = 'HCHO;NMHCind,1'     'import_grid','slv_HCHO',       'GP=1'
+EMIS_IN(171) = 'MEK;NMHCind,4',    'import_grid','slv_MEK',        'GP=1'
+EMIS_IN(172) = 'NH3' ,            'import_grid','slv_NH3',        'GP=1'
+!wst
+EMIS_IN(173) = 'NO;NOyind' ,      'import_grid','wst_NO',         'GP=1'
+EMIS_IN(174) = 'CO;COind' ,       'import_grid','wst_CO',         'GP=1'
+EMIS_IN(175) = 'SO2' ,            'import_grid','wst_SO2',        'GP=1'
+EMIS_IN(176) = 'C2H4;NMHCind,2' ,   'import_grid','wst_C2H4',       'GP=1'
+EMIS_IN(177) = 'C2H6;NMHCind,2' ,   'import_grid','wst_C2H6',       'GP=1'
+EMIS_IN(178) = 'C3H6;NMHCind,3' ,   'import_grid','wst_C3H6',       'GP=1'
+EMIS_IN(179) = 'C3H8;NMHCind,3' ,   'import_grid','wst_C3H8',       'GP=1'
+EMIS_IN(180) = 'NC4H10;NMHCind,4',  'import_grid','wst_NC4H10',     'GP=1'
+EMIS_IN(181) = 'CH3COCH3;NMHCind,3','import_grid','wst_CH3COCH3',   'GP=1'
+EMIS_IN(182) = 'CH3OH;NMHCind,1'    'import_grid','wst_CH3OH',      'GP=1'
+EMIS_IN(183) = 'HCHO;NMHCind,1'     'import_grid','wst_HCHO',       'GP=1'
+EMIS_IN(184) = 'MEK;NMHCind,4' ,    'import_grid','wst_MEK',        'GP=1'
+EMIS_IN(185) = 'NH3' ,            'import_grid','wst_NH3',        'GP=1'
+!landtransport
+EMIS_IN(186) = 'NO;NOytra' ,      'import_grid','lan_NO',         'GP=1'
+EMIS_IN(187) = 'CO;COtra' ,       'import_grid','lan_CO',         'GP=1'
+EMIS_IN(188) = 'SO2' ,            'import_grid','lan_SO2',        'GP=1'
+EMIS_IN(189) = 'C2H4;NMHCtra,2' ,   'import_grid','lan_C2H4',       'GP=1'
+EMIS_IN(190) = 'C2H6;NMHCtra,2' ,   'import_grid','lan_C2H6',       'GP=1'
+EMIS_IN(191) = 'C3H6;NMHCtra,3' ,   'import_grid','lan_C3H6',       'GP=1'
+EMIS_IN(192) = 'C3H8;NMHCtra,3' ,   'import_grid','lan_C3H8',       'GP=1'
+EMIS_IN(193) = 'NC4H10;NMHCtra,4',  'import_grid','lan_NC4H10',     'GP=1'
+EMIS_IN(194) = 'CH3COCH3;NMHCtra,3','import_grid','lan_CH3COCH3',   'GP=1'
+EMIS_IN(195) = 'CH3OH;NMHCtra,1'    'import_grid','lan_CH3OH',      'GP=1'
+EMIS_IN(196) = 'HCHO;NMHCtra,1'     'import_grid','lan_HCHO',       'GP=1'
+EMIS_IN(197) = 'MEK;NMHCtra,4' ,    'import_grid','lan_MEK',        'GP=1'
+EMIS_IN(198) = 'NH3' ,            'import_grid','lan_NH3',        'GP=1'
+
+!VEU2 emissionen
+
+!VEU2land
+EMIS_IN(200) = 'NO;NOyteu' ,      'import_grid','VEU2land_NO',         'GP=1'
+EMIS_IN(201) = 'CO;COteu' ,       'import_grid','VEU2land_CO',         'GP=1'
+EMIS_IN(202) = 'SO2' ,            'import_grid','VEU2land_SO2',        'GP=1'
+EMIS_IN(203) = 'C2H4;NMHCteu,2' ,   'import_grid','VEU2land_C2H4',       'GP=1'
+EMIS_IN(204) = 'C2H6;NMHCteu,2' ,   'import_grid','VEU2land_C2H6',       'GP=1'
+EMIS_IN(205) = 'C3H6;NMHCteu,3' ,   'import_grid','VEU2land_C3H6',       'GP=1'
+EMIS_IN(206) = 'C3H8;NMHCteu,3' ,   'import_grid','VEU2land_C3H8',       'GP=1'
+EMIS_IN(207) = 'NC4H10;NMHCteu,4',  'import_grid','VEU2land_NC4H10',     'GP=1'
+EMIS_IN(208) = 'CH3COCH3;NMHCteu,3','import_grid','VEU2land_CH3COCH3',   'GP=1'
+EMIS_IN(209) = 'CH3OH;NMHCteu,1'    'import_grid','VEU2land_CH3OH',      'GP=1'
+EMIS_IN(210) = 'HCHO;NMHCteu,1'     'import_grid','VEU2land_HCHO',       'GP=1'
+EMIS_IN(211) = 'MEK;NMHCteu,4' ,    'import_grid','VEU2land_MEK',        'GP=1'
+EMIS_IN(212) = 'NH3' ,            'import_grid','VEU2land_NH3',        'GP=1'
+!VEU2snap8
+EMIS_IN(213) = 'NO;NOyieu' ,      'import_grid','VEU2snap8_NO',         'GP=1'
+EMIS_IN(214) = 'CO;COieu' ,       'import_grid','VEU2snap8_CO',         'GP=1'
+EMIS_IN(215) = 'SO2' ,            'import_grid','VEU2snap8_SO2',        'GP=1'
+EMIS_IN(216) = 'C2H4;NMHCieu,2' ,   'import_grid','VEU2snap8_C2H4',       'GP=1'
+EMIS_IN(217) = 'C2H6;NMHCieu,2' ,   'import_grid','VEU2snap8_C2H6',       'GP=1'
+EMIS_IN(218) = 'C3H6;NMHCieu,3' ,   'import_grid','VEU2snap8_C3H6',       'GP=1'
+EMIS_IN(219) = 'C3H8;NMHCieu,3' ,   'import_grid','VEU2snap8_C3H8',       'GP=1'
+EMIS_IN(220) = 'NC4H10;NMHCieu,4',  'import_grid','VEU2snap8_NC4H10',     'GP=1'
+EMIS_IN(221) = 'CH3COCH3;NMHCieu,3','import_grid','VEU2snap8_CH3COCH3',   'GP=1'
+EMIS_IN(222) = 'CH3OH;NMHCieu,1'    'import_grid','VEU2snap8_CH3OH',      'GP=1'
+EMIS_IN(223) = 'HCHO;NMHCieu,1'     'import_grid','VEU2snap8_HCHO',       'GP=1'
+EMIS_IN(224) = 'MEK;NMHCieu,4' ,    'import_grid','VEU2snap8_MEK',        'GP=1'
+EMIS_IN(225) = 'NH3' ,            'import_grid','VEU2snap8_NH3',        'GP=1'
+!VEU2ind
+EMIS_IN(226) = 'NO;NOyieu' ,      'import_grid','VEU2ind_NO',         'GP=1'
+EMIS_IN(227) = 'CO;COieu' ,       'import_grid','VEU2ind_CO',         'GP=1'
+EMIS_IN(228) = 'SO2' ,            'import_grid','VEU2ind_SO2',        'GP=1'
+EMIS_IN(229) = 'C2H4;NMHCieu,2' ,   'import_grid','VEU2ind_C2H4',       'GP=1'
+EMIS_IN(230) = 'C2H6;NMHCieu,2' ,   'import_grid','VEU2ind_C2H6',       'GP=1'
+EMIS_IN(231) = 'C3H6;NMHCieu,3' ,   'import_grid','VEU2ind_C3H6',       'GP=1'
+EMIS_IN(232) = 'C3H8;NMHCieu,3' ,   'import_grid','VEU2ind_C3H8',       'GP=1'
+EMIS_IN(233) = 'NC4H10;NMHCieu,4',  'import_grid','VEU2ind_NC4H10',     'GP=1'
+EMIS_IN(234) = 'CH3COCH3;NMHCieu,3','import_grid','VEU2ind_CH3COCH3',   'GP=1'
+EMIS_IN(235) = 'CH3OH;NMHCieu,2'    'import_grid','VEU2ind_CH3OH',      'GP=1'
+EMIS_IN(236) = 'HCHO;NMHCieu,1'     'import_grid','VEU2ind_HCHO',       'GP=1'
+EMIS_IN(237) = 'MEK;NMHCieu,4' ,    'import_grid','VEU2ind_MEK',        'GP=1'
+EMIS_IN(238) = 'NH3' ,            'import_grid','VEU2ind_NH3',        'GP=1'
+!VEU2dom
+EMIS_IN(239) = 'NO;NOyieu' ,      'import_grid','VEU2dom_NO',         'GP=1'
+EMIS_IN(240) = 'CO;COieu' ,       'import_grid','VEU2dom_CO',         'GP=1'
+EMIS_IN(241) = 'SO2' ,            'import_grid','VEU2dom_SO2',        'GP=1'
+EMIS_IN(242) = 'C2H4;NMHCieu,2' ,   'import_grid','VEU2dom_C2H4',       'GP=1'
+EMIS_IN(243) = 'C2H6;NMHCieu,2' ,   'import_grid','VEU2dom_C2H6',       'GP=1'
+EMIS_IN(244) = 'C3H6;NMHCieu,3' ,   'import_grid','VEU2dom_C3H6',       'GP=1'
+EMIS_IN(245) = 'C3H8;NMHCieu,3' ,   'import_grid','VEU2dom_C3H8',       'GP=1'
+EMIS_IN(246) = 'NC4H10;NMHCieu,4',  'import_grid','VEU2dom_NC4H10',     'GP=1'
+EMIS_IN(247) = 'CH3COCH3;NMHCieu,3','import_grid','VEU2dom_CH3COCH3',   'GP=1'
+EMIS_IN(248) = 'CH3OH;NMHCieu,1'    'import_grid','VEU2dom_CH3OH',      'GP=1'
+EMIS_IN(249) = 'HCHO;NMHCieu,1'     'import_grid','VEU2dom_HCHO',       'GP=1'
+EMIS_IN(250) = 'MEK;NMHCieu,4' ,    'import_grid','VEU2dom_MEK',        'GP=1'
+EMIS_IN(251) = 'NH3' ,            'import_grid','VEU2dom_NH3',        'GP=1'
+!VEU2was
+EMIS_IN(252) = 'NO;NOyieu' ,      'import_grid','VEU2was_NO',         'GP=1'
+EMIS_IN(253) = 'CO;COieu' ,       'import_grid','VEU2was_CO',         'GP=1'
+EMIS_IN(254) = 'SO2' ,            'import_grid','VEU2was_SO2',        'GP=1'
+EMIS_IN(255) = 'C2H4;NMHCieu,2' ,   'import_grid','VEU2was_C2H4',       'GP=1'
+EMIS_IN(256) = 'C2H6;NMHCieu,2' ,   'import_grid','VEU2was_C2H6',       'GP=1'
+EMIS_IN(257) = 'C3H6;NMHCieu,3' ,   'import_grid','VEU2was_C3H6',       'GP=1'
+EMIS_IN(258) = 'C3H8;NMHCieu,3' ,   'import_grid','VEU2was_C3H8',       'GP=1'
+EMIS_IN(259) = 'NC4H10;NMHCieu,4',  'import_grid','VEU2was_NC4H10',     'GP=1'
+EMIS_IN(260) = 'CH3COCH3;NMHCieu,3','import_grid','VEU2was_CH3COCH3',   'GP=1'
+EMIS_IN(261) = 'CH3OH;NMHCieu,1'    'import_grid','VEU2was_CH3OH',      'GP=1'
+EMIS_IN(262) = 'HCHO;NMHCieu,1'     'import_grid','VEU2was_HCHO',       'GP=1'
+EMIS_IN(263) = 'MEK;NMHCieu,4' ,    'import_grid','VEU2was_MEK',        'GP=1'
+EMIS_IN(264) = 'NH3' ,            'import_grid','VEU2was_NH3',        'GP=1'
+!VEU2ene
+EMIS_IN(265) = 'NO;NOyieu' ,      'import_grid','VEU2ene_NO',         'GP=1'
+EMIS_IN(266) = 'CO;COieu' ,       'import_grid','VEU2ene_CO',         'GP=1'
+EMIS_IN(267) = 'SO2' ,            'import_grid','VEU2ene_SO2',        'GP=1'
+EMIS_IN(268) = 'C2H4;NMHCieu,2' ,   'import_grid','VEU2ene_C2H4',       'GP=1'
+EMIS_IN(269) = 'C2H6;NMHCieu,2' ,   'import_grid','VEU2ene_C2H6',       'GP=1'
+EMIS_IN(270) = 'C3H6;NMHCieu,3' ,   'import_grid','VEU2ene_C3H6',       'GP=1'
+EMIS_IN(271) = 'C3H8;NMHCieu,3' ,   'import_grid','VEU2ene_C3H8',       'GP=1'
+EMIS_IN(272) = 'NC4H10;NMHCieu,4',  'import_grid','VEU2ene_NC4H10',     'GP=1'
+EMIS_IN(273) = 'CH3COCH3;NMHCieu,3','import_grid','VEU2ene_CH3COCH3',   'GP=1'
+EMIS_IN(274) = 'CH3OH;NMHCieu,1'    'import_grid','VEU2ene_CH3OH',      'GP=1'
+EMIS_IN(275) = 'HCHO;NMHCieu,1'     'import_grid','VEU2ene_HCHO',       'GP=1'
+EMIS_IN(276) = 'MEK;NMHCieu,4' ,    'import_grid','VEU2ene_MEK',        'GP=1'
+EMIS_IN(277) = 'NH3' ,            'import_grid','VEU2ene_NH3',        'GP=1'
+!VEU2slv
+EMIS_IN(278) = 'NO;NOyieu' ,      'import_grid','VEU2slv_NO',         'GP=1'
+EMIS_IN(279) = 'CO;COieu' ,       'import_grid','VEU2slv_CO',         'GP=1'
+EMIS_IN(280) = 'SO2' ,            'import_grid','VEU2slv_SO2',        'GP=1'
+EMIS_IN(281) = 'C2H4;NMHCieu,2' ,   'import_grid','VEU2slv_C2H4',       'GP=1'
+EMIS_IN(282) = 'C2H6;NMHCieu,2' ,   'import_grid','VEU2slv_C2H6',       'GP=1'
+EMIS_IN(283) = 'C3H6;NMHCieu,3' ,   'import_grid','VEU2slv_C3H6',       'GP=1'
+EMIS_IN(284) = 'C3H8;NMHCieu,3' ,   'import_grid','VEU2slv_C3H8',       'GP=1'
+EMIS_IN(285) = 'NC4H10;NMHCieu,4',  'import_grid','VEU2slv_NC4H10',     'GP=1'
+EMIS_IN(286) = 'CH3COCH3;NMHCieu,3','import_grid','VEU2slv_CH3COCH3',   'GP=1'
+EMIS_IN(287) = 'CH3OH;NMHCieu,1'    'import_grid','VEU2slv_CH3OH',      'GP=1'
+EMIS_IN(288) = 'HCHO;NMHCieu,1'     'import_grid','VEU2slv_HCHO',       'GP=1'
+EMIS_IN(289) = 'MEK;NMHCieu,4' ,    'import_grid','VEU2slv_MEK',        'GP=1'
+EMIS_IN(290) = 'NH3' ,            'import_grid','VEU2slv_NH3',        'GP=1'
+
+!VEU2agr !qqx may consider other NMVOC split!!!!! 
+EMIS_IN(291) = 'NO;NOyieu' ,      'import_grid','VEU2agr_NO',         'GP=1'
+EMIS_IN(292) = 'CO;COieu' ,       'import_grid','VEU2agr_CO',         'GP=1'
+EMIS_IN(293) = 'SO2' ,            'import_grid','VEU2agr_SO2',        'GP=1'
+EMIS_IN(294) = 'C2H4;NMHCieu,2' ,   'import_grid','VEU2agr_C2H4',       'GP=1'
+EMIS_IN(295) = 'C2H6;NMHCieu,2' ,   'import_grid','VEU2agr_C2H6',       'GP=1'
+EMIS_IN(296) = 'C3H6;NMHCieu,3' ,   'import_grid','VEU2agr_C3H6',       'GP=1'
+EMIS_IN(297) = 'C3H8;NMHCieu,3' ,   'import_grid','VEU2agr_C3H8',       'GP=1'
+EMIS_IN(298) = 'NC4H10;NMHCieu,4',  'import_grid','VEU2agr_NC4H10',     'GP=1'
+EMIS_IN(299) = 'CH3COCH3;NMHCieu,3','import_grid','VEU2agr_CH3COCH3',   'GP=1'
+EMIS_IN(300) = 'CH3OH;NMHCieu,1'    'import_grid','VEU2agr_CH3OH',      'GP=1'
+EMIS_IN(301) = 'HCHO;NMHCieu,1'     'import_grid','VEU2agr_HCHO',       'GP=1'
+EMIS_IN(302) = 'MEK;NMHCieu,4' ,    'import_grid','VEU2agr_MEK',        'GP=1'
+EMIS_IN(303) = 'NH3' ,            'import_grid','VEU2agr_NH3',        'GP=1'
+
+
+
+
+
+!
+! ---------------
+! OTHER EMISSIONS
+! ---------------
+!
+! VOLCANIC SO2
+!
+EMIS_IN(310) = 'SO2' ,'import_grid','VOLCANIC_SO2_SO2',  'GP=1'
+!
+! TERRESTRIAL DMS
+!
+EMIS_IN(311) = 'DMS' ,'import_grid','TERR_DMS_DMS',      'GP=2'
+!
+! AMMONIA
+!
+EMIS_IN(312) = 'NH3' ,'import_grid','NH3l_NH3',           'GP=1'
+EMIS_IN(313) = 'NH3' ,'import_grid','NH3w_NH3',           'GP=1'
+!
+!
+! HALOCARBONS CHCl2Br;CHClBr2;CH2ClBr;CH2Br2;CHBr3
+! 
+EMIS_IN(314) = 'CHBr3' ,  'import_grid','HALOCARB_CHBr3',        'GP=2'
+EMIS_IN(315) = 'CH2Br2' , 'import_grid','HALOCARB_CH2Br2',       'GP=2'
+EMIS_IN(316) = 'CH2ClBr' ,'import_grid','HALOCARB_CH2ClBr',      'GP=2'
+EMIS_IN(317) = 'CHClBr2' ,'import_grid','HALOCARB_CHClBr2',      'GP=2'
+EMIS_IN(318) = 'CHCl2Br' ,'import_grid','HALOCARB_CHCl2Br',      'GP=2'
+!
+! CH3I
+!
+EMIS_IN(319) = 'CH3I' ,'import_grid','CH3I_CH3I',      'GP=2'
+
+! Online Emissions from ECHAM
+
+! Lightning nox
+! xnox is in kg(N)/m^3/s however offemis needs molec/m^3/s
+! multiply with factor navo [molec/mol]/mw[kg/mol]
+! -> kg[N]/m^3/s  --> molec/m^3/s
+! navo = 6.02211 * 10^23 [mol] ; mw N => 14.0067/1000 kg/mol
+! scal =  6.02211 * 10^23/ 14.0067/1000 = 4.299*10^25
+
+EMIS_IN(320) ='NO,4.299e25',        'mmd2way_child','mmd_XNOX',                'GP=1'
+
+
+
+
+!
+! MERCURY
+!
+!EMIS_IN(180) = 'Hg',      'import_grid','MERCURY_a_Hg',      'GP=2'
+!EMIS_IN(181) = 'HgO',     'import_grid','MERCURY_a_HgO',     'GP=2'
+!EMIS_IN(182) = 'RGM_cs',  'import_grid','MERCURY_a_RGM_cs',  'GP=2'
+!EMIS_IN(183) = 'Hg',      'import_grid','MERCURY_b_Hg',      'GP=2'
+!
+! CH4_fx
+!
+!EMIS_IN(190) = 'CH4_fx', 'import_grid', 'Mfx_an_CH4', 'GP=2',  ! anth.
+!EMIS_IN(191) = 'CH4_fx', 'import_grid', 'Mfx_oc_CH4', 'GP=2',
+!EMIS_IN(192) = 'CH4_fx', 'import_grid', 'Mfx_te_CH4', 'GP=2',
+!EMIS_IN(193) = 'CH4_fx', 'import_grid', 'Mfx_wl_CH4', 'GP=2',
+!EMIS_IN(194) = 'CH4_fx', 'import_grid', 'Mfx_wa_CH4', 'GP=2',
+!EMIS_IN(195) = 'CH4_fx', 'import_grid', 'BB_CH4',     'GP=2',  ! bb
+!EMIS_IN(196) = 'CH4_fx', 'import_grid', 'ANTHNT_CH4', 'GP=2',  ! anth.no traf
+!EMIS_IN(197) = 'CH4_fx', 'import_grid', 'AWB_CH4',    'GP=2',  ! awb
+!EMIS_IN(198) = 'CH4_fx', 'import_grid', 'SHIP_CH4',   'GP=2',  ! ship
+!EMIS_IN(199) = 'CH4_fx', 'import_grid', 'ROAD_CH4',   'GP=2',  ! road
+!
+! synthetic tracers
+!
+!EMIS_IN(210) = 'AOA_NH',   'import_grid', 'SYNT1_vemis',     'GP=1',  ! 3D
+!EMIS_IN(211) = 'AOA_CCMI', 'import_grid', 'SYNT1_vemis',     'GP=1',  ! 3D
+!EMIS_IN(212) = 'CO_25',    'import_grid', 'SYNT2_CO_flux',   'GP=1',
+!EMIS_IN(213) = 'CO_50',    'import_grid', 'SYNT2_CO_flux',   'GP=1',
+!EMIS_IN(214) = 'SF6_CCMI', 'import_grid', 'SYNT3_SF6_flux',  'GP=1',
+!
+!EMIS_IN(215) = 'SO2t',     'import_grid', 'ANTHNT_SO2',  'GP=1',
+!EMIS_IN(216) = 'SO2t',     'import_grid', 'AWB_SO2',     'GP=1',
+!EMIS_IN(217) = 'SO2t',     'import_grid', 'SHIP_SO2',    'GP=1',
+!EMIS_IN(218) = 'SO2t',     'import_grid', 'ROAD_SO2',    'GP=1',
+!
+
+
+
+
+! EMISSION CLASSES OF EMPA
+!
+! anthropogenic
+!
+!EMIS_IN(330) = 'CH4;', 'import_grid', 'ANTH_CH4_CH4', 'GP=1', ! anth.
+!
+! biomass burning
+!
+
+!EMIS_IN(331) = 'CH4;', 'import_grid', 'BB_AUS_CH4',     'GP=1', ! bb
+!EMIS_IN(332) = 'CH4;', 'import_grid', 'BB_CHINA_CH4',     'GP=1', ! bb
+!EMIS_IN(334) = 'CH4;', 'import_grid', 'BB_EU_CH4',     'GP=1', ! bb
+!EMIS_IN(335) = 'CH4;', 'import_grid', 'BB_INDIA_CH4',     'GP=1', ! bb
+!EMIS_IN(336) = 'CH4;', 'import_grid', 'BB_NA_bor_CH4',     'GP=1', ! bb
+!EMIS_IN(337) = 'CH4;', 'import_grid', 'BB_N_AFR_CH4',     'GP=1', ! bb
+!EMIS_IN(338) = 'CH4;', 'import_grid', 'BB_NA_temp_CH4',     'GP=1', ! bb
+!EMIS_IN(339) = 'CH4;', 'import_grid', 'BB_N_MIDEAST_CH4',     'GP=1', ! bb
+!EMIS_IN(340) = 'CH4;', 'import_grid', 'BB_RUS_CH4',     'GP=1', ! bb
+!EMIS_IN(341) = 'CH4;', 'import_grid', 'BB_S_AFR_CH4',     'GP=1', ! bb
+!EMIS_IN(342) = 'CH4;', 'import_grid', 'BB_SA_temp_CH4',     'GP=1', ! bb
+!EMIS_IN(343) = 'CH4;', 'import_grid', 'BB_SA_trop_CH4',     'GP=1', ! bb
+!EMIS_IN(345) = 'CH4;', 'import_grid', 'BB_SE_ASIA_CH4',     'GP=1', ! bb
+!
+! ocean
+!
+!EMIS_IN(346) = 'CH4;', 'import_grid', 'Mfx_oc_CH4', 'GP=1', ! ocean
+!
+! termites
+!
+!EMIS_IN(347) = 'CH4;', 'import_grid', 'Mfx_te_CH4', 'GP=1', ! termites
+!
+! volcanoes
+!
+!EMIS_IN(348) = 'CH4;', 'import_grid', 'Mfx_vo_CH4', 'GP=1', ! volcanoes
+!
+! wetlands
+!EMIS_IN(349) = 'CH4;', 'import_grid', 'Mfx_wl_AUS_CH4', 'GP=1', ! wetlands
+!EMIS_IN(350) = 'CH4;', 'import_grid', 'Mfx_wl_CHINA_CH4', 'GP=1', ! wetlands
+!EMIS_IN(351) = 'CH4;', 'import_grid', 'Mfx_wl_EU_CH4', 'GP=1', ! wetlands
+!EMIS_IN(352) = 'CH4;', 'import_grid', 'Mfx_wl_india_CH4', 'GP=1', ! wetlands
+!EMIS_IN(353) = 'CH4;', 'import_grid', 'Mfx_wl_MIDEAST_CH4', 'GP=1', ! wetlands
+!EMIS_IN(354) = 'CH4;', 'import_grid', 'Mfx_wl_NA_bor_CH4', 'GP=1', ! wetlands
+!EMIS_IN(355) = 'CH4;', 'import_grid', 'Mfx_wl_N_AFR_CH4', 'GP=1', ! wetlands
+!EMIS_IN(356) = 'CH4;', 'import_grid', 'Mfx_wl_NA_TEMP_CH4', 'GP=1', ! wetlands
+!EMIS_IN(357) = 'CH4;', 'import_grid', 'Mfx_wl_RUS_CH4', 'GP=1', ! wetlands
+!EMIS_IN(358) = 'CH4;', 'import_grid', 'Mfx_wl_S_AFR_CH4', 'GP=1', ! wetlands
+!EMIS_IN(359) = 'CH4;', 'import_grid', 'Mfx_wl_SA_temp_CH4', 'GP=1', ! wetlands
+!EMIS_IN(360) = 'CH4;', 'import_grid', 'Mfx_wl_SA_TROP_CH4', 'GP=1', ! wetlands
+!EMIS_IN(361) = 'CH4;', 'import_grid', 'Mfx_wl_se_asia_CH4', 'GP=1', ! wetlands
+!
+! wild animals
+!
+!EMIS_IN(362) = 'CH4;', 'import_grid', 'Mfx_wa_CH4', 'GP=1', !wild animals
+
+/

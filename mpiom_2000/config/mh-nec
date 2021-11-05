@@ -1,0 +1,54 @@
+# NEC SX-6 @ DKRZ
+
+ARCH       = SX
+
+NETCDFROOT = /pool/SX-6/netcdf/netcdf-3.6.0-p1
+unset NETCDF_LIB
+
+MPIROOT = /SX/opt/mpisx/inst
+MPI_LIB = -lmpi
+
+CDIROOT = 
+
+PRISMROOT = /pf/m/m211054/cosmos1/SX
+PRISM_LIB = -lpsmile.MPI2
+
+# cross compilation for SX-6
+
+#CC = sxmpic++
+CC = sxcc
+#CFLAGS = -sx6 -Caopt -ftrace -Popenmp
+CFLAGS = -sx6 -Chopt
+
+FC = sxmpif90
+#FC = sxf90
+FCFLAGS = -sx6 -Chopt -Ep -ftrace -Popenmp -R2 -Wf,-pvctl noassume loopcnt=5000000 -Wl,-Z 1000000 -pi auto expin=`cd $srcdir ; pwd`/src/rho1j.f90,`cd $srcdir ; pwd`/src/adisitj.f90,`cd $srcdir ; pwd`/src/rho.f90
+#FCFLAGS = -sx6 -Cssafe -Ep -ftrace -Popenmp -R2 -Wf,-pvctl noassume loopcnt=5000000 -Wl,-Z 1000000 -pi auto expin=`cd $srcdir ; pwd`/src/rho1j.f90,`cd $srcdir ; pwd`/src/adisitj.f90,`cd $srcdir ; pwd`/src/rho.f90
+
+case "$mh_setup" in
+  *noopenmp*)
+    FC = sxf90
+    FCFLAGS = -sx6 -Chopt -Ep -ftrace -R2 -Wf,-pvctl noassume loopcnt=5000000 -Wl,-Z 1000000 -pi auto expin=`cd $srcdir ; pwd`/src/rho1j.f90,`cd $srcdir ; pwd`/src/adisitj.f90,`cd $srcdir ; pwd`/src/rho.f90
+    ;;
+esac
+
+case "$mh_setup" in
+  *debug*)
+    FCFLAGS=$FCFLAGS -g
+    CFLAGS=$CFLAGS -g
+    ;;
+esac
+
+test x"$enable_MPI" = x"no" && FC=sxf90
+
+AR = sxar
+RANLIB = /bin/true
+AS = sxas
+
+FPP_DEFOPT = -D
+
+# cache length values for C type correspondence
+acx_cv_fortran_sizeof_real=4
+acx_cv_fortran_sizeof_real_kind_4_=4
+acx_cv_fortran_sizeof_real_kind_8_=8
+acx_cv_fortran_sizeof_real_kind_16_=16

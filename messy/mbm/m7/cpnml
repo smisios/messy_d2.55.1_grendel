@@ -1,0 +1,23 @@
+#!/bin/sh
+### copy boxmodel namelists from $NMLDIR to $WORKDIR and also
+### do shell variable substitution ($INPUTDIR_ECHAM5_INI etc.) at the same time
+### remove F90 comments (!...\n) at the same time
+RUNDIR=$1
+WORKDIR=$2
+NML=$3
+cd $WORKDIR
+copynml( )
+{
+     if test "$RUNDIR/$1" != ".FALSE." ; then
+        echo "using namelist file $RUNDIR/$1"
+        echo 'cat > $WORKDIR/$1 << EOF'             >  $WORKDIR/temporaryfile
+        echo '! This file was created automatically by xbox, do not edit' \
+                                                    >> $WORKDIR/temporaryfile
+        sed 's|!.*||g' $RUNDIR/$1 | grep -Ev '^ *$' >> $WORKDIR/temporaryfile
+        echo 'EOF'                                  >> $WORKDIR/temporaryfile
+        .     $WORKDIR/temporaryfile
+        rm -f $WORKDIR/temporaryfile
+     fi
+}
+copynml $NML
+exit

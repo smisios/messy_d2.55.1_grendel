@@ -1,0 +1,83 @@
+###########################################################################
+The tool strato3bud is to calculate (as post-processing step) the
+stratospheric ozone budget (production and loss via various reaction 
+pathways).
+###########################################################################
+
+History:
+--------
+Original ferret-script   : Ch. Bruehl, P. Joeckel (MPI-C, 2006)
+Fortran90 code           : H. Garny, (DLR, 2011)
+Adaption for MESSy2-MECCA: P. Joeckel (DLR, 2011)
+Extraction of rate coeff. 
+from mecca.eqn:            P. Joeckel (DLR, 2013)
+
+###########################################################################
+
+Application:
+------------
+
+In order to apply this tool, you need to
+1) Compile it with "gmake tools" from the $BASEDIR of the distribution.
+   This needs to be repeated, whenever the chemical MECCAnism has been
+   modified. With "gmake tools", the script eqn2f90.tcsh extracts the 
+   rate coefficients from mecca.eqn and writes the Fortran90 include file 
+   rate_coeff.inc, which is included into strato3bud.f90 at compile time.
+2) Edit the wrapper-script strato3bud.tcsh:
+   - set the experiment name (exp_name) to name the output file(s)
+   - set data path (datapath) to your (monthly !) data file(s)
+   - set the path to the executable (exepath) strato3bud.exe
+   - modify the loops for year and month according to your needs
+
+The script creates a local link (tr_O3_sbud.nc) for input and
+processes an output file (stratO3bud.nc), which is renamed to
+${exp_name}_stratO3bud_${year}${month}.nc.
+Output is zonally averaged and averaged in time.
+
+For larger data processing, it is recommended to equip the script with
+a header for the used job scheduler (PBS, LoadLeveler, etc.) and
+process it in the queue.
+
+Important notes:
+---------------
+- The script eqn2f90.tcsh extracts the required reaction coefficients
+  automatically from mecca.eqn (see above). If something goes wrong,
+  the chance is high that this script is the cause. It it highly
+  suggested to check manually the rate_coeff.inc.
+- The program expects the required variables in ONE file per month.
+  The input file can be tailor made via channel output redirection,
+  (see channel.nml, tr_O3_sbud), or prepared with various netCDF 
+  tools (nco etc.).
+  The required variables are:
+
+   Grid information:
+        float lat(lat) ;
+        float hyam(lev) ;
+        float hybm(lev) ;
+        float aps(time, lat, lon) ;
+   Temperature:
+        float tm1(time, lev, lat, lon) ;
+   Tracer:
+        float O3(time, lev, lat, lon) ;
+        float NO(time, lev, lat, lon) ;
+        float NO2(time, lev, lat, lon) ;
+        float O1D(time, lev, lat, lon) ;
+        float O3P(time, lev, lat, lon) ;
+        float HO2(time, lev, lat, lon) ;
+        float OH(time, lev, lat, lon) ;
+        float H(time, lev, lat, lon) ;
+        float CH3O2(time, lev, lat, lon) ;
+        float ClO(time, lev, lat, lon) ;
+        float BrO(time, lev, lat, lon) ;
+        float H2O(time, lev, lat, lon) ;
+   Photolysis:
+        float J_O2(time, lev, lat, lon) ;
+
+   Not required, but recommended are:
+        float lon(lon) ;
+        float lev(lev) ;
+        float geosp(time, lat, lon) ;
+        float gboxarea(time, lat, lon) ;
+        float tp_i(time, lat, lon) ;
+        float tp_f(time, lat, lon) ;
+

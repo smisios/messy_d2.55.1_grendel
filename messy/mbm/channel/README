@@ -1,0 +1,124 @@
+==============================================================================
+THIS README CONTAINS A BRIEF DESCRIPTION OF THE MESSy GENERIC SUBMODEL CHANNEL
+FILES AND THE SIMPLIFIED BASEMODEL/SUBMODEL.
+
+A HIGHLY SIMPLIFIED BASE MODEL LAYER (BML)
+==========================================
+(.) channel_bml.f90                  ! initialisation, time loop, finish
+(.) channel_bml_mem.f90              ! declaraion of parameters
+
+AN EXEMPLAYRY BASEMODEL INTERFACE LAYER (BMIL) FOR THE SIMPLIFIED BASEMODEL
+===========================================================================
+(+) messy_main_channel_bi.f90        ! create the basemodel specific channel
+                                     ! setup
+
+The basemodel (with name CHANNEL)
+- initialises an exemplary channel environment with 4 representations:
+  - GP_3D_MID with rank 3 (longitude x latitude x level) and dimensions
+                           36        x 18       x 2
+  - GP_3D_MID_BND with rank 3 (longitude x level x latitude) and dimensions
+                           36        x 2       x 18
+                  and 2 boundary boxes in longitude and latitude direction
+  - SCALAR    with rank 0
+  - ARRAY     with rank 1 and the dimension of the intrinsic fortran random
+              number generator state vector
+- defines a standard stream (CHANNEL) with some SCALAR objects that contain the
+  current system time
+- detects if it is started 'from scratch', or if it is continued (restart);
+  the latter is triggered by the presence of a file restart_NNNN_CHANNEL.nc,
+  where NNNN is the restart cycle number (between 0001 and 9999); the restart
+  file with the largest cycle number is used for continuation.
+- initialises the simplified submodel (see below)
+- contains a time loop in which it
+  - calls the submodel to create some artifical (random) data (see below)
+  - writes output and/or restart information to netCDF files
+- cleans up the memory
+
+THE GENERIC SUBMODEL CHANNEL
+============================
+SUBMODEL CORE LAYER (SMCL):
+(*)  messy_main_constants_mem.f90    ! SMCL constants for various MESSy SMs
+                                     ! (Not all of the contents is needed in
+                                     !  the simplified CHANNEL box model.)
+(*)  messy_main_tools.f90            ! SMCL tools for varius MESSy submodels
+                                     ! (Not all of the contents is needed in
+                                     !  the simplified CHANNEL box model.)
+(*)  messy_main_blather.f90          ! SMCL log-message tools for various MESSy
+                                     ! submodels. (Not all of the contents is
+				     ! needed in the simplified CHANNEL box
+                                     ! model.)
+					
+(*)  messy_main_channel_error.f90      ! error numbers and messages
+(*)  messy_main_channel_attributes.f90 ! types and routines for ... attributes,
+(*)  messy_main_channel_dimensions.f90 ! ... dimensions,
+(*)  messy_main_channel_dimvar.f90     ! ... dimension-variables,
+(*)  messy_main_channel_repr.f90       ! ... representations,
+(*)  messy_main_channel.f90            ! ... channels and channel-objects
+(*)  messy_main_channel_tracer.f90-bak ! association of tracer memory from
+                                       ! MESSy generic submodel TRACER to
+                                       ! channel memory; Note: this is not
+                                       ! used in this simplified example. 
+
+(*)  messy_main_channel_io.f90         ! main module for handling I/O
+(*)  messy_main_channel_netcdf.f90     ! I/O in netCDF format
+(*)  messy_main_channel_pnetcdf.f90    ! I/O based on parallel-netCDF
+                                       ! Note: The simplified example has no
+                                       ! parallel mode! 
+
+USER INTERFACE (UI):
+(*)  channel.nml                      ! user interface (namelist file)
+                                      ! with CTRL and CPL namelists
+
+AN EXEMPLARY ORDINARY SUBMODEL
+==============================
+(-)  messy_submodel.f90
+(-)  messy_submodel_si.f90
+
+This simple submodel defines a new channel and four objects in different
+representations:
+ - f01: a 3-d field in GP_3D_MID representation (longitude x latitude x level)
+ - fbnd: a 3-d field in GP_3D_MID_BND representation
+   (longitude x level x latitude) with additional 2 boundary boxes,
+   both, in longitud and latitude direction, which are accessed internally,
+   but do not appear in the output
+ - s01: a SCALAR
+ - state: an ARRAY
+f01 is filled with random numbers, s01 is the avarage of f01. In state, the
+state vector of the fortran random number generator is saved to be able to
+continue a pseudo-random number series after a basemodel restart.
+Note: The ARRAY-length is the length of the intrinisic random number state
+vector and therefore depends on the Fortran system.
+
+NOTES:
+======
+(*)  These files/modules need NOT to be changed in order to use CHANNEL in
+     another basemodel.
+(+)  These files/modules need to be rewritten for any other basemodel. The
+     examples of the simple basemodel here, however, show the overall structure
+     and the usage of the CHANNEL interface.
+(.)  These files/modules constitute a highly simplified basemodel and are
+     usually replaced by a specific model.
+(-)  These files/modules represent a simple MESSy submodel which is useless
+     outside the context of the simpified basemodel.
+
+HOWTO COMPILE/RUN
+=================
+1. Edit the file 'Makefile' and put in your specific compiler settings and
+   the path to the netCDF library.
+   Do not forget to activate the pre-processor in your compiler options!
+
+2. > gmake
+   Note: The 'Makefile' includes 'main.mk' and 'depend.mk'. The latter
+         contains the file dependencies, which are automatically updated
+         (see 5 below).
+   Note: Other usefule gmake-targets are 'gmake clean' and 'gmake distclean'.
+
+3. > gmake run
+
+4. Change entries in channel.nml and go back to 3.
+
+5. Change the code (e.g. channel_bml_mem.f90) and go back to 2,3,4.
+   Note: The file dependencies are automatically updated with the perl-script
+         'sfmakedepend'. Make sure that the path to 'perl' in the very first
+         line of this script is OK.
+==============================================================================

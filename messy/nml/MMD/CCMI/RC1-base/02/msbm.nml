@@ -1,0 +1,51 @@
+! -*- f90 -*-
+
+&CTRL
+!
+KinPar = T                 ! microphysical kinetic NAT scheme ! ka_ok_20100115
+!
+LAdvectIceNat = F          ! advection influence on ice/NAT formation? (yes/no)
+LHomNucNAT = F             ! homogeneous NAT nucleation? (yes/no)
+NatFormThreshold = -3.0    ! supercooling required for NAT formation / K
+minKhet = 0.0              ! minimum reaction rate / (cm**3/s)
+maxKhet = 1.0e-13          ! maximum reaction rate / (cm**3/s)
+!SupSatIce = 1.5            ! supersaturation required for ice formation
+SupSatIce = 1.2            ! (reducd for Arctic)
+r_min = 1.0e-7             ! minimum radius of solid aerosol particles / m
+!                          ! with KinPar = T:
+!                          !    minimum radius of ice particles / m
+N_solid_max = 0.042e6      ! max. solid particle number concentration / (1/m**3)
+!                          ! with KinPar = T:
+!                          !    max. ice particle number concetnration /(1/m**3)
+SedScheme = 3              ! switch for sedimentation scheme: 
+!                          !    1 = simple upwind scheme
+!                          !    2 = Walcek (2000) advection scheme
+!                          !    3 = trapezoid scheme
+!                          ! else = no sedimentation
+/
+
+&CPL
+!
+LCalcChem = T             ! calculate reaction rates? (yes/no)
+TempShift = 0.0           ! internal temperature shift in PSC submodel / K
+!
+Tropop_Channel = 'tropop' ! channel containing tropopause index
+Tropop_Index   = 'tp_i'   ! tropopause index channel object
+!
+r_lat     = -55.0, 45.0   ! latitude limit of PSC region (SH, NH)
+!                         ! default: (-55.0, 45.0)
+r_lb      = 18000.0, 18000.0  ! lower boundary of PSC region [Pa] (SH, NH)
+!                             ! default: (18000., 18000.0)
+r_mb      = 14000.0, 10000.0  ! middle boundary of PSC region [Pa] (SH, NH)
+!                             ! default: (14000., 10000.0)
+r_ub      = 500.0, 500.0    ! upper boundary of PSC region [Pa] (SH, NH)
+!                             ! default: (2000., 2000.0)
+!
+l_feedback = T            ! feedback on dynamics
+                          ! NOTE: for l_feedback=F PSCoffl_predef_HNO3
+!                         !       needs to be provided via IMPORT
+!
+!c_predef_HNO3_tot = 'import_grid', 'PSCoffl_predef_HNO3'    ! if l_feedback = F
+c_H2SO4clim       = 'mmdclnt', 'H2SO4_clim_H2SO4'
+!
+/

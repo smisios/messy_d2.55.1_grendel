@@ -1,0 +1,48 @@
+! -*- f90 -*-
+
+!*****************************************************************************
+! control namelist for JVAL
+!*****************************************************************************
+
+&CTRL
+!
+!# FOR SOLAR CYCLE
+r_sol = 0.5        ! 0: solar minimum, 1: solar maximum
+!                !!! this is obsolete, if jval_solar in CPL is active
+!
+!# QUANTUM YIELD FOR CH3COCH3:
+!qy_ch3coch3 = 1 ! Gierzack & ECHAM5 (old IUPAC) (default)
+qy_ch3coch3 = 2 ! BLITZ 2004
+!qy_ch3coch3 = 3 ! IUPAC
+!
+/
+
+!*****************************************************************************
+! coupling namelist for JVAL
+!*****************************************************************************
+
+&CPL
+!
+l_skip_lg = T,             ! skip Lagrangian calculation?
+!l_force = T,               ! calculate all species (not only for tracers)
+!l_heating = T,             ! calculate UV heating rates by O2 and O3 ?
+!
+!jval_O3 = 'import_rgt', 'PRE_O3',
+!jval_O3 = 'tracer_gp', 'O3',
+jval_O3 = 'import_grid', 'PRE_O3',
+!jval_O3 = 'ECHAM5', 'relo3',   ! ONLY FOR isw_rad4all = 1 in rad4all.nml
+!jval_O3 = 'rad4all', 'O3_pre', ! ONLY FOR isw_rad4all = 2 in rad4all.nml
+!
+jval_cossza = 'orbit', 'cossza', ! cos(zenith angle)
+jval_cdisse = 'orbit', 'cdisse', ! distance Sun-Earth (in AU)
+!
+! use imported ozone distribution above model top
+jval_O3h    = 'import_grid', 'O3ubc_O3_H',
+!
+! # SOLAR CYCLE TIME SERIES; if commented, r_sol in CTRL is used instead 
+!jval_solar = 'import_ts','solact',  ! F10.7 cm (1 parameter), or 16 parameters
+!                                   ! (see &CTRL_TS in import.nml)
+!
+/
+
+!*****************************************************************************

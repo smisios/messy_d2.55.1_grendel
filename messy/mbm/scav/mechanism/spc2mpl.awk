@@ -1,0 +1,1 @@
+../../caaba/mecca/spc2mpl.awk

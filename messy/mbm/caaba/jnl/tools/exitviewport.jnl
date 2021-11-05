@@ -1,0 +1,43 @@
+CANCEL MODE metafile
+CANCEL SYMBOL pagetitle
+
+IF ($ax%FALSE|*>TRUE|%) THEN
+  ! add aerosol type to file name
+  DEFINE SYMBOL outfile = ($jnlfile%ferret%)_($ax)
+ELSE
+  ! ax is undefined
+  DEFINE SYMBOL outfile = ($jnlfile%ferret%)
+ENDIF
+
+SAY "creating ps file ($outfile).ps"
+sp "($tooldir)/double_line_widths ($tmp)/page*.plt"
+
+IF ($landscape%FALSE|*>TRUE|%) THEN
+  ! landscape has been defined
+  sp "cd ($tmp) ; ($tooldir)/plt_mergeto_pdf ($outfile) landscape"
+ELSE
+  ! landscape is undefined
+  sp "cd ($tmp) ; ($tooldir)/plt_mergeto_pdf ($outfile) portrait"
+ENDIF
+SAY "to view ps file, type: sp acro ($tmp)/($outfile).pdf &"
+
+!DEFINE SYMBOL makepdf = TRUE
+IF ($makepdf%FALSE|TRUE|*>FALSE|%) THEN ! only if makepdf is defined and TRUE
+  ! the following conversions to eps and pdf are only useful for 1-page plots:
+  SAY "converting ps file to eps"
+  ! portrait:
+  sp "gunzip ($tmp)/($outfile).ps.gz"
+  sp "ps2eps -f ($tmp)/($outfile).ps"
+  ! landscape:
+  ! sp "ps2eps -f --rotate=- ($outfile).ps"
+  ! rename the preliminary eps file:
+  sp "\mv -f ($tmp)/($outfile).eps ($tmp)/($outfile)-raw.eps"
+  ! create eps file with correct bounding box:
+  sp "eps2eps ($tmp)/($outfile)-raw.eps ($tmp)/($outfile).eps"
+  SAY "converting eps file to pdf"
+  sp "epstopdf ($tmp)/($outfile).eps"
+  sp "mv ($tmp)/($outfile).pdf ."
+  SAY "to view pdf file, type: sp acro ($outfile).pdf &"
+ENDIF
+
+EXIT

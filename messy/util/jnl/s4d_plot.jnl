@@ -1,0 +1,270 @@
+cancel data/all
+cancel region/all
+cancel variable/all
+cancel symbol/all
+cancel viewport
+
+! ------------------------------------------------------------------
+! THIS FERRET-JNL IS TO CREATE A PLOT FROM
+! ONLINE (via S4D) OR OFFLINE (via s4d_sample.jnl) SAMPLED CURTAIN DATA
+! ALONG A TRANSECT (CURTAIN PLOT + FLIGHT LEVEL)
+! ------------------------------------------------------------------
+! ------------------------------------------------------------------
+! EXAMPLES:
+!go s4d_plot.jnl online/mbl07__________20000118_2048_s4d_C1F_F_DC.nc tracer_gp_co 9 log lin CO
+! go s4d_plot.jnl C1F_F_20001104.pos.nc_NO_C.nc NO 12 log log NO
+! ------------------------------------------------------------------
+QUERY/IGNORE $4%1|log|lin<4th argument must be log or lin%
+QUERY/IGNORE $5%1|log|lin<5th argument must be log or lin%
+
+! ------------------------------------------------------------------
+! USER INTERFACE
+! ------------------------------------------------------------------
+! DATASET (with S4D data or output of s4d_sample.jnl)
+define symbol dset  = $1
+! SPECIES/FIELD
+define symbol spec  = $2
+! SCALING EXPONENT (ONLY FOR LINEAR PLOT)
+define symbol exp = $3
+! LOG or LIN PLOT (CURTAIN, FLIGHT LEVEL)
+define symbol lgplot1 = $4"nolab"
+define symbol lgplot2 = $5"nolab"
+! OPTIONAL TITLE FOR SPECIES
+define symbol ntitle = $6"nolab"
+! ------------------------------------------------------------------
+
+! ------------------------------------------------------------------
+set data "($dset)"
+! ------------------------------------------------------------------
+
+! ------------------------------------------------------------------
+! AUTODETECTION OF offline vs online (S4D) data
+! -> online (S4D) data contains the model time step 'dt' ...
+! ------------------------------------------------------------------
+let/d dt=0
+define symbol dt_exists `dt,return=shape`
+IF ($dt_exists%|POINT>TRUE|*>FALSE%) THEN
+   ! offline sampled
+   define symbol smode = offline
+ELSE
+   ! online sampled (s4d)
+   define symbol smode = online
+ENDIF
+say ($smode)
+
+! ------------------------------------------------------------------
+! THE online (S4D) sampled surface pressure is g3p_aps,
+! FOR offline sampled data it has to be renamed ...
+! ------------------------------------------------------------------
+IF ($smode%|online>TRUE|*>FALSE%) THEN
+ELSE
+   let g3b_aps = aps
+ENDIF
+
+! ------------------------------------------------------------------
+! unit and scaling
+! ------------------------------------------------------------------
+IF ($ntitle%|nolab>TRUE|*>FALSE%) THEN
+   define symbol name = `($spec)[d=1],return=title`
+ELSE
+   define symbol name = ($ntitle)
+ENDIF
+define symbol unit = `($spec)[d=1],return=unit`
+define symbol len = `STRLEN("($exp)"),z=1`
+IF ($len%|2>TRUE|*>FALSE%) THEN
+   define symbol e1 = `SUBSTRING("($exp)",1,1)`
+   define symbol e2 = `SUBSTRING("($exp)",2,1)`
+   define symbol qylab = 10^-^($e1)^($e2) ($unit)
+ELSE
+   IF ($exp%|0>TRUE|*>FALSE%) THEN
+     define symbol qylab = ($unit)
+   ELSE
+     define symbol qylab = 10^-^($exp) ($unit)
+   ENDIF
+ENDIF
+
+let scale = 1e($exp)
+
+IF ($lgplot1%|log>TRUE|*>FALSE%) THEN
+     define symbol ylab1 = log(($unit))
+ELSE
+     define symbol ylab1 = ($qylab)
+ENDIF
+
+IF ($lgplot2%|log>TRUE|*>FALSE%) THEN
+     define symbol ylab2 = log(($unit))
+ELSE
+     define symbol ylab2 = ($qylab)
+ENDIF
+
+! ------------------------------------------------------------------
+! logarithmic vertical pressure axis
+! ------------------------------------------------------------------
+! flag missing values correctly
+let zaps = IF (g3b_aps GT 0) THEN g3b_aps
+let press = (hyam + hybm * zaps)/100 ! hPa
+let pax   = (hyam + hybm * 101325.)/100 ! hPa
+define axis/z/from/name=zpax pax
+let qqgp_lin = ZAXREPLACE(($spec),press,Z[gz=zpax])
+define axis/z/from/name=zlogpax log(pax)
+let qqgp = ZAXREPLACE(($spec),log(press),Z[gz=zlogpax])
+
+
+! ------------------------------------------------------------------
+! define new time axis [hours] starting close to zero 
+! to allow the log-axis plotting algorithm work correctly ...
+! ------------------------------------------------------------------
+define symbol tstart = `($spec),return=tstart`
+define symbol tend   = `($spec),return=tend`
+say ($tstart) - ($tend)
+let ts_hr = STRFLOAT(SUBSTRING("($tstart)",13,2)) ! start hour
+let te_hr = STRFLOAT(SUBSTRING("($tend)",  13,2)) ! end hour
+let ts_mi = STRFLOAT(SUBSTRING("($tstart)",16,2)) ! start minute
+let te_mi = STRFLOAT(SUBSTRING("($tend)",  16,2)) ! end minute
+!list ts_hr, ts_mi, te_hr, te_mi
+!
+IF ($smode%|online>TRUE|*>FALSE%) THEN
+  ! -----------------------------------
+  ! change time axis to hours
+  let dtmin = `dt[l=1]/60`
+  let dthr  = `dt[l=1]/3600`
+  ! number of additional points for new time axis to begin at full hour
+  let s_n   =  INT(ts_mi/dtmin)
+  ! offset in minutes
+  let s_off = MOD(ts_mi,dtmin)
+  !list s_n, s_off 
+  !
+  define symbol tstart_new = `SUBSTRING("($tstart)",1,14)`:`s_off,zw=2`
+  let hr_end = STRFLOAT(SUBSTRING("($tend)",13,2))+1
+  define symbol tend_new   = `SUBSTRING("($tend)",1,11)` `hr_end,zw=2`:00
+  say ($tstart_new) - ($tend_new)
+  !
+  define axis/t0="($tstart_new)"/t="($tstart_new)":"($tend_new)":"`dthr`"/units=hours tnew
+  let qgp = qqgp[gt=tnew]
+ELSE
+  let mostr = {'Jan','Feb','Mar','Apr','May','Jun',\
+               'Jul','Aug','Sep','Oct','Nov','Dec'}
+  define symbol l1 = `month[l=1]`
+  define symbol mstr = `mostr[i=($l1)]`
+  define symbol tstart_new = `day[l=1],zw=2`-($mstr)-`year[l=1],zw=4` `ts_hr,zw=2`:00
+  define symbol tend_new = ($tend)
+  say ($tstart_new) - ($tend_new)
+  define axis/from/t0="($tstart_new)"/name=tnew/unit=hour \
+         DAYS1900(year,month,day)*24+hour+minute/60+second/3600 - \
+         DAYS1900(year[l=1],month[l=1],day[l=1])*24-ts_hr
+  let qgp = qqgp[gt=tnew]
+  cancel variable mostr
+  cancel symbol l1, mstr
+ENDIF
+
+IF ($lgplot1%|log>TRUE|*>FALSE%) THEN
+     let gp = log(qgp[gt=tnew])
+ELSE
+     let gp = qgp[gt=tnew]*scale
+ENDIF
+
+! -------------------------------------------------
+! CREATE PLOT
+! -------------------------------------------------
+go portraitNxN 1 2
+
+set viewport 1
+
+ppl pen 0,13
+!                            T     B     L    R
+!margins are  -- GO margins 1.4   1.4   1.2   1
+GO margins 1.4  0.8  1.2   1.3
+palette rainbow
+
+! WHICH DECADES TO PLOT
+let decmin = 2
+let decmax = 3
+ppl txlsze 0.18,0.18,0,18,0.18
+
+! EMPTY PLOT; NO VERTICAL TICKS
+ppl axlabp -1,0
+ppl axset 1,1,1,1
+shade/set/title="($name) @AS[@SR($ylab1)@AS]"/hlimits="($tstart_new)":"($tend_new)"/vlimits=`decmax+0.1`:`decmin-1`:-1 gp
+ppl labset 0.18,0.18,0.18,0.18
+ppl xlab " "
+!ppl ylab "LATITUDE"
+ppl axlsze 0.18,0.18
+ppl shakey , , 0.16, 
+go unlabel 1
+go unlabel 2
+go unlabel 3
+ppl shade
+
+! -------------------------------------------------
+! LOGARITHMIC TIC-MARKS
+! -------------------------------------------------
+! LENGTH OF VERTICAL TICKS
+let ts = (($xaxis_max)-($xaxis_min))/100*2
+let tl  = (($xaxis_max)-($xaxis_min))/100*3
+! OFFSET FOR VERTICAL TICK LABELS
+let yoff = ABS((($yaxis_max)-($yaxis_min))/100)
+
+ppl pen,0,13
+ppl pen,1,13
+! VERTICAL TICKS AND LABELS
+repeat/RANGE=`decmin`:`decmax`:1/NAME=n ( \
+   ppl aline 1,($xaxis_min),`n`,`($xaxis_min)-tl`,`n` ;\
+   ppl aline 1,($xaxis_max),`n`,`($xaxis_max)+tl`,`n` ;\
+   repeat/RANGE=1:10:1/NAME=m (\
+     ppl aline 1,($xaxis_min),`n-1+LOG(m)`,`($xaxis_min)-ts`,`n-1+LOG(m)` ;\
+     ppl aline 1,($xaxis_max),`n-1+LOG(m)`,`($xaxis_max)+ts`,`n-1+LOG(m)` ;\
+     ); \
+   label `($xaxis_min)-2*tl`, `n+yoff`,  1,  0, .18 "@SR`10^n`" ;\
+   )
+
+! VERTICAL AXIS LABEL
+label `($xaxis_min)-4.5*tl`, `(($yaxis_min)+($yaxis_max))/2`, 0, 90, .18 "@SRpressure @AS[hPa]"
+
+! -------------------------------------------------
+! PLOT FLIGHT TRACK
+! -------------------------------------------------
+! NOTE: for some strange reason using the first line with symbols
+!       causes following plots to have weird symbols instead of lines ...
+!plot/nolab/title=""/over/symbol=18/color=purple/thick=3 log(tpress[gt=tnew])
+plot/nolab/over/line/color=black/thick=3 log(tpress[gt=tnew])
+
+! -------------------------------------------------
+! PLOT TROPOPAUSE, IF AVAILABLE
+! -------------------------------------------------
+let/d tropop_tp = 0
+define symbol tp_exists `tropop_tp,return=shape`
+IF ($tp_exists%|POINT>TRUE|*>FALSE%) THEN
+ELSE
+   plot/nolab/over/line/color=red/thick=3 log(tropop_tp[gt=tnew]/100)
+ENDIF
+
+! -------------------------------------------------
+
+set viewport 2
+!                            T     B     L    R
+!margins are  -- GO margins 1.4   1.4   1.2   1
+go margins 1.2 0.8 1.6 0.6 
+
+ppl axlabp -1,-1
+
+let zero_at_fl = press - tpress
+let kernel = zero_at_fl[z=@WEQ:0]
+let integrand = kernel*($spec)
+let ($spec)_at_fl = integrand[z=@SUM]*scale
+
+IF ($lgplot2%|log>TRUE|*>FALSE%) THEN
+plot/set/vlog/title=""/thick=3/hlimits="($tstart_new)":"($tend_new)" ($spec)_at_fl
+ELSE
+plot/set/title=""/thick=3/hlimits="($tstart_new)":"($tend_new)" ($spec)_at_fl
+ENDIF
+ppl ylab "@SR($ylab2)"
+ppl labset 0.18,0.18,0.18,0.18
+go unlabel 1
+go unlabel 2
+go unlabel 3
+go unlabel 4
+go unlabel 5
+go unlabel 6
+ppl plot
+
+! -------------------------------------------------

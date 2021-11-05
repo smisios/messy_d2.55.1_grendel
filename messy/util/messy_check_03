@@ -1,0 +1,61 @@
+#! /bin/tcsh -f
+
+### CHECK f90 FILES FOR MESSy-CONFORMITY:
+### 03: mem - FILES MUST NOT CONTAIN SUBROUTINES / FUNCTIONS
+###
+### Author: Patrick Jöckel, MPICH, Mainz, Germany, Mar 2004
+
+if ($# != 2) then
+   echo "USAGE: `basename $0` <BASEMODEL> <f90-file>"
+   exit 1
+endif
+
+set BASEMODEL = $1
+set file = $2
+set checkid = 03
+
+### BASEMODEL SETTINGS
+if ( -r messy/$BASEMODEL/messy_setup != 0 ) then
+   source messy/$BASEMODEL/messy_setup
+else
+   echo "ERROR: MESSY SETUP messy/$BASEMODEL/messy_setup IS UNREADABLE\!"
+   exit 1
+endif
+
+# SET SUBMODEL
+set smodel = `echo $file | awk -F '_' '{print tolower($2)}' | sed 's|\.f90||g'`
+
+# CHECK IF mem -FILE ("*_mem.f90" or "*_mem_$SMILEXT.f90")
+set suffix1 = `echo $file | awk '{l=length($0); print substr($0,l-7)}'`
+set sel = `echo $SMILEXT | awk '{print length($0)+8}'`
+set suffix2 = `echo $file | awk '{l=length($0); print substr($0,l-'$sel')}'`
+set sel3 = `echo $BMILEXT | awk '{print length($0)+8}'`
+set suffix3 = `echo $file | awk '{l=length($0); print substr($0,l-'$sel3')}'`
+if (($suffix1 != "_mem.f90") && ($suffix2 != "_mem_$SMILEXT.f90") \
+     && ($suffix3 != "_mem_$BMILEXT.f90")) then
+   exit 0
+endif
+
+# LIST OF SUBROUTINES IN MODULE
+set q_use1 = `grep -iE "SUBROUTINE " $file  | grep -iv "END" | sed 's| |_|g'`
+set q_use2 = `grep -iE "FUNCTION " $file    | grep -iv "END" | sed 's| |_|g'`
+
+set wrong = ($q_use1 $q_use2)
+
+#######################################
+if (${#wrong} > 0) then
+    echo '-----------------------------------------------------'
+    echo 'SUBMODEL: '$smodel
+    echo 'CHECK-ID: '$checkid
+    echo 'FILE    : '$file
+    echo ${#wrong}' SUBROUTINE(S) / FUNCTION(S) IN MEM-FILE: '
+    @ count = 1
+    while ($count <= ${#wrong})
+       echo $wrong[$count]
+    @ count++
+    end
+    echo '-----------------------------------------------------'
+endif
+#######################################
+
+exit 0

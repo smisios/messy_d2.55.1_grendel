@@ -1,0 +1,360 @@
+# Intel/Linux CLUSTER
+#
+ARCH       = LINUX
+CDIROOT    =
+PRISMROOT  =
+PRISM_LIB  =
+
+case "$mh_setup" in
+    *-laptop|*-laptop-* )
+    SWROOT = /home/m211054/SOFTWARE
+    NETCDFROOT = ${SWROOT}/netcdf-4.1.1
+    HDF5ROOT = ${SWROOT}/hdf5-1.8.5
+    SZIPROOT = ${SWROOT}/szip-2.1
+    ZLIBROOT = ${SWROOT}/zlib-1.2.5
+    unset NETCDF_LIB
+    ;;
+  *-etch|*-etch-* )
+    SWROOT = /sw/etch-x64
+    case "$mh_setup" in
+      *-netcdf4|*-netcdf4-*|* )
+        NETCDFROOT  = ${SWROOT}/netcdf-4.0.1
+        HDF5ROOT =    ${SWROOT}/hdf5-1.8.2
+        SZIPROOT =    ${SWROOT}/szip-2.1
+        ZLIBROOT =    /sw/sles10-x64/zlib-1.2.3
+        unset NETCDF_LIB
+        ;;
+    esac
+    ;;
+  *-sles10|*-sles10-*|*)
+    SWROOT = /sw/sles10-x64
+    case "$mh_setup" in
+      *-netcdf4|*-netcdf4-*|* )
+        NETCDFROOT  = ${SWROOT}/netcdf-4.0.1
+        HDF5ROOT =    ${SWROOT}/hdf5-1.8.2
+        SZIPROOT =    ${SWROOT}/szip-2.1
+        ZLIBROOT =    ${SWROOT}/zlib-1.2.3
+        unset NETCDF_LIB
+        ;;
+    esac
+    ;;
+esac
+
+case "$mh_setup" in
+  nag|nag-* )
+    FC      = nagf95
+    FCFLAGS =  -C=all -gline -nan -g -fpp \
+      -wmismatch=mpi_pack,mpi_unpack,mpi_bcast,mpi_send,mpi_recv\
+                ,mpi_allreduce,mpi_isend,mpi_irecv,mpi_gather\
+                ,mpi_sendrecv,streamwritevar
+    case "$mh_setup" in
+      *-etch|*-etch-*)
+        MPIROOT = ${SWROOT}/mpich2-1.1b1-nag
+        MPI_LIB = `$MPIROOT/bin/mpif90 -link-info | tr ' ' '\n' | grep -i -- '-l\|-Wl' | tr '\n' ' '`
+        case "$mh_setup" in
+          *-netcdf3|*-netcdf3-*)
+            NETCDFROOT  = ${SWROOT}/netcdf-3.6.2-nag
+	    unset NETCDF_LIB
+            ;;
+          *-netcdf4|*-netcdf4-*|*)
+            FCLDFLAGS = ${FCLDFLAGS+$FCLDFLAGS }-Wl,-Wl,,-rpath,,${SZIPROOT}/lib
+            ;;
+        esac
+        ;;
+      *-sles10|*-sles10-*|*)
+        MPIROOT    = ${SWROOT}/ofed/openmpi-1.4.0-nag51
+        MPI_LIB = $($MPIROOT/bin/mpif90 --showme:link | tr ' ' '\n' \
+                    | grep -i -- '-l\|-Wl' | tr '\n' ' ')
+        case "$mh_setup" in
+          *-netcdf3|*-netcdf3-*)
+            NETCDFROOT  = ${SWROOT}/netcdf-3.6.3-nag
+	    unset NETCDF_LIB
+            ;;
+          *-netcdf4|*-netcdf4-*|*)
+            FCLDFLAGS = ${FCLDFLAGS+$FCLDFLAGS }-Wl,-Wl,,-rpath,,${SZIPROOT}/lib
+            ;;
+        esac
+        ;;
+    esac
+    ;;
+  nag52|nag52-*)
+    FC      = nagfor
+    FCFLAGS = -C=all -gline -nan -g -fpp \
+      -wmismatch=mpi_pack,mpi_unpack,mpi_bcast,mpi_send,mpi_recv\
+                ,mpi_allreduce,mpi_isend,mpi_irecv,mpi_gather\
+                ,mpi_sendrecv,streamwritevar
+    case "$mh_setup" in
+      *-laptop|*-laptop-* )
+        case "$mh_setup" in
+          *-openmpi|*-openmpi-* )
+            MPIROOT    = ${SWROOT}/openmpi-1.4.1-nag
+            MPI_LIB    = $($MPIROOT/bin/mpif90 --showme:link | tr ' ' '\n' \
+                    | grep -i -- '-l\|-Wl' | tr '\n' ' ')
+            ;;
+          *-mpich2|*-mpich2-*|* )
+            MPIROOT    = ${SWROOT}/mpich2-1.2.1p1-nag
+            MPI_LIB    = -L${MPIROOT}/lib -lmpich
+            ;;
+	esac
+        LIBS = -lpthread ${LIBS}
+        FCLDFLAGS = ${FCLDFLAGS+$FCLDFLAGS }-Wl,-Wl,,-rpath,,${SZIPROOT}/lib
+        ;;
+      *-etch|*-etch-*)
+        MPIROOT    = ${SWROOT}/mpich2-1.1b1-nag
+        MPI_LIB = `$MPIROOT/bin/mpif90 -link-info | tr ' ' '\n' | grep -i -- '-l\|-Wl' | tr '\n' ' '`
+        case "$mh_setup" in
+          *-netcdf3|*-netcdf3-*)
+            NETCDFROOT  = /sw/sles10-x64/netcdf-3.6.3-nag
+            NETCDFROOT  = ${SWROOT}/netcdf-3.6.2-nag
+	    unset NETCDF_LIB
+            ;;
+          *-netcdf4|*-netcdf4-*|*)
+            FCLDFLAGS = ${FCLDFLAGS+$FCLDFLAGS }-Wl,-Wl,,-rpath,,${SZIPROOT}/lib
+            ;;
+        esac
+        ;;
+      *-sles10|*-sles10-*|*)
+        MPIROOT    = ${SWROOT}/ofed/openmpi-1.4.0-nag52
+        MPI_LIB = $($MPIROOT/bin/mpif90 --showme:link | tr ' ' '\n' \
+          | grep -i -- '-l\|-Wl' | tr '\n' ' ')
+        MPI_INCLUDE = $(${MPIROOT}/bin/mpif90 --showme:compile )
+        MPI_C_INCLUDE = $(${MPIROOT}/bin/mpicc --showme:compile )
+        MPI_C_LIB = $(${MPIROOT}/bin/mpicc --showme:link )
+        case "$mh_setup" in
+          *-netcdf3|*-netcdf3-*)
+            NETCDFROOT  = ${SWROOT}/netcdf-3.6.3-nag
+	    unset NETCDF_LIB
+            ;;
+          *-netcdf4|*-netcdf4-*|*)
+            FCLDFLAGS = ${FCLDFLAGS+$FCLDFLAGS }-Wl,-Wl,,-rpath,,${SZIPROOT}/lib
+            ;;
+        esac
+        ;;
+    esac
+    ;;
+  sun|sun-* )
+    FC        = sunf95
+    FCFLAGS =  -xtypemap=double:64,integer:32 -fpp \
+      -xfilebyteorder=big8:%all -O4 -dalign \
+      -xtarget=opteron -m64 -xarch=sse2a
+    case "$mh_setup" in
+      *-omp|*-omp-*)
+        # openmp is currently not tested
+        FCFLAGS=$FCFLAGS -openmp
+        ;;
+    esac
+    case "$mh_setup" in
+      *-sles10|*-sles10-*|*)
+	MPIROOT    = /sw/sles10-x64/ofed/openmpi-1.3.3-sun12
+        MPI_LIB = $(echo $($MPIROOT/bin/mpif90 --showme:link) | tr ' ' '\n' \
+          | grep -i -- '-l\|-Wl' | tr '\n' ' ')
+        case "$mh_setup" in
+          *-netcdf3|*-netcdf3-*)
+            NETCDFROOT  = ${SWROOT}/netcdf-3.6.3-intel
+	    unset NETCDF_LIB
+            ;;
+          *-netcdf4|*-netcdf4-*|*)
+            LDFLAGS = ${LDFLAGS+$LDFLAGS }-R${SZIPROOT}/lib
+            ;;
+        esac
+        ;;
+    esac
+    ;;
+  pgi|pgi-*)
+    CFLAGS   = -O -DpgiFortran
+    FC       = pgf95
+    FCFLAGS = -O3 -Kieee -fastsse -Mnontemporal -Mnorecursive \
+      -Mextend -Mpreprocess -tp amd64e -DHAVE_LIBNETCDF64 -byteswapio
+    case "$mh_setup" in
+      *-sles10|*-sles10-*|*)
+	MPIROOT  = ${SWROOT}/ofed/openmpi-1.4.0-pgi9
+        MPI_LIB = $(echo $($MPIROOT/bin/mpif90 --showme:link) | tr ' ' '\n' \
+          | grep -i -- '-l\|-Wl' | tr '\n' ' ')
+        case "$mh_setup" in
+          *-netcdf3|*-netcdf3-*)
+            NETCDFROOT  = ${SWROOT}/netcdf-3.6.3-intel
+	    unset NETCDF_LIB
+            ;;
+          *-netcdf4|*-netcdf4-*|*)
+            LDFLAGS = ${LDFLAGS+$LDFLAGS }-Wl,-rpath,${SZIPROOT}/lib
+            ;;
+        esac
+        ;;
+    esac
+    ;;
+  gfortran|gfortran-*)
+    FC     = gfortran
+    FCFLAGS = -fconvert=big-endian -x f95-cpp-input \
+      -std=f2003 \
+      -mtune=native -march=native -mfpmath=sse -msse2
+    gfortran_version=`gfortran --version | head -n 1 | sed 's/.* \([0-9.]*\)/\1/'`
+    case "$gfortran_version" in
+      4.1|4.1.*|4.2|4.2.*)
+        CFLAGS = -DNAGf90Fortran
+        ;;
+      *)
+        CFLAGS = -DpgiFortran
+        ;;
+    esac
+    case "$mh_setup" in
+      *-noopt*)
+        ;;
+      *-opt|*-opt-*|*)
+        CFLAGS = -O3 $CFLAGS
+        FCFLAGS = -O3 $FCFLAGS
+        ;;
+    esac
+    # OpenMP?
+    case "$mh_setup" in
+      *-omp|*-omp-*)
+        # openmp is currently not tested
+        FCFLAGS=$FCFLAGS -fopenmp
+        ;;
+    esac
+    case "$mh_setup" in
+      *-debug*)
+        FCFLAGS = -Wnonstd-intrinsics -Waliasing -Wampersand \
+          -Wline-truncation -Wcharacter-truncation -Wtabs -Wunderflow \
+          -Wconversion -g $FCFLAGS
+	CFLAGS = -g $CFLAGS
+        LDFLAGS = -g${LDFLAGS+ $LDFLAGS}
+        ;;
+      *)
+        CFLAGS = -momit-leaf-frame-pointer -fomit-frame-pointer $CFLAGS
+        FCFLAGS = -momit-leaf-frame-pointer -fomit-frame-pointer $FCFLAGS
+        ;;
+    esac
+    case "$mh_setup" in
+      *-debian_lenny_syslibs|*-debian_lenny_syslibs-*)
+        NETCDFROOT = /usr
+	MPIROOT = /usr/lib/openmpi
+	MPI_LIB = -pthread -lmpi_f90 -lmpi_f77 -lmpi
+        ;;
+      *-etch|*-etch-*)
+        MPIROOT = ${SWROOT}/mpich2-1.2.1-gcc44
+        MPI_LIB = -L${MPIROOT} -lmpich -lpthread
+        case "$mh_setup" in
+          *-netcdf3|*-netcdf3-*)
+            NETCDFROOT  = ${SWROOT}/netcdf-3.6.2
+	    unset NETCDF_LIB
+            ;;
+          *-netcdf4|*-netcdf4-*|*)
+            LDFLAGS = ${LDFLAGS+$LDFLAGS }-Wl,-rpath,${SZIPROOT}/lib
+            ;;
+        esac
+        ;;
+      *-sles10|*-sles10-*|*)
+        MPIROOT = ${SWROOT}/ofed/openmpi-1.4.0-gcc43
+        MPI_LIB = -L${MPIROOT} -lmpi_f90 -lmpi_f77 -lmpi -pthread
+        case "$mh_setup" in
+          *-netcdf3|*-netcdf3-*)
+            NETCDFROOT  = ${SWROOT}/netcdf-3.6.3-intel
+	    unset NETCDF_LIB
+            ;;
+          *-netcdf4|*-netcdf4-*|*)
+            LDFLAGS = ${LDFLAGS+$LDFLAGS }-Wl,-rpath,${SZIPROOT}/lib
+            ;;
+        esac
+        ;;
+    esac
+    ;;
+  ifort|ifort-*|intel|intel-*|* )
+    FC      = ifort
+    FCFLAGS = -mieee-fp -pc64 -fpe0 -i4 -heap-arrays \
+              -convert big_endian -fpp
+    LDFLAGS = ${LDFLAGS+$LDFLAGS }-static-intel
+    CFLAGS = -DNAGf90Fortran
+#    LDFLAGS = -static-intel
+    AR = xiar
+    case "$mh_setup" in
+      *-noopt|*-noopt-*)
+        FCFLAGS =  $FCFLAGS -O0
+        ;;
+      *-opt|*-opt-*|*)
+        CFLAGS = $CFLAGS -O
+        FCFLAGS = $FCFLAGS -O3 -axO
+        ;;
+    esac
+    # Inter-procedural optimization - on by default
+    case "$mh_setup" in
+      *-noipo|*-noipo-*)
+        :
+        ;;
+      *-ipo|-ipo-*|*)
+        FCFLAGS = $FCFLAGS -ipo
+        FCLDFLAGS = ${FCLDFLAGS+$FCLDFLAGS }-ipo
+        # gcc cannot link with -ipo objects!
+        ac_cv_fc_mangling=lower case, underscore, no extra underscore
+        ;;
+    esac
+    # OpenMP?
+    case "$mh_setup" in
+      *-omp|*-omp-*)
+        FCFLAGS=$FCFLAGS -openmp
+        ;;
+    esac
+    # insert debugging symbols?
+    case "$mh_setup" in
+      *-debug|*-debug-*)
+        CFLAGS  = ${CFLAGS+$CFLAGS }-g
+        FCFLAGS = $FCFLAGS -g -debug full -check -traceback
+        FCLDFLAGS = ${FCLDFLAGS+$FCLDFLAGS }-g -debug full -check -traceback
+        LDFLAGS = $LDFLAGS -g
+        ;;
+    esac
+    case "$mh_setup" in
+      *-laptop|*-laptop-*)
+        case "$mh_setup" in
+          *-openmpi|*-openmpi-* )
+            MPIROOT    = ${SWROOT}/openmpi-1.4.1-intel
+            MPI_LIB    = $($MPIROOT/bin/mpif90 --showme:link | tr ' ' '\n' \
+                    | grep -i -- '-l\|-Wl' | tr '\n' ' ')
+            ;;
+          *-mpich2|*-mpich2-*|* )	
+            MPIROOT    = ${SWROOT}/mpich2-1.2.1p1-intel
+            MPI_LIB    = -L${MPIROOT}/lib -lmpich
+            ;;
+        esac
+        LDFLAGS = ${LDFLAGS+$LDFLAGS }-Wl,-rpath,${SZIPROOT}/lib
+        ;;
+      *-etch|*-etch-*|zmaw-x64)
+        MPIROOT    = ${SWROOT}/mpich2-1.2.1-intel11
+        MPI_LIB    = -L${MPIROOT}/lib -lmpich
+        case "$mh_setup" in
+          *-netcdf3|*-netcdf3-*)
+            NETCDFROOT  = ${SWROOT}/netcdf-3.6.2-intel
+	    unset NETCDF_LIB
+            ;;
+          *-netcdf4|*-netcdf4-*|*)
+            LDFLAGS = ${LDFLAGS+$LDFLAGS }-Wl,-rpath,${SZIPROOT}/lib
+            ;;
+        esac
+        ;;
+      *-sles10|*-sles10-*|*)
+        MPIROOT    = ${SWROOT}/ofed/openmpi-1.4.0-intel11
+        MPI_LIB = $(echo $($MPIROOT/bin/mpif90 --showme:link) | tr ' ' '\n' \
+                    | grep -i -- '-l\|-Wl' | tr '\n' ' ')
+        case "$mh_setup" in
+          *-netcdf3|*-netcdf3-*)
+            NETCDFROOT  = ${SWROOT}/netcdf-3.6.3-intel
+	    unset NETCDF_LIB
+            ;;
+          *-netcdf4|*-netcdf4-*|*)
+            LDFLAGS = ${LDFLAGS+$LDFLAGS }-Wl,-rpath,${SZIPROOT}/lib
+            ;;
+        esac
+        ;;
+    esac
+    ;;
+esac
+
+CC         = ${CC-gcc}
+CFLAGS     = ${CFLAGS--O -DNAGf90Fortran}
+
+AR         = ${AR-ar}
+AS         = as
+
+SRCDIRS    =
+INCLUDES   =
+
+FPP_DEFOPT = -D

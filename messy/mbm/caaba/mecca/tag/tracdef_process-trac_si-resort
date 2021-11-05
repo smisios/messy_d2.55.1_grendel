@@ -1,0 +1,58 @@
+#!/bin/tcsh -f
+
+# sort (reorder) messy_${submodel}_trac_si.inc statements according
+# to the tracers' definition order in tracdef.tex/process.tbl
+
+set self = `basename $0`
+set inc = $1 # e.g. messy_mecca_trac_si.inc
+set trd = $2 # e.g. tmp_tracdef_200715142716.tbl / tmp_tracdef_200808132655.tex
+set hbn = "(<CHEMPROP>)|(basename)"
+set hsn = "(subname)|(sub)"
+
+# tracer property fields found in trd
+set props = `cat ${trd} | grep -E "${hbn}" | head -n 1 | sed 's/[|#&]//g'`
+# finding basename/subname
+@ pn = 0
+@ cbn = 0
+@ csn = 0
+foreach p ( $props )
+##echo $p
+  @ pn++
+  set chk = `echo "$props[$pn]" | grep -E "${hbn}"`
+  if ( "${chk}" != "" ) @ cbn = $pn
+  set chk = `echo "$props[$pn]" | grep -E "${hsn}"`
+  if ( "${chk}" != "" ) @ csn = $pn
+end
+if ( "$cbn" == "0" ) then
+  echo "${self}: error: could not determine basename column / ${hbn} / in ${trd}. exit."
+  exit 1
+endif
+
+# get the list & order of tracers (as "basename[_subname]") from trd
+# depensing on the extension, it is .tex or .tbl file
+if ( ${trd:e} == "tex" ) then
+ #echo "detected tex"
+  set tracs = `cat ${trd} | tr -d ' ' | grep -v '^%' | grep -v '%--' | tr -d \' | gawk -F'&' -v b=$cbn -v s=$csn '{if ($s!="") $s="_"$s; print $b$s;}'`
+else
+ #echo "detected tbl"
+  set tracs = `cat ${trd} | tr -d ' ' | grep -v '^#' | grep -v '|--' | sed -e 's/^|//' | gawk -F'|' -v b=$cbn -v s=$csn '{if ($s!="") $s="_"$s; print $b$s;}'`
+endif
+#echo "tracers: $tracs"
+
+# convert statements in trac_si.inc to one-liners
+sed -z -e 's/\&\n/\&\&/g' -e 's/\n\(call \+tracer_halt\)/; \1/gI' $inc > $0.inc
+
+echo -n "[${self}] sorting statements in <${inc}> according to their order in <${inc}>:"
+# push headers first
+grep '^!' ${inc} > ${inc}.new
+echo "! - processed by xtag/`basename $0` at ${USER}@`hostname -f` at `date`, do not edit" >> ${inc}.new
+# then sample trac_si.inc using tracers' order + convert back to multi-liners
+foreach tr ( $tracs )
+  @ pres = `grep 'idt_'$tr'[\,\)]' $0.inc | wc -l`; if ( $pres > 0 ) echo -n " ${tr}"
+  grep 'idt_'$tr'[\,\)]' $0.inc | sed -z -e 's/\&\&/\&\n/g' >> ${inc}.new
+end
+echo " -- done"; echo
+
+# finish & clean up
+mv -f ${inc}.new ${inc}
+rm -f $0.inc

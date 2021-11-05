@@ -1,0 +1,45 @@
+// -*- kpp -*- kpp mode for emacs
+
+// # author: S.Gromov (2015-2019)
+// # clumped isotope oxygen simulations for ATom observations (transport)
+
+// removing all regular chemistry
+#REPLACE <*>
+#ENDREPLACE
+//#REPLACE <G*>
+//#ENDREPLACE
+//#REPLACE <J*>
+//#ENDREPLACE
+//#REPLACE <HET*>
+//#ENDREPLACE
+
+// ATom transport chemistry approximation
+#REPLACE <>
+
+// enable O2, O3P, O1D, O3 and CO2
+<APXG1001>  O2 + O3P {+M} = O3 + O1D + CO2    : {%UpStTrG} 0.0; {&}
+
+// N2O, CH4 and SF6(?) sink from simulated reactivities
+//<G4100> CH4 + LCH4   = LCH4 + LCARBON       : {%UpStTrG} 1.0; {&}
+//<G3100> N2O + LN2O   = L2NO + LNITROGEN     : {%UpStTrG} 1.0; {&}
+//<G9000> SF6 + LSF6   = LSF6 + LSULFUR       : {%UpStTrG} 1.0; {&}
+
+
+// --- sinks based on MIM1 kinetics (ESCiMo output) ---
+<APXG3102a> N2O  + O1D      = LNITROGEN {2 NO}      {+ 197. kJmol} : {%UpStG}   7.25E-11{§1.1}*EXP(20./temp); {&2626}
+<APXG3102b> N2O  + O1D      = LNITROGEN + Dummy {N2  + O2}         : {%StG}     4.63E-11{§1.1}*EXP(20./temp); {&2626}
+//<G3107>  NO2  + N        = N2O + O3P {+ 104. kJmol}  : {%UpStG}   5.8E-12{§1.5}*EXP(220./temp); {&2626}
+//<G3215>  NH2   + NO2     = N2O + H2O     : {%TrG}   1.2E-11{§}*((temp/298.)**(-2.0)); {&2415}
+<APXJ3100>  N2O  + hv       = LNITROGEN {O1D + N2}                 : {%UpStGJ}  jx(ip_N2O){§}; {&2342}
+
+<APXG4100>  CH4  + O1D      = LCARBON {.75 CH3 + .75 OH + .25 HCHO + .4 H + .05 H2} {+ 638. kJmol} : {%UpStG} 1.75E-10{§1.15}; {&2626}
+<APXG4101>  CH4  + OH       = LCARBON {CH3} + H2O          : {%StTrG} 1.85E-20{§1.2}*EXP(2.82*LOG(temp)-987./temp); {&1627}
+<APXG4113>  CH4  + O3P {+O2}= LCARBON {.51 CH3 + .51 OH + .49 CH3O + .49 H} {+ 638. kJmol} : {%UpStG} 6.03E-18{§}*temp**(2.17)*EXP(-3619./temp); {&2615, 3059, 3060}
+//<G43001a> C3H6        + O3  = HCHO + .16 CH3CHOHOOH + .50 OH + .50 HCOCH2O2 + .05 CH2CO + .09 CH3OH + .09 CO + .2 CH4 + .2 CO2 : {%TrG} 5.5E-15*EXP(-1880./temp)*.57; {&1759} // Branching ratios according to \citet{3200}.
+//<G44106>  CBUT2ENE + O3     = CH3CHO + .16 CH3CHOHOOH + .50 OH + .50 HCOCH2O2 + .05 CH2CO + .09 CH3OH + .09 CO + .2 CH4 + .2 CO2: {%TrG} 3.2E-15{§}*EXP(-965./temp); {&1759, 3031} // CH3CHOOA products as from \chem{C_3H_6} + \chem{O_3} reaction.
+//<G44109>  TBUT2ENE + O3     = CH3CHO + .16 CH3CHOHOOH + .50 OH + .50 HCOCH2O2 + .05 CH2CO + .09 CH3OH + .09 CO + .2 CH4 + .2 CO2: {%TrG} 6.6E-15{§}*EXP(-1060./temp); {&1759, 3031}
+<APXG6400>  Cl   + CH4      = LCARBON {HCl + CH3}         : {%StTrG} 6.6E-12{§§0.06}*EXP(-1240./temp); {&1759}
+<APXJ41003> CH4  + hv       = LCARBON {.42 CH3 + .42 H + .6912 H2 + .0864 HCHO + .0864 O3P + .1584 OH + .1584 HO2 + .2112 CO2 + .1824 CO} + .024 H2O {+ .10 LCARBON} : {%StGJ} jx(ip_CH4){§}; {&2342} // \chem{CH_3}- and \chem{CH_2}-channels are considered only and with their branching ratios being 0.42 and 0.48, respectively \citep{3058}. \chem{CH}-production is neglected. \chem{CH_2} is assumed to react only with O2 yielding 1.44 \chem{H_2} + .18 \chem{HCHO} + .18 \chem{O(^3P)} + .33 \chem{OH} + .33 \chem{HO_2} + .44 \chem{CO_2} + .38 \chem{CO} + .05 \chem{H_2O} as assumed in the WACCM model by J. Orlando (Doug Kinnison, pers. comm. with D. Taraborrelli).
+
+#ENDREPLACE
+

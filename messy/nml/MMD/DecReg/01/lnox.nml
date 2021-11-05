@@ -1,0 +1,61 @@
+! -*- f90 -*-
+&CTRL
+! NOTES:
+!      - results with different flash frequency calculations
+!        (both with rescaling according to Price & Rind, and C-shape
+!        parameterization according to Pickering) for one year
+!        (r_scal_ff = 1.0):
+!        r_noxpf  Res:      Price & Rind          Grewe
+!        15.6     T21/L19      1.239              1.017        Tg N / year
+!        15.6     T42/L19      1.514              0.964        Tg N / year
+!      - the horizontal distribution looks more uniform with
+!        Grewe parameterization
+i_ffcalc     = 1,    ! calculation of flash frequ. 
+                     ! 1: Price & Rind
+                     ! 2: Grewe
+                     ! 3: Allen & Pickering (Massflux)
+                     ! 4: Allen & Pickering (convective precipitation)
+                     ! 9: diagnostically all parameterisations
+i_iccg       = 2,    ! 1: CG only, 2: CG + IC
+i_shape      = 2,    ! 1: const. mix. ratio, 2: C-shape according to Pickering
+i_scal       = 1,    ! 1: P&R, 2: Grewe
+!
+! Scaling factor for flash-frequency:
+! ### NOTE: - SCALING FOR S1 (T42L90MA) (TO ACHIEVE ~2 Tg(N)/a) WAS 1.50/15.6
+! ###       - TAKING INTO ACCOUNT THE FRACTIONAL LAND/SEA MASK REDUCES
+! ###         THE GLOBAL AVERAGE FLASH FREQUENCY BY ABOUT 25%.
+! ###       - IN ADDITION, THE TARGET HERE IS ~5 Tg(N)/a
+! ###       - THE RESULTING SCALING IS THERFORE 4.774 (1998-2001 average)/15.6
+!r_scal_ff    = 1.50,  ! i_ffcalc=i_scal=1 (P&R), T42L90MA, Tiedtke
+r_scal_ff    = 4.774   ! i_ffcalc=i_scal=1 (P&R), T42L90MA, Tiedtke
+!r_scal_ff    = .74485 ! i_ffcalc=i_scal=2 (Grewe), T21, Tiedtke
+!r_scal_ff    = .53851 ! i_ffcalc=i_scal=2 (Grewe), T31L19, Tiedtke
+!r_scal_ff    = .35000 ! i_ffcalc=i_scal=2 (Grewe), T31L39DLR, Tiedtke
+!r_scal_ff    = 0.1244 ! op_ck_20070904 (Grewe); T42L41; free
+!
+r_noxpf      = 15.6, ! average NOx production per CG flash [kgN/flash]
+                     ! P&R: 6.7E26 molec/flash -> ~ 15.6 kgN/flash
+r_eff        = 0.1,  ! NOx production efficiency ratio (IC/CG)
+! op_ck_20070904+
+!r_noxpf      = 3.6,
+!r_eff        = 1.0,
+! op_ck_20070904-
+/
+
+&CPL
+!i_ff_cpl    = 1      ! coupling parameterisation to NO tracer emission
+                      ! 1: Price & Rind
+                      ! 2: Grewe
+                      ! 3: Allen & Pickering (Massflux)
+                      ! 4: Allen & Pickering (convective precipitation)
+                      ! WARNING: is only selectable in case of i_ffcalc = 9
+                      !          otherwise forced to be equal to i_ffcalc 
+
+c_top       = 'convect','cu_top',
+c_bot       = 'convect','cu_bot',
+c_massfu    = 'convect','massfu',
+c_precflx   = 'convect','cv_precflx',
+!
+!l_skip_lg = T,             ! skip Lagrangian calculation?
+!
+/

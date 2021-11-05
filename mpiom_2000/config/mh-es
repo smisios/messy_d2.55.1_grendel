@@ -1,0 +1,44 @@
+# Earth Simulator, Yokohama (SX-6 binary compatible)
+
+# Enable CC and FC only, if not the standard compiler should be used 
+
+ARCH       = ES
+
+MPIROOT    = 
+MPI_LIB    =
+
+unset NETCDFROOT
+unset NETCDF_LIB
+unset NETCDF_INCLUDE
+
+LIBS       = -llapack -lblas ${LIBS}
+
+case `uname -s` in
+ESOS)
+    CC  = c++
+    FC = f90
+    ;;
+*)
+    CC  = esc++
+    FC = esf90
+    AR  = esar
+    RANLIB = /bin/true
+    AS  = esas
+esac
+
+CFLAGS   = -Chopt -DSX 
+
+FCFLAGS   = -Chopt
+FCFLAGS = -Chopt -Wf,-A idbl4 -Ep -Wl,-Z 1000000 -pi line=1000 -DHAVE_LIBNETCDF64
+
+FPP_DEFOPT = -D
+
+SRCDIRS  = blas lapack
+
+# cache length values for C type correspondence
+acx_cv_fortran_sizeof_real=4
+acx_cv_fortran_sizeof_real_kind_4_=4
+acx_cv_fortran_sizeof_real_kind_8_=8
+acx_cv_fortran_sizeof_real_kind_16_=16
+
+

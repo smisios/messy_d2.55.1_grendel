@@ -1,0 +1,97 @@
+ [Gromov, MPI-C, 2010-2020]
+;
+; mz_sg_200422(@tonnerre): taken out of general IC transfer scheme, updated, cleaned up
+;
+; tag_IC-mom.src
+;
+; ISOTOPIC OXYGEN SOURCES & TRANSFER INCLUDE FILE
+;
+; MOM chemistry (higher hydrocarbons)
+;
+; WARNING:	unfinished!
+; TODO:	update reaction labels to latest MOM
+;
+; === C2+ MOM CHEMISTRY ========================================================
+
+; // TODO - MOM (v2.52e) transfer
+; <G40234>  APINAOO + CO          = PINAL + CO2                      : {%TrGTerC} 1.20E-15; {&2419}
+; <G40238>  APINBOO + CO          = PINAL + CO2                      : {%TrGTerC} 1.20E-15; {&2419}
+; <G42090>  CH2CHOH + HCOOH   = CH3CHO + HCOOH                           : {%TrGC} k_CH2CHOH_HCOOH; {&3031, 3162} // Theoretical keto-enol tautomerization catalyzed by formic acid \citep{2040}.
+; <G42091>  CH3CHO + HCOOH    = CH2CHOH + HCOOH                          : {%TrGC} k_ALD_HCOOH; {&3031, 3162} // Theoretical keto-enol tautomerization catalyzed by formic acid \citep{2040}.
+; <G43072>  PROPENOL + HCOOH   = C2H5CHO + HCOOH                        : {%TrGC} k_CH2CHOH_HCOOH; {&3031, 3162} // Theoretical keto-enol tautomerization catalyzed by formic acid \citep{2040}.
+; <G43073>  C2H5CHO  + HCOOH   = PROPENOL + HCOOH                       : {%TrGC} k_ALD_HCOOH; {&3031, 3162} // Theoretical keto-enol tautomerization catalyzed by formic acid \citep{2040}.
+; <G44128>  MPROPENOL + HCOOH = IPRCHO + HCOOH              : {%TrGC} k_CH2CHOH_HCOOH; {&3031, 3162} // Theoretical keto-enol tautomerization catalyzed by formic acid \citep{2040}.
+; <G44129>  IPRCHO    + HCOOH = MPROPENOL + HCOOH           : {%TrGC} k_ALD_HCOOH; {&3031, 3162} // Theoretical keto-enol tautomerization catalyzed by formic acid \citep{2040}.
+; <G44131>  BUTENOL + HCOOH   = C3H7CHO + HCOOH             : {%TrGC} k_CH2CHOH_HCOOH; {&3031, 3162} // Theoretical keto-enol tautomerization catalyzed by formic acid \citep{2040}.
+; <G44132>  C3H7CHO + HCOOH   = BUTENOL + HCOOH             : {%TrGC} k_ALD_HCOOH; {&3031, 3162} // Theoretical keto-enol tautomerization catalyzed by formic acid \citep{2040}.
+; <G44134>  HVMK + HCOOH      =  CO2C3CHO + HCOOH           : {%TrGC} k_CH2CHOH_HCOOH; {&3031, 3162} // Theoretical keto-enol tautomerization catalyzed by formic acid \citep{2040}.
+; <G44135>  CO2C3CHO + HCOOH  = HVMK + HCOOH                : {%TrGC} k_ALD_HCOOH; {&3031, 3162} // Theoretical keto-enol tautomerization catalyzed by formic acid \citep{2040}.
+; <G44137>  HMAC + HCOOH      =  IBUTDIAL + HCOOH           : {%TrGC} k_CH2CHOH_HCOOH; {&3031, 3162} // Theoretical keto-enol tautomerization catalyzed by formic acid \citep{2040}.
+; <G44138>  IBUTDIAL  + HCOOH = HMAC + HCOOH                : {%TrGC} k_ALD_HCOOH; {&3031, 3162} // Theoretical keto-enol tautomerization catalyzed by formic acid \citep{2040}.
+; <G49247>  NORPINENOL + HCOOH  = NORPINAL + HCOOH                 : {%TrGTerC} k_CH2CHOH_HCOOH; {&3031, 3162} // Theoretical keto-enol tautomerization catalyzed by formic acid \citep{2040}.
+; <G49248>  NORPINAL  + HCOOH   = NORPINENOL + HCOOH               : {%TrGTerC} k_ALD_HCOOH; {&3031, 3162} // Theoretical keto-enol tautomerization catalyzed by formic acid \citep{2040}.
+; <G40277>  PINENOL + HCOOH       = PINAL + HCOOH                    : {%TrGTerC} k_CH2CHOH_HCOOH; {&3031, 3162} // Theoretical keto-enol tautomerization catalyzed by formic acid \citep{2040}.
+; <G40278>  PINAL  + HCOOH        = PINENOL + HCOOH                  : {%TrGTerC} k_ALD_HCOOH; {&3031, 3162} // Theoretical keto-enol tautomerization catalyzed by formic acid \citep{2040}.
+
+
+; // add. chem. 2014 (D. Taraborrelli)
+;<G42xxdt2> CH2OO + CH3CHO = HCHO + CH3CO2H
+ G42xxdt2  CH2OO = HCHO
+ G42xxdt2 CH3CHO = CH2CO2H
+
+
+; // latest MOM (past 2.52e) addons as of 20160928
+; <G40277>  PINENOL + HCOOH       = PINAL + HCOOH                    : {%TrGTerC} k_CH2CHOH_HCOOH; {&3031, 3162} // Theoretical keto-enol tautomerization catalyzed by formic acid \citep{2040}.
+; <G40278>  PINAL  + HCOOH        = PINENOL + HCOOH                  : {%TrGTerC} k_ALD_HCOOH; {&3031, 3162} // Theoretical keto-enol tautomerization catalyzed by formic acid \citep{2040}.
+
+
+; --- C2+ MIM CHEMISTRY ------------------------------------------------------------
+
+;// MCM explained C transfer
+;<G4206> C2H5O2 + CH3O2   = .75 HCHO + HO2 + .75 CH3CHO + .25 CH3OH {+.25EtOH} : {%TrGC} 1.6E-13*EXP(195./temp); {&&}
+ G4206 C2H5O2 = CH3CHO EtOH
+ G4206  CH3O2 = HCHO CH3OH
+
+;// MCM-explained C transfer
+;<G4215a> CH3CO3 + CH3O2   = HCHO + HO2 + CH3O2 + CO2      : {%TrGC} 0.9*2.E-12*EXP(500./temp); {&1945}
+;         C2H3O3 + CH3O2   = HCHO + HO2 + CH3O2 + CO2
+ G4215a CH3CO3 = CH3O2 CO2
+ G4215a  CH3O2 = HCHO
+
+; // MCM-explained C transfer
+;<G4215b> CH3CO3  + CH3O2   = CH3CO2H + HCHO                : {%TrGC} 0.1*2.E-12*EXP(500./temp); {&1945}
+;         C2H3O3  + CH3O2   = C2H4O2  + CH2O + ?O2
+ G4215b CH3CO3 = CH3CO2H
+ G4215b  CH3O2 = HCHO
+
+;//
+;<G4216> CH3CO3 + C2H5O2  = .82 CH3O2 + CH3CHO + .82 HO2 + .18 CH3CO2H : {%TrGC} 4.9E-12*EXP(211./temp); {&&1207, 1632}
+;        C2H3O3 + C2H5O2  = .82 CH3O2 + CH3CHO + .82 HO2 + .18 CH3CO2H
+ G4216 CH3CO3 = CH3CO2H CH3O2    CO2
+ G4216 C2H5O2 = CH3CHO
+
+;// OK, WITH DOMENICO''S PERMISSION
+;<G4306>  IC3H7O2 + CH3O2   = CH3COCH3 + .8 HCHO + .8 HO2 + .2 CH3OH                  : {%TrGC} k_PrO2_CH3O2; {&1632}
+;         C3H7O2  + CH3O2   = C3H6O    + .8 (HCHO + HO2)  + .2 (CH3OH + O2? + ?)
+ G4306 IC3H7O2 = CH3COCH3
+ G4306   CH3O2 = HCHO CH3OH
+
+;// OK, FROM DOMENICO''S PERMISSION
+;<G4314> CH3COCH2O2 + CH3O2   = .5 MGLYOX   + .5 CH3OH + .3 CH3CO3 + .8 HCHO + .3 HO2 + .2 ACETOL                  : {%TrGC} 7.5E-13*EXP(500./temp); {&1613}
+ G4314 CH3COCH2O2 = MGLYOX   CH3CO3 HCHO ACETOL
+ G4314      CH3O2 = CH3OH
+
+;// MIM TRANSFER
+;<G4401>  LC4H9O2 + CH3O2   = .88 MEK + .68 HCHO + 1.23 HO2 + .12 CH3CHO + .12 C2H5O2 + .18 CH3OH                  : {%TrGC} k_PrO2_CH3O2; {&&}
+ G4401 LC4H9O2 = MEK CH3CHO C2H5O2
+ G4401   CH3O2 =                   HCHO CH3OH
+
+;// OK
+;<G4410>  MVKO2   + CH3O2   = .5 MGLYOX   + .375 ACETOL + .125 CH3CO3 + 1.125 HCHO + .875 HO2 + .125 CO + .25 CH3OH                  : {%TrGC} 2.E-12; {&1612}
+ G4410 MVKO2 = MGLYOX ACETOL CH3CO3 1.75 HCHO CO
+ G4410 CH3O2 =                      0.5  HCHO    CH3OH
+
+;// pot. forgot - not in thesis sims.
+;<G4505> ISO2 + CH3O2 = 0.5 MVK + 1.25 HCHO + HO2 + 0.25 MGLYOX + 0.25 ACETOL + 0.25 CH3OH
+ G4505  ISO2 = MVK      MGLYOX ACETOL
+ G4505 CH3O2 =     HCHO               CH3OH

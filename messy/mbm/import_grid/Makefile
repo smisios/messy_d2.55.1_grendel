@@ -1,0 +1,38 @@
+# ----------------------------------------------
+export
+SHELL     = sh
+
+F90       = g95
+F90FLAGS  = -cpp
+LIBS      = -L/data/joec_pa/soft/netcdf/v4.1.1_g95v092/lib -lnetcdf
+INCLUDES  = -I/data/joec_pa/soft/netcdf/v4.1.1_g95v092/include
+
+#F90FLAGS  = -ffree-line-length-huge -fno-second-underscore -fno-backslash -g -cpp -O0  -ftrace=full -fbounds-check
+#LIBS      = -L/soft/netcdf/v4.1.1_g95_64/lib -lnetcdf
+#INCLUDES  = -I/soft/netcdf/v4.1.1_g95_64/include
+# ----------------------------------------------
+
+srcdir     = ./src
+bindir     = ./bin
+includedir = ./include
+PROG       = import_grid.exe
+
+# ----------------------------------------------
+
+all:
+	cd $(srcdir) ; \
+	$(MAKE)
+
+install: all
+	if test ! -d $(bindir) ; then mkdir $(bindir) ; fi
+	cp -f $(srcdir)/$(PROG) $(bindir)/.
+	if test ! -d $(includedir) ; then mkdir $(includedir) ; fi
+	cp -f $(srcdir)/*.mod $(includedir)/.
+
+clean:
+	rm -f $(srcdir)/*.o $(srcdir)/*~ $(srcdir)/*.mod $(srcdir)/$(PROG)
+
+distclean: clean
+	rm -fr $(bindir) $(includedir) ./config.log ./config.status ./Makefile
+
+# ----------------------------------------------

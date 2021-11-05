@@ -1,0 +1,307 @@
+! -*- f90 -*-
+
+&CPL
+ L_GP      = T  ! EMISSIONS FOR GRIDPOINT TRACERS
+ L_LG      = F  ! EMISSIONS FOR LAGRANGIAN TRACERS
+ l_lg_tend = F  ! LAGRANGIAN TRACER TENDENCY AS CHANNEL OBJECT ?
+! ### SYNTAX:
+!     (SPECIFIERS MUST BE UPPERCASE !)
+! ###         GP=    Gridpoint  Emission Method (0,1,2) (SURFACE ONLY)
+!                    1: 2D (SURFACE EM.) -> lowest layer
+!                       3D (VOLUME  EM.) -> emission ON
+!                       Nx2D (MULTI LEVEL EM.) -> internally converted to 3D
+!                    SURFACE EMISSIONS ONLY:
+!                    2: lower boundary condition for flux
+!
+! ###         LG=    Lagrangian Emission Method (0,1,2,3,4)
+!                    1: 2D (SURFACE EM.)       -> into CELLs in lowest layer
+!                       3D (VOLUME  EM.)       -> emission ON
+!                       Nx2D (MULTI LEVEL EM.) -> internally converted to 3D
+!                    SURFACE EMISSIONS ONLY:
+!                    2: into lowest CELLs within boundary layer
+!                    3: into all CELLs in boundary layer (vertical gradient)
+!                    4: into all CELLs in boundary layer (no vertical gradient)
+!
+!NOTEs:  (1) Surface emission fluxes (2D) must be in  molecules m-2 s-1.
+!        (2) Volume emissions (3D)        must be in  molecules m-3 s-1.
+!        (3) Multi level emissions (Nx2D) must be in  molecules m-2 s-1.
+!        (4) For volume emissions (3D), the corresponding channel object 
+!            must be in the GP_3D_MID representation
+!        (5) The trigger for multi level emissions (Nx2D) is the presence
+!            of the channel object attribute heights
+!
+! EMISSION: TRACER NAME, TRACER SUBNAME, CHANNEL NAME, CHANNEL OBJECT, 
+!           EMISSION METHOD
+!
+! LOWER BOUNDARY CONDITIONS (SEE tnudge.nml)
+!
+! ###########################################
+! DIRECT EMISSIONS
+! ###########################################
+! ---------------
+! biomass burning
+! ---------------
+ EMIS_IN(20)  =  'CO',        'bioburn_gp','CO_flux',            'GP=1'
+ EMIS_IN(21)  =  'NO',        'bioburn_gp','NO_flux',            'GP=1'
+!EMIS_IN(22)  =  'N2O',       'bioburn_gp','N2O_flux',           'GP=1'
+ EMIS_IN(23)  =  'SO2',       'bioburn_gp','SO2_flux',           'GP=1'
+ EMIS_IN(24)  =  'H2',        'bioburn_gp','H2_flux',            'GP=1'
+!EMIS_IN(25)  =  'CO2',       'bioburn_gp','CO2_flux',           'GP=1'
+ EMIS_IN(26)  =  'HONO',      'bioburn_gp','HONO_flux',          'GP=1'
+ EMIS_IN(27)  =  'NH3',       'bioburn_gp','NH3_flux',           'GP=1'
+ EMIS_IN(28)  =  'CH3OH',     'bioburn_gp','CH3OH_flux',         'GP=1'
+ EMIS_IN(29)  =  'HCHO',      'bioburn_gp','HCHO_flux',          'GP=1'
+ EMIS_IN(30)  =  'HCOOH',     'bioburn_gp','HCOOH_flux',         'GP=1'
+ EMIS_IN(31)  =  'CH3NO3',    'bioburn_gp','CH3NO3_flux',        'GP=1'
+ EMIS_IN(32)  =  'HCN',       'bioburn_gp','HCN_flux',           'GP=1'
+ EMIS_IN(33)  =  'CH3CN',     'bioburn_gp','CH3CN_flux',         'GP=1'
+ EMIS_IN(34)  =  'C2H2',      'bioburn_gp','C2H2_flux',          'GP=1'
+ EMIS_IN(35)  =  'C2H4',      'bioburn_gp','C2H4_flux',          'GP=1'
+ EMIS_IN(36)  =  'C2H6',      'bioburn_gp','C2H6_flux',          'GP=1'
+ EMIS_IN(37)  =  'CH3CHO',    'bioburn_gp','CH3CHO_flux',        'GP=1'
+ EMIS_IN(38)  =  'CH3CO2H',   'bioburn_gp','CH3CO2H_flux',       'GP=1'
+ EMIS_IN(39)  =  'C2H5OH',    'bioburn_gp','C2H5OH_flux',        'GP=1'
+ EMIS_IN(40)  =  'HOCH2CHO',  'bioburn_gp','HOCH2CHO_flux',      'GP=1'
+ EMIS_IN(41)  =  'C3H6',      'bioburn_gp','C3H6_flux',          'GP=1'
+ EMIS_IN(42)  =  'C3H8',      'bioburn_gp','C3H8_flux',          'GP=1'
+ EMIS_IN(43)  =  'CH3COCH3',  'bioburn_gp','CH3COCH3_flux',      'GP=1'
+ EMIS_IN(44)  =  'ACETOL',    'bioburn_gp','ACETOL_flux',        'GP=1'
+ EMIS_IN(45)  =  'NC4H10',    'bioburn_gp','NC4H10_flux',        'GP=1'
+ EMIS_IN(46)  =  'IC4H10',    'bioburn_gp','IC4H10_flux',        'GP=1'
+ EMIS_IN(47)  =  'MEPROPENE', 'bioburn_gp','MEPROPENE_flux',     'GP=1'
+ EMIS_IN(48)  =  'BUT1ENE',   'bioburn_gp','BUT1ENE_flux',       'GP=1'
+ EMIS_IN(49)  =  'CBUT2ENE',  'bioburn_gp','CBUT2ENE_flux',      'GP=1'
+ EMIS_IN(50)  =  'TBUT2ENE',  'bioburn_gp','TBUT2ENE_flux',      'GP=1'
+ EMIS_IN(51)  =  'MEK',       'bioburn_gp','MEK_flux',           'GP=1'
+ EMIS_IN(52)  =  'BIACET',    'bioburn_gp','BIACET_flux',        'GP=1'
+ EMIS_IN(53)  =  'MVK',       'bioburn_gp','MVK_flux',           'GP=1'
+ EMIS_IN(54)  =  'MACR',      'bioburn_gp','MACR_flux',          'GP=1'
+ EMIS_IN(55)  =  'C5H8',      'bioburn_gp','C5H8_flux',          'GP=1'
+!aromatics
+ EMIS_IN(56)  =  'BENZENE',   'bioburn_gp','BENZENE_flux',       'GP=1'
+ EMIS_IN(57)  =  'TOLUENE',   'bioburn_gp','TOLUENE_flux',       'GP=1'
+ EMIS_IN(58)  =  'LXYL',      'bioburn_gp','LXYL_flux',          'GP=1'
+ EMIS_IN(59)  =  'PHENOL',    'bioburn_gp','PHENOL_flux',        'GP=1'
+ EMIS_IN(60)  =  'STYRENE',   'bioburn_gp','STYRENE_flux',       'GP=1'
+ EMIS_IN(61)  =  'EBENZ',     'bioburn_gp','EBENZ_flux',         'GP=1'
+ EMIS_IN(62)  =  'LTMB',      'bioburn_gp','LTMB_flux',          'GP=1'
+ EMIS_IN(63)  =  'BENZAL',    'bioburn_gp','BENZAL_flux',        'GP=1'
+ EMIS_IN(64)  =  'LHAROM',    'bioburn_gp','LHAROM_flux',        'GP=1'
+
+!
+! ---------------------------------------------------------
+! EDGARv4.3.2, Anthropogenic emissions, speciated 
+! ---------------------------------------------------------
+!
+!
+ EMIS_IN(76)  = 'CO' ,              'import_grid','EDGAR_ANTH_CO_flux' ,               'GP=1'
+ EMIS_IN(77)  = 'NH3',              'import_grid','EDGAR_ANTH_NH3_flux',               'GP=1'
+ EMIS_IN(78)  = 'NO' ,              'import_grid','EDGAR_ANTH_NOx_flux' ,              'GP=1'
+ EMIS_IN(79)  = 'SO2',              'import_grid','EDGAR_ANTH_SO2_flux',               'GP=1'
+ EMIS_IN(80)  = 'C2H6,    1.90',    'import_grid','EDGAR_ANTH_ethane_flux',            'GP=1'
+ EMIS_IN(81)  = 'C3H8,    1.74',    'import_grid','EDGAR_ANTH_propane_flux',           'GP=1'
+ EMIS_IN(82)  = 'MEK,     0.13',    'import_grid','EDGAR_ANTH_ketones_flux',           'GP=1'
+ EMIS_IN(83)  = 'CH3CHO,  0.22',    'import_grid','EDGAR_ANTH_other_alkanals_flux',    'GP=1'
+ EMIS_IN(84)  = 'CH3COCH3,0.14',    'import_grid','EDGAR_ANTH_ketones_flux',           'GP=1'
+ EMIS_IN(85)  = 'CH3CO2H, 0.77',    'import_grid','EDGAR_ANTH_acids_flux',             'GP=1'
+ EMIS_IN(86)  = 'CH3OH,   0.65',    'import_grid','EDGAR_ANTH_alcohols_flux',          'GP=1'
+ EMIS_IN(87)  = 'C2H4,    0.77',    'import_grid','EDGAR_ANTH_ethene_flux',            'GP=1'
+ EMIS_IN(88)  = 'C3H6,    1.27',    'import_grid','EDGAR_ANTH_propene_flux',           'GP=1'
+ EMIS_IN(89)  = 'HCOOH,   0.42',    'import_grid','EDGAR_ANTH_acids_flux',             'GP=1'
+ EMIS_IN(90)  = 'HCHO,    1.06',    'import_grid','EDGAR_ANTH_formaldehyde_flux',      'GP=1'
+!aromatics  
+ EMIS_IN(91)  = 'BENZENE, 1.00',    'import_grid','EDGAR_ANTH_benzene_flux',           'GP=1'
+ EMIS_IN(92)  = 'TOLUENE, 1.00',    'import_grid','EDGAR_ANTH_toluene_flux',           'GP=1'
+ EMIS_IN(93)  = 'LXYL,    1.00',    'import_grid','EDGAR_ANTH_xylene_flux',            'GP=1'
+ EMIS_IN(94)  = 'LTMB,    1.00',    'import_grid','EDGAR_ANTH_trimethyl_benzenes_flux','GP=1'
+ EMIS_IN(95)  = 'PHENOL,  0.20',    'import_grid','EDGAR_ANTH_other_aromatics_flux',   'GP=1'
+ EMIS_IN(96)  = 'STYRENE, 0.20',    'import_grid','EDGAR_ANTH_other_aromatics_flux',   'GP=1'
+ EMIS_IN(97)  = 'EBENZ,   0.20',    'import_grid','EDGAR_ANTH_other_aromatics_flux',   'GP=1'
+ EMIS_IN(98)  = 'BENZAL,  0.20',    'import_grid','EDGAR_ANTH_other_aromatics_flux',   'GP=1'
+ EMIS_IN(99)  = 'LHAROM,  0.24',    'import_grid','EDGAR_ANTH_other_aromatics_flux',   'GP=1'
+! misc
+ EMIS_IN(100) = 'C2H2,     1.82', 'import_grid','EDGAR_ANTH_ethyne_flux',                   'GP=1'
+ EMIS_IN(101) = 'NC4H10,   1.03'  'import_grid','EDGAR_ANTH_butanes_flux',                  'GP=1'
+ EMIS_IN(102) = 'IC4H10,   0.43', 'import_grid','EDGAR_ANTH_butanes_flux',                  'GP=1'
+ EMIS_IN(103) = 'BUT1ENE  ,0.25', 'import_grid','EDGAR_ANTH_other_alkenes_and_alkynes_flux','GP=1'
+ EMIS_IN(104) = 'TBUT2ENE ,0.25', 'import_grid','EDGAR_ANTH_other_alkenes_and_alkynes_flux','GP=1'
+ EMIS_IN(105) = 'CBUT2ENE ,0.25', 'import_grid','EDGAR_ANTH_other_alkenes_and_alkynes_flux','GP=1'
+ EMIS_IN(106) = 'MEPROPENE,0.25', 'import_grid','EDGAR_ANTH_other_alkenes_and_alkynes_flux','GP=1'
+! oracle species 
+ EMIS_IN(107) = 'LALK4,2.92'     , 'import_grid','EDGAR_ANTH_pentanes_flux','GP=1'
+ EMIS_IN(108) = 'LALK5,0.80'     , 'import_grid','EDGAR_ANTH_hexanes_and_higher_alkanes_flux','GP=1'
+ EMIS_IN(109) = 'LOLE2,0.95'     , 'import_grid','EDGAR_ANTH_other_alkenes_and_alkynes_flux','GP=1'
+
+!
+! ---------------------------------------------------------
+! EDGARv4.3.2, AIRCRAFT EMISSIONS
+! ---------------------------------------------------------
+!
+!
+! AIRCRAFT (NOx); QUANTIFY; 3-D emission
+!
+ EMIS_IN(120) = 'NO' ,        'import_grid','EDGAR_AIR_NOx_flux',              'GP=1'
+ EMIS_IN(121) = 'CO' ,        'import_grid','EDGAR_AIR_CO_flux',               'GP=1'
+ EMIS_IN(122) = 'SO2' ,       'import_grid','EDGAR_AIR_SO2_flux',              'GP=1'
+
+! ---------------
+! OTHER EMISSIONS
+! ---------------
+!
+! VOLCANIC SO2
+!
+ EMIS_IN(150) = 'SO2' ,       'import_grid','VOLCANIC_SO2_SO2',  'GP=1'
+!
+! TERRESTRIAL DMS
+!
+ EMIS_IN(155) = 'DMS' ,       'import_grid','TERR_DMS_DMS',      'GP=2'
+!
+! AMMONIA
+!
+ EMIS_IN(160) = 'NH3' ,       'import_grid','NH3l_NH3',           'GP=1'
+ EMIS_IN(161) = 'NH3' ,       'import_grid','NH3w_NH3',           'GP=1'
+!
+!
+! HALOCARBONS CHCl2Br;CHClBr2;CH2ClBr;CH2Br2;CHBr3
+!
+ EMIS_IN(170) = 'CHBr3' ,     'import_grid','HALOCARB_CHBr3',        'GP=2'
+ EMIS_IN(171) = 'CH2Br2' ,    'import_grid','HALOCARB_CH2Br2',       'GP=2'
+ EMIS_IN(172) = 'CH2ClBr' ,   'import_grid','HALOCARB_CH2ClBr',      'GP=2'
+ EMIS_IN(173) = 'CHClBr2' ,   'import_grid','HALOCARB_CHClBr2',      'GP=2'
+ EMIS_IN(174) = 'CHCl2Br' ,   'import_grid','HALOCARB_CHCl2Br',      'GP=2'
+!
+!NITRATES OCEANIC EMISSIONS
+
+ EMIS_IN(175) = 'CH3NO3',     'import_grid', 'nitrates_w_CH3NO3',    'GP=1'
+ EMIS_IN(176) = 'C2H5NO3',    'import_grid', 'nitrates_w_C2H5NO3',   'GP=1'
+!
+! CH3I
+!
+!*EMIS_IN(177) = 'CH3I' ,      'import_grid','CH3I_CH3I',      'GP=2'
+!
+! aerosols vertically distributed, but not associated to tracers
+ EMIS_IN(200) = '#',  'import_grid', 'EDGAR_ANTH_OC_flux',      'GP=0', ! these are in kg/m^2s (see import files) 
+ EMIS_IN(201) = '#',  'import_grid', 'EDGAR_ANTH_BC_flux',      'GP=0', ! these are in mlc/m^2d (see import files)
+/
+
+!01 alcohols
+!02 ethane                               
+!03 propane                              
+!04 butanes                              
+!05 pentanes                             
+!06 hexanes_and_higher_alkanes
+!07 ethene
+!08 propene
+!09 ethyne
+!---
+!10 isoprene
+!12 monoterpenes
+!---
+!12 other_alkenes_and_alkynes
+!13 benzene
+!14 toluene
+!15 xylene
+!16 trimethylbenzenes
+!17 other_aromatics
+!18 esters
+!19 ethers
+!20 chlorinated_HC
+!21 methanal (formaldehyde)              
+!22 other_alkanals
+!23 ketones
+!24 acids                                
+!25 other_voc
+
+!alcohols (Tg/yr): 14.88
+!ethane (Tg/yr): 4.74
+!propane (Tg/yr): 6.02
+!butanes (Tg/yr): 9.58
+!pentanes (Tg/yr): 5.09
+!hexanes_and_higher_alkanes (Tg/yr): 21.34
+!ethene (Tg/yr): 6.98
+!propene (Tg/yr): 3.35
+!ethyne (Tg/yr): 2.96
+!isoprene (Tg/yr): 0.14
+!monoterpenes (Tg/yr): 0.24
+!other_alkenes_and_alkynes (Tg/yr): 6.11
+!benzene (Tg/yr): 5.82
+!toluene (Tg/yr): 7.8
+!xylene (Tg/yr): 7.24
+!trimethyl_benzenes (Tg/yr): 0.95
+!other_aromatics (Tg/yr): 7.03
+!esters (Tg/yr): 1.42
+!ethers (Tg/yr): 2.08
+!chlorinated_HC (Tg/yr): 5.81
+!formaldehyde (Tg/yr): 4.23
+!other_alkanals (Tg/yr): 9.21
+!ketones (Tg/yr): 7.69
+!acids (Tg/yr): 8.5
+!other_voc (Tg/yr): 12.7
+!
+! species                     | MW (IN THE MODEL!)     emission needed/emission model = ratio
+!-----------------------------------------------------------------------------------
+!C2H6                               ->      ethane              9.00/4.74    =  1.90
+!C3H8                               ->      propane            10.50/6.02    =  1.74
+!NC4H10                             ->      butanes             9.90/9.58    =  1.03 
+!IC4H10                             ->      butanes             4.20/9.58    =  0.43
+!MEK (methyl ethyl ketone)          ->      ketones             1.00/9.54    =  0.10   
+!CH3CHO (acetaldehyde)              ->      other_alkanals      2.00/9.21    =  0.22 
+!CH3COCH3 (acetone)                 ->      ketones             1.10/7.69    =  0.14 
+!CH3CO2H (acetic acid)              ->      acids               6.52/11.08   =  0.58 
+!CH3OH   (methanol)                 ->      alcohols            9.71/10.35   =  0.93  
+! 
+!HCOOH (formic acid)                ->      acids               3.56/8.50    =  0.42 
+!HCHO (methanal, formaldehyde)      ->      methanal            4.50/4.23    =  1.06 
+!
+!LALK4 (ORACLE COMPOUNDS)      73.23 ->      pentanes            15.1/5.17    =  2.92
+!LALK5 (ORACLE COMPOUNDS)     106.97 ->      hexanes_and_higher_alkanes  21.2/26.49 = 0.8 
+!
+!-----------------------------------------------------------------------------------
+! 
+!C2H4                               ->      ethene              5.40/6.98    =  0.77 
+!C3H6 (equivalent to OLE1 in Oracle)->      propene             4.26/3.35    =  1.27 
+!
+!C2H2                               ->      ethyne              5.40/2.96   =  1.82 
+!BUT1ENE                   56.11    ->      other_alkenes_and_alkynes      1.46/6.11   =  0.25
+!TBUT2ENE                  56.11    ->      other_alkenes_and_alkynes      1.46/6.11   =  0.25
+!CBUT2ENE                           ->      other_alkenes_and_alkynes      1.46/6.11   =  0.25
+!MEPROPENE                          ->      other_alkenes_and_alkynes      1.46/6.11   =  0.25
+!
+!OLE2 (ORACLE COMPOUNDS)   79.05    ->      other_alkenes_and_alkynes      8.2/8.6     =  0.95
+!
+!
+!-----------------------------------------------------------------------------------
+! based on best estimates from ACCMIP for the year 2000 
+! maybe here wrong as adapted to year 2015 !!!!
+!-----------------------------------------------------------------------------------
+!BENZENE                            ->      benzene             6.67/5.82    =  1.15 
+!TOLUENE                            ->      toluene             7.04/7.80    =  0.90 
+!LXYL                               ->      xylene              5.92/7.24    =  0.82 
+!LTMB (trimethylbenzenes)           ->      trimethylbenzenes   1.66/0.95    =  1.74 
+!PHENOL                       94.1  ->      other_aromatics     1.70/8.47    =  0.20
+!STYRENE                     104.1  ->      other_aromatics     1.87/9.37    =  0.20 
+!EBENZ (ethylbenzene)        106.17 ->      other_aromatics     1.91/9.55    =  0.20
+!BENZAL                       94.1  ->      other_aromatics     1.69/8.47    =  0.20
+!LHAROM (higher aromatics)   146.23 ->      other_aromatics     3.74/13.16   =  0.28
+!
+! We increase LHAROM to match the anthropogenic total as in Tsimpidi et al.(2014)
+! from Tsimpidi manuscript (ORACLE) : 32.2 Tg/yr
+! Total aromatics here (without LAROM) = 28.46 Tg/yr
+! LHAROM anthropogenic emissions = 32.2 -28.46 = 3.74   
+!-----------------------------------------------------------------------------------
+! USING SCALING OF 1 SO TO CITE THE EMISSINOS DATABASE
+!BENZENE                            ->      benzene             5.82/5.82    =  1.00 
+!TOLUENE                            ->      toluene             7.80/7.80    =  1.00 
+!LXYL                               ->      xylene              7.24/7.24    =  1.00 
+!LTMB (trimethylbenzenes)           ->      trimethylbenzenes   0.95/0.95    =  1.00 
+!PHENOL                       94.1  ->      other_aromatics     1.70/8.47    =  0.20
+!STYRENE                     104.1  ->      other_aromatics     1.87/9.37    =  0.20 
+!EBENZ (ethylbenzene)        106.17 ->      other_aromatics     1.91/9.55    =  0.20
+!BENZAL                       94.1  ->      other_aromatics     1.69/8.47    =  0.20
+!LHAROM (higher aromatics)   146.23 ->      other_aromatics     3.22/13.16   =  0.24
+!
+! We increase LHAROM to match the anthropogenic total as in Tsimpidi et al.(2014)
+! from Tsimpidi manuscript (ORACLE) : 32.2 Tg/yr
+! Total aromatics here (without LAROM) = 28.98 Tg/yr
+! LHAROM anthropogenic emissions = 32.2 -28.98 = 3.22   
+!-----------------------------------------------------------------------------------

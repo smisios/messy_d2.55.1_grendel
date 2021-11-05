@@ -1,0 +1,91 @@
+! -*- f90 -*-
+! LOCCOUPLE(:)='component name','send location', 'receive location','mask'
+!   'send location' = 'subroutine name : B / E : order send/receive'
+!  B:= begin of entry point calls
+!  E:=   end of entry point calls
+!  1 / 2 order of send /receive 
+!  mask: mask for coupling e.g. land model => land mask
+!        0: all point are taken into account (default)
+!        1: land mask
+!        2:  sea mask
+!
+&CPL
+LOCCOUPLE(3)='fesom','messy_write_output:B:2','messy_time:B:1',3,
+
+! TODO
+!! send before scan2 => end of messy_write_output ??
+!! receive: keine  passende Einsprungstelle ?? Make new one ?
+!!          direkt vor scan1 gerufen
+
+!! FESOM : 2 grids defined !!! => only one is used its OK
+
+
+! SOURCE FIELDS
+! SFIELD(:) = 'oasisnamcouple name', 'channel name', 'object name', 'oasaxis','levelstr'
+! - oasaxis: string: DEFINES HOW TO INTERPRET THE OASIS MULTI-LEVEL INFORMATION
+!             FORMAT:  'Z;N:nnum;T:tlev' => respective order is important !
+!                      'Z' can be without specifier => nlev
+! - levelstr: SPECIFIES LEVELs of variable , enables rank reduction
+!             FORMAT: 'Z:zn;N:nn;T:tn'
+!             specific: T:  nnow: tn= -1 ; nnew: tn=-2 
+!             specific: Z:  top: zn = -1 , zsurface: n= 0 
+SFIELD(1) = 'taux_atm' ,'scalc',   'ustarw', ' ', ' ',
+SFIELD(2) = 'tauy_atm' ,'scalc',   'vstarw', ' ', ' ',
+SFIELD(3) = 'taux_ica' ,'scalc',   'ustari', ' ', ' ',
+SFIELD(4) = 'tauy_ica' ,'scalc',   'vstari', ' ', ' ',
+SFIELD(5) = 'prec_atm' ,'scalc',   'rsf', ' ', ' ',
+SFIELD(6) = 'snow_atm' ,'scalc',   'ssf', ' ', ' ',
+SFIELD(7) = 'evap_atm' ,'scalc',   'evapwdrho', ' ', ' ',
+SFIELD(8) = 'subl_atm' ,'scalc',   'evapidrho', ' ', ' ',
+SFIELD(9) = 'heat_atm' ,'scalc',   'heat2oce', ' ', ' ',
+SFIELD(10) = 'heat_ica' ,'scalc',   'heat2ice', ' ', ' ',
+SFIELD(11) = 'heat_swa' ,'rad01',   'soflw ', ' ', ' ',
+SFIELD(12) = 'hydr_atm' ,'g3b',     'awfre', ' ', ' ',
+
+
+!!$SFIELD(1) = 'SEMAC1LON' ,'geoloc',   'philon', ' ', ' ',
+!!$SFIELD(2) = 'SEMAC1LAT' ,'geoloc',   'philat', ' ', ' ',
+!!$SFIELD(3) = 'SEMAC2LON' ,'geoloc',   'philon', ' ', ' ',
+!!$SFIELD(4) = 'SEMAC2LAT' ,'geoloc',   'philat', ' ', ' ',
+!!$
+!
+!
+! - 'OASIS' as channel name indicates, that the submodel should create the
+!     channel object. In this case the representation is required.
+! - lcreate = T => create if channel object does not exist, in this case the 
+!     representation is required.
+! - mask field: 0 use all points, 1 use only landpoint, 2 only sea points
+! - postproc: postprocessing string: non-empty variable needs specific treatment
+!    - ABS      use absolute value
+!    - x:fac    multiply by "fac", e.g. "-1"
+!    - +:const  add constant 
+!    - GT:limit=number  ie. if (x > limit) x = number
+!    - GE, LT,LE similar
+! - oasaxis: string: DEFINES HOW TO INTERPRET THE OASIS MULTI-LEVEL INFORMATION
+!             FORMAT:  'Z;N:nnum;T:tlev' => respective order is important !
+!                      'Z' can be without specifier => nlev
+! - levelstr: SPECIFIES LEVELs of variable , enables rank reduction
+!             FORMAT: 'Z:zn;N:nn;T:tn'
+!             specific: T:  nnow: tn= -1 ; nnew: tn=-2 
+!             specific: Z:  lower most model layer : zn= 0 
+! - representation string for channel object creation 
+
+!
+! TODO MASKEN !!
+RFIELD(1)  = 'sst_atmo', 'g3b','tsw'   ,T,3,'+:273.15    ',' ',' ','GP_2D_HORIZONTAL' 
+RFIELD(2)  = 'sit_atmo', 'g3b','siced' ,T,3,'LT:0.0=0.0  ',' ',' ','GP_2D_HORIZONTAL' 
+RFIELD(3)  = 'sie_atmo', 'g3b','seaice',T,3,'LT:0.0=0.0  ',' ',' ','GP_2D_HORIZONTAL' 
+RFIELD(4)  = 'snt_atmo', 'g3b','sni',   T,3,'LT:0.0=0.0  ',' ',' ','GP_2D_HORIZONTAL' 
+RFIELD(5)  = 'OCUATMOS', 'g3b','ocu'   ,T,3,'            ',' ',' ','GP_2D_HORIZONTAL' 
+RFIELD(6)  = 'OCVATMOS', 'g3b','ocv',   T,3,'            ',' ',' ','GP_2D_HORIZONTAL' 
+! mo_co2 does not exist in echam5  but in ECHAM6
+!RFIELD(7)  = 'CO2TRAAT', 'oasis3mct','co2trans',T,0,'x:1.e6 ',' ',' ','GP_2D_HORIZONTAL' 
+!RFIELD(8)  = 'CO2ATMOS', 'oasis3mct','co2ocean',T,0,'       ',' ',' ','GP_2D_HORIZONTAL' 
+
+
+!!$RFIELD(1)  = 'REMAC1LON', 'oasis3mct','emac1lon',T,0,' ',' ',' ','GP_2D_HORIZONTAL' 
+!!$RFIELD(2)  = 'REMAC1LAT', 'oasis3mct','emac1lat',T,0,' ',' ',' ','GP_2D_HORIZONTAL' 
+!!$RFIELD(3)  = 'REMAC2LON', 'oasis3mct','emac2lon',T,0,' ',' ',' ','GP_2D_HORIZONTAL' 
+!!$RFIELD(4)  = 'REMAC2LAT', 'oasis3mct','emac2lat',T,0,' ',' ',' ','GP_2D_HORIZONTAL' 
+!RFIELD(5)  = 'REMACCDNI', 'oasis3mct','emac2cdni',T,0,' ',' ',' ','GP_2D_HORIZONTAL' 
+/

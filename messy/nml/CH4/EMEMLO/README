@@ -1,0 +1,135 @@
+without MLOCEAN (Winterstein et al, 2019), no MLOCEAN
+=====================================================
+
+R1EME-01              tracer_s2010-1xCH4.nml
+                      - tracer init from RC1SD-base-07a (0167/0001)
+                        (!!! + H2O submodel !!!)
+
+S1EME-02
+
+S2EME-02 
+
+##########################################################################
+### NEW SIMULATIONS
+##########################################################################
+
+"with" MLOCEAN
+==============
++ modified GWAVE heating
++ error in MLOCEAN
+
+------------
+
+R1EME-01-su           spin-up without MLOCEAN
+                      - tracer init from R1EME-01 (0236/0002)
+                        (including H2O -> q)
+                        (tracer_s2010-1xCH4-su.nml)
+
+R1EME-01-re           reference without MLOCEAN
+X                      - tracer init from R1EME-su (0003/0005)
+                        (no H2O tracer in this file,
+                         however qm1 from ECHAM5 added)
+                        (tracer_s2010-1xCH4-re.nml)
+
+R1EME-02-oc           reference with MLOCEAN
+X                     - tracer init from R1EME-01-su (0003/0005)
+                        (tracer_s2010-1xCH4-oc.nml -> tracer_s2010-1xCH4-re.nml)
+
+------------
+
+## S1EME-02-su           2 x CH4 with MLOCEAN
+## *                     - tracer init from S1EME-02 (0115/0002)
+##                          restart_date_time = "20400101 120000"
+##                         (tracer_s2010-2xCH4-su.nml)
+
+## S1EME-02-re           
+##                       - tracer init from S1EME-01-su (0003/0005)
+##                         (tracer_s2010-2xCH4-re.nml)
+
+S1EME-02-oc           
+*                     - tracer init from EME-01/S1EME-02 (0115/0002)
+                         restart_date_time = "20400101 120000"
+                        (tracer_s2010-2xCH4-oc.nml)
+
+------------
+
+## S2EME-02-su                             
+##                       - tracer init from S2EME-01-su (0005/0005)
+##                         (tracer_s2010-5xCH4-su.nml --> 
+##                          tracer_s2010-5xCH4-re.nml)
+
+## S2EME-02-re
+##                       - tracer init from S2EME-01-su (0005/0005)
+##                         (tracer_s2010-5xCH4-re.nml)
+
+S2EME-02-oc           
+                      - tracer init from EME-01/S2EME-02 (0114/0003)
+                         restart_date_time = "20400101 120000"
+                        (tracer_s2010-5xCH4-oc.nml)
+
+##########################################################################
+### NEW SIMULATIONS
+##########################################################################
+
+
+"with" MLOCEAN
+==============
+
+R1EME-03-su           spin-up without MLOCEAN
+                      - tracer_s2010-1xCH4-su.nml:
+                        tracer init from R1EME-01 (0236/0002)
+                        (including H2O -> q)
+                      - import_s2010-1xCH4.nml          
+
+[R1EME-03-re          reference witout MLOCAN]
+
+R1EME-03-oc           reference (1xCH4) with MLOCEAN
+                      - tracer:s2010-1xCH4-oc.nml
+                        tracer init from R1EME-03-su (0014/0001)
+                        (including q (ECHAM5, qm1) -> H2O -> q)
+                      - import_s2010-1xCH4.nml          
+
+preparation for scaled CH4:
+
+                      - restart 0053/0001 ("20291231 234800") from
+                        R1EME-03-oc:
+                        - modified to 20181231 234800 (in save/0053)
+                        - for transient tracers:
+                          - restart_import_grid.rst
+                            (0024/0001) 20181231 234800
+                          - use tracer information of 0024/0001 for
+                            - restart_0001_tracer_gp_m1.nc
+                            - restart_0001_tracer_gp.nc
+                            - restart_0001_tracer_pdef_gp.nc (MP_*_x1, MN_*_x1)
+                            according to this table:
+
+                               transient
+                               (restart_import_grid.rst) --> TRACER    submodel
+                               ------------------------------------------------
+                               TN_SF6                        SF6       offemis
+                               TN_AOA                        AOA       tnudge
+                               TN_SF6AOA                     SF6_AOA   tnudge
+                               TN_SF6AOAc                    SF6_AOAc  tnudge
+                               SYNT3                         SF6_CCMI  tnudge
+                               ------------------------------------------------
+
+  - mv restart_0001_tracer_gp.nc restart_0001_tracer_gp.nc-1xCH4
+  - ncap2 -s "CH4=2*CH4" restart_0001_tracer_gp.nc-1xCH4 restart_0001_tracer_gp.nc-2xCH4
+  - ncap2 -s "CH4=5*CH4" restart_0001_tracer_gp.nc-1xCH4 restart_0001_tracer_gp.nc-5xCH4
+
+  - mv restart_0001_tracer_gp_m1.nc restart_0001_tracer_gp_m1.nc-1xCH4
+  - ncap2 -s "CH4=2*CH4" restart_0001_tracer_gp_m1.nc-1xCH4 restart_0001_tracer_gp_m1.nc-2xCH4
+  - ncap2 -s "CH4=5*CH4" restart_0001_tracer_gp_m1.nc-1xCH4 restart_0001_tracer_gp_m1.nc-5xCH4
+
+
+S2EME-03-oc  2x CH4 with MLOCEAN
+   - xmessy_mmd.S2EME-03-oc
+   - mv restart_0001_tracer_gp_m1.nc-2xCH4 restart_0001_tracer_gp_m1.nc
+   - mv restart_0001_tracer_gp.nc-2xCH4    restart_0001_tracer_gp.nc
+                      
+
+S5EME-03-oc  5x CH4 with MLOCEAN
+   - xmessy_mmd.S5EME-03-oc
+   - mv restart_0001_tracer_gp_m1.nc-5xCH4 restart_0001_tracer_gp_m1.nc
+   - mv restart_0001_tracer_gp.nc-5xCH4    restart_0001_tracer_gp.nc
+

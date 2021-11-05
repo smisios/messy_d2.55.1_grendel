@@ -1,0 +1,199 @@
+<!DOCTYPE html 
+     PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+     "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xml:lang="en" lang="en">
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="GENERATOR" content="Mozilla/4.7C-SGI [en] (X11; I; IRIX64 6.5 IP27) [Netscape]">
+   <title>Changes in the COSMO-Model 4.19</title>
+<style type="text/css">
+  body { font-family:       Arial;
+         font-size:         12pt;
+         background-repeat: no-repeat; 
+         margin:            1em; }
+
+  tt   { font-size:         12pt;}
+
+  li   { margin-top:         5pt;
+         margin-bottom:      5pt }
+
+  th   { border:           1px solid black;
+         padding:          3pt;
+         vertical-align:   top;
+         background-color: lightblue;}
+
+  td   { border:           1px solid black;
+         padding:          3pt;
+         vertical-align:   top;}
+
+  td.middl   { border:           1px solid black;
+               padding:          3pt;
+               vertical-align:   middle;}
+
+  td.hilit       { border:           1px solid black;
+                   padding:          1pt;
+                   vertical-align:   top;
+                   background-color: lightblue;}
+
+  td.clean       { padding:          0pt;
+                   border-style:     none;
+                   vertical-align:   top;}
+
+  td.notes       { padding:          3pt;
+                   border-style:     none;
+                   vertical-align:   top;}
+
+  td.nomid       { padding:          3pt;
+                   border-style:     none;
+                   vertical-align:   middle;}
+
+  table.note     { border-width:     0pt;
+                   border-style:     none;
+                   margin-left:      5pt;
+                   margin-top:       1pt;
+                   margin-bottom:    1pt;
+                   cell-padding:     5pt;
+                   vertical-align:   top;
+                   text-align:       left;}
+  
+  table.atte     { border-width:     0pt;
+                   border-style:     none;
+                   margin-left:      5pt;
+                   margin-top:       1pt;
+                   margin-bottom:    1pt;
+                   cell-padding:     5pt;
+                   vertical-align:   top;
+                   text-align:       left;
+                   background-color: red;}
+  
+  table.namelist { border-width:  2pt;
+                   border-style:  groove;
+                   border-color:  black;
+                   width:         90%;
+                   text-align:    left;
+                   margin-top:    1pt;
+                   margin-bottom: 1pt;
+                   padding:       3pt;
+                   align:         center;}
+  
+  tr.headings    { text-align:       left;
+                   vertical-align:   top;
+                   border-width:     1pt;
+                   border-style:     groove;
+                   border-color:     grey;
+                   padding:          2pt;
+                   font-weight:      bold;}
+
+</style>
+
+</head>
+  <body text="#000000" bgcolor="#FFFFFF" link="#0000EE" vlink="#551A8B" alink="#FF0000">
+
+<center>
+<h1>
+<a NAME="begin">Documentation of the Changes in the COSMO-Model <br /> Version 4.19</a>
+</h1>
+<h3>
+01.08.2011
+</h3>
+</center>
+
+<p>
+The main reason for this new version is a change to the horizontal advection
+of temperature and pressure deviation. Few more technical changes have been 
+implemented also.
+</p>
+
+<h4><a NAME="content">Contents:</a></h4>
+
+<ol>
+<li><a href="#chanadv">Changes in the Horizontal Advection</a></li>
+<li><a href="#chancon">Conditional Compilation</a></li>
+<li><a href="#chanbug">Bug Fixes</a></li>
+</ol>
+<p>
+<hr>
+
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="chanadv">1. Changes in the Horizontal Advection</a><br />
+     (by Uli Blahak)</h3>
+
+<!---------------------------------------------------------------------------->
+
+<p>
+The changes handle flow situations with confluent horizontal flows in 
+neighbouring grid boxes (opposite signs of U and/or V) better.
+This avoids a spurious and potentially detrimental heat source in such
+grid boxes, which lead to extreme Theta-values, to "grid point storms"
+and other unwanted effects.
+</p>
+
+<p>
+There are new subroutines "horiz_adv_driver_stagmix", "adv_upwind?_???_stagmix"
+</p>
+
+<p>
+This change is hard-coded, but an internal switch zitype_tppadv has been
+implemented to restore the old scheme again.
+</p>
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+
+<p align="right"><a href="#content">Back to Contents</a>
+
+<hr>
+
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="chancon">2. Conditional Compilation</a></h3>
+
+<!---------------------------------------------------------------------------->
+
+<p>
+Conditional compilation has also been introduced now for the DWD Grib library.
+To use this library, the model has to be compiled with the flag <tt>-DGRIBDWD.</tt>
+</p>
+
+<p>
+If the source code is NOT compiled with these extensions, but the
+corresponding component is initiated during a model run, the
+model will stop with an appropriate error message.
+</p>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+
+<p align="right"><a href="#content">Back to Contents</a>
+
+<hr>
+
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="chanbug">3. Bug Fixes</a></h3>
+
+<!---------------------------------------------------------------------------->
+
+<p>
+<tt>src_output.f90</tt>: <br />
+Computation of synthetic satellite images: If a special synthetic satellite 
+image variable is not computed, but should be written in a GRIBOUT Namelist group, 
+the model crashed. This is avoided now, because such variables are not 
+written any more.<br />
+(by Robin Faulwetter)
+</p>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+
+<p align="right"><a href="#content">Back to Contents</a>
+
+</body>
+</html>

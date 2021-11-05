@@ -1,0 +1,1446 @@
+! -*- f90 -*-
+&CTRL
+l_tendency = T
+/
+&CPL
+sw_flux  = 'mxl','Swin'                ! surface radiation flux
+lai      = 'mxl','LAI'                 ! lai coverage
+laip     = 'mxl','laip'                ! previous month lai coverage
+btr_frac = 'mxl','btr_frac'            ! broadleaf coverage  
+ntr_frac = 'mxl','ntr_frac'            ! needleleaf coverage
+shr_frac = 'mxl','shr_frac'            ! shrub coverage  
+hrb_frac = 'mxl','hrb_frac'            ! herb/grass/crop coverage 
+cossza   = 'mxl','cossza',             ! cos(zenith angle)       
+/
+&MGN
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!! BASIC TRACERS/MECHANISM, NOTHING TO BE CHANGED
+!!! NOTES:
+!!! - MAX 100 TRACERS !!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! MGN_SPC(#) = name of megan species (20 in original version)
+! LDF_FCT(#) = light dependant fraction of the emissions
+! RHO_FCT(#) = production and loss factor within canopy
+! TDF_PRM(#) = temperature dependent parameter for light-independent emissions
+! EF_BT(#) =  emission factor for broadleaf
+! EF_NT(#) =  emission factor for needleleaf
+! EF_SB(#) =  emission factor for shrub
+! EF_HB(#) =  emission factor for herb/grass/crop
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+MGN_SPC(  1)='ISOP'
+LDF_FCT(  1) = 0.9999
+RHO_FCT(  1) = 0.96 
+TDF_PRM(  1) = 0.09 
+EF_BT(  1) = 13000.00   
+EF_NT(  1) = 2000.00    
+EF_SB(  1) = 11000.00   
+EF_HB(  1) = 400.00     
+!
+MGN_SPC(  2)='MYRC'
+LDF_FCT(  2) = 0.05  
+RHO_FCT(  2) = 1.0 
+TDF_PRM(  2) = 0.1  
+EF_BT(  2) = 20.00      
+EF_NT(  2) = 75.00      
+EF_SB(  2) = 22.00      
+EF_HB(  2) = 0.30       
+!
+MGN_SPC(  3)='SABI'
+LDF_FCT(  3) = 0.1   
+RHO_FCT(  3) = 1.0 
+TDF_PRM(  3) = 0.1  
+EF_BT(  3) = 45.00      
+EF_NT(  3) = 70.00      
+EF_SB(  3) = 50.00      
+EF_HB(  3) = 0.70       
+!
+MGN_SPC(  4)='LIMO'
+LDF_FCT(  4) = 0.05  
+RHO_FCT(  4) = 1.0 
+TDF_PRM(  4) = 0.1  
+EF_BT(  4) = 45.00      
+EF_NT(  4) = 100.00     
+EF_SB(  4) = 52.00      
+EF_HB(  4) = 0.70       
+!
+MGN_SPC(  5)='3CAR'
+LDF_FCT(  5) = 0.05  
+RHO_FCT(  5) = 1.0 
+TDF_PRM(  5) = 0.1  
+EF_BT(  5) = 18.00      
+EF_NT(  5) = 160.00     
+EF_SB(  5) = 25.00      
+EF_HB(  5) = 0.30       
+!
+MGN_SPC(  6)='OCIM'
+LDF_FCT(  6) = 0.8   
+RHO_FCT(  6) = 1.0 
+TDF_PRM(  6) = 0.1  
+EF_BT(  6) = 90.00      
+EF_NT(  6) = 60.00      
+EF_SB(  6) = 85.00      
+EF_HB(  6) = 1.00       
+!
+MGN_SPC(  7)='BPIN'
+LDF_FCT(  7) = 0.1   
+RHO_FCT(  7) = 1.0 
+TDF_PRM(  7) = 0.1  
+EF_BT(  7) = 90.00      
+EF_NT(  7) = 300.00     
+EF_SB(  7) = 100.00     
+EF_HB(  7) = 1.50       
+!
+MGN_SPC(  8)='APIN'
+LDF_FCT(  8) = 0.1   
+RHO_FCT(  8) = 1.0 
+TDF_PRM(  8) = 0.1  
+EF_BT(  8) = 180.00     
+EF_NT(  8) = 450.00     
+EF_SB(  8) = 200.00     
+EF_HB(  8) = 2.00       
+!
+MGN_SPC(  9)='OMTP'
+LDF_FCT(  9) = 0.1   
+RHO_FCT(  9) = 1.0 
+TDF_PRM(  9) = 0.1  
+EF_BT(  9) = 90.00      
+EF_NT(  9) = 180.00     
+EF_SB(  9) = 110.00     
+EF_HB(  9) = 4.80       
+!
+MGN_SPC( 10)='FARN'
+LDF_FCT( 10) = 0.5   
+RHO_FCT( 10) = 1.0 
+TDF_PRM( 10) = 0.17 
+EF_BT( 10) = 35.00      
+EF_NT( 10) = 30.00      
+EF_SB( 10) = 30.00      
+EF_HB( 10) = 0.50       
+!
+MGN_SPC( 11)='BCAR'
+LDF_FCT( 11) = 0.5   
+RHO_FCT( 11) = 1.0 
+TDF_PRM( 11) = 0.17 
+EF_BT( 11) = 30.00      
+EF_NT( 11) = 60.00      
+EF_SB( 11) = 45.00      
+EF_HB( 11) = 0.90       
+!
+MGN_SPC( 12)='OSQT'
+LDF_FCT( 12) = 0.5   
+RHO_FCT( 12) = 1.0 
+TDF_PRM( 12) = 0.17 
+EF_BT( 12) = 75.00      
+EF_NT( 12) = 110.00     
+EF_SB( 12) = 85.00      
+EF_HB( 12) = 1.4        
+!
+MGN_SPC( 13)='MBO'
+LDF_FCT( 13) = 0.9999
+RHO_FCT( 13) = 1.0 
+TDF_PRM( 13) = 0.09 
+EF_BT( 13) = 0.10       
+EF_NT( 13) = 100.00     
+EF_SB( 13) = 1.00       
+EF_HB( 13) = 0.01       
+!
+MGN_SPC( 14)='MEOH'
+LDF_FCT( 14) = 0.75  
+RHO_FCT( 14) = 1.0 
+TDF_PRM( 14) = 0.08 
+EF_BT( 14) = 800.00     
+EF_NT( 14) = 800.00     
+EF_SB( 14) = 800.00     
+EF_HB( 14) = 800.00     
+!
+MGN_SPC( 15)='ACTO'
+LDF_FCT( 15) = 0.25  
+RHO_FCT( 15) = 1.0 
+TDF_PRM( 15) = 0.11 
+EF_BT( 15) = 240.00     
+EF_NT( 15) = 240.00     
+EF_SB( 15) = 240.00     
+EF_HB( 15) = 80.00      
+!
+MGN_SPC( 16)='CH4'
+LDF_FCT( 16) = 0.75  
+RHO_FCT( 16) = 1.0 
+TDF_PRM( 16) = 0.05 
+EF_BT( 16) = 30.00      
+EF_NT( 16) = 30.00      
+EF_SB( 16) = 30.00      
+EF_HB( 16) = 30.00      
+!
+MGN_SPC( 17)='NO'
+LDF_FCT( 17) = 0.0   
+RHO_FCT( 17) = 1.0 
+TDF_PRM( 17) = 0.11 
+EF_BT( 17) = 5.00       
+EF_NT( 17) = 6.00       
+EF_SB( 17) = 30.00      
+EF_HB( 17) = 70.00      
+!
+MGN_SPC( 18)='ACTA'
+LDF_FCT( 18) = 0.5   
+RHO_FCT( 18) = 1.0 
+TDF_PRM( 18) = 0.13 
+EF_BT( 18) = 240.00     
+EF_NT( 18) = 240.00     
+EF_SB( 18) = 240.00     
+EF_HB( 18) = 80.00      
+!
+MGN_SPC( 19)='FORM'
+LDF_FCT( 19) = 0.5   
+RHO_FCT( 19) = 1.0 
+TDF_PRM( 19) = 0.09 
+EF_BT( 19) = 70.00      
+EF_NT( 19) = 70.00      
+EF_SB( 19) = 70.00      
+EF_HB( 19) = 70.00      
+!
+MGN_SPC( 20)='CO'
+LDF_FCT( 20) = 0.5   
+RHO_FCT( 20) = 1.0 
+TDF_PRM( 20) = 0.09 
+EF_BT( 20) = 1000.0     
+EF_NT( 20) = 1000.0     
+EF_SB( 20) = 1000.0     
+EF_HB( 20) = 1000.0     
+/
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!! MEGAN TO MECHANISM TRACERS
+!!! NOTES:
+!!! - MAX 200 TRACERS !!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!MECH_SPC(  #) =  TRACER IN THE MECHANISM (if not present only diagnostic flux)
+!MGN_SRC(  #)  =  TRACER IN MEGAN TO BE SCALED
+!MECH_MWT(  #) =  MOLAR WEIGHT OF TRACER
+!EFFS_BT(  #)  =  RELATIVE EMISSIONS FACTOR FOR broadleaf
+!EFFS_NT(  #)  =  RELATIVE EMISSIONS FACTOR FOR needleaf   
+!EFFS_SB(  #)  =  RELATIVE EMISSIONS FACTOR FOR shrub   
+!EFFS_HB(  #)  =  RELATIVE EMISSIONS FACTOR FOR herb/grass/crop
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+&MGN2MECH
+! carbon monoxide
+MECH_SPC(1) = 'CO'        
+MGN_SRC(1) = 'CO'
+MECH_MWT(1) = 28.01  
+EFFS_BT(1) = 0.619067     
+EFFS_NT(1) = 0.619067     
+EFFS_SB(1) = 0.619067     
+EFFS_HB(1) = 0.619067 
+! ethene
+MECH_SPC(2) = 'C2H4'        
+MGN_SRC(2) = 'CO'
+MECH_MWT(2) = 28.05  
+EFFS_BT(2) = 0.134131     
+EFFS_NT(2) = 0.134131     
+EFFS_SB(2) = 0.134131     
+EFFS_HB(2) = 0.134131 
+! ethane
+MECH_SPC(3) = 'C2H6'        
+MGN_SRC(3) = 'CO'
+MECH_MWT(3) = 30.07  
+EFFS_BT(3) = 0.002064     
+EFFS_NT(3) = 0.002064     
+EFFS_SB(3) = 0.002064     
+EFFS_HB(3) = 0.002064 
+! propene
+MECH_SPC(4) = 'C3H6'        
+MGN_SRC(4) = 'CO'
+MECH_MWT(4) = 42.08  
+EFFS_BT(4) = 0.082542     
+EFFS_NT(4) = 0.082542     
+EFFS_SB(4) = 0.082542     
+EFFS_HB(4) = 0.082542 
+! propane
+MECH_SPC(5) = 'C3H8'        
+MGN_SRC(5) = 'CO'
+MECH_MWT(5) = 44.10  
+EFFS_BT(5) = 0.001032     
+EFFS_NT(5) = 0.001032     
+EFFS_SB(5) = 0.001032     
+EFFS_HB(5) = 0.001032 
+! Higher alkanes (C4H10, scales as between ethane and propane)
+MECH_SPC(6) = 'C4H10'        
+MGN_SRC(6) = 'CO'
+MECH_MWT(6) = 58.12  
+EFFS_BT(6) = 0.001548     
+EFFS_NT(6) = 0.001548     
+EFFS_SB(6) = 0.001548     
+EFFS_HB(6) = 0.001548 
+! acetone
+MECH_SPC(7) = 'CH3COCH3'        
+MGN_SRC(7) = 'ACTO'
+MECH_MWT(7) = 58.08  
+EFFS_BT(7) = 1.000000     
+EFFS_NT(7) = 1.000000     
+EFFS_SB(7) = 1.000000     
+EFFS_HB(7) = 1.000000 
+! acetic acid
+MECH_SPC(8) = 'CH3COOH'        
+MGN_SRC(8) = 'FORM'
+MECH_MWT(8) = 60.05  
+EFFS_BT(8) = 0.285714     
+EFFS_NT(8) = 0.285714     
+EFFS_SB(8) = 0.285714     
+EFFS_HB(8) = 0.285714 
+! methanol
+MECH_SPC(9) = 'CH3OH'        
+MGN_SRC(9) = 'MEOH'
+MECH_MWT(9) = 32.04  
+EFFS_BT(9) = 1.000000     
+EFFS_NT(9) = 1.000000     
+EFFS_SB(9) = 1.000000     
+EFFS_HB(9) = 1.000000 
+! formic acid
+MECH_SPC(10) = 'HCOOH'        
+MGN_SRC(10) = 'FORM            '
+MECH_MWT(10) = 46.03  
+EFFS_BT(10) = 0.285714     
+EFFS_NT(10) = 0.285714     
+EFFS_SB(10) = 0.285714     
+EFFS_HB(10) = 0.285714 
+! isoprene
+MECH_SPC(11) = 'ISOP'        
+MGN_SRC(11) = 'ISOP'
+MECH_MWT(11) = 68.12  
+EFFS_BT(11) = 1.000000     
+EFFS_NT(11) = 1.000000     
+EFFS_SB(11) = 1.000000     
+EFFS_HB(11) = 1.000000 
+! passive tracer H
+MECH_SPC(1) = 'H'        
+MGN_SRC(1) = 'CO'
+MECH_MWT(1) = 20.00  
+EFFS_BT(1) = 0.500000      
+EFFS_NT(1) = 0.500000      
+EFFS_SB(1) = 0.500000      
+EFFS_HB(1) = 0.500000 
+!
+/
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!  ORIGINAL MEGAN SPECIATION
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!! Isoprene
+!!
+!MECH_SPC(  1) = 'isoprene        '        
+!MGN_SRC(  1) = 'ISOP            '
+!MECH_MWT(  1) = 68.12  
+!EFFS_BT(  1) = 1.000000     
+!EFFS_NT(  1) = 1.000000     
+!EFFS_SB(  1) = 1.000000     
+!EFFS_HB(  1) = 1.000000 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!! MTP
+!MECH_SPC(  2) = 'myrcene         '        
+!MGN_SRC(  2) = 'MYRC            '
+!MECH_MWT(  2) = 136.23 
+!EFFS_BT(  2) = 1.000000     
+!EFFS_NT(  2) = 1.000000     
+!EFFS_SB(  2) = 1.000000     
+!EFFS_HB(  2) = 1.000000 
+!!
+!MECH_SPC(  3) = 'sabinene        '        
+!MGN_SRC(  3) = 'SABI            '
+!MECH_MWT(  3) = 136.23 
+!EFFS_BT(  3) = 1.000000     
+!EFFS_NT(  3) = 1.000000     
+!EFFS_SB(  3) = 1.000000     
+!EFFS_HB(  3) = 1.000000 
+!!
+!MECH_SPC(  4) = 'limonene        '        
+!MGN_SRC(  4) = 'LIMO            '
+!MECH_MWT(  4) = 136.23 
+!EFFS_BT(  4) = 1.000000     
+!EFFS_NT(  4) = 1.000000     
+!EFFS_SB(  4) = 1.000000     
+!EFFS_HB(  4) = 1.000000 
+!!
+!MECH_SPC(  5) = 'carene_3        '        
+!MGN_SRC(  5) = '3CAR            '
+!MECH_MWT(  5) = 136.23 
+!EFFS_BT(  5) = 1.000000     
+!EFFS_NT(  5) = 1.000000     
+!EFFS_SB(  5) = 1.000000     
+!EFFS_HB(  5) = 1.000000 
+!!
+!MECH_SPC(  6) = 'ocimene_t_b     '        
+!MGN_SRC(  6) = 'OCIM            '
+!MECH_MWT(  6) = 136.23 
+!EFFS_BT(  6) = 1.000000     
+!EFFS_NT(  6) = 1.000000     
+!EFFS_SB(  6) = 1.000000     
+!EFFS_HB(  6) = 1.000000 
+!!
+!MECH_SPC(  7) = 'pinene_b        '        
+!MGN_SRC(  7) = 'BPIN            '
+!MECH_MWT(  7) = 136.23 
+!EFFS_BT(  7) = 1.000000     
+!EFFS_NT(  7) = 1.000000     
+!EFFS_SB(  7) = 1.000000     
+!EFFS_HB(  7) = 1.000000 
+!!
+!MECH_SPC(  8) = 'pinene_a        '        
+!MGN_SRC(  8) = 'APIN            '
+!MECH_MWT(  8) = 136.23 
+!EFFS_BT(  8) = 1.000000     
+!EFFS_NT(  8) = 1.000000     
+!EFFS_SB(  8) = 1.000000     
+!EFFS_HB(  8) = 1.000000 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!! Other MT
+!!
+!MECH_SPC(  9) = '2met_styrene    '        
+!MGN_SRC(  9) = 'OMTP            '
+!MECH_MWT(  9) = 132.20 
+!EFFS_BT(  9) = 0.011468     
+!EFFS_NT(  9) = 0.005543     
+!EFFS_SB(  9) = 0.009242     
+!EFFS_HB(  9) = 0.010395 
+!!
+!MECH_SPC( 10) = 'cymene_p        '        
+!MGN_SRC( 10) = 'OMTP            '
+!MECH_MWT( 10) = 134.22 
+!EFFS_BT( 10) = 0.057339     
+!EFFS_NT( 10) = 0.055432     
+!EFFS_SB( 10) = 0.046211     
+!EFFS_HB( 10) = 0.041580 
+!!
+!MECH_SPC(  11) = 'cymene_o        '        
+!MGN_SRC( 11) = 'OMTP            '
+!MECH_MWT( 11) = 134.22 
+!EFFS_BT( 11) = 0.034404     
+!EFFS_NT( 11) = 0.016630     
+!EFFS_SB( 11) = 0.027726     
+!EFFS_HB( 11) = 0.031185 
+!!
+!MECH_SPC(  12) = 'phellandrene_a  '        
+!MGN_SRC( 12) = 'OMTP            '
+!MECH_MWT( 12) = 136.23 
+!EFFS_BT( 12) = 0.045872     
+!EFFS_NT( 12) = 0.055432     
+!EFFS_SB( 12) = 0.046211     
+!EFFS_HB( 12) = 0.041580 
+!!
+!MECH_SPC(  13) = 'thujene_a       '        
+!MGN_SRC( 13) = 'OMTP            '
+!MECH_MWT( 13) = 136.23 
+!EFFS_BT( 13) = 0.011468     
+!EFFS_NT( 13) = 0.033259     
+!EFFS_SB( 13) = 0.036969     
+!EFFS_HB( 13) = 0.041580 
+!!
+!MECH_SPC(  14) = 'terpinene_a     '        
+!MGN_SRC( 14) = 'OMTP            '
+!MECH_MWT( 14) = 136.23 
+!EFFS_BT( 14) = 0.057339     
+!EFFS_NT( 14) = 0.055432     
+!EFFS_SB( 14) = 0.046211     
+!EFFS_HB( 14) = 0.041580 
+!!
+!MECH_SPC(  15) = 'terpinene_g     '        
+!MGN_SRC( 15) = 'OMTP            '
+!MECH_MWT( 15) = 136.23 
+!EFFS_BT( 15) = 0.057339     
+!EFFS_NT( 15) = 0.055432     
+!EFFS_SB( 15) = 0.046211     
+!EFFS_HB( 15) = 0.041580 
+!!
+!MECH_SPC(  16) = 'terpinolene     '        
+!MGN_SRC( 16) = 'OMTP            '
+!MECH_MWT( 16) = 136.23 
+!EFFS_BT( 16) = 0.057339     
+!EFFS_NT( 16) = 0.066519     
+!EFFS_SB( 16) = 0.055453     
+!EFFS_HB( 16) = 0.062370 
+!!
+!MECH_SPC(  17) = 'phellandrene_b  '        
+!MGN_SRC( 17) = 'OMTP            '
+!MECH_MWT( 17) = 136.23 
+!EFFS_BT( 17) = 0.057339     
+!EFFS_NT( 17) = 0.166297     
+!EFFS_SB( 17) = 0.092421     
+!EFFS_HB( 17) = 0.103950 
+!!
+!MECH_SPC(  18) = 'camphene        '        
+!MGN_SRC( 18) = 'OMTP            '
+!MECH_MWT( 18) = 136.23 
+!EFFS_BT( 18) = 0.172018     
+!EFFS_NT( 18) = 0.249446     
+!EFFS_SB( 18) = 0.184843     
+!EFFS_HB( 18) = 0.145530 
+!!
+!MECH_SPC(  19) = 'bornene         '        
+!MGN_SRC( 19) = 'OMTP            '
+!MECH_MWT( 19) = 136.23 
+!EFFS_BT( 19) = 0.010321     
+!EFFS_NT( 19) = 0.004989     
+!EFFS_SB( 19) = 0.008318     
+!EFFS_HB( 19) = 0.008316 
+!!
+!MECH_SPC(  20) = 'fenchene_a      '        
+!MGN_SRC( 20) = 'OMTP            '
+!MECH_MWT( 20) = 136.23 
+!EFFS_BT( 20) = 0.003440     
+!EFFS_NT( 20) = 0.001663     
+!EFFS_SB( 20) = 0.002773     
+!EFFS_HB( 20) = 0.004158 
+!!
+!MECH_SPC(  21) = 'ocimene_al      '        
+!MGN_SRC( 21) = 'OMTP            '
+!MECH_MWT( 21) = 136.23 
+!EFFS_BT( 21) = 0.011468     
+!EFFS_NT( 21) = 0.005543     
+!EFFS_SB( 21) = 0.009242     
+!EFFS_HB( 21) = 0.010395 
+!!
+!MECH_SPC(  22) = 'ocimene_c_b     '        
+!MGN_SRC( 22) = 'OMTP            '
+!MECH_MWT( 22) = 136.23 
+!EFFS_BT( 22) = 0.045872     
+!EFFS_NT( 22) = 0.022173     
+!EFFS_SB( 22) = 0.036969     
+!EFFS_HB( 22) = 0.041580 
+!!
+!MECH_SPC(  23) = 'tricyclene      '        
+!MGN_SRC( 23) = 'OMTP            '
+!MECH_MWT( 23) = 136.23 
+!EFFS_BT( 23) = 0.011468     
+!EFFS_NT( 23) = 0.005543     
+!EFFS_SB( 23) = 0.009242     
+!EFFS_HB( 23) = 0.010395 
+!!
+!MECH_SPC(  24) = 'estragole       '        
+!MGN_SRC( 24) = 'OMTP            '
+!MECH_MWT( 24) = 148.20 
+!EFFS_BT( 24) = 0.003440     
+!EFFS_NT( 24) = 0.001663     
+!EFFS_SB( 24) = 0.002773     
+!EFFS_HB( 24) = 0.004158 
+!!
+!MECH_SPC(  25) = 'camphor         '        
+!MGN_SRC( 25) = 'OMTP            '
+!MECH_MWT( 25) = 152.23 
+!EFFS_BT( 25) = 0.034404     
+!EFFS_NT( 25) = 0.033259     
+!EFFS_SB( 25) = 0.046211     
+!EFFS_HB( 25) = 0.041580 
+!!
+!MECH_SPC(  26) = 'fenchone        '        
+!MGN_SRC( 26) = 'OMTP            '
+!MECH_MWT( 26) = 152.23 
+!EFFS_BT( 26) = 0.011468     
+!EFFS_NT( 26) = 0.005543     
+!EFFS_SB( 26) = 0.009242     
+!EFFS_HB( 26) = 0.010395 
+!!
+!MECH_SPC(  27) = 'piperitone      '        
+!MGN_SRC( 27) = 'OMTP            '
+!MECH_MWT( 27) = 152.23 
+!EFFS_BT( 27) = 0.003440     
+!EFFS_NT( 27) = 0.001663     
+!EFFS_SB( 27) = 0.002773     
+!EFFS_HB( 27) = 0.004158 
+!!
+!MECH_SPC(  28) = 'thujone_a       '        
+!MGN_SRC( 28) = 'OMTP            '
+!MECH_MWT( 28) = 152.23 
+!EFFS_BT( 28) = 0.011468     
+!EFFS_NT( 28) = 0.027716     
+!EFFS_SB( 28) = 0.046211     
+!EFFS_HB( 28) = 0.041580 
+!!
+!MECH_SPC(  29) = 'thujone_b       '        
+!MGN_SRC( 29) = 'OMTP            '
+!MECH_MWT( 29) = 152.23 
+!EFFS_BT( 29) = 0.002294     
+!EFFS_NT( 29) = 0.005543     
+!EFFS_SB( 29) = 0.009242     
+!EFFS_HB( 29) = 0.010395 
+!!
+!MECH_SPC(  30) = 'cineole_1_8     '        
+!MGN_SRC( 30) = 'OMTP            '
+!MECH_MWT( 30) = 154.25 
+!EFFS_BT( 30) = 0.057339     
+!EFFS_NT( 30) = 0.011086     
+!EFFS_SB( 30) = 0.036969     
+!EFFS_HB( 30) = 0.041580 
+!!
+!MECH_SPC(  31) = 'borneol         '        
+!MGN_SRC( 31) = 'OMTP            '
+!MECH_MWT( 31) = 154.25 
+!EFFS_BT( 31) = 0.008028     
+!EFFS_NT( 31) = 0.003880     
+!EFFS_SB( 31) = 0.006470     
+!EFFS_HB( 31) = 0.006237 
+!!
+!MECH_SPC(  32) = 'linalool        '        
+!MGN_SRC( 32) = 'OMTP            '
+!MECH_MWT( 32) = 154.25 
+!EFFS_BT( 32) = 0.137615     
+!EFFS_NT( 32) = 0.066519     
+!EFFS_SB( 32) = 0.110906     
+!EFFS_HB( 32) = 0.124740 
+!!
+!MECH_SPC(  33) = 'terpineol_4     '        
+!MGN_SRC( 33) = 'OMTP            '
+!MECH_MWT( 33) = 154.25 
+!EFFS_BT( 33) = 0.006881     
+!EFFS_NT( 33) = 0.003326     
+!EFFS_SB( 33) = 0.005545     
+!EFFS_HB( 33) = 0.006237 
+!!
+!MECH_SPC(  34) = 'terpineol_a     '        
+!MGN_SRC( 34) = 'OMTP            '
+!MECH_MWT( 34) = 154.25 
+!EFFS_BT( 34) = 0.034404     
+!EFFS_NT( 34) = 0.016630     
+!EFFS_SB( 34) = 0.027726     
+!EFFS_HB( 34) = 0.031185 
+!!
+!MECH_SPC(  35) = 'linalool_OXD_c  '        
+!MGN_SRC( 35) = 'OMTP            '
+!MECH_MWT( 35) = 170.25 
+!EFFS_BT( 35) = 0.006881     
+!EFFS_NT( 35) = 0.003326     
+!EFFS_SB( 35) = 0.005545     
+!EFFS_HB( 35) = 0.006237 
+!!
+!MECH_SPC(  36) = 'linalool_OXD_t  '        
+!MGN_SRC( 36) = 'OMTP            '
+!MECH_MWT( 36) = 170.25 
+!EFFS_BT( 36) = 0.034404     
+!EFFS_NT( 36) = 0.016630     
+!EFFS_SB( 36) = 0.027726     
+!EFFS_HB( 36) = 0.031185 
+!!
+!MECH_SPC(  37) = 'ionone_b        '        
+!MGN_SRC( 37) = 'OMTP            '
+!MECH_MWT( 37) = 192.30 
+!EFFS_BT( 37) = 0.002294     
+!EFFS_NT( 37) = 0.001109     
+!EFFS_SB( 37) = 0.001848     
+!EFFS_HB( 37) = 0.002079 
+!!
+!MECH_SPC(  38) = 'bornyl_ACT      '        
+!MGN_SRC( 38) = 'OMTP            '
+!MECH_MWT( 38) = 196.29 
+!EFFS_BT( 38) = 0.001147     
+!EFFS_NT( 38) = 0.002772     
+!EFFS_SB( 38) = 0.002773     
+!EFFS_HB( 38) = 0.002079 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!! SQT
+!!
+!MECH_SPC(  39) = 'farnescene_a    '        
+!MGN_SRC( 39) = 'FARN            '
+!MECH_MWT( 39) = 204.35 
+!EFFS_BT( 39) = 1.000000     
+!EFFS_NT( 39) = 1.000000     
+!EFFS_SB( 39) = 1.000000     
+!EFFS_HB( 39) = 1.000000 
+!!
+!MECH_SPC(  40) = 'caryophyllene_b '        
+!MGN_SRC( 40) = 'BCAR            '
+!MECH_MWT( 40) = 204.35 
+!EFFS_BT( 40) = 1.000000     
+!EFFS_NT( 40) = 1.000000     
+!EFFS_SB( 40) = 1.000000     
+!EFFS_HB( 40) = 1.000000 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!! Other SQT
+!!
+!MECH_SPC(  41) = 'acoradiene      '        
+!MGN_SRC( 41) = 'OSQT            '
+!MECH_MWT( 41) = 204.35 
+!EFFS_BT( 41) = 0.018570     
+!EFFS_NT( 41) = 0.015949     
+!EFFS_SB( 41) = 0.019157     
+!EFFS_HB( 41) = 0.021858 
+!!
+!MECH_SPC(  42) = 'aromadendrene   '        
+!MGN_SRC( 42) = 'OSQT            '
+!MECH_MWT( 42) = 204.35 
+!EFFS_BT( 42) = 0.007428     
+!EFFS_NT( 42) = 0.006380     
+!EFFS_SB( 42) = 0.007663     
+!EFFS_HB( 42) = 0.010929 
+!!
+!MECH_SPC(  43) = 'bergamotene_a   '        
+!MGN_SRC( 43) = 'OSQT            '
+!MECH_MWT( 43) = 204.35 
+!EFFS_BT( 43) = 0.083565     
+!EFFS_NT( 43) = 0.143541     
+!EFFS_SB( 43) = 0.095785     
+!EFFS_HB( 43) = 0.098361 
+!!
+!MECH_SPC(  44) = 'bergamotene_b   '        
+!MGN_SRC( 44) = 'OSQT            '
+!MECH_MWT( 44) = 204.35 
+!EFFS_BT( 44) = 0.001857     
+!EFFS_NT( 44) = 0.001595     
+!EFFS_SB( 44) = 0.001916     
+!EFFS_HB( 44) = 0.005464 
+!!
+!MECH_SPC(  45) = 'bisabolene_a    '        
+!MGN_SRC( 45) = 'OSQT            '
+!MECH_MWT( 45) = 204.35 
+!EFFS_BT( 45) = 0.001857     
+!EFFS_NT( 45) = 0.001595     
+!EFFS_SB( 45) = 0.001916     
+!EFFS_HB( 45) = 0.005464 
+!!
+!MECH_SPC(  46) = 'bisabolene_b    '        
+!MGN_SRC( 46) = 'OSQT            '
+!MECH_MWT( 46) = 204.35 
+!EFFS_BT( 46) = 0.055710     
+!EFFS_NT( 46) = 0.119617     
+!EFFS_SB( 46) = 0.067050     
+!EFFS_HB( 46) = 0.076503 
+!!
+!MECH_SPC(  47) = 'bourbonene_b    '        
+!MGN_SRC( 47) = 'OSQT            '
+!MECH_MWT( 47) = 204.35 
+!EFFS_BT( 47) = 0.027855     
+!EFFS_NT( 47) = 0.023923     
+!EFFS_SB( 47) = 0.028736     
+!EFFS_HB( 47) = 0.032787 
+!!
+!MECH_SPC(  48) = 'cadinene_d      '        
+!MGN_SRC( 48) = 'OSQT            '
+!MECH_MWT( 48) = 204.35 
+!EFFS_BT( 48) = 0.013928     
+!EFFS_NT( 48) = 0.011962     
+!EFFS_SB( 48) = 0.014368     
+!EFFS_HB( 48) = 0.016393 
+!!
+!MECH_SPC(  49) = 'cadinene_g      '        
+!MGN_SRC( 49) = 'OSQT            '
+!MECH_MWT( 49) = 204.35 
+!EFFS_BT( 49) = 0.009285     
+!EFFS_NT( 49) = 0.007974     
+!EFFS_SB( 49) = 0.009579     
+!EFFS_HB( 49) = 0.010929 
+!!
+!MECH_SPC(  50) = 'cedrene_a       '        
+!MGN_SRC( 50) = 'OSQT            '
+!MECH_MWT( 50) = 204.35 
+!EFFS_BT( 50) = 0.005571     
+!EFFS_NT( 50) = 0.004785     
+!EFFS_SB( 50) = 0.005747     
+!EFFS_HB( 50) = 0.005464 
+!!
+!MECH_SPC(  51) = 'copaene_a       '        
+!MGN_SRC( 51) = 'OSQT            '
+!MECH_MWT( 51) = 204.35 
+!EFFS_BT( 51) = 0.009285     
+!EFFS_NT( 51) = 0.007974     
+!EFFS_SB( 51) = 0.009579     
+!EFFS_HB( 51) = 0.010929 
+!!
+!MECH_SPC(  52) = 'cubebene_a      '        
+!MGN_SRC( 52) = 'OSQT            '
+!MECH_MWT( 52) = 204.35 
+!EFFS_BT( 52) = 0.013928     
+!EFFS_NT( 52) = 0.011962     
+!EFFS_SB( 52) = 0.014368     
+!EFFS_HB( 52) = 0.016393 
+!!
+!MECH_SPC(  53) = 'cubebene_b      '        
+!MGN_SRC( 53) = 'OSQT            '
+!MECH_MWT( 53) = 204.35 
+!EFFS_BT( 53) = 0.009285     
+!EFFS_NT( 53) = 0.007974     
+!EFFS_SB( 53) = 0.009579     
+!EFFS_HB( 53) = 0.010929 
+!!
+!MECH_SPC(  54) = 'elemene_b       '        
+!MGN_SRC( 54) = 'OSQT            '
+!MECH_MWT( 54) = 204.35 
+!EFFS_BT( 54) = 0.018570     
+!EFFS_NT( 54) = 0.015949     
+!EFFS_SB( 54) = 0.019157     
+!EFFS_HB( 54) = 0.021858 
+!!
+!MECH_SPC(  55) = 'farnescene_b    '        
+!MGN_SRC( 55) = 'OSQT            '
+!MECH_MWT( 55) = 204.35 
+!EFFS_BT( 55) = 0.278552     
+!EFFS_NT( 55) = 0.239234     
+!EFFS_SB( 55) = 0.287356     
+!EFFS_HB( 55) = 0.218579 
+!!
+!MECH_SPC(  56) = 'germacrene_B    '        
+!MGN_SRC( 56) = 'OSQT            '
+!MECH_MWT( 56) = 204.35 
+!EFFS_BT( 56) = 0.009285     
+!EFFS_NT( 56) = 0.007974     
+!EFFS_SB( 56) = 0.009579     
+!EFFS_HB( 56) = 0.010929 
+!!
+!MECH_SPC(  57) = 'germacrene_D    '        
+!MGN_SRC( 57) = 'OSQT            '
+!MECH_MWT( 57) = 204.35 
+!EFFS_BT( 57) = 0.027855     
+!EFFS_NT( 57) = 0.023923     
+!EFFS_SB( 57) = 0.028736     
+!EFFS_HB( 57) = 0.032787 
+!!
+!MECH_SPC(  58) = 'gurjunene_b     '        
+!MGN_SRC( 58) = 'OSQT            '
+!MECH_MWT( 58) = 204.35 
+!EFFS_BT( 58) = 0.004643     
+!EFFS_NT( 58) = 0.003987     
+!EFFS_SB( 58) = 0.004789     
+!EFFS_HB( 58) = 0.005464 
+!!
+!MECH_SPC(  59) = 'humulene_a      '        
+!MGN_SRC( 59) = 'OSQT            '
+!MECH_MWT( 59) = 204.35 
+!EFFS_BT( 59) = 0.139276     
+!EFFS_NT( 59) = 0.199362     
+!EFFS_SB( 59) = 0.172414     
+!EFFS_HB( 59) = 0.163934 
+!!
+!MECH_SPC(  60) = 'humulene_g      '        
+!MGN_SRC( 60) = 'OSQT            '
+!MECH_MWT( 60) = 204.35 
+!EFFS_BT( 60) = 0.001857     
+!EFFS_NT( 60) = 0.001595     
+!EFFS_SB( 60) = 0.001916     
+!EFFS_HB( 60) = 0.005464 
+!!
+!MECH_SPC(  61) = 'isolongifolene  '        
+!MGN_SRC( 61) = 'OSQT            '
+!MECH_MWT( 61) = 204.35 
+!EFFS_BT( 61) = 0.001857     
+!EFFS_NT( 61) = 0.001595     
+!EFFS_SB( 61) = 0.001916     
+!EFFS_HB( 61) = 0.005464 
+!!
+!MECH_SPC(  62) = 'longifolene     '        
+!MGN_SRC( 62) = 'OSQT            '
+!MECH_MWT( 62) = 204.35 
+!EFFS_BT( 62) = 0.001857     
+!EFFS_NT( 62) = 0.001595     
+!EFFS_SB( 62) = 0.001916     
+!EFFS_HB( 62) = 0.005464 
+!!
+!MECH_SPC(  63) = 'longipinene     '        
+!MGN_SRC( 63) = 'OSQT            '
+!MECH_MWT( 63) = 204.35 
+!EFFS_BT( 63) = 0.001857     
+!EFFS_NT( 63) = 0.001595     
+!EFFS_SB( 63) = 0.001916     
+!EFFS_HB( 63) = 0.005464 
+!!
+!MECH_SPC(  64) = 'muurolene_a     '        
+!MGN_SRC( 64) = 'OSQT            '
+!MECH_MWT( 64) = 204.35 
+!EFFS_BT( 64) = 0.013928     
+!EFFS_NT( 64) = 0.011962     
+!EFFS_SB( 64) = 0.014368     
+!EFFS_HB( 64) = 0.016393 
+!!
+!MECH_SPC(  65) = 'muurolene_g     '        
+!MGN_SRC( 65) = 'OSQT            '
+!MECH_MWT( 65) = 204.35 
+!EFFS_BT( 65) = 0.046425     
+!EFFS_NT( 65) = 0.039872     
+!EFFS_SB( 65) = 0.047893     
+!EFFS_HB( 65) = 0.054645 
+!!
+!MECH_SPC(  66) = 'selinene_b      '        
+!MGN_SRC( 66) = 'OSQT            '
+!MECH_MWT( 66) = 204.35 
+!EFFS_BT( 66) = 0.185701     
+!EFFS_NT( 66) = 0.079745     
+!EFFS_SB( 66) = 0.114943     
+!EFFS_HB( 66) = 0.109290 
+!!
+!MECH_SPC(  67) = 'selinene_d      '        
+!MGN_SRC( 67) = 'OSQT            '
+!MECH_MWT( 67) = 204.35 
+!EFFS_BT( 67) = 0.001857     
+!EFFS_NT( 67) = 0.001595     
+!EFFS_SB( 67) = 0.001916     
+!EFFS_HB( 67) = 0.005464 
+!!
+!MECH_SPC(  68) = 'nerolidol_c     '        
+!MGN_SRC( 68) = 'OSQT            '
+!MECH_MWT( 68) = 222.37 
+!EFFS_BT( 68) = 0.001857     
+!EFFS_NT( 68) = 0.001595     
+!EFFS_SB( 68) = 0.001916     
+!EFFS_HB( 68) = 0.005464 
+!!
+!MECH_SPC(  69) = 'nerolidol_t     '        
+!MGN_SRC( 69) = 'OSQT            '
+!MECH_MWT( 69) = 222.37 
+!EFFS_BT( 69) = 0.004643     
+!EFFS_NT( 69) = 0.001595     
+!EFFS_SB( 69) = 0.001916     
+!EFFS_HB( 69) = 0.005464 
+!!
+!MECH_SPC(  70) = 'cedrol          '        
+!MGN_SRC( 70) = 'OSQT            '
+!MECH_MWT( 70) = 222.37 
+!EFFS_BT( 70) = 0.001857     
+!EFFS_NT( 70) = 0.001595     
+!EFFS_SB( 70) = 0.001916     
+!EFFS_HB( 70) = 0.005464 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!! VOC
+!!
+!MECH_SPC(  71) = 'MBO_2m3e2ol     '        
+!MGN_SRC( 71) = 'MBO             '
+!MECH_MWT( 71) = 86.13  
+!EFFS_BT( 71) = 1.000000     
+!EFFS_NT( 71) = 1.000000     
+!EFFS_SB( 71) = 1.000000     
+!EFFS_HB( 71) = 1.000000 
+!!
+!MECH_SPC(  72) = 'methanol        '        
+!MGN_SRC( 72) = 'MEOH            '
+!MECH_MWT( 72) = 32.04  
+!EFFS_BT( 72) = 1.000000     
+!EFFS_NT( 72) = 1.000000     
+!EFFS_SB( 72) = 1.000000     
+!EFFS_HB( 72) = 1.000000 
+!!
+!MECH_SPC(  73) = 'acetone         '        
+!MGN_SRC( 73) = 'ACTO            '
+!MECH_MWT( 73) = 58.08  
+!EFFS_BT( 73) = 1.000000     
+!EFFS_NT( 73) = 1.000000     
+!EFFS_SB( 73) = 1.000000     
+!EFFS_HB( 73) = 1.000000 
+!!
+!MECH_SPC(  74) = 'methane         '        
+!MGN_SRC( 74) = 'CH4             '
+!MECH_MWT( 74) = 16.04  
+!EFFS_BT( 74) = 1.000000     
+!EFFS_NT( 74) = 1.000000     
+!EFFS_SB( 74) = 1.000000     
+!EFFS_HB( 74) = 1.000000 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!! Ammonia, NO2, and NO
+!!
+!MECH_SPC(  75) = 'ammonia         '        
+!MGN_SRC( 75) = 'NO              '
+!MECH_MWT( 75) = 17.03  
+!EFFS_BT( 75) = 0.000000     
+!EFFS_NT( 75) = 0.000000     
+!EFFS_SB( 75) = 0.000000     
+!EFFS_HB( 75) = 0.000000 
+!!
+!MECH_SPC(  76) = 'nitrous_OXD     '        
+!MGN_SRC( 76) = 'NO              '
+!MECH_MWT( 76) = 44.01  
+!EFFS_BT( 76) = 0.000000     
+!EFFS_NT( 76) = 0.000000     
+!EFFS_SB( 76) = 0.000000     
+!EFFS_HB( 76) = 0.000000 
+!!
+!MECH_SPC(  77) = 'nitric_OXD      '        
+!MGN_SRC( 77) = 'NO              '
+!MECH_MWT( 77) = 30.01  
+!EFFS_BT( 77) = 1.000000     
+!EFFS_NT( 77) = 1.000000     
+!EFFS_SB( 77) = 1.000000     
+!EFFS_HB( 77) = 1.000000 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!! Acetaldehyde + ethanol
+!!
+!MECH_SPC(  78) = 'acetaldehyde    '        
+!MGN_SRC( 78) = 'ACTA            '
+!MECH_MWT( 78) = 44.05  
+!EFFS_BT( 78) = 0.500000     
+!EFFS_NT( 78) = 0.500000     
+!EFFS_SB( 78) = 0.500000     
+!EFFS_HB( 78) = 0.500000 
+!!
+!MECH_SPC(  79) = 'ethanol         '        
+!MGN_SRC( 79) = 'ACTA            '
+!MECH_MWT( 79) = 46.07  
+!EFFS_BT( 79) = 0.500000     
+!EFFS_NT( 79) = 0.500000     
+!EFFS_SB( 79) = 0.500000     
+!EFFS_HB( 79) = 0.500000 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!! Formic acid + formaldehyde +MECHtic acid
+!!
+!MECH_SPC(  80) = 'formic_acid     '        
+!MGN_SRC( 80) = 'FORM            '
+!MECH_MWT( 80) = 46.03  
+!EFFS_BT( 80) = 0.285714     
+!EFFS_NT( 80) = 0.285714     
+!EFFS_SB( 80) = 0.285714     
+!EFFS_HB( 80) = 0.285714 
+!!
+!MECH_SPC(  81) = 'formaldehyde    '        
+!MGN_SRC( 81) = 'FORM            '
+!MECH_MWT( 81) = 30.03  
+!EFFS_BT( 81) = 0.428571     
+!EFFS_NT( 81) = 0.428571     
+!EFFS_SB( 81) = 0.428571     
+!EFFS_HB( 81) = 0.428571 
+!!
+!MECH_SPC(  82) = 'acetic_acid     '        
+!MGN_SRC( 82) = 'FORM            '
+!MECH_MWT( 82) = 60.05  
+!EFFS_BT( 82) = 0.285714     
+!EFFS_NT( 82) = 0.285714     
+!EFFS_SB( 82) = 0.285714     
+!EFFS_HB( 82) = 0.285714 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!! Other VC
+!!
+!MECH_SPC(  83) = 'MBO_3m2e1ol     '        
+!MGN_SRC( 83) = 'CO              '
+!MECH_MWT( 83) = 86.13  
+!EFFS_BT( 83) = 0.000516     
+!EFFS_NT( 83) = 0.000516     
+!EFFS_SB( 83) = 0.000516     
+!EFFS_HB( 83) = 0.000516 
+!!
+!MECH_SPC(  84) = 'MBO_3m3e1ol     '        
+!MGN_SRC( 84) = 'CO              '
+!MECH_MWT( 84) = 86.13  
+!EFFS_BT( 84) = 0.000516     
+!EFFS_NT( 84) = 0.000516     
+!EFFS_SB( 84) = 0.000516     
+!EFFS_HB( 84) = 0.000516 
+!!
+!MECH_SPC(  85) = 'benzaldehyde    '        
+!MGN_SRC( 85) = 'CO              '
+!MECH_MWT( 85) = 106.12 
+!EFFS_BT( 85) = 0.000206     
+!EFFS_NT( 85) = 0.000206     
+!EFFS_SB( 85) = 0.000206     
+!EFFS_HB( 85) = 0.000206 
+!!
+!MECH_SPC(  86) = 'butanone_2      '        
+!MGN_SRC( 86) = 'CO              '
+!MECH_MWT( 86) = 72.11  
+!EFFS_BT( 86) = 0.001032     
+!EFFS_NT( 86) = 0.001032     
+!EFFS_SB( 86) = 0.001032     
+!EFFS_HB( 86) = 0.001032 
+!!
+!MECH_SPC(  87) = 'decanal         '        
+!MGN_SRC( 87) = 'CO              '
+!MECH_MWT( 87) = 156.27 
+!EFFS_BT( 87) = 0.000206     
+!EFFS_NT( 87) = 0.000206     
+!EFFS_SB( 87) = 0.000206     
+!EFFS_HB( 87) = 0.000206 
+!!
+!MECH_SPC(  88) = 'dodecene_1      '        
+!MGN_SRC( 88) = 'CO              '
+!MECH_MWT( 88) = 168.32 
+!EFFS_BT( 88) = 0.000206     
+!EFFS_NT( 88) = 0.000206     
+!EFFS_SB( 88) = 0.000206     
+!EFFS_HB( 88) = 0.000206 
+!!
+!MECH_SPC(  89) = 'geranyl_acetone '        
+!MGN_SRC( 89) = 'CO              '
+!MECH_MWT( 89) = 194.31 
+!EFFS_BT( 89) = 0.003095     
+!EFFS_NT( 89) = 0.003095     
+!EFFS_SB( 89) = 0.003095     
+!EFFS_HB( 89) = 0.003095 
+!!
+!MECH_SPC(  90) = 'heptanal        '        
+!MGN_SRC( 90) = 'CO              '
+!MECH_MWT( 90) = 114.19 
+!EFFS_BT( 90) = 0.000206     
+!EFFS_NT( 90) = 0.000206     
+!EFFS_SB( 90) = 0.000206     
+!EFFS_HB( 90) = 0.000206 
+!!
+!MECH_SPC(  91) = 'heptane         '        
+!MGN_SRC( 91) = 'CO              '
+!MECH_MWT( 91) = 100.20 
+!EFFS_BT( 91) = 0.000206     
+!EFFS_NT( 91) = 0.000206     
+!EFFS_SB( 91) = 0.000206     
+!EFFS_HB( 91) = 0.000206 
+!!
+!MECH_SPC(  92) = 'hexane          '        
+!MGN_SRC( 92) = 'CO              '
+!MECH_MWT( 92) = 86.18  
+!EFFS_BT( 92) = 0.000103     
+!EFFS_NT( 92) = 0.000103     
+!EFFS_SB( 92) = 0.000103     
+!EFFS_HB( 92) = 0.000103 
+!!
+!MECH_SPC(  93) = 'met_benzoate    '        
+!MGN_SRC( 93) = 'CO              '
+!MECH_MWT( 93) = 136.15 
+!EFFS_BT( 93) = 0.000103     
+!EFFS_NT( 93) = 0.000103     
+!EFFS_SB( 93) = 0.000103     
+!EFFS_HB( 93) = 0.000103 
+!!
+!MECH_SPC(  94) = 'met_heptenone   '        
+!MGN_SRC( 94) = 'CO              '
+!MECH_MWT( 94) = 126.20 
+!EFFS_BT( 94) = 0.000206     
+!EFFS_NT( 94) = 0.000206     
+!EFFS_SB( 94) = 0.000206     
+!EFFS_HB( 94) = 0.000206 
+!!
+!MECH_SPC(  95) = 'neryl_acetone   '        
+!MGN_SRC( 95) = 'CO              '
+!MECH_MWT( 95) = 194.31 
+!EFFS_BT( 95) = 0.000103     
+!EFFS_NT( 95) = 0.000103     
+!EFFS_SB( 95) = 0.000103     
+!EFFS_HB( 95) = 0.000103 
+!!
+!MECH_SPC(  96) = 'nonanal         '        
+!MGN_SRC( 96) = 'CO              '
+!MECH_MWT( 96) = 142.24 
+!EFFS_BT( 96) = 0.000206     
+!EFFS_NT( 96) = 0.000206     
+!EFFS_SB( 96) = 0.000206     
+!EFFS_HB( 96) = 0.000206 
+!!
+!MECH_SPC(  97) = 'nonenal         '        
+!MGN_SRC( 97) = 'CO              '
+!MECH_MWT( 97) = 140.22 
+!EFFS_BT( 97) = 0.000103     
+!EFFS_NT( 97) = 0.000103     
+!EFFS_SB( 97) = 0.000103     
+!EFFS_HB( 97) = 0.000103 
+!!
+!MECH_SPC(  98) = 'octanal         '        
+!MGN_SRC( 98) = 'CO              '
+!MECH_MWT( 98) = 128.21 
+!EFFS_BT( 98) = 0.000206     
+!EFFS_NT( 98) = 0.000206     
+!EFFS_SB( 98) = 0.000206     
+!EFFS_HB( 98) = 0.000206 
+!!
+!MECH_SPC(  99) = 'octanol         '        
+!MGN_SRC( 99) = 'CO              '
+!MECH_MWT( 99) = 130.23 
+!EFFS_BT( 99) = 0.000206     
+!EFFS_NT( 99) = 0.000206     
+!EFFS_SB( 99) = 0.000206     
+!EFFS_HB( 99) = 0.000206 
+!!
+!MECH_SPC(100) = 'octenol_1e3ol   '        
+!MGN_SRC(100) = 'CO              '
+!MECH_MWT(100) = 128.21 
+!EFFS_BT(100) = 0.000206     
+!EFFS_NT(100) = 0.000206     
+!EFFS_SB(100) = 0.000206     
+!EFFS_HB(100) = 0.000206 
+!!
+!MECH_SPC(101) = 'oxopentanal     '        
+!MGN_SRC(101) = 'CO              '
+!MECH_MWT(101) = 100.12 
+!EFFS_BT(101) = 0.000206     
+!EFFS_NT(101) = 0.000206     
+!EFFS_SB(101) = 0.000206     
+!EFFS_HB(101) = 0.000206 
+!!
+!MECH_SPC(102) = 'pentane         '        
+!MGN_SRC(102) = 'CO              '
+!MECH_MWT(102) = 72.15  
+!EFFS_BT(102) = 0.000103     
+!EFFS_NT(102) = 0.000103     
+!EFFS_SB(102) = 0.000103     
+!EFFS_HB(102) = 0.000103 
+!!
+!MECH_SPC(103) = 'phenyl_CCO      '        
+!MGN_SRC(103) = 'CO              '
+!MECH_MWT(103) = 120.15 
+!EFFS_BT(103) = 0.000103     
+!EFFS_NT(103) = 0.000103     
+!EFFS_SB(103) = 0.000103     
+!EFFS_HB(103) = 0.000103 
+!!
+!MECH_SPC(104) = 'pyruvic_acid    '        
+!MGN_SRC(104) = 'CO              '
+!MECH_MWT(104) = 88.06  
+!EFFS_BT(104) = 0.002064     
+!EFFS_NT(104) = 0.002064     
+!EFFS_SB(104) = 0.002064     
+!EFFS_HB(104) = 0.002064 
+!!
+!MECH_SPC(105) = 'terpinyl_ACT_a  '        
+!MGN_SRC(105) = 'CO              '
+!MECH_MWT(105) = 196.29 
+!EFFS_BT(105) = 0.000103     
+!EFFS_NT(105) = 0.000103     
+!EFFS_SB(105) = 0.000103     
+!EFFS_HB(105) = 0.000103 
+!!
+!MECH_SPC(106) = 'tetradecene_1   '        
+!MGN_SRC(106) = 'CO              '
+!MECH_MWT(106) = 196.37 
+!EFFS_BT(106) = 0.000103     
+!EFFS_NT(106) = 0.000103     
+!EFFS_SB(106) = 0.000103     
+!EFFS_HB(106) = 0.000103 
+!!
+!MECH_SPC(107) = 'toluene         '        
+!MGN_SRC(107) = 'CO              '
+!MECH_MWT(107) = 92.14  
+!EFFS_BT(107) = 0.002064     
+!EFFS_NT(107) = 0.002064     
+!EFFS_SB(107) = 0.002064     
+!EFFS_HB(107) = 0.002064 
+!!
+!MECH_SPC(108) = 'carbon_monoxide '        
+!MGN_SRC(108) = 'CO              '
+!MECH_MWT(108) = 28.01  
+!EFFS_BT(108) = 0.619067     
+!EFFS_NT(108) = 0.619067     
+!EFFS_SB(108) = 0.619067     
+!EFFS_HB(108) = 0.619067 
+!!
+!MECH_SPC(109) = 'butene          '        
+!MGN_SRC(109) = 'CO              '
+!MECH_MWT(109) = 56.11  
+!EFFS_BT(109) = 0.036112     
+!EFFS_NT(109) = 0.036112     
+!EFFS_SB(109) = 0.036112     
+!EFFS_HB(109) = 0.036112 
+!!
+!MECH_SPC(110) = 'ethane          '        
+!MGN_SRC(110) = 'CO              '
+!MECH_MWT(110) = 30.07  
+!EFFS_BT(110) = 0.002064     
+!EFFS_NT(110) = 0.002064     
+!EFFS_SB(110) = 0.002064     
+!EFFS_HB(110) = 0.002064 
+!!
+!MECH_SPC(111) = 'ethene          '        
+!MGN_SRC(111) = 'CO              '
+!MECH_MWT(111) = 28.05  
+!EFFS_BT(111) = 0.134131     
+!EFFS_NT(111) = 0.134131     
+!EFFS_SB(111) = 0.134131     
+!EFFS_HB(111) = 0.134131 
+!!
+!MECH_SPC(112) = 'hydrogen_cyanide'        
+!MGN_SRC(112) = 'CO              '
+!MECH_MWT(112) = 27.03  
+!EFFS_BT(112) = 0.004127     
+!EFFS_NT(112) = 0.004127     
+!EFFS_SB(112) = 0.004127     
+!EFFS_HB(112) = 0.004127 
+!!
+!MECH_SPC(113) = 'propane         '        
+!MGN_SRC(113) = 'CO              '
+!MECH_MWT(113) = 44.10  
+!EFFS_BT(113) = 0.001032     
+!EFFS_NT(113) = 0.001032     
+!EFFS_SB(113) = 0.001032     
+!EFFS_HB(113) = 0.001032 
+!!
+!MECH_SPC(114) = 'propene         '        
+!MGN_SRC(114) = 'CO              '
+!MECH_MWT(114) = 42.08  
+!EFFS_BT(114) = 0.082542     
+!EFFS_NT(114) = 0.082542     
+!EFFS_SB(114) = 0.082542     
+!EFFS_HB(114) = 0.082542 
+!!
+!MECH_SPC(115) = 'carbon_2s       '        
+!MGN_SRC(115) = 'CO              '
+!MECH_MWT(115) = 76.14  
+!EFFS_BT(115) = 0.000310     
+!EFFS_NT(115) = 0.000310     
+!EFFS_SB(115) = 0.000310     
+!EFFS_HB(115) = 0.000310 
+!!
+!MECH_SPC(116) = 'carbonyl_s      '        
+!MGN_SRC(116) = 'CO              '
+!MECH_MWT(116) = 60.08  
+!EFFS_BT(116) = 0.000619     
+!EFFS_NT(116) = 0.000619     
+!EFFS_SB(116) = 0.000619     
+!EFFS_HB(116) = 0.000619 
+!!
+!MECH_SPC(117) = 'diallyl_2s      '        
+!MGN_SRC(117) = 'CO              '
+!MECH_MWT(117) = 146.28 
+!EFFS_BT(117) = 0.000103     
+!EFFS_NT(117) = 0.000103     
+!EFFS_SB(117) = 0.000103     
+!EFFS_HB(117) = 0.000103 
+!!
+!MECH_SPC(118) = '2met_2s         '        
+!MGN_SRC(118) = 'CO              '
+!MECH_MWT(118) = 94.20  
+!EFFS_BT(118) = 0.000310     
+!EFFS_NT(118) = 0.000310     
+!EFFS_SB(118) = 0.000310     
+!EFFS_HB(118) = 0.000310 
+!!
+!MECH_SPC(119) = '2met_s          '        
+!MGN_SRC(119) = 'CO              '
+!MECH_MWT(119) = 62.14  
+!EFFS_BT(119) = 0.001238     
+!EFFS_NT(119) = 0.001238     
+!EFFS_SB(119) = 0.001238     
+!EFFS_HB(119) = 0.001238 
+!!
+!MECH_SPC(120) = 'met_chloride    '        
+!MGN_SRC(120) = 'CO              '
+!MECH_MWT(120) = 50.49  
+!EFFS_BT(120) = 0.001032     
+!EFFS_NT(120) = 0.001032     
+!EFFS_SB(120) = 0.001032     
+!EFFS_HB(120) = 0.001032 
+!!
+!MECH_SPC(121) = 'met_bromide     '        
+!MGN_SRC(121) = 'CO              '
+!MECH_MWT(121) = 94.94  
+!EFFS_BT(121) = 0.000206     
+!EFFS_NT(121) = 0.000206     
+!EFFS_SB(121) = 0.000206     
+!EFFS_HB(121) = 0.000206 
+!!
+!MECH_SPC(122) = 'met_iodide      '        
+!MGN_SRC(122) = 'CO              '
+!MECH_MWT(122) = 141.94 
+!EFFS_BT(122) = 0.000103     
+!EFFS_NT(122) = 0.000103     
+!EFFS_SB(122) = 0.000103     
+!EFFS_HB(122) = 0.000103 
+!!
+!MECH_SPC(123) = 'hydrogen_s      '        
+!MGN_SRC(123) = 'CO              '
+!MECH_MWT(123) = 34.08  
+!EFFS_BT(123) = 0.000516     
+!EFFS_NT(123) = 0.000516     
+!EFFS_SB(123) = 0.000516     
+!EFFS_HB(123) = 0.000516 
+!!
+!MECH_SPC(124) = 'met_mercaptan   '        
+!MGN_SRC(124) = 'CO              '
+!MECH_MWT(124) = 48.11  
+!EFFS_BT(124) = 0.000103     
+!EFFS_NT(124) = 0.000103     
+!EFFS_SB(124) = 0.000103     
+!EFFS_HB(124) = 0.000103 
+!!
+!MECH_SPC(125) = 'met_propenyl_2s '        
+!MGN_SRC(125) = 'CO              '
+!MECH_MWT(125) = 120.24 
+!EFFS_BT(125) = 0.000103     
+!EFFS_NT(125) = 0.000103     
+!EFFS_SB(125) = 0.000103     
+!EFFS_HB(125) = 0.000103 
+!!
+!MECH_SPC(126) = 'PPPP_2s         '        
+!MGN_SRC(126) = 'CO              '
+!MECH_MWT(126) = 148.29 
+!EFFS_BT(126) = 0.000103     
+!EFFS_NT(126) = 0.000103     
+!EFFS_SB(126) = 0.000103     
+!EFFS_HB(126) = 0.000103 
+!!
+!MECH_SPC(127) = '2met_nonatriene '        
+!MGN_SRC(127) = 'CO              '
+!MECH_MWT(127) = 150.26 
+!EFFS_BT(127) = 0.020636     
+!EFFS_NT(127) = 0.020636     
+!EFFS_SB(127) = 0.020636     
+!EFFS_HB(127) = 0.020636 
+!!
+!MECH_SPC(128) = 'met_salicylate  '        
+!MGN_SRC(128) = 'CO              '
+!MECH_MWT(128) = 152.15 
+!EFFS_BT(128) = 0.002064     
+!EFFS_NT(128) = 0.002064     
+!EFFS_SB(128) = 0.002064     
+!EFFS_HB(128) = 0.002064 
+!!
+!MECH_SPC(129) = 'indole          '        
+!MGN_SRC(129) = 'CO              '
+!MECH_MWT(129) = 117.15 
+!EFFS_BT(129) = 0.000206     
+!EFFS_NT(129) = 0.000206     
+!EFFS_SB(129) = 0.000206     
+!EFFS_HB(129) = 0.000206 
+!!
+!MECH_SPC(130) = 'jasmone         '        
+!MGN_SRC(130) = 'CO              '
+!MECH_MWT(130) = 164.24 
+!EFFS_BT(130) = 0.000206     
+!EFFS_NT(130) = 0.000206     
+!EFFS_SB(130) = 0.000206     
+!EFFS_HB(130) = 0.000206 
+!!
+!MECH_SPC(131) = 'met_jasmonate   '        
+!MGN_SRC(131) = 'CO              '
+!MECH_MWT(131) = 224.30 
+!EFFS_BT(131) = 0.002064     
+!EFFS_NT(131) = 0.002064     
+!EFFS_SB(131) = 0.002064     
+!EFFS_HB(131) = 0.002064 
+!!
+!MECH_SPC(132) = '3met_3DCTT      '        
+!MGN_SRC(132) = 'CO              '
+!MECH_MWT(132) = 218.38 
+!EFFS_BT(132) = 0.000206     
+!EFFS_NT(132) = 0.000206     
+!EFFS_SB(132) = 0.000206     
+!EFFS_HB(132) = 0.000206 
+!!
+!MECH_SPC(133) = 'hexanal         '        
+!MGN_SRC(133) = 'CO              '
+!MECH_MWT(133) = 100.16 
+!EFFS_BT(133) = 0.003095     
+!EFFS_NT(133) = 0.003095     
+!EFFS_SB(133) = 0.003095     
+!EFFS_HB(133) = 0.003095 
+!!
+!MECH_SPC(134) = 'hexanol_1       '        
+!MGN_SRC(134) = 'CO              '
+!MECH_MWT(134) = 102.17 
+!EFFS_BT(134) = 0.003095     
+!EFFS_NT(134) = 0.003095     
+!EFFS_SB(134) = 0.003095     
+!EFFS_HB(134) = 0.003095 
+!!
+!MECH_SPC(135) = 'hexenal_c3      '        
+!MGN_SRC(135) = 'CO              '
+!MECH_MWT(135) = 98.14  
+!EFFS_BT(135) = 0.025794     
+!EFFS_NT(135) = 0.025794     
+!EFFS_SB(135) = 0.025794     
+!EFFS_HB(135) = 0.025794 
+!!
+!MECH_SPC(136) = 'hexenal_t2      '        
+!MGN_SRC(136) = 'CO              '
+!MECH_MWT(136) = 98.14  
+!EFFS_BT(136) = 0.015477     
+!EFFS_NT(136) = 0.015477     
+!EFFS_SB(136) = 0.015477     
+!EFFS_HB(136) = 0.015477 
+!!
+!MECH_SPC(137) = 'hexenol_c3      '        
+!MGN_SRC(137) = 'CO              '
+!MECH_MWT(137) = 100.16 
+!EFFS_BT(137) = 0.015477     
+!EFFS_NT(137) = 0.015477     
+!EFFS_SB(137) = 0.015477     
+!EFFS_HB(137) = 0.015477 
+!!
+!MECH_SPC(138) = 'hexenyl_ACT_c3  '        
+!MGN_SRC(138) = 'CO              '
+!MECH_MWT(138) = 142.20 
+!EFFS_BT(138) = 0.015477     
+!EFFS_NT(138) = 0.015477     
+!EFFS_SB(138) = 0.015477     
+!EFFS_HB(138) = 0.015477 

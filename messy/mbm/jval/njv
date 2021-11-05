@@ -1,0 +1,91 @@
+#! /bin/tcsh -f
+# Time-stamp: <2014-01-09 12:14:22 sander>
+# create a self-consistent zip file of a new caaba version
+
+set current_version = `grep -i "modver *=" messy_jval.f90 | sed "s/.*'\(.*\)'.*/\1/g"`
+
+if ( "$1" == "" ) then
+  echo ""
+  echo "Info (before making a new version):"
+  set version = `date +'%Y%m%d_%H%M%S'`
+  echo "- update version number (modver = '$current_version'):"
+  echo "  e messy_jval.f90"
+  echo "- run jvpp with:"
+  echo "  cd jvpp ; ./xjvpp"
+  echo "  (choose input directory lit)"
+  echo "- add all changes and current date to CHANGELOG"
+  echo "Usage:"
+  echo "  njv nn"
+  echo "  (nn = version number)"
+  echo "Examples:"
+  echo "  snapshot with current date:        njv $version"
+  echo "  proper version number, e.g.:       njv $current_version"
+  echo ""
+  exit
+else
+  set version = $1
+endif
+
+if (! -e sfmakedepend) then
+  echo;echo "The perl script sfmakedepend does not exist. Please run"
+  echo "configure to create it from sfmakedepend.pl.in:"
+  echo "  ( cd ../../.. ; ./configure ; cd - )" ; echo
+  exit 1
+endif
+
+set basedir = `basename $PWD`
+set dirname = ${basedir}_$version
+set oridir  = $HOME/messy/photolysis/ori
+
+if ( -d $oridir) then
+  set zipfile = $oridir/$dirname.zip
+else
+  cd ..
+  set zipfile = $PWD/$dirname.zip
+  cd -
+endif
+
+if ( -e $zipfile) then
+  echo;echo "Error, the zip file exists already:"
+  ls -la $zipfile
+  echo "Please choose another version number\!"
+  exit 1
+endif
+
+set infofile = "manual/jval_info.tex"
+set dontedit = "this file was created automatically by njv, do not edit"
+echo "% $dontedit"                           > $infofile
+echo "\\def\\jvalversion{$current_version}" >> $infofile
+
+echo "Update User Manual? [y/n/q, default=n]"
+set inputstring = $<
+if ( $inputstring == 'q' ) exit
+if ( $inputstring == 'y' ) then
+  cd manual
+  gmake
+  cd -
+endif
+
+echo "\nCreating zip file"
+echo "$zipfile"
+echo "Continue? [y/n/q, default=y]"
+set inputstring = $<
+if ( $inputstring == 'q' ) exit
+if ( $inputstring == 'n' ) exit
+
+# temporarily rename the jval directory to include the version:
+cd .. ; mv $basedir $dirname ; cd $dirname
+
+# create zip file:
+_zipjval.tcsh zip
+
+# rename the jval directory back to its original name:
+cd .. ; mv $dirname $basedir ; cd $basedir
+
+# move zip file to final directory:
+mv $dirname.zip $zipfile
+
+echo;echo "The zipfile has been created:"
+ls -la $zipfile
+
+exit

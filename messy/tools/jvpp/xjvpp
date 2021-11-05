@@ -1,0 +1,166 @@
+#! /bin/tcsh -f
+# Time-stamp: <2020-09-15 17:06:24 sander>
+# Authors:
+# Rolf Sander, Max-Planck-Institute, Mainz, Germany, 2009-2020
+
+##############################################################################
+
+echo;echo "Compile f90 files? [y|n|q, default=y]"
+set inputstring = "$<"
+if ( "$inputstring" == "q" ) exit 1
+if ( "$inputstring" != "n" ) then
+  gmake
+endif
+
+##############################################################################
+
+# create namelist file that defines input directory:
+set nmlfile = jvpp.nml
+echo "! created automatically by xjvpp, do not edit\!" > $nmlfile
+echo "&CTRL"                >> $nmlfile
+echo "inputdir = 'dat_lit'" >> $nmlfile
+echo "/"                    >> $nmlfile
+
+##############################################################################
+
+echo;echo "Clean-up workdir and run jvpp.exe? [y|n|q, default=y]"
+set inputstring = "$<"
+if ( "$inputstring" == "q" ) exit 1
+if ( "$inputstring" != "n" ) then
+  # create workir_* directories if they don't exist:
+  if (! -d workdir_176) mkdir workdir_176
+  if (! -d workdir_eff) mkdir workdir_eff
+  if (! -d workdir_f90) mkdir workdir_f90
+  if (! -d workdir_jnl) mkdir workdir_jnl
+  echo "removing workdir_*/* files..."
+  rm workdir_176/* workdir_eff/* workdir_f90/* workdir_jnl/*
+  echo "removing backup (*~) files..."
+  rm dat_lit/hardcoded/*~ dat_lit/spectra/*~
+  # restore link to ferret tools:
+  cd workdir_jnl
+  ln -s ../../../jnl/tools tools
+  cd -
+  echo "running jvpp.exe..."
+  # unbuffer needs expect, see: http://expect.nist.gov/
+  if ( ( -e `which unbuffer` ) && ( -e `which expect` ) ) then
+    unbuffer ./jvpp.exe | tee jvpp.log
+  else
+    ./jvpp.exe | tee jvpp.log
+  endif
+  echo;echo "Concatenating all jval_cal_*.f90 subroutines to messy_jval_jvpp.inc..."
+  cd workdir_f90
+  chmod a+x cat_jval.tcsh
+  ./cat_jval.tcsh
+  cd -
+endif
+
+##############################################################################
+
+echo;echo "Plot spectra? [y|n|q, default=y]"
+set inputstring = "$<"
+if ( "$inputstring" == "q" ) exit 1
+if ( "$inputstring" != "n" ) then
+  ./jvpp_plot_step1.py
+endif
+
+##############################################################################
+
+# The script normally ends here. The following code is for development
+# purposes only.
+if ( "$USER" != "sander" ) exit
+
+##############################################################################
+
+# LaTeX:
+
+set    latexfile = "references_jvpp.tex"
+set oldlatexfile = "dat_lit/old/$latexfile"
+echo;echo "Compare $latexfile to old latexfile? [y|n|q, default=y]"
+set inputstring = "$<"
+if ( "$inputstring" == "q" ) exit 1
+if ( "$inputstring" != "n" ) then
+  diff $oldlatexfile $latexfile
+  echo;echo "Copy $latexfile to $oldlatexfile? [y|n|q, default=n]"
+  set inputstring = "$<"
+  if ( "$inputstring" == "q" ) exit 1
+  if ( "$inputstring" == "y" ) then
+    cp $latexfile $oldlatexfile
+  endif
+  echo;echo "Run LaTeX? [y|n|q, default=n]"
+  set inputstring = "$<"
+  if ( "$inputstring" == "q" ) exit 1
+  if ( "$inputstring" == "y" ) then
+    pdflatex references.tex
+    # extract references from references.aux and create *.bib file:
+    citetags references.aux | citefind - ~/tex/bib/literat.bib > jvpp.bib
+    # if necessary, more bib files (e.g. also www.bib) can be used:
+    # citefind citetags.log a.bib b.bib > references.bib
+    bibtex references.aux
+    pdflatex references.tex
+    pdflatex references.tex
+    qpdfview references.pdf &
+  endif
+endif
+
+##############################################################################
+
+# logfile:
+
+set    logfile = "jvpp.log"
+set oldlogfile = "dat_lit/old/$logfile"
+echo;echo "Compare $logfile to old logfile? [y|n|q, default=y]"
+set inputstring = "$<"
+if ( "$inputstring" == "q" ) exit 1
+if ( "$inputstring" != "n" ) then
+  diff $oldlogfile $logfile
+  echo;echo "Copy $logfile to $oldlogfile? [y|n|q, default=n]"
+  set inputstring = "$<"
+  if ( "$inputstring" == "q" ) exit 1
+  if ( "$inputstring" == "y" ) then
+    cp $logfile $oldlogfile
+  endif
+endif
+
+##############################################################################
+
+# step 1:
+
+set    dir = "workdir_176"
+set olddir = "dat_lit/old/workdir_176"
+if ( ! -d $olddir ) mkdir $olddir
+echo;echo "Step 1: Compare $dir to old output? [y|n|q, default=y]"
+set inputstring = "$<"
+if ( "$inputstring" == "q" ) exit 1
+if ( "$inputstring" != "n" ) then
+  ddiff $olddir $dir
+  more /tmp/ddiff.dif
+  echo;echo "Copy current output to $olddir? [y|n|q, default=n]"
+  set inputstring = "$<"
+  if ( "$inputstring" == "q" ) exit 1
+  if ( "$inputstring" == "y" ) then
+    cp $dir/* $olddir/
+  endif
+endif
+
+################################################################################
+
+# step 3:
+
+set    incfile = "messy_jval_jvpp.inc"
+set oldincfile = "dat_lit/old/$incfile"
+echo;echo "Step 3: Compare $incfile to old output? [y|n|q, default=y]"
+set inputstring = "$<"
+if ( "$inputstring" == "q" ) exit 1
+if ( "$inputstring" != "n" ) then
+  diff $oldincfile $incfile
+  echo;echo "Copy current output to $oldincfile? [y|n|q, default=n]"
+  set inputstring = "$<"
+  if ( "$inputstring" == "q" ) exit 1
+  if ( "$inputstring" == "y" ) then
+    cp $incfile $oldincfile
+  endif
+endif
+
+##############################################################################
+
+exit

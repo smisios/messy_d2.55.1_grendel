@@ -1,0 +1,198 @@
+! -*- f90 -*-
+
+&CPL
+L_GP       = T  ! EMISSIONS FOR GRIDPOINT TRACERS
+L_LG       = F  ! EMISSIONS FOR LAGRANGIAN TRACERS
+l_lg_tend  = F  ! LAGRANGIAN TRACER TENDENCY AS CHANNEL OBJECT ?
+! ### SYNTAX:
+!     (SPECIFIERS MUST BE UPPERCASE !)
+! ###         GP=    Gridpoint  Emission Method (0,1,2) (SURFACE ONLY)
+!                    0: no emission; only channel object (DEFAULT)
+!                    1: 2D (SURFACE EM.) -> lowest layer
+!                       3D (VOLUME  EM.) -> emission ON
+!                       Nx2D (MULTI LEVEL EM.) -> internally converted to 3D
+!                    SURFACE EMISSIONS ONLY:
+!                    2: lower boundary condition for flux
+!
+! ###         LG=    Lagrangian Emission Method (0,1,2,3,4)
+!                    0: no emission; only channel object (DEFAULT)
+!                    1: 2D (SURFACE EM.)       -> into CELLs in lowest layer
+!                       3D (VOLUME  EM.)       -> emission ON
+!                       Nx2D (MULTI LEVEL EM.) -> internally converted to 3D
+!                    SURFACE EMISSIONS ONLY:
+!                    2: into lowest CELLs within boundary layer
+!                    3: into all CELLs in boundary layer (vertical gradient)
+!                    4: into all CELLs in boundary layer (no vertical gradient)
+!
+!NOTEs:  (1) Surface emission fluxes (2D) must be in  molecules m-2 s-1.
+!        (2) Volume emissions (3D)        must be in  molecules m-3 s-1.
+!        (3) Multi level emissions (Nx2D) must be in  molecules m-2 s-1.
+!        (4) For volume emissions (3D), the corresponding channel object 
+!            must be in the GP_3D_MID representation
+!        (5) The trigger for multi level emissions (Nx2D) is the presence
+!            of the channel object attribute heights
+!
+! EMISSION: 'TRACER[_SUBNAME][,scaling];...', CHANNEL NAME, CHANNEL OBJECT, 
+!           EMISSION METHOD
+!
+! LOWER BOUNDARY CONDITIONS (SEE tnudge.nml)
+!
+! ###########################################
+! DIRECT EMISSIONS
+! ###########################################
+!
+! CH3CCl3
+!!$EMIS_IN(180) = 'CH3CCl3', 'import_grid', 'Mfx_MCF_CH3CCl3', 'GP=1', ! Methylcloroform 
+!
+!
+! CH4_fx
+!
+! EMISSION CLASSES OF EMPA
+!
+! anthropogenic from EDGAR
+!
+!
+! Fugitive Emissions/Energy 
+!
+EMIS_IN(181) = 'CH4_fx;CH4_12C,0.9893998;CH4_13C,0.0106002;CH4_D0,0.9994792;CH4_D1,0.0005208', 'import_grid', 'Mfx_ant_CH4_ENE', 'GP=1', ! power indusrty !fug.
+EMIS_IN(182) = 'CH4_fx;CH4_12C,0.9893998;CH4_13C,0.0106002;CH4_D0,0.9994792;CH4_D1,0.0005208', 'import_grid', 'Mfx_ant_CH4_TRF', 'GP=1', ! oil ref. & transf. industry !fug.
+EMIS_IN(183) = 'CH4_fx;CH4_12C,0.9893998;CH4_13C,0.0106002;CH4_D0,0.9994792;CH4_D1,0.0005208', 'import_grid', 'Mfx_ant_CH4_IND', 'GP=1', ! combustion for manuf. !fug.
+!!EMIS_IN(184) = 'CH4_fx;CH4_12C,0.9893998;CH4_13C,0.0106002;CH4_D0,0.9994792;CH4_D1,0.0005208', 'import_grid', 'Mfx_ant_CH4_CDS', 'GP=1', ! aviation climbing & descent !fug.
+!!EMIS_IN(185) = 'CH4_fx;CH4_12C,0.9893998;CH4_13C,0.0106002;CH4_D0,0.9994792;CH4_D1,0.0005208', 'import_grid', 'Mfx_ant_CH4_CRS', 'GP=1', ! aviation cruise !fug.
+!!EMIS_IN(186) = 'CH4_fx;CH4_12C,0.9893998;CH4_13C,0.0106002;CH4_D0,0.9994792;CH4_D1,0.0005208', 'import_grid', 'Mfx_ant_CH4_LTO', 'GP=1', ! aviation landing & takeoff !fug.
+EMIS_IN(187) = 'CH4_fx;CH4_12C,0.9893998;CH4_13C,0.0106002;CH4_D0,0.9994792;CH4_D1,0.0005208', 'import_grid', 'Mfx_ant_CH4_TRO', 'GP=1', ! road transportation !fug.
+EMIS_IN(188) = 'CH4_fx;CH4_12C,0.9893998;CH4_13C,0.0106002;CH4_D0,0.9994792;CH4_D1,0.0005208', 'import_grid', 'Mfx_ant_CH4_TNR', 'GP=1', ! railways, pipelines, offroad trans. !fug.
+EMIS_IN(189) = 'CH4_fx;CH4_12C,0.9893998;CH4_13C,0.0106002;CH4_D0,0.9994792;CH4_D1,0.0005208', 'import_grid', 'Mfx_ant_CH4_SHIP', 'GP=1', ! shipping !fug.
+EMIS_IN(190) = 'CH4_fx;CH4_12C,0.9893998;CH4_13C,0.0106002;CH4_D0,0.9994792;CH4_D1,0.0005208', 'import_grid', 'Mfx_ant_CH4_RCO', 'GP=1', ! energy for buildings !fug.
+EMIS_IN(191) = 'CH4_fx;CH4_12C,0.9893998;CH4_13C,0.0106002;CH4_D0,0.9994792;CH4_D1,0.0005208', 'import_grid', 'Mfx_ant_CH4_FFF', 'GP=1', ! fossil fuel fires !fug.
+EMIS_IN(192) = 'CH4_fx;CH4_12C,0.9893998;CH4_13C,0.0106002;CH4_D0,0.9994792;CH4_D1,0.0005208', 'import_grid', 'Mfx_ant_CH4_CHE', 'GP=1', ! chemical processes !fug.
+EMIS_IN(193) = 'CH4_fx;CH4_12C,0.9893998;CH4_13C,0.0106002;CH4_D0,0.9994792;CH4_D1,0.0005208', 'import_grid', 'Mfx_ant_CH4_IRO', 'GP=1', ! iron and steel production !fug.
+!
+!EMIS_IN(194) = 'CH4_fx', 'import_grid', 'Mfx_ant_CH4_COAL', 'GP=1', ! fuel exploit. coal !fug.
+!EMIS_IN(195) = 'CH4_fx', 'import_grid', 'Mfx_ant_CH4_OIL', 'GP=1', ! fuel exploit. oil !fug.
+!EMIS_IN(196) = 'CH4_fx', 'import_grid', 'Mfx_ant_CH4_GAS', 'GP=1', ! fuel exploit. gas !fug.
+!
+!
+! livestock
+!
+EMIS_IN(197) = 'CH4_D0,0.9995748;CH4_D1,0.0004252', 'import_grid', 'Mfx_ant_CH4_ENF', 'GP=1', ! eneteric fermentation !liv.
+EMIS_IN(198) = 'CH4_D0,0.9995748;CH4_D1,0.0004252', 'import_grid', 'Mfx_ant_CH4_MNM', 'GP=1', ! manure management !liv.
+!
+! Agricultural Waste burning
+!
+EMIS_IN(199) = 'CH4_D0,0.9995097;CH4_D1,0.0004903' , 'import_grid', 'Mfx_awb_CH4', 'GP=1', ! agricultural waste bruning 
+!
+! landfills
+!
+EMIS_IN(200) = 'CH4_fx;CH4_12C,0.9895092;CH4_13C,0.0104908;CH4_D0,0.9995666;CH4_D1,0.0004334', 'import_grid', 'Mfx_ant_CH4_LDF', 'GP=1', ! solid waste landfills !ldf.
+EMIS_IN(201) = 'CH4_fx;CH4_12C,0.9895092;CH4_13C,0.0104908;CH4_D0,0.9995666;CH4_D1,0.0004334', 'import_grid', 'Mfx_ant_CH4_WWT', 'GP=1', ! waste water handling !ldf.
+EMIS_IN(202) = 'CH4_fx;CH4_12C,0.9895092;CH4_13C,0.0104908;CH4_D0,0.9995666;CH4_D1,0.0004334', 'import_grid', 'Mfx_ant_CH4_INC', 'GP=1', ! solid waste incineration !ldf.
+!
+! anthropogenic from EMPA
+!
+!! EMIS_IN(190) = 'CH4_fx;CH4_12C,0.9894561;CH4_13C,0.0105439;CH4_D0,0.9995163;CH4_D1,0.0004837', 'import_grid', 'Mfx_an_AFRICA_CH4', 'GP=1', ! anth.
+!! EMIS_IN(191) = 'CH4_fx;CH4_12C,0.9894561;CH4_13C,0.0105439;CH4_D0,0.9995163;CH4_D1,0.0004837', 'import_grid', 'Mfx_an_AUS_CH4', 'GP=1', ! anth.
+!! EMIS_IN(192) = 'CH4_fx;CH4_12C,0.9894561;CH4_13C,0.0105439;CH4_D0,0.9995163;CH4_D1,0.0004837', 'import_grid', 'Mfx_an_CHINA_CH4', 'GP=1', ! anth.
+!! EMIS_IN(193) = 'CH4_fx;CH4_12C,0.9894561;CH4_13C,0.0105439;CH4_D0,0.9995163;CH4_D1,0.0004837', 'import_grid', 'Mfx_an_EU_CH4', 'GP=1', ! anth.
+!! EMIS_IN(194) = 'CH4_fx;CH4_12C,0.9894561;CH4_13C,0.0105439;CH4_D0,0.9995163;CH4_D1,0.0004837', 'import_grid', 'Mfx_an_INDIA_CH4', 'GP=1', ! anth.
+!! EMIS_IN(195) = 'CH4_fx;CH4_12C,0.9894561;CH4_13C,0.0105439;CH4_D0,0.9995163;CH4_D1,0.0004837', 'import_grid', 'Mfx_an_MIDEAST_CH4', 'GP=1', ! anth.
+!! EMIS_IN(196) = 'CH4_fx;CH4_12C,0.9894561;CH4_13C,0.0105439;CH4_D0,0.9995163;CH4_D1,0.0004837', 'import_grid', 'Mfx_an_NA_CH4', 'GP=1', ! anth.
+!! EMIS_IN(197) = 'CH4_fx;CH4_12C,0.9894561;CH4_13C,0.0105439;CH4_D0,0.9995163;CH4_D1,0.0004837', 'import_grid', 'Mfx_an_OCEAN_CH4', 'GP=1', ! anth.
+!! EMIS_IN(198) = 'CH4_fx;CH4_12C,0.9894561;CH4_13C,0.0105439;CH4_D0,0.9995163;CH4_D1,0.0004837', 'import_grid', 'Mfx_an_RUS_CH4', 'GP=1', ! anth.
+!! EMIS_IN(199) = 'CH4_fx;CH4_12C,0.9894561;CH4_13C,0.0105439;CH4_D0,0.9995163;CH4_D1,0.0004837', 'import_grid', 'Mfx_an_SA_CH4', 'GP=1', ! anth.
+!! EMIS_IN(200) = 'CH4_fx;CH4_12C,0.9894561;CH4_13C,0.0105439;CH4_D0,0.9995163;CH4_D1,0.0004837', 'import_grid', 'Mfx_an_SE_ASIA_CH4', 'GP=1', ! anth.
+!
+! biomass burning
+!
+EMIS_IN(203) = 'CH4_D0,0.9995097;CH4_D1,0.0004903', 'import_grid', 'BB_GLOBAL_CH4',     'GP=1', ! bb
+!!EMIS_IN(203) = 'CH4_fx;CH4_12C,0.9892048;CH4_13C,0.0107952;CH4_D0,0.9995097;CH4_D1,0.0004903', 'import_grid', 'BB_AUS_CH4',     'GP=1', ! bb
+!!EMIS_IN(204) = 'CH4_fx;CH4_12C,0.9892048;CH4_13C,0.0107952;CH4_D0,0.9995097;CH4_D1,0.0004903', 'import_grid', 'BB_CHINA_CH4',     'GP=1', ! bb
+!!EMIS_IN(205) = 'CH4_fx;CH4_12C,0.9892048;CH4_13C,0.0107952;CH4_D0,0.9995097;CH4_D1,0.0004903', 'import_grid', 'BB_EU_CH4',     'GP=1', ! bb
+!!EMIS_IN(206) = 'CH4_fx;CH4_12C,0.9892048;CH4_13C,0.0107952;CH4_D0,0.9995097;CH4_D1,0.0004903', 'import_grid', 'BB_INDIA_CH4',     'GP=1', ! bb
+!!EMIS_IN(207) = 'CH4_fx;CH4_12C,0.9892048;CH4_13C,0.0107952;CH4_D0,0.9995097;CH4_D1,0.0004903', 'import_grid', 'BB_NA_bor_CH4',     'GP=1', ! bb!
+!!EMIS_IN(208) = 'CH4_fx;CH4_12C,0.9892048;CH4_13C,0.0107952;CH4_D0,0.9995097;CH4_D1,0.0004903', 'import_grid', 'BB_N_AFR_CH4',     'GP=1', ! bb
+!!EMIS_IN(209) = 'CH4_fx;CH4_12C,0.9892048;CH4_13C,0.0107952;CH4_D0,0.9995097;CH4_D1,0.0004903', 'import_grid', 'BB_NA_temp_CH4',     'GP=1', ! bb
+!!EMIS_IN(210) = 'CH4_fx;CH4_12C,0.9892048;CH4_13C,0.0107952;CH4_D0,0.9995097;CH4_D1,0.0004903', 'import_grid', 'BB_N_MIDEAST_CH4',     'GP=1', ! bb
+!!EMIS_IN(211) = 'CH4_fx;CH4_12C,0.9892048;CH4_13C,0.0107952;CH4_D0,0.9995097;CH4_D1,0.0004903', 'import_grid', 'BB_RUS_CH4',     'GP=1', ! bb
+!!EMIS_IN(212) = 'CH4_fx;CH4_12C,0.9892048;CH4_13C,0.0107952;CH4_D0,0.9995097;CH4_D1,0.0004903', 'import_grid', 'BB_S_AFR_CH4',     'GP=1', ! bb
+!!EMIS_IN(213) = 'CH4_fx;CH4_12C,0.9892048;CH4_13C,0.0107952;CH4_D0,0.9995097;CH4_D1,0.0004903', 'import_grid', 'BB_SA_temp_CH4',     'GP=1', ! bb
+!!EMIS_IN(214) = 'CH4_fx;CH4_12C,0.9892048;CH4_13C,0.0107952;CH4_D0,0.9995097;CH4_D1,0.0004903', 'import_grid', 'BB_SA_trop_CH4',     'GP=1', ! bb
+!!EMIS_IN(215) = 'CH4_fx;CH4_12C,0.9892048;CH4_13C,0.0107952;CH4_D0,0.9995097;CH4_D1,0.0004903', 'import_grid', 'BB_SE_ASIA_CH4',     'GP=1', ! bb
+!
+! ocean
+!
+EMIS_IN(216) = 'CH4_fx;CH4_12C,0.9895891;CH4_13C,0.0104109;CH4_D0,0.9995141;CH4_D1,0.0004859', 'import_grid', 'Mfx_oc_CH4', 'GP=1', ! ocean
+!
+! rice from EDGAR
+!
+EMIS_IN(217) = 'CH4_fx;CH4_12C,0.9896329;CH4_13C,0.0103671;CH4_D0,0.9995791;CH4_D1,0.0004209', 'import_grid', 'Mfx_ant_CH4_RICE', 'GP=1', ! rice
+!
+! rice from EMPA
+!
+!! EMIS_IN(216) = 'CH4_fx;CH4_12C,0.9896329;CH4_13C,0.0103671;CH4_D0,0.9995791;CH4_D1,0.0004209', 'import_grid', 'Mfx_ri_AFR_CH4', 'GP=1', ! rice
+!! EMIS_IN(217) = 'CH4_fx;CH4_12C,0.9896329;CH4_13C,0.0103671;CH4_D0,0.9995791;CH4_D1,0.0004209', 'import_grid', 'Mfx_ri_ASIA_AUS_CH4', 'GP=1', ! rice
+!! EMIS_IN(218) = 'CH4_fx;CH4_12C,0.9896329;CH4_13C,0.0103671;CH4_D0,0.9995791;CH4_D1,0.0004209', 'import_grid', 'Mfx_ri_CHINA_CH4', 'GP=1', ! rice
+!! EMIS_IN(219) = 'CH4_fx;CH4_12C,0.9896329;CH4_13C,0.0103671;CH4_D0,0.9995791;CH4_D1,0.0004209', 'import_grid', 'Mfx_ri_EU_CH4', 'GP=1', ! rice
+!! EMIS_IN(220) = 'CH4_fx;CH4_12C,0.9896329;CH4_13C,0.0103671;CH4_D0,0.9995791;CH4_D1,0.0004209', 'import_grid', 'Mfx_ri_INDIA_CH4', 'GP=1', ! rice
+!! EMIS_IN(221) = 'CH4_fx;CH4_12C,0.9896329;CH4_13C,0.0103671;CH4_D0,0.9995791;CH4_D1,0.0004209', 'import_grid', 'Mfx_ri_NA_CH4', 'GP=1', ! rice
+!! EMIS_IN(222) = 'CH4_fx;CH4_12C,0.9896329;CH4_13C,0.0103671;CH4_D0,0.9995791;CH4_D1,0.0004209', 'import_grid', 'Mfx_ri_SA_CH4', 'GP=1', ! rice
+!
+! termites
+!
+EMIS_IN(223) = 'CH4_fx;CH4_12C,0.9896366;CH4_13C,0.0103634;CH4_D0,0.9996200;CH4_D1,0.0003800', 'import_grid', 'Mfx_te_CH4', 'GP=1', ! termites
+!
+! volcanoes
+!
+EMIS_IN(224) = 'CH4_fx;CH4_12C,0.9893910;CH4_13C,0.0106090;CH4_D0,0.9995349;CH4_D1,0.0004651', 'import_grid', 'Mfx_vo_CH4', 'GP=1', ! volcanoes
+!
+! wetlands
+!
+EMIS_IN(225) = 'CH4_fx;CH4_D0,0.9995764;CH4_D1,0.0004236', 'import_grid', 'Mfx_wl_AUS_CH4', 'GP=1', ! wetlands
+EMIS_IN(226) = 'CH4_fx;CH4_D0,0.9995764;CH4_D1,0.0004236', 'import_grid', 'Mfx_wl_CHINA_CH4', 'GP=1', ! wetlands
+EMIS_IN(227) = 'CH4_fx;CH4_D0,0.9995764;CH4_D1,0.0004236', 'import_grid', 'Mfx_wl_EU_CH4', 'GP=1', ! wetlands
+EMIS_IN(228) = 'CH4_fx;CH4_D0,0.9995764;CH4_D1,0.0004236', 'import_grid', 'Mfx_wl_india_CH4', 'GP=1', ! wetlands
+EMIS_IN(229) = 'CH4_fx;CH4_D0,0.9995764;CH4_D1,0.0004236', 'import_grid', 'Mfx_wl_MIDEAST_CH4', 'GP=1', ! wetlands
+EMIS_IN(230) = 'CH4_fx;CH4_D0,0.9996013;CH4_D1,0.0003987', 'import_grid', 'Mfx_wl_NA_bor_CH4', 'GP=1', ! wetlands
+EMIS_IN(231) = 'CH4_fx;CH4_D0,0.9995764;CH4_D1,0.0004236', 'import_grid', 'Mfx_wl_N_AFR_CH4', 'GP=1', ! wetlands
+EMIS_IN(232) = 'CH4_fx;CH4_D0,0.9995764;CH4_D1,0.0004236', 'import_grid', 'Mfx_wl_NA_TEMP_CH4', 'GP=1', ! wetlands
+EMIS_IN(233) = 'CH4_fx;CH4_D0,0.9996013;CH4_D1,0.0003987', 'import_grid', 'Mfx_wl_RUS_CH4', 'GP=1', ! wetlands
+EMIS_IN(234) = 'CH4_fx;CH4_D0,0.9995764;CH4_D1,0.0004236', 'import_grid', 'Mfx_wl_S_AFR_CH4', 'GP=1', ! wetlands
+EMIS_IN(235) = 'CH4_fx;CH4_D0,0.9995764;CH4_D1,0.0004236', 'import_grid', 'Mfx_wl_SA_temp_CH4', 'GP=1', ! wetlands
+EMIS_IN(236) = 'CH4_fx;CH4_D0,0.9995764;CH4_D1,0.0004236', 'import_grid', 'Mfx_wl_SA_TROP_CH4', 'GP=1', ! wetlands
+EMIS_IN(237) = 'CH4_fx;CH4_D0,0.9995764;CH4_D1,0.0004236', 'import_grid', 'Mfx_wl_se_asia_CH4', 'GP=1', ! wetlands
+!
+! wild animals
+!
+EMIS_IN(238) = 'CH4_fx;CH4_12C,0.9896165;CH4_13C,0.0103835;CH4_D0,0.9995758;CH4_D1,0.0004242', 'import_grid', 'Mfx_wa_CH4', 'GP=1', !wild animals
+!
+! Emissions multiplied by isotopologue factors
+!
+EMIS_IN(300) = 'CH4_12C;CH4_fx', 'import_grid', 'Mfx_iso_coal_CH4_12C', 'GP=1', !coal
+EMIS_IN(301) = 'CH4_13C;CH4_fx', 'import_grid', 'Mfx_iso_coal_CH4_13C', 'GP=1', !coal
+EMIS_IN(302) = 'CH4_D0', 'import_grid', 'Mfx_iso_coal_CH4_D0', 'GP=1', !coal
+EMIS_IN(303) = 'CH4_D1', 'import_grid', 'Mfx_iso_coal_CH4_D1', 'GP=1', !coal
+EMIS_IN(304) = 'CH4_12C;CH4_fx', 'import_grid', 'Mfx_iso_oil_CH4_12C', 'GP=1', !oil
+EMIS_IN(305) = 'CH4_13C;CH4_fx', 'import_grid', 'Mfx_iso_oil_CH4_13C', 'GP=1', !oil
+EMIS_IN(306) = 'CH4_D0', 'import_grid', 'Mfx_iso_oil_CH4_D0', 'GP=1', !oil
+EMIS_IN(307) = 'CH4_D1', 'import_grid', 'Mfx_iso_oil_CH4_D1', 'GP=1', !oil
+EMIS_IN(308) = 'CH4_12C;CH4_fx', 'import_grid', 'Mfx_iso_gas_CH4_12C', 'GP=1', !gas
+EMIS_IN(309) = 'CH4_13C;CH4_fx', 'import_grid', 'Mfx_iso_gas_CH4_13C', 'GP=1', !gas
+EMIS_IN(310) = 'CH4_D0', 'import_grid', 'Mfx_iso_gas_CH4_D0', 'GP=1', !gas
+EMIS_IN(311) = 'CH4_D1', 'import_grid', 'Mfx_iso_gas_CH4_D1', 'GP=1', !gas
+!
+EMIS_IN(312) = 'CH4_12C;CH4_fx', 'import_grid', 'BB_iso_CH4_12C', 'GP=1', !BB
+EMIS_IN(313) = 'CH4_13C;CH4_fx', 'import_grid', 'BB_iso_CH4_13C', 'GP=1', !BB
+EMIS_IN(314) = 'CH4_12C;CH4_fx', 'import_grid', 'Mfx_iso_awb_CH4_12C', 'GP=1', !AWB
+EMIS_IN(315) = 'CH4_13C;CH4_fx', 'import_grid', 'Mfx_iso_awb_CH4_13C', 'GP=1', !AWB
+!
+EMIS_IN(316) = 'CH4_12C;CH4_fx', 'import_grid', 'Mfx_iso_enf_CH4_12C', 'GP=1', !livestock
+EMIS_IN(317) = 'CH4_13C;CH4_fx', 'import_grid', 'Mfx_iso_enf_CH4_13C', 'GP=1', !livestock
+EMIS_IN(318) = 'CH4_12C;CH4_fx', 'import_grid', 'Mfx_iso_mnm_CH4_12C', 'GP=1', !livestock
+EMIS_IN(319) = 'CH4_13C;CH4_fx', 'import_grid', 'Mfx_iso_mnm_CH4_13C', 'GP=1', !livestock
+!
+EMIS_IN(320) = 'CH4_12C', 'import_grid', 'Mfx_w1_iso_CH4_12C', 'GP=1', !wetlands
+EMIS_IN(321) = 'CH4_13C', 'import_grid', 'Mfx_w1_iso_CH4_13C', 'GP=1', !wetlands
+!
+!
+/
+

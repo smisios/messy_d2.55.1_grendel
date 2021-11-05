@@ -1,0 +1,43 @@
+! -*- f90 -*-
+
+&CPL
+! ### SYNTAX:
+! # CALC(.) = 'object-name', 'list-of-channel-objects', 'operation',when?,
+! # : when: 1: global_start, 2 (default): global_end, 3: both
+! # : list of channel objects = 'ch1:obj1%s1&l1,obj2%s2&l1,...;cha2:obj1%s1,...;'
+! # : s1, s1, ... optional scaling factors
+! # : l1, l2, ... optional reduction to one specific vertical level
+! #               indicator LL => number of model layer nlev / ke
+!                 , otherwise number required
+! # : operation = SUM
+!
+!
+! TODO : defined as in correct for fesom coupling
+! - do accumulation with OASIS 
+! - determine location where to call scalc
+! - modify script for position use in scalc
+CALC(5)  = 'ustrwat','g3b:ustrw;ECHAM5:zzwat','MULT', 'messy_physc'
+CALC(6)  = 'ustrnow','g3b:ustri;ECHAM5:zznow','MULT', 'messy_physc'
+CALC(7)  = 'vstrwat','g3b:vstrw;ECHAM5:zzwat','MULT', 'messy_physc'
+CALC(8)  = 'vstrnow','g3b:vstri;ECHAM5:zznow','MULT', 'messy_physc'
+CALC(9)  = 'ustrnoi','g3b:ustrw;ECHAM5:zznoi','MULT', 'messy_physc'
+CALC(10) = 'ustrice','g3b:ustri;ECHAM5:zzice','MULT', 'messy_physc'
+CALC(11) = 'vstrnoi','g3b:vstrw;ECHAM5:zznoi','MULT', 'messy_physc'
+CALC(12) = 'vstrice','g3b:vstri;ECHAM5:zzice','MULT', 'messy_physc'
+
+CALC(13) = 'ustarw','scalc:ustrwat,ustrnow','SUM', 'messy_physc'
+CALC(14) = 'vstarw','scalc:vstrwat,vstrnow','SUM', 'messy_physc'
+CALC(15) = 'ustari','scalc:ustrnoi,ustrice','SUM', 'messy_physc'
+CALC(16) = 'vstari','scalc:vstrnoi,vstrice','SUM', 'messy_physc'
+
+! 0.00100003 = 1/999.97 = 1 /rhoh2o
+CALC(17) = 'rsf', 'ECHAM5:rsfl%0.00100003,rsfc%0.00100003','SUM', 'messy_physc'
+CALC(18) = 'ssf', 'ECHAM5:ssfl%0.00100003,ssfc%0.00100003','SUM', 'messy_physc'
+CALC(19) = 'evapwdrho', 'ECHAM5:evapw%0.00100003','SUM', 'messy_physc'
+CALC(20) = 'evapidrho', 'ECHAM5:evapi%0.00100003','SUM', 'messy_physc'
+! 3.337e6 = als-alv
+CALC(21) = 'heat2oce', 'ECHAM5:ahflw,ahfsw,trflw,ssfl%3.337e6,ssfc%3.337e6','SUM', 'messy_physc'
+CALC(22) = 'heat2ice', 'g3b:qres,ahfice','SUM', 'messy_physc'
+
+!
+/

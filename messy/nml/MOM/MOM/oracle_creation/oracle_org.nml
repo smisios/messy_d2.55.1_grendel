@@ -1,0 +1,125 @@
+! -*- f90 -*-                   
+!
+&CTRL
+                                 ! <--- ORACLE general options
+NfPOA    = 5,                    !number of Primary OA species from Fossil Fuel emissions
+NbbPOA   = 4,                    !number of Primary OA species from Biomass Burning emissions
+NfSOAsv  = 2,                    !number of Secondary OA species from the oxidation of fPOA with csat <  1000 (NFFOA(with csat<1000) -1)
+NbbSOAsv = 2,                    !number of Secondary OA species from the oxidation of bbPOA with csat <  1000 (NBBOA(with csat<1000) -1)
+NfSOAiv  = 4,                    !number of Secondary OA species from the oxidation of fPOA with csat >= 1000 (NFFOA-1)
+NbbSOAiv = 3,                    !number of Secondary OA species from the oxidation of bbPOA with csat >= 1000 (NBBOA-1)
+NSOAv    = 4,                    !number of Secondary OA species from the oxidation of traditional biogenic VOCs
+NSOAP    = 24,                   !sum of NfPOA,NbbPOA,NfSOAsv,NbbSOAsv,NfSOAiv,NbbSOAiv,NbSOAv,NbOSOAv,NaSOAv,NaOSOAv
+aermod   ='gmxe',                !aerosol module for inorganic aerosols : ue "oracle" for its own distribution
+nmode    = 1,                    !number of modes used for organic aerosols (1 to 3)
+tmode(1) = 3                !type of modes (2=KS, 3=AS, 4=CS)
+!nmode    = 3,                    !number of modes used for organic aerosols (1 to 3)
+!tmode(1) = 2                !type of modes (2=KS, 3=AS, 4=CS)
+!tmode(2) = 3                !type of modes (2=KS, 3=AS, 4=CS)
+!tmode(3) = 4                !type of modes (2=KS, 3=AS, 4=CS)
+
+mwsoap   (1:5) = 250.d0,250.d0,250.d0,250.d0,250.d0,  !mwsoap(1:NfPOA)   : molecular weights of fPOG/fPOA species (g/mol)
+csat     (1:5) = 1.d-2, 1.d0,  1.d2,  1.d4,  1.d6,    !csat(1:NfPOA)     : saturation concentrations of fPOG/fPOA species (ug/m3)
+cstemp   (1:5) = 300.d0,300.d0,300.d0,300.d0,300.d0,  !cstemp(1:NfPOA)   : temperatures corresponding to csat
+deltah   (1:5) = 112.d3,100.d3, 88.d3, 76.d3, 64.d3,  !deltah(1:NfPOA)   : enthalpy of vaporization of fPOG/fPOA species (kJ/mol)
+flagsoap (1:5) = 1,1,1,1,1,                           !flagsoap(1:NfPOA) : set to 1 if fPOG/fPOA species forms solutions; 0 if not
+ 
+                                               !n1=NfPOA+1 n2=NbbPOA+NfPOA 
+mwsoap   (6:9) = 250.d0,250.d0,250.d0,250.d0,  !mwsoap(n1:n2)   : molecular weights of bbPOG/bbPOA species (g/mol)
+csat     (6:9) = 1.d-2, 1.d0,  1.d2,  1.d4,    !csat(n1:n2)     : saturation concentrations of bbPOG/bbPOA species (ug/m3)
+cstemp   (6:9) = 300.d0,300.d0,300.d0,300.d0,  !cstemp(n1:n2)   : temperatures corresponding to csat
+deltah   (6:9) = 93.d3, 85.d3, 77.d3, 69.d3,   !deltah(n1:n2)   : enthalpy of vaporization of bbPOG/bbPOA species (kJ/mol)
+flagsoap (6:9) = 1,1,1,1,                      !flagsoap(n1:n2) : set to 1 if bbPOG/bbPOA species forms solutions; 0 if not
+ 
+                                   !n3=n2+1 n4=n2+NfSOAsv
+mwsoap   (10:11) = 250.d0,250.d0,  !mwsoap(n3:n4)   : molecular weights of fSOGsv/fSOAsv species (g/mol)
+csat     (10:11) = 1.d-2, 1.d0,    !csat(n3:n4)     : saturation concentrations of fSOGsv/fSOAsv species (ug/m3)
+cstemp   (10:11) = 300.d0,300.d0,  !cstemp(n3:n4)   : temperatures corresponding to csat
+deltah   (10:11) = 112.d3,100.d3,  !deltah(n3:n4)   : enthalpy of vaporization of fSOGsv/fSOAsv species (kJ/mol)
+flagsoap (10:11) = 1,1,            !flagsoap(n3:n4) : set to 1 if fSOGsv/fSOAsv species forms solutions; 0 if not
+ 
+                                   !n5=n4+1 n6=n4+NbbSOAsv 
+mwsoap   (12:13) = 250.d0,250.d0,  !mwsoap(n5:n6)   : molecular weights of bbSOGsv/bbSOAsv species (g/mol)
+csat     (12:13) = 1.d-2, 1.d0,    !csat(n5:n6)     : saturation concentrations of bbSOGsv/bbSOAsv species (ug/m3)
+cstemp   (12:13) = 300.d0,300.d0,  !cstemp(n5:n6)   : temperatures corresponding to csat
+deltah   (12:13) = 93.d3, 85.d3,   !deltah(n5:n6)   : enthalpy of vaporization of bbSOGsv/bbSOAsv species (kJ/mol)
+flagsoap (12:13) = 1,1,            !flagsoap(n5:n6) : set to 1 if bbSOGsv/bbSOAsv species forms solutions; 0 if not
+
+                                                 !n7=n6+1 n8=n6+NfSOAiv 
+mwsoap   (14:17) = 250.d0,250.d0,250.d0,250.d0,  !mwsoap(n7:n8)   : molecular weights of fSOGiv/fSOAiv species (g/mol)
+csat     (14:17) = 1.d-2, 1.d0,  1.d2,  1.d4,    !csat(n7:n8)     : saturation concentrations of fSOGiv/fSOAiv species (ug/m3)
+cstemp   (14:17) = 300.d0,300.d0,300.d0,300.d0,  !cstemp(n7:n8)   : temperatures corresponding to csat
+deltah   (14:17) = 112.d3,100.d3, 88.d3, 76.d3,  !deltah(n7:n8)   : enthalpy of vaporization of fSOGiv/fSOAiv species (kJ/mol)
+flagsoap (14:17) = 1,1,1,1,                      !flagsoap(n7:n8) : set to 1 if fSOGiv/FFiSSOA species forms solutions; 0 if not
+
+                                          !n9=n8+1 n10=n8+NbbSOAiv
+mwsoap   (18:20) = 250.d0,250.d0,250.d0,  !mwsoap(n9:n10)   : molecular weights of bbSOGiv/bbSOAiv species (g/mol)
+csat     (18:20) = 1.d-2, 1.d0,  1.d2,    !csat(n9:n10)     : saturation concentrations of bbSOGiv/bbSOAiv species (ug/m3)
+cstemp   (18:20) = 300.d0,300.d0,300.d0,  !cstemp(n9:n10)   : temperatures corresponding to csat
+deltah   (18:20) = 93.d3, 85.d3, 77.d3,   !deltah(n9:n10)   : enthalpy of vaporization of bbSOGiv/bbSOAiv species (kJ/mol)
+flagsoap (18:20) = 1,1,1,
+
+mwsoap   (21:24) = 180.d0,180.d0,180.d0,180.d0,    !mwsoap(n11:n12)   : molecular weights of bSOGv/bSOAv species (g/mol)
+! here goes the volatility (1.e-2, 1e3, i.e. 6 units) we conside everything above only gas
+csat     (21:24) = 1.d0,  1.d1,  1.d2,  1.d3,      !csat(n11:n12)     : saturation concentrations of bSOGv/bSOAv species (ug/m3)
+cstemp   (21:24) = 300.d0,300.d0,300.d0,300.d0,    !cstemp(n11:n12)   : temperatures corresponding to csat
+deltah   (21:24) = 30.d3, 30.d3, 30.d3, 30.d3,     !deltah(n11:n12)   : enthalpy of vaporization of bSOGv/bSOAv species (kJ/mol)
+flagsoap (21:24) = 1,1,1,1,                        !flagsoap(n11:n12) : set to 1 if bSOGv/bSOAv species forms solutions; 0 if not
+!01 -> first in list csat
+SOGv01 = 'LaSOGv01;LbSOGv01;LaOSOGv01;LbOSOGv01;',
+SOGv02 = 'LaSOGv02;LbSOGv02;LaOSOGv02;LbOSOGv02;',
+SOGv03 = 'LaSOGv03;LbSOGv03;LaOSOGv03;LbOSOGv03;',
+SOGv04 = 'LaSOGv04;LbSOGv04;',
+
+
+! all molecular weights!
+SOGv_mw(1,1:4) = 150.d0,180.d0,150.d0,180.d0,
+SOGv_mw(2,1:4) = 150.d0,180.d0,150.d0,180.d0,
+SOGv_mw(3,1:4) = 150.d0,180.d0,150.d0,180.d0,
+SOGv_mw(4,1:2) = 150.d0,180.d0,
+  
+/
+
+&CPL
+!name of emission channel
+!Cemis_channel = 'onemis',               ! onlem
+!names of organic carbon channel elements
+!emis_OC_insol = 'emis_oc'             ! emdep: organic carbon mass insoluble
+!emis_OC_insol = 'OC_sum_insol',        ! onlem: organic carbon mass insoluble
+!emis_OC_sol   = 'emis_oc'             ! emdep: organic carbon mass insoluble
+!emis_OC_sol   = 'OC_sum_sol',          ! onlem: organic carbon mass soluble
+!
+! emission setup (new way)
+! for each emission flux one EMIS_CASK should be filled
+! all possible fluxes are listed in the messy_ORACLE_e5.f90
+! in the subroutine ORACLE_emis_e5_init
+! certain characteristics of the fluxes are defined there as well
+! emis_casks - array: 
+!                    1st entry: name (used for identification in the 
+!                               list of the e5 file section emis_init)
+!                    2nd entry: total scaling factor for incoming flux
+!                    3rd entry: channel name of the emission flux
+!                    4th entry: name of the mass emission flux object
+!                    5th entry: name of the corresponding number 
+!                               emission flux object (If it does not exist a 
+!                               number is calculated from the mass)
+!                    6th entry: ";" separated list of tracers which should 
+!                               receive emissions from this flux
+!                    7th entry: ";" separated list of fractions of this emission
+!                               flux for all the tracers defined in entry 5
+! WARNING: In case the 1st entry from a cask is not matching any of the fluxes in the list
+!          it is ignored
+!
+!-----------------
+! ORGANIC CARBON 
+!-----------------
+! 
+! CCMI
+!EMIS_CASK(1,:)= "oc_mass_ff_ks"  ,"1.3","import_grid" ,"OC_ant_OC"   ,""            ,"fPOA01_ks;fPOA02_ks;LfPOG03;LfPOG04;LfPOG05","0.09;0.23;0.48;0.7;1.0"
+! use only one gmxe mode (as)
+EMIS_CASK(1,:)= "oc_mass_ff_as"  ,"1.3","import_grid" ,"EDGAR_ANTH_OC"   ,""            ,"fPOA01_as;fPOA02_as;LfPOG03;LfPOG04;LfPOG05","0.09;0.23;0.48;0.7;1.0"
+! GFEDv3.1
+!EMIS_CASK(2,:)= "oc_mass_bb_ks"  ,"1.6","offemis"    ,"OC_wf_OC"    ,""            ,"bbPOA01_ks;bbPOA02_ks;LbbPOG03;LbbPOG04","0.2;0.2;0.3;0.3"
+EMIS_CASK(2,:)= "oc_mass_bb_as"  ,"1.6","bioburn"    ,"OC_flux"    ,""            ,"bbPOA01_as;bbPOA02_as;LbbPOG03;LbbPOG04","0.2;0.2;0.3;0.3"
+!-----------------
+/

@@ -1,0 +1,564 @@
+<!DOCTYPE html 
+     PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+     "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xml:lang="en" lang="en">
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="GENERATOR" content="Mozilla/4.7C-SGI [en] (X11; I; IRIX64 6.5 IP27) [Netscape]">
+   <title>Changes in the COSMO-Model 4.24</title>
+<style type="text/css">
+  body { font-family:       Arial;
+         font-size:         12pt;
+         background-repeat: no-repeat; 
+         margin:            1em; }
+
+  tt   { font-size:         12pt;}
+
+  li   { margin-top:         5pt;
+         margin-bottom:      5pt }
+
+  th   { border:           1px solid black;
+         padding:          3pt;
+         vertical-align:   top;
+         background-color: lightblue;}
+
+  td   { border:           1px solid black;
+         padding:          3pt;
+         vertical-align:   top;}
+
+  td.middl   { border:           1px solid black;
+               padding:          3pt;
+               vertical-align:   middle;}
+
+  td.hilit       { border:           1px solid black;
+                   padding:          1pt;
+                   vertical-align:   top;
+                   background-color: lightblue;}
+
+  td.clean       { padding:          0pt;
+                   border-style:     none;
+                   vertical-align:   top;}
+
+  td.notes       { padding:          3pt;
+                   border-style:     none;
+                   vertical-align:   top;}
+
+  td.nomid       { padding:          3pt;
+                   border-style:     none;
+                   vertical-align:   middle;}
+
+  table.note     { border-width:     0pt;
+                   border-style:     none;
+                   margin-left:      5pt;
+                   margin-top:       1pt;
+                   margin-bottom:    1pt;
+                   cell-padding:     5pt;
+                   vertical-align:   top;
+                   text-align:       left;}
+  
+  table.atte     { border-width:     0pt;
+                   border-style:     none;
+                   margin-left:      5pt;
+                   margin-top:       1pt;
+                   margin-bottom:    1pt;
+                   cell-padding:     5pt;
+                   vertical-align:   top;
+                   text-align:       left;
+                   background-color: red;}
+  
+  table.namelist { border-width:  2pt;
+                   border-style:  groove;
+                   border-color:  black;
+                   width:         90%;
+                   text-align:    left;
+                   margin-top:    1pt;
+                   margin-bottom: 1pt;
+                   padding:       3pt;
+                   align:         center;}
+  
+  tr.headings    { text-align:       left;
+                   vertical-align:   top;
+                   border-width:     1pt;
+                   border-style:     groove;
+                   border-color:     grey;
+                   padding:          2pt;
+                   font-weight:      bold;}
+
+  .rot           { background-color: red;}
+</style>
+
+</head>
+  <body text="#000000" bgcolor="#FFFFFF" link="#0000EE" vlink="#551A8B" alink="#FF0000">
+
+<center>
+<h1>
+<a NAME="begin">Documentation of the Changes in the COSMO-Model <br /> Version 4.24</a>
+</h1>
+<h3>
+22.06.2012
+</h3>
+</center>
+
+<p>
+4.24 is another version towards the new unified version 5.0. It contains again some fixes
+for 4.23, but again a few new features. It contains some modifications that do influence 
+the results of the simulations. Hopefully, these are the last changes which do change 
+the results, so this version is a candidate for performing meteorological tests.
+If everything works out well, the next versions only contain technical changes with
+no effects on the results.
+</p>
+
+<h4><a NAME="content">Contents:</a></h4>
+
+<ol>
+<li><a href="#wavessc">New Fast Waves Solver</a></li>
+<li><a href="#refatms">Changes to Subroutines computing the Reference Atmospheres</a></li>
+<li><a href="#shletkf">Changes for sub-hourly Analysis Update with LETKF</a></li>
+<li><a href="#flakech">Problems in FLake Model with GRIB packing</a></li>
+<li><a href="#bugfixe">Technical Changes and Bug Fixes</a></li>
+<li><a href="#namelis">Changes to the Namelists</a></li>
+<li><a href="#results">Changes of Results</a></li>
+</ol>
+<p>
+<hr>
+
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="wavessc">1. New Fast Waves Solver</a></h3>
+  <h4>(by Michael Baldauf)</h4>
+
+<p>
+Most of the operational setups of the COSMO model now use the so-called
+Runge-Kutta time integration scheme (Wicker, Skamarock, 2002).
+The basic idea of this time-splitting procedure is to treat the slow parts
+like advection or Coriolis force with a large time step, whereas the 
+<i>fast waves</i> modes sound and gravity wave expansion are treated with a
+small time step.
+</p>
+  
+<p>
+As in the original proposal of Wicker, Skamarock (2002, 1998) the fast waves
+are treated horizontally with a backward-forward scheme and vertically implicit
+to allow larger values for the small time step. An additional filter process
+must stabilize this whole time-splitting procedure; usually a divergence
+damping is used (e.g. Skamarock, Klemp, 1992) in the fast waves solver.
+</p>
+
+<p>
+Properties of the new fast waves solver compared to the current one are:
+
+<ul>
+<li>Improvement of the accuracy of all vertical derivatives and averages:<br />
+   During the evaluation of the Runge-Kutta dynamical core for the COSMO-EU
+   (7km)-setup it became obvious that the proper treatment of the vertical
+   discretizations in strongly vertically stretched grids in particular
+   improves the behaviour of the pressure bias. Now all explicit and implicit
+   terms are discretized in a consistent way with appropriate weights to take
+   into account the grid stretching.</li>
+    
+<li>Use of the divergence operator in strong conservation form:<br />
+   This form of the divergence has a benefit in the
+   calculation of the metric terms in vertically stretched grids, too,
+   and in the formulation of the lower boundary condition for the
+   vertical velocity <tt>w</tt>.</li>
+
+<li>Isotropic treatment of the artificial divergence damping:<br />
+   The current divergence damping considers only the horizontal gradients of the
+   3D-divergence in the momentum equations. This seems appropriate in the
+   vicinity of the lower boundary, where the grid is highly anisotropic, too. 
+   But for smaller scale setups of COSMO (e.g. COSMO-DE with 2.8 km grid mesh
+   size) the grid becomes more isotropic in the troposphere. Therefore an 
+   isotropic treatment of the artificial divergence damping seems to be
+   reasonable. Due to high <i>divergence damping Courant numbers</i> near the
+   ground, this process must be also treated vertically implicit like the 
+   sound and buoyancy terms. The stability of this treatment is shown in
+   Baldauf (2010).<br />
+   This isotropic treatment can be used optionally. By default it is switched off
+   (internal switch <tt>l_3D_div_damping</tt>).</li>
+  
+<li>Also optionally a preliminary version of the Mahrer-discretization of
+   the horizontal pressure gradient terms is available.
+   By default it is switched off (internal switch <tt>l_hor_p_grad_Mahrer</tt>).</li>
+</ul>
+</p>
+  
+
+<p>
+A new namelist switch <tt>itype_fast_waves</tt> has been introduced in <tt>/DYNCTL/</tt>,
+to activate the old (Default) or new fast-waves solver:
+
+<center>
+<table border="1" cellspacing="3" class="namelist">
+ <tbody>
+   <tr>
+     <th>Group</th>
+     <th>Name</th>
+     <th>Meaning</th>
+     <th align="center", width="5%">Default</th>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td class="hilit" rowspan="1"><tt>/DYNCTL/</tt></td>
+     <td><tt>itype_fast_waves</tt></td>
+     <td class="middl" rowspan="1">Type of fast waves solver for Runge-Kutta dynamics
+          <ol start="1">
+           <li>Old scheme (from module <tt>fast_waves_rk.f90)</tt> (Default)</li>
+           <li>New scheme (from module <tt>fast_waves_sc.f90)</tt>
+             <ul>
+                <li>with proper weightings for all vertical discretizations,</li>
+                <li>divergence operator in strong conservation form,</li>
+                <li>optionally: isotropic (fully 3D) divergence damping,</li>
+                <li>optionally: Mahrer (1984) discretization</li>
+             </ul>
+           </li>
+          </ol>
+       </td>
+     <td class="middl" align="center" rowspan="1"><tt>1</tt></td>
+   </tr>
+<!---------------------------------------------------------------------------->
+ </tbody>
+</table>
+</center>
+</p>
+
+<p>
+New options for the bottom boundary condition <tt>itype_bbc_w</tt> can be set
+which are only valid for <tt>itype_fast_waves=2</tt>. These will be elaborated further
+and will be documented in a later release.
+</p>
+
+<p>
+Recommended Namelist settings for the new fast-waves solver in <tt>/DYNCTL/</tt>:
+<ul>
+  <li><tt>itype_fast_waves = 2        </tt></li>
+  <li><tt>itype_bbc_w      = 14       </tt></li>
+  <li><tt>ldyn_bbc         = .FALSE.  </tt></li>
+</ul>
+</p>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+<p align="right"><a href="#content">Back to Contents</a>
+<hr>
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="refatms">2. Changes to Subroutines computing the Reference Atmospheres</a></h3>
+  <h4>(by Michael Baldauf)</h4>
+
+<p>
+There have been some changes to the subroutines <tt>reference_atmosphere</tt>,
+<tt>reference_atmosphere_2</tt> and <tt>reference_atmosphere_BV</tt> in module 
+<tt>meteo_utilities.f90</tt>:
+</p>
+
+<p>
+<ul>
+ <li>They have been extended to also compute the temperature of the reference
+  state <tt>t0hl</tt> on half levels.</li>
+
+ <li>The computation of the <tt>k</tt>-indices for special pressure levels has been removed
+  from these subroutines and has been put to a new subroutine
+  <tt>k_index_of_pressure_levels</tt> (also in <tt>meteo_utilities</tt>).</li>
+
+ <li>For <tt>irefatm=1</tt> and using the new fast_waves_sc-solver, the pressure and temperature
+  of the reference state on full levels are now computed analytically, instead of
+  just averaging the values from the half levels.</li>
+
+ <li>For <tt>irefatm=2</tt> (subroutine <tt>reference_atmosphere_2</tt>) the
+  reference temperature on full levels, <tt>t0</tt>, is now calculated directly
+  as a function of the height (instead of using <tt>p0</tt>), which is a bit more intuitive.
+  <p>
+  <span class="rot">NOTE:</span><br />
+  This slightly different calculation can change results
+  of applications with <tt>irefatm=2</tt> (e.g. COSMO_EU) due to round off errors.</li>
+  </p>
+</ul>
+</p>
+
+<p>
+The interfaces in <tt>src_input.f90</tt> and <tt>src_artifdata.f90</tt> have been 
+adapted accordingly.
+</p>
+  
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+<p align="right"><a href="#content">Back to Contents</a>
+<hr>
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="shletkf">3. Changes for sub-hourly Analysis Update with LETKF</a></h3>
+  <h4>(by Hendrik Reich)</h4>
+
+<p>
+When using the LETKF method for data assimilation in the future, there will be the
+need to have an assimilation cycle of only few minutes, and not of hours. Therefore
+the COSMO-Model has been adapted to read and write files, where also minutes and
+seconds are included, e.g.
+</p>
+
+<p>
+  <tt>laf20130504121500</tt>:&nbsp;&nbsp;   for 04th of May 2013, 12 UTC + 15 Minutes and 00 seconds
+</p>
+
+<p>
+instead of the hitherto existing <tt>laf2013050412</tt>.
+</p>
+
+<p>
+The main changes are:
+  
+<ul>
+  <li>Subroutine <tt>make_fn</tt> from <tt>io_utilities</tt>:<br />
+    The file names, that are created by this subroutine, can have 4 additional
+    digits. This is controlled by the Namelist switch ydate_ini:
+
+    <ul>
+     <li>If <tt>ydate_ini</tt> is specified with 10 digits (as it was up to now), also
+         the file names are as they were before.</li>
+     <li>If <tt>ydate_ini</tt> is specified with 14 digits (including minutes and seconds),
+         the file names contain 4 additional digits.
+         But even then old files will be recognized for input.</li>
+    </ul></li>
+  
+  <li>Subroutine <tt>get_utc_date</tt>: to also compute the minutes and seconds in a precise
+    manner, the computation of the return parameter <tt>acthour</tt> has been modified,
+    and therefore the results are slightly different.<br />
+
+    <p>
+    <span class="rot">NOTE:</span><br />
+    Because the Radiation module uses this return parameter to calculate the zenith
+    angle, also the results of the simulations are changing.
+    But the differences are numerically negligible.
+    </p></li>
+
+  <li>the date variables that are returned by the routine <tt>get_utc_date</tt> from module
+    <tt>utilities</tt> have been extended:
+
+    <p>
+    <center>
+    <table border="0" cellspacing="3" class="note">
+     <tbody>
+       <tr>
+         <th>Variable</th>
+         <th>Before</th>
+         <th>After</th>
+       </tr>
+    <!---------------------------------------------------------------------------->
+       <tr>
+         <td><tt>yactdate1</tt></td>
+         <td><tt>2013050412</tt></td>
+         <td><tt>20130504121532</tt></td>
+       </tr>
+    <!---------------------------------------------------------------------------->
+       <tr>
+         <td><tt>yactdate2</tt></td>
+         <td><tt>SAT 04.05.2013  12 UTC</tt></td>
+         <td><tt>SAT 04.05.2013  12:15:32 UTC</tt></td>
+       </tr>
+    <!---------------------------------------------------------------------------->
+     </tbody>
+    </table>
+    </center>
+    </p>
+
+    This also changes some formats in the ASCII output files</li>
+
+  <li>All routines that use the date variables have been adapted.</li>
+</ul>
+</p>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+<p align="right"><a href="#content">Back to Contents</a>
+<hr>
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="flakech">4. Problems in FLake Model with GRIB packing</a></h3>
+  <h4>(by Dmitrii Mironov)</h4>
+
+<p>
+There were problems with the FLake Model related to Grib packing.
+At the end of each time step the FLake Model checks all computed values for
+consistency. Then the variables are written to Grib and read again in the
+next assimilation cycle or at the start of a forecast. Due to grib packing the
+consistency of the data could be lost.
+</p>
+
+<p>
+Therefore, a consistency check has now been added also at the beginning of a
+simulation in the subroutine <tt>flake_init</tt>.
+</p>
+
+<p>
+Moreover, another security procedure has been implemented:<br />
+To limit the values of <tt>EXP</tt>-arguments, a maximum value for <tt>EXP</tt> arguments
+has been introduced in <tt>data_flake.f90</tt>: <tt>c_maxearg_flk  = 1.0E+02_ireals.</tt>
+</p>
+
+<p>
+<span class="rot">NOTE:</span> These modifications do change the results of the simulations!
+</p>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+<p align="right"><a href="#content">Back to Contents</a>
+<hr>
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="bugfixe">5. Technical Changes and Bug Fixes</a></h3>
+
+<ul>
+ <li><tt>io_utilities.f90</tt>:<br />
+  <ul>
+   <li>Reading restart files: Adaptations are necessary in <tt>check_input_grid</tt>
+       to deal with binary restart files.</li>
+   <li>Adaptations for reading NetCDF files: Unification of IDs with INT2LM:
+       Changed <tt>dim_id</tt> for topo corrections from 11 to 15 (by Burkhardt Rockel).</li>
+  </ul></li>
+
+ <li><tt>data_io.f90</tt>:<br />
+       Unification of NetCDF dimension ID's with INT2LM (by Burkhardt Rockel, CLM).</li>
+
+ <li><tt>organize_data.f90</tt>:<br />
+    <ul>
+      <li>Corrected check for <tt>itype_albedo</tt> in line 1074: was erroneously checked two
+          times for value = 2.</li>
+      <li>SR <tt>input_ioctl</tt>: replaced some <tt>WARNINGs</tt> for async I/O by 
+          <tt>ERROR</tt>, because error status is set now.</li>
+    </ul></li>
+
+ <li><tt>src_input.f90</tt>:<br />
+    <ul>
+     <li>Reading restart files: Also check the possibility of <tt>irefatm=3</tt> for restarts.</li>
+     <li>Corrected an error message in SR <tt>fill_realarray</tt>.</li>
+     <li>Adapted definition of <tt>dim_ids</tt> to INT2LM: 
+      changed ID for topo corrections from 11 to 15 (by Burkhardt Rockel).</li>
+    </ul></li>
+
+ <li><tt>src_output.f90</tt>: Conditional compilation for GRIBDWD in SR makegds:<br />
+   The vertical coordinate parameters can only be written, if <tt>GRIBDWD</tt> is set
+   and the Grib library is available, because of packing of <tt>REAL</tt>s to <tt>INTEGER</tt>s.
+   In case of restart these parameters are not written, but also not needed.</li>
+
+ <li><tt>src_sat_rttov.f90</tt>:<br />
+     Added a <tt>NOMOVE</tt> Compiler directive for the SX-compiler.</li>
+
+ <li><tt>src_slow_tendencies_rk.f90</tt>:<br />
+  Order of summations for humidity tracer qvtens in advection: was different
+  than for all the other humidity tracers and has been adapted now
+   <p>
+   <span class="rot">NOTE:</span> This changes the results because of numerical reasons.
+   </p>
+  </li>
+</ul>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+<p align="right"><a href="#content">Back to Contents</a>
+<hr>
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="namelis">6. Changes to the Namelists</a></h3>
+
+<p>There were the following changes for the Namelist variables:</p>
+
+<p>
+<center>
+<table border="1" cellspacing="3" class="namelist">
+ <tbody>
+   <tr>
+     <th>Group</th>
+     <th>Name</th>
+     <th>Meaning</th>
+     <th align="center", width="5%">Default</th>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td class="hilit" rowspan="1"><tt>/RUNCTL/</tt></td>
+     <td><tt>ydate_ini</tt></td>
+     <td class="middl" rowspan="1">The character string for this namelist switch
+         can now be specified in two ways:
+          <ul>
+           <li><tt>ydate_ini = 'yyyymmddhh'</tt>: All file names are specified in 
+                   the way it was before.</li>
+           <li><tt>ydate_ini = 'yyyymmddhhmmss'</tt>: 
+             (with additional digits for the minutes and seconds):
+             All file names for the initial files or for <tt>ytunit='d'</tt> 
+             (in day format) are also specified with the additional digits.</li>
+          </ul>
+       </td>
+     <td class="middl" align="center" rowspan="1"><tt>' '</tt></td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td class="hilit" rowspan="1"><tt>/DYNCTL/</tt></td>
+     <td><tt>itype_fast_waves</tt></td>
+     <td class="middl" rowspan="1">Type of fast waves solver for Runge-Kutta dynamics
+          <ol start="1">
+           <li>Old scheme (from module <tt>fast_waves_rk.f90)</tt> (Default)</li>
+           <li>New scheme (from module <tt>fast_waves_sc.f90)</tt>
+             <ul>
+                <li>with proper weightings for all vertical discretizations,</li>
+                <li>divergence operator in strong conservation form,</li>
+                <li>optionally: isotropic (fully 3D) divergence damping,</li>
+                <li>optionally: Mahrer (1984) discretization</li>
+             </ul>
+           </li>
+          </ol>
+       </td>
+     <td class="middl" align="center" rowspan="1"><tt>1</tt></td>
+   </tr>
+<!---------------------------------------------------------------------------->
+ </tbody>
+</table>
+</center>
+</p>
+
+<p align="right"><a href="#content">Back to Contents</a>
+<hr>
+
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="results">7. Changes of Results</a></h3>
+
+<p>
+The following changes influence the results:
+</p>
+
+<ul>
+ <li>Computation of <tt>t0</tt> in subroutine <tt>reference_atmosphere_2</tt> in 
+     a slightly different way: Affects only applications that use <tt>irefatm=2</tt>
+     </li>
+ <li>Use of precomputed <tt>t0</tt> in module <tt>src_runge_kutta</tt> instead of 
+     re-computing (because of numerical reasons).</li>
+ <li>Changes in the FLake Model.</li>
+ <li>Changes to the routine <tt>get_utc_date</tt> and the return parameter <tt>acthour</tt>:
+  Slight changes of the values because of numerical reasons.
+  Because this parameter is used in the radiation scheme for determining the zenith
+  angle of the sun, the values of the simulations can change.</li>
+</ul>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+<p align="right"><a href="#content">Back to Contents</a>
+<hr>
+
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+</body>
+</html>

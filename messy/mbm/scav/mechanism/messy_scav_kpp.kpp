@@ -1,0 +1,80 @@
+// define chemical elements
+#INCLUDE atoms
+Min; {minus (negative charge as pseudo-atom for charge balance)}
+Pls; {plus  (positive charge as pseudo-atom for charge balance)}
+
+// define chemical species
+#INCLUDE scav.spc
+
+#INLINE F90_RCONST
+  USE messy_main_constants_mem ! atm2Pa, N_A, R_gas
+  USE messy_scav_inp_kpp       ! input values for kpp
+  ! end of USE statements
+#ENDINLINE {above lines go into the SUBROUTINES UPDATE_RCONST and UPDATE_PHOTO}
+
+// define chemical equations
+#INCLUDE scav.eqn
+
+// select which species are fixed
+// (SETFIX H2O_a* is done in mecca.spc via xmecca)
+#SETFIX CO2; O2; N2;
+
+#INLINE F90_RATES
+#ENDINLINE {above lines go into MODULE messy_mecca_kpp_Rates}
+
+#INLINE F90_GLOBAL
+!KPPPP_DIRECTIVE vector variable definition start
+  ! IMPORTANT NOTES ABOUT TEMP, PRESS, AND CAIR:
+  ! - The KPP variable "temp" is already defined automatically by KPP in
+  !   messy_mecca_kpp_global.f90. The KPP variables "press" and "cair" are
+  !   defined here.
+  ! - The 3 variables temp, press, and cair are only used inside KPP.
+  !   They are different from the variables with the same names in the base
+  !   model (as used in the SMIL files *_si.f90 and *_box.f90)
+  ! - Data transfer between the SMIL and the KPP variables is done via the
+  !   fill subroutines in messy_mecca_kpp.f90:
+  !   - fill_temp transfers temperature
+  !   - fill_press transfers pressure
+  !   - fill_cair transfers cair (this is redundant because cair could be
+  !     calculated from temp and press; nevertheless, redundant transfer to
+  !     KPP is preferred to avoid potential numerical differences when
+  !     recalculating cair inside KPP)
+  REAL(dp) :: cair      ! c(air) (wet) [mcl/cm^3]
+  REAL(dp) :: press     ! pressure [Pa]
+  REAL(dp) :: cv_l      ! unit conversion factor
+  REAL(dp) :: lwc       ! liquid water content
+  REAL(dp) :: k_exf(NSPEC) = 0.
+  REAL(dp) :: k_exb(NSPEC) = 0.
+  REAL(dp) :: k_exf_N2O5   = 0.
+  REAL(dp) :: k_exf_ClNO3  = 0.
+  REAL(dp) :: k_exf_BrNO3  = 0.
+  REAL(dp) :: jx(IP_MAX) = 0.
+!KPPPP_DIRECTIVE vector variable definition end
+  INTEGER, PUBLIC  :: xnom7sulf = 1 ! = 1-xm7sulf
+#ENDINLINE {above lines go to messy_mecca_kpp_global}
+
+#INLINE F90_INIT
+  rtol(:) = 1E-2_dp ! relative tolerance
+  atol(:) = 1E1_dp  ! absolute tolerance
+#ENDINLINE {above lines go to the end of subroutine Initialize}
+
+// select programming language
+#LANGUAGE Fortran90
+
+// choose an integrator and define substeps
+#INCLUDE integr.kpp
+
+// set indices of unused species to ind_*=0
+#DUMMYINDEX ON
+
+// do not create Stoichiom files
+#STOICMAT OFF
+
+// do not create Hessian files
+#HESSIAN OFF
+
+// do not create Mex files
+#MEX OFF
+
+// equation tags
+#EQNTAGS ON

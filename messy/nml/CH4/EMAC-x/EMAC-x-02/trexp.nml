@@ -1,0 +1,49 @@
+! -*- f90 -*-
+
+&CPL
+! ALLOW POINT EMISSIONS ALSO FOR NON-TREXP-TRACERS ?   
+l_force_emis = T,
+! ALLOW REACTION / DECAY ALSO FOR NON-TREX-TRACERS ?
+l_allow_ext = T,
+L_GP = T,
+L_LG = F,
+l_tf_corr = F,         ! time filter correction (classic points only!)
+!
+!
+! ### LIST OF TRACERS
+! ### O : ORDER
+!         = 0 : dx/dt = -ka * x       + p , [ka] = 1/s , Ta = 0
+!         = 1 : dx/dt = -ka * x * [Y] + p , [ka] = cm3/s
+!         = -1: dx/dt = -k  * x * [Y] + p , [ka] = cm3/s
+!               k = ka + c_air*kb           [kb] = cm6/s, [c_air] = 1/cm3
+!         (p: production, x: mixing ratio, Y: reaction partner)
+! ### ka: O=0 : DECAY CONSTANT              [ka] = 1/s
+!         O=1 : ARRHENIUS A FACTOR          [ka] = cm3/s
+!         O=-1:                             [ka] = cm3/s
+! ### Ta: O=0 : Ta=0
+!         O=1 : ACTIVATION TEMPERATURE      [Ta] = K
+!         O=-1: PRESSURE DEPENDENCE         [Ta] = cm6/s
+! SYNTAX:
+!                                                             ONLY FOR ORDER=1
+!                                                           |==================|
+! 'tracer-set(s);', 'tracer-name[_subname]', ORDER, ka, Ta, 'channel', 'object'
+!
+!
+!TR(1) = 'gp', 'R01', 0, 1.981875e-10, ,   ,   ,   
+TR(1) = 'gp', 'CH3CCl3', 1, 1.64e-12, 1520, 'import_grid', 'CH4OX_OH', 
+! ### LIST OF RELEASE POINTS AND TIME
+! ### LEV  [hPa], MASS [kg], LON [-180 ... 180], LAT [-90 ...]
+! SYNTAX:
+!   TYPE, LON, LAT, 
+!   1     HEIGHT, UNIT, EMISSION, UNIT, YYYY, MM, DD, HH, MI, SE, YYYY, MM, DD, HH, MI, SE,
+!                                       |=======================| |======================|
+!                                               START                    STOP
+!   2     'channel', 'altitude', 'flux', scaling factor,
+!   1,2   ';-separated tracer set list', ';-separated list of tracers'
+!
+! POINT(1) = 1,  -19.630, 63.629, 500.0, 'hPa', 1.0E+06, 'kg',
+!           2000, 1, 2,  0, 0, 0,  2000, 1, 2, 2, 0, 0,
+!           '', '', '', 1.0,
+!           'gp', 'CH4_fx;CH4_fx_e01_a01',
+!
+/

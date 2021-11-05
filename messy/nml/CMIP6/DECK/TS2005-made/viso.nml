@@ -1,0 +1,167 @@
+! -*- f90 -*-
+&CPL
+!#####################################
+!# A. DEFINITION OF ISO-SURFACES 
+!#####################################
+!# NOTES:
+!# - channel objects <name>_i, and <name_f> are added for
+!#   'index' and 'fraction below'
+!# SYNTAX:
+!#    ISO-SURFACE name, channel, object, iso-value, index + fraction ?,
+!#        reverse search ?, skip levels from top, skip levels from sfc
+!#
+!!# PRESSURE LEVELS
+ ISO(1)  = 'p010',      'ECHAM5',  'press',  1000.0, T, T,  ,  ,
+!ISO(2)  = 'p075',      'ECHAM5',  'press',  7500.0, T, T,  ,  ,
+!ISO(3)  = 'p080',      'ECHAM5',  'press',  8000.0, T, T,  ,  ,
+ ISO(4)  = 'p100',      'ECHAM5',  'press', 10000.0, T, T,  ,  ,
+!ISO(5)  = 'p200',      'ECHAM5',  'press', 20000.0, T, T,  ,  ,
+ ISO(6)  = 'p500',      'ECHAM5',  'press', 50000.0,  , T,  ,  ,
+!ISO(7)  = 'p850',      'ECHAM5',  'press', 85000.0,  , T,  ,  ,
+ ISO(8)  = 'p1000',     'ECHAM5',  'press',100000.0,  , T,  ,  ,
+!
+! ISO(1)  = 'top ', 'ECHAM5', 'press',       0.0, F,T, , , ! level = 1
+ !ISO(2)  = 'botm', 'ECHAM5', 'press',  200000.0, F,F, , , ! level = nlev
+! ISO(4)  = 'boti', 'ECHAM5', 'pressi', 200000.0, F,F, , , ! level = nlev+1
+!!#
+!!# ISENTROPES (THETA=CONST.)
+! ISO(6)  = 'isent340',  'ECHAM5',  'tpot',    340.0, T, T,  ,  ,
+ !ISO(7)  = 'isent380',  'ECHAM5',  'tpot',    380.0, T, T,  ,  ,
+ !ISO(8)  = 'isent420',  'ECHAM5',  'tpot',    420.0, T, T,  ,  ,
+!!#
+!!# CONST. POTENTIAL VORTICITY
+ !ISO(9)  = 'PV2',        'tropop',  'PV',       2.0, T, T, 1, 4,
+ !ISO(10) = 'PV3',        'tropop',  'PV',       3.0, T, T, 1, 3,
+ !ISO(11) = 'PV4',        'tropop',  'PV',       4.0, T, T, 1, 3,
+!#
+!#####################################
+!# B. FIELDS MAPPED TO (ISO-)SURFACES
+!#####################################
+!# NOTES:
+!# - '_i' and '_f' are internally appended to SURFACE(object) name
+!#   for 'index' and 'fraction below'; availability of '_f' determines
+!#   the mapping method
+!# SYNTAX:
+!#    MAP name, ISO-SURFACE(channel), ISO-SURFACE(object), 
+!#              FIELD(channel), FIELD(object)
+!#
+!!# PRESSURE (e.g. for LGVLUX)
+!MAP(1)  = 'pp075',   'viso',   'p075',     'ECHAM5', 'press',
+!MAP(2)  = 'pp080',   'viso',   'p080',     'ECHAM5', 'press',
+!MAP(3)  = 'pp100',   'viso',   'p100',     'ECHAM5', 'press',
+!MAP(4)  = 'pp200',   'viso',   'p200',     'ECHAM5', 'press',
+!MAP(5)  = 'pp500',   'viso',   'p500',     'ECHAM5', 'press',
+!MAP(6)  = 'pp850',   'viso',   'p850',     'ECHAM5', 'press',
+!!#
+!!# ISENTROPES
+!!$ MAP(10) = 'pth340',   'viso',  'isent340', 'ECHAM5', 'press',
+!!$ MAP(11) = 'pth380',   'viso',  'isent380', 'ECHAM5', 'press',
+!!$ MAP(12) = 'pth420',   'viso',  'isent420', 'ECHAM5', 'press',
+!!$ MAP(13) = 'PVth340',  'viso',  'isent340', 'tropop', 'PV',
+!!$ MAP(14) = 'PVth380',  'viso',  'isent380', 'tropop', 'PV',
+!!$ MAP(15) = 'PVth420',  'viso',  'isent420', 'tropop', 'PV',
+!!#
+!!# TROPOPAUSE
+!!$ MAP(16) = 'ttp',     'tropop', 'tp',    'ECHAM5', 'tm1',
+!!$ MAP(17) = 'ztp',     'tropop', 'tp',    'ECHAM5', 'geopot',
+!!$ MAP(18) = 'thtp',    'tropop', 'tp',    'ECHAM5', 'tpot',
+!!#
+!!# PLANETARY BOUNDARY LAYER HEIGHT
+!!$ MAP(22) = 'ppblh',   'tropop', 'pblh',  'ECHAM5', 'press',
+!!$ MAP(23) = 'tpblh',   'tropop', 'pblh',  'ECHAM5', 'tm1',
+!!#
+!!# PV
+!!$ MAP(24) = 'pPV2',    'viso',   'PV2',   'ECHAM5', 'press',
+!!$ MAP(25) = 'pPV3',    'viso',   'PV3',   'ECHAM5', 'press',
+!!$ MAP(26) = 'pPV4',    'viso',   'PV4',   'ECHAM5', 'press',
+!!$ MAP(27) = 'thPV2',   'viso',   'PV2',   'ECHAM5', 'tpot',
+!!$ MAP(28) = 'thPV3',   'viso',   'PV3',   'ECHAM5', 'tpot',
+!!$ MAP(29) = 'thPV4',   'viso',   'PV4',   'ECHAM5', 'tpot',
+!!$ MAP(30) = 'tPV2',    'viso',   'PV2',   'ECHAM5', 'tm1',
+!!$ MAP(31) = 'tPV3',    'viso',   'PV3',   'ECHAM5', 'tm1',
+!!$ MAP(32) = 'tPV4',    'viso',   'PV4',   'ECHAM5', 'tm1',
+!!#
+!!# number of CELLs at 75 hPa
+!MAP(30) = 'ncb075',  'viso',   'p075',  'attila', 'NCB',
+!!#
+! ut_kt_20041009+
+!MAP(40) = 'flxs_tp',   'tropop', 'tp',    'rad01', 'flxs',
+!MAP(41) = 'flxt_tp',   'tropop', 'tp',    'rad01', 'flxt',
+! ut_kt_20041009-
+!# In-cloud CDNC at the PBL (for comparison with Karydis et al., 2017)
+MAP( 1) = 'CDNC_acc_PBL',    'tropop',   'pblh',   'cloud', 'CDNC_acc',
+!
+MAP(45) = 'cct', 'convect', 'conv_top', 'ECHAM5', 'press',
+MAP(46) = 'ccb', 'convect', 'conv_bot', 'ECHAM5', 'press',
+!
+!-1 "nlev", lowest mid-Level,
+!-2 "nlev+1", lowest int-Level. 
+MAP(50)  = 'qm1bot',     '#level',   '-1',   'ECHAM5',     'qm1',
+MAP(51)  = 'flxtbot',    '#level',   '-2',   'rad01',      'flxt',
+MAP(52)  = 'flxsbot',    '#level',   '-2',   'rad01',      'flxs',
+MAP(53)  = 'flxtfbot',   '#level',   '-2',   'rad01',      'flxtf',
+MAP(54)  = 'flxsfbot',   '#level',   '-2',   'rad01',      'flxsf',
+MAP(55)  = 'flxusfbot',  '#level',   '-2',   'rad01',      'flxusf',
+MAP(56)  = 'flxtftop',   '#level',   '1',    'rad01',      'flxtf',
+MAP(57)  = 'flxsftop',   '#level',   '1',    'rad01',      'flxsf',
+MAP(58)  = 'flxstop',    '#level',   '1',    'rad01',      'flxs',
+MAP(59)  = 'flxustop',   '#level',   '1',    'rad01',      'flxus',
+MAP(60)  = 'flxusftop',  '#level',   '1',    'rad01',      'flxusf',
+MAP(61)  = 'flxttop',    '#level',   '1',    'rad01',      'flxt',
+! second call of radiation (4xCO2)
+MAP(62)  = 'flxttop2',   '#level',   '1',    'rad02',      'flxt',
+MAP(63)  = 'flxtftop2',  '#level',   '1',    'rad02',      'flxtf',
+MAP(64)  = 'flxstop2',   '#level',   '1',    'rad02',      'flxs',
+MAP(65)  = 'flxsftop2',  '#level',   '1',    'rad02',      'flxsf',
+MAP(66)  = 'flxustop2',  '#level',   '1',    'rad02',      'flxus',
+MAP(67)  = 'flxusftop2', '#level',   '1',    'rad02',      'flxusf',
+! third call of radiation (aerosol free)
+MAP(68)  = 'flxsfbot3',  '#level',   '-2',   'rad03',      'flxsf',
+MAP(69)  = 'flxusfbot3', '#level',   '-2',   'rad03',      'flxusf',
+MAP(70)  = 'flxttop3',   '#level',   '1',    'rad03',      'flxt',
+MAP(71)  = 'flxtftop3',  '#level',   '1',    'rad03',      'flxtf',
+MAP(72)  = 'flxusftop3', '#level',   '1',    'rad03',      'flxusf',
+
+MAP(73)  = 'O3bot',      '#level',   '-1',   'tracer_gp',  'O3',
+MAP(74)  = 'NO2bot',     '#level',   '-1',   'tracer_gp',  'NO2',
+
+!MAP(53)  = 'pmidm',     '#level',   '10',   'ECHAM5',   'press',
+!
+MAP(75)  = 'geopot10',   'viso', 'p010',  'ECHAM5', 'geopot',
+MAP(76)  = 'geopot100',  'viso', 'p100',  'ECHAM5', 'geopot',
+MAP(77)  = 'geopot500',  'viso', 'p500',  'ECHAM5', 'geopot',
+MAP(78)  = 'geopot1000', 'viso', 'p1000', 'ECHAM5', 'geopot',
+!# REQUIRED FOR CALCULATION OF CLIMATE MODEL FORCING!!!
+MAP(80) = 'flxs_tp',     'tropop', 'tp',    'rad01', 'flxs',
+MAP(81) = 'flxt_tp',     'tropop', 'tp',    'rad01', 'flxt',
+MAP(82) = 'flxs_tp_wmo', 'tropop', 'tp_WMO','rad01', 'flxs',
+MAP(83) = 'flxt_tp_wmo', 'tropop', 'tp_WMO','rad01', 'flxt',
+MAP(84) = 'gtp_wmo',     'tropop', 'tp_WMO','ECHAM5', 'geopot',
+MAP(85) = 'ttp_wmo',     'tropop', 'tp_WMO','ECHAM5', 'tm1',
+!# REQUIRED FOR CALCULATION OF PM2.5 - number
+MAP(90)  = 'n_M1_bot',    '#level', '-1','gmxe_gp', 'AERNUMB_M1',
+MAP(91)  = 'n_M2_bot',    '#level', '-1','gmxe_gp', 'AERNUMB_M2',
+MAP(92)  = 'n_M3_bot',    '#level', '-1','gmxe_gp', 'AERNUMB_M3',
+MAP(93)  = 'n_M4_bot',    '#level', '-1','gmxe_gp', 'AERNUMB_M4',
+MAP(94)  = 'n_M5_bot',    '#level', '-1','gmxe_gp', 'AERNUMB_M5',
+MAP(95)  = 'n_M6_bot',    '#level', '-1','gmxe_gp', 'AERNUMB_M6',
+MAP(96)  = 'n_M7_bot',    '#level', '-1','gmxe_gp', 'AERNUMB_M7',
+! radius
+MAP(100)  = 'r_M1_bot',    '#level', '-1','gmxe_gp', 'RDRYAER_M1',
+MAP(101)  = 'r_M2_bot',    '#level', '-1','gmxe_gp', 'RDRYAER_M2',
+MAP(102)  = 'r_M3_bot',    '#level', '-1','gmxe_gp', 'RDRYAER_M3',
+MAP(103)  = 'r_M4_bot',    '#level', '-1','gmxe_gp', 'RDRYAER_M4',
+MAP(104)  = 'r_M5_bot',    '#level', '-1','gmxe_gp', 'RDRYAER_M5',
+MAP(105)  = 'r_M6_bot',    '#level', '-1','gmxe_gp', 'RDRYAER_M6',
+MAP(106)  = 'r_M7_bot',    '#level', '-1','gmxe_gp', 'RDRYAER_M7',
+! density
+MAP(110) = 'd_M1_bot',    '#level', '-1','gmxe_gp', 'DDRYAER_M1',
+MAP(111) = 'd_M2_bot',    '#level', '-1','gmxe_gp', 'DDRYAER_M2',
+MAP(112) = 'd_M3_bot',    '#level', '-1','gmxe_gp', 'DDRYAER_M3',
+MAP(113) = 'd_M4_bot',    '#level', '-1','gmxe_gp', 'DDRYAER_M4',
+MAP(114) = 'd_M5_bot',    '#level', '-1','gmxe_gp', 'DDRYAER_M5',
+MAP(115) = 'd_M6_bot',    '#level', '-1','gmxe_gp', 'DDRYAER_M6',
+MAP(116) = 'd_M7_bot',    '#level', '-1','gmxe_gp', 'DDRYAER_M7',
+
+!
+/

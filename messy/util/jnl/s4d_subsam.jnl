@@ -1,0 +1,59 @@
+\cancel mode verify
+cancel data/all
+cancel variable/all
+cancel region
+!cancel viewport
+cancel mode UPCASE_OUTPUT
+
+! --------------------------------------------------------------------------
+! THIS FERRET-JNL IS TO SUBSAMPLE S4D CURTAIN OUTPUT TO THE FLIGHT
+! PRESSURE ALTITUDE.
+! EXAMPLE: 
+! go s4d_subsam.jnl M2E24_exp05____20070917_1200_s4d_CARIBIC2.nc outpt.nc
+! --------------------------------------------------------------------------
+
+define symbol infile = $1
+define symbol outfile = $2
+
+set data "$1"
+
+! list of all variables
+let varlist = ..varnames
+!let nv = `varlist[i=@ngd]`
+let nv = `varlist,return=isize`
+
+! averaging kernel
+let/d hyam = 0
+let/d hybm = 1
+let/d g3b_aps = COSMO_press
+let press = (hyam + hybm * g3b_aps)/100 ! hPa
+let zero_at_fl = press - tpress
+let kernel = zero_at_fl[z=@WEQ:0]
+
+
+! loop over all variables
+!  say ($iv) ($svar) ($nl) ($nt) ;\
+repeat/range=1:`nv`/name=iv ( \ 
+  define symbol iv = `iv` ;\
+  define symbol svar = `varlist[i=($iv)]` ;\
+  define symbol nl = `($svar),return=ksize` ;\
+  define symbol nt = `($svar),return=lsize` ;\
+  IF `($nl) EQ 1 OR ($nt) EQ 1` THEN ;\
+     IF `iv EQ 1` THEN ;\
+        save/quiet/clobber/file="($outfile)" ($svar) ;\
+     ELSE ;\
+        save/quiet/append/file="($outfile)" ($svar) ;\
+     ENDIF ;\
+  ELSE ;\
+     let integrand = kernel*($svar) ;\
+     define variable/title="`($svar),return=title`" \
+                    /unit="`($svar),return=units`" \
+        ($svar)_at_fl = integrand[z=@SUM] ;\
+     CANCEL ATTRIBUTE/OUTPUT ($svar)_at_fl.long_name_mod ; \
+     IF `iv EQ 1` THEN ;\
+        save/quiet/clobber/file="($outfile)" ($svar)_at_fl ;\
+     ELSE ;\
+        save/quiet/append/file="($outfile)" ($svar)_at_fl ;\
+     ENDIF ;\
+  ENDIF )
+

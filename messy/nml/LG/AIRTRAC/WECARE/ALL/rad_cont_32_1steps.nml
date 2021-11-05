@@ -1,0 +1,843 @@
+! -*- f90 -*-
+
+&CPL
+!
+l_feedback = T  ! default: T, switch off for testing purposes only
+!
+lfubrad = F
+!
+! Frequency of radiation calculation.
+trigrad = 1,'steps','first',0
+!trigrad = 3,'steps','first',0
+!
+rset_solc = F, 1366.04,
+!
+! ### SCALING FACTORS ### (modify only, if you know what you do!)
+! ### 0.25 - 0.69, 0.69 - 1.19, 1.19 - 2.38, 2.38 - 4.00 Microns
+!rsun_scale = 0.459760, 0.326158, 0.180608, 0.033474
+!
+! TRUE for calulating radiation, max. 31 times;
+! first call always provides temperature feedback (!!!)
+!
+l_switch(1) = T,        ! O3 Klim (QCTM) + cloudopt01
+l_switch(2) = T,        ! cloudopt02
+l_switch(3) = T,        ! cloudopt03
+l_switch(4) = T,        ! cloudopt04
+l_switch(5) = T,        ! cloudopt05
+l_switch(6) = T,        ! cloudopt06
+l_switch(7) = T,        ! cloudopt07
+l_switch(8) = T,        ! cloudopt08
+l_switch(9) = T,        ! cloudopt09
+l_switch(10) = T,       ! cloudopt10
+l_switch(11) = T,       ! cloudopt11
+l_switch(12) = T,       ! cloudopt12
+l_switch(13) = T,       ! cloudopt13
+l_switch(14) = T,       ! cloudopt14
+l_switch(15) = T,       ! cloudopt15
+l_switch(16) = T,       ! cloudopt16
+l_switch(17) = T,       ! cloudopt17
+l_switch(18) = T,       ! cloudopt18
+l_switch(19) = T,       ! cloudopt19
+l_switch(20) = T,       ! cloudopt20
+l_switch(21) = T,       ! cloudopt21
+l_switch(22) = T,       ! cloudopt22
+l_switch(23) = T,       ! cloudopt23
+l_switch(24) = T,       ! cloudopt24
+l_switch(25) = T,       ! cloudopt25
+l_switch(26) = T,       ! cloudopt26
+l_switch(27) = T,       ! cloudopt27
+l_switch(28) = T,       ! cloudopt28
+l_switch(29) = T,       ! cloudopt29
+l_switch(30) = T,       ! cloudopt30
+l_switch(31) = T,       ! cloudopt31
+l_switch(32) = T,       ! cloudopt32
+l_switch(33) = T,       ! cloudopt33
+!
+!  1: reference (call 1) or instantaneous RF diagnostic
+!  2: adj. RF diagnostic --
+!
+i_rad(1) = 1,
+i_rad(2) = 1,
+i_rad(3) = 1,
+i_rad(4) = 1,
+i_rad(5) = 1,
+i_rad(6) = 1,
+i_rad(7) = 1,
+i_rad(8) = 1,
+i_rad(9) = 1,
+i_rad(10) = 1,
+i_rad(11) = 1,
+i_rad(12) = 1,
+i_rad(13) = 1,
+i_rad(14) = 1,
+i_rad(15) = 1,
+i_rad(16) = 1,
+i_rad(17) = 1,
+i_rad(18) = 1,
+i_rad(19) = 1,
+i_rad(20) = 1,
+i_rad(21) = 1,
+i_rad(22) = 1,
+i_rad(23) = 1,
+i_rad(24) = 1,
+i_rad(25) = 1,
+i_rad(26) = 1,
+i_rad(27) = 1,
+i_rad(28) = 1,
+i_rad(29) = 1,
+i_rad(30) = 1,
+i_rad(31) = 1,
+i_rad(32) = 1,
+i_rad(33) = 1,
+!  2: modified according to ECHAM5.5 and modified DELTA-EDDINGTON
+!
+i_sw(1) = 2,
+i_sw(2) = 2,
+i_sw(3) = 2,
+i_sw(4) = 2,
+i_sw(5) = 2,
+i_sw(6) = 2,
+i_sw(7) = 2,
+i_sw(8) = 2,
+i_sw(9) = 2,
+i_sw(10) = 2,
+i_sw(11) = 2,
+i_sw(12) = 2,
+i_sw(13) = 2,
+i_sw(14) = 2,
+i_sw(15) = 2,
+i_sw(16) = 2,
+i_sw(17) = 2,
+i_sw(18) = 2,
+i_sw(19) = 2,
+i_sw(20) = 2,
+i_sw(21) = 2,
+i_sw(22) = 2,
+i_sw(23) = 2,
+i_sw(24) = 2,
+i_sw(25) = 2,
+i_sw(26) = 2,
+i_sw(27) = 2,
+i_sw(28) = 2,
+i_sw(29) = 2,
+i_sw(30) = 2,
+i_sw(31) = 2,
+i_sw(32) = 2,
+i_sw(33) = 2,
+!
+! 1. call of radiation (always required)
+!
+r_inp(1,1)  = 'ECHAM5', 'qm1',                  ! H2O [mol/mol] or [kg/kg]
+! 2014
+r_inp(2,1)  = '#const', 'CO2=398.6E-06',         ! CO2 [mol/mol]
+r_inp(3,1)  = '#vgrad', 'CH4=1.84E-06',         ! CH4 [mol/mol]
+r_inp(4,1)  = 'import_grid', 'RADO3_O3',        ! O3  [mol/mol]
+r_inp(5,1)  = '#vgrad', 'N2O=327.5E-09',         ! N2O [mol/mol]
+r_inp(6,1)  = '#vgrad', 'CFC11=235.E-12',       ! CFC11 [mol/mol]
+r_inp(7,1)  = '#vgrad', 'CFC12=527.E-12',       ! CFC12 [mol/mol]
+r_inp(8,1)  = 'aeropt_TANRE_STD', 'aot_lw',     ! lw aerosol optical thickness
+r_inp(9,1)  = 'aeropt_TANRE_STD', 'aot_sw',     ! sw aerosol optical thickness
+r_inp(10,1) = 'aeropt_TANRE_STD', 'gamma_sw',   ! aerosol asymmerty factor
+r_inp(11,1) = 'aeropt_TANRE_STD', 'omega_sw',   ! aerosol single scat. albedo
+r_inp(12,1) = 'cloudopt01',    'sum_cov',          ! cloudcover (nat+pert)
+r_inp(13,1) = 'cloudopt01',    'tau_cld_lw',       ! lw optical depth clouds
+r_inp(14,1) = 'cloudopt01',    'tau_cld_sw',       ! sw optical depth clouds
+r_inp(15,1) = 'cloudopt01',    'gamma_cld_sw',     ! cloud asymmerty factor
+r_inp(16,1) = 'cloudopt01',    'omega_cld_sw',     ! cloud single scattering albedo
+r_inp(17,1) = 'cloudopt01',    'clcv',             ! total cloud cover
+r_inp(18,1) = 'cloudopt01',    'idx_cld',          ! clear/cloudy index
+!
+! 2. call of radiation
+! (empty strings in calls 2 - 9 will be replaced by corresponding entries of
+!  1st call)
+!
+r_inp(1,2)  = '', '',                           ! H2O [mol/mol] or [kg/kg]
+r_inp(2,2)  = '', '',                           ! CO2 [mol/mol]
+r_inp(3,2)  = '', '',                           ! CH4 [mol/mol]
+r_inp(4,2)  = '', '',                           ! O3  [mol/mol]
+r_inp(5,2)  = '', '',                           ! N2O [mol/mol]
+r_inp(6,2)  = '', '',                           ! CFC11 [mol/mol]
+r_inp(7,2)  = '', '',                           ! CFC12 [mol/mol]
+r_inp(8,2)  = '', '',                           ! lw aerosol optical thickness
+r_inp(9,2)  = '', '',                           ! sw aerosol optical thickness
+r_inp(10,2) = '', '',                           ! aerosol asymmerty factor
+r_inp(11,2) = '', '',                           ! aerosol single scat. albedo
+r_inp(12,2) = 'cloudopt02', 'sum_cov',          ! cloudcover
+r_inp(13,2) = 'cloudopt02', 'tau_cld_lw',       ! lw optical depth clouds
+r_inp(14,2) = 'cloudopt02', 'tau_cld_sw',       ! sw optical depth clouds
+r_inp(15,2) = 'cloudopt02', 'gamma_cld_sw',     ! cloud asymmerty factor
+r_inp(16,2) = 'cloudopt02', 'omega_cld_sw',     ! cloud single scattering albedo
+r_inp(17,2) = 'cloudopt02', 'clcv',             ! total cloud cover
+r_inp(18,2) = 'cloudopt02', 'idx_cld',          ! clear/cloudy index
+!
+! 3. call of radiation
+!
+r_inp(1,3)  = '', '',
+r_inp(2,3)  = '', '',
+r_inp(3,3)  = '', '',
+r_inp(4,3)  = '', '',
+r_inp(5,3)  = '', '',
+r_inp(6,3)  = '', '',
+r_inp(7,3)  = '', '',
+r_inp(8,3)  = '', '',
+r_inp(9,3)  = '', '',
+r_inp(10,3) = '', '',
+r_inp(11,3) = '', '',
+r_inp(12,3) = 'cloudopt03', 'sum_cov',
+r_inp(13,3) = 'cloudopt03', 'tau_cld_lw',
+r_inp(14,3) = 'cloudopt03', 'tau_cld_sw',
+r_inp(15,3) = 'cloudopt03', 'gamma_cld_sw',
+r_inp(16,3) = 'cloudopt03', 'omega_cld_sw',
+r_inp(17,3) = 'cloudopt03', 'clcv',
+r_inp(18,3) = 'cloudopt03', 'idx_cld',
+!
+! 4. call
+!
+r_inp(1,4)= '', '',
+r_inp(2,4)= '', '',
+r_inp(3,4)= '', '',
+r_inp(4,4)= '', '',
+r_inp(5,4)= '', '',
+r_inp(6,4)= '', '',
+r_inp(7,4)= '', '',
+r_inp(8,4)= '', '',
+r_inp(9,4)= '', '',
+r_inp(10,4)= '', '',
+r_inp(11,4)= '', '',
+r_inp(12,4) = 'cloudopt04', 'sum_cov',
+r_inp(13,4) = 'cloudopt04', 'tau_cld_lw',
+r_inp(14,4) = 'cloudopt04', 'tau_cld_sw',
+r_inp(15,4) = 'cloudopt04', 'gamma_cld_sw',
+r_inp(16,4) = 'cloudopt04', 'omega_cld_sw',
+r_inp(17,4) = 'cloudopt04', 'clcv',
+r_inp(18,4) = 'cloudopt04', 'idx_cld',
+!
+! 5. call
+!
+r_inp(1,5)= '', '',
+r_inp(2,5)= '', '',
+r_inp(3,5)= '', '',
+r_inp(4,5)= '', '',
+r_inp(5,5)= '', '',
+r_inp(6,5)= '', '',
+r_inp(7,5)= '', '',
+r_inp(8,5)= '', '',
+r_inp(9,5)= '', '',
+r_inp(10,5)= '', '',
+r_inp(11,5)= '', '',
+r_inp(12,5) = 'cloudopt05', 'sum_cov',
+r_inp(13,5) = 'cloudopt05', 'tau_cld_lw',
+r_inp(14,5) = 'cloudopt05', 'tau_cld_sw',
+r_inp(15,5) = 'cloudopt05', 'gamma_cld_sw',
+r_inp(16,5) = 'cloudopt05', 'omega_cld_sw',
+r_inp(17,5) = 'cloudopt05', 'clcv',
+r_inp(18,5) = 'cloudopt05', 'idx_cld',
+!
+! 6. call
+!
+r_inp(1,6)= '', '',
+r_inp(2,6)= '', '',
+r_inp(3,6)= '', '',
+r_inp(4,6)= '', '',
+r_inp(5,6)= '', '',
+r_inp(6,6)= '', '',
+r_inp(7,6)= '', '',
+r_inp(8,6)= '', '',
+r_inp(9,6)= '', '',
+r_inp(10,6)= '', '',
+r_inp(11,6)= '', '',
+r_inp(12,6) = 'cloudopt06', 'sum_cov',
+r_inp(13,6) = 'cloudopt06', 'tau_cld_lw',
+r_inp(14,6) = 'cloudopt06', 'tau_cld_sw',
+r_inp(15,6) = 'cloudopt06', 'gamma_cld_sw',
+r_inp(16,6) = 'cloudopt06', 'omega_cld_sw',
+r_inp(17,6) = 'cloudopt06', 'clcv',
+r_inp(18,6) = 'cloudopt06', 'idx_cld',
+!
+! 7. call
+r_inp(1,7)= '', '',
+r_inp(2,7)= '', '',
+r_inp(3,7)= '', '',
+r_inp(4,7)= '', '',
+r_inp(5,7)= '', '',
+r_inp(6,7)= '', '',
+r_inp(7,7)= '', '',
+r_inp(8,7)= '', '',
+r_inp(9,7)= '', '',
+r_inp(10,7)= '', '',
+r_inp(11,7)= '', '',
+r_inp(12,7) = 'cloudopt07', 'sum_cov',
+r_inp(13,7) = 'cloudopt07', 'tau_cld_lw',
+r_inp(14,7) = 'cloudopt07', 'tau_cld_sw',
+r_inp(15,7) = 'cloudopt07', 'gamma_cld_sw',
+r_inp(16,7) = 'cloudopt07', 'omega_cld_sw',
+r_inp(17,7) = 'cloudopt07', 'clcv',
+r_inp(18,7) = 'cloudopt07', 'idx_cld',
+!
+! 8. call
+!
+r_inp(1,8)= '', '',
+r_inp(2,8)= '', '',
+r_inp(3,8)= '', '',
+r_inp(4,8)= '', '',
+r_inp(5,8)= '', '',
+r_inp(6,8)= '', '',
+r_inp(7,8)= '', '',
+r_inp(8,8)= '', '',
+r_inp(9,8)= '', '',
+r_inp(10,8)= '', '',
+r_inp(11,8)= '', '',
+r_inp(12,8) = 'cloudopt08', 'sum_cov',
+r_inp(13,8) = 'cloudopt08', 'tau_cld_lw',
+r_inp(14,8) = 'cloudopt08', 'tau_cld_sw',
+r_inp(15,8) = 'cloudopt08', 'gamma_cld_sw',
+r_inp(16,8) = 'cloudopt08', 'omega_cld_sw',
+r_inp(17,8) = 'cloudopt08', 'clcv',
+r_inp(18,8) = 'cloudopt08', 'idx_cld',
+!
+! 9. call
+!
+r_inp(1,9)= '', '',
+r_inp(2,9)= '', '',
+r_inp(3,9)= '', '',
+r_inp(4,9)= '', '',
+r_inp(5,9)= '', '',
+r_inp(6,9)= '', '',
+r_inp(7,9)= '', '',
+r_inp(8,9)= '', '',
+r_inp(9,9)= '', '',
+r_inp(10,9)= '', '',
+r_inp(11,9)= '', '',
+r_inp(12,9) = 'cloudopt09', 'sum_cov',
+r_inp(13,9) = 'cloudopt09', 'tau_cld_lw',
+r_inp(14,9) = 'cloudopt09', 'tau_cld_sw',
+r_inp(15,9) = 'cloudopt09', 'gamma_cld_sw',
+r_inp(16,9) = 'cloudopt09', 'omega_cld_sw',
+r_inp(17,9) = 'cloudopt09', 'clcv',
+r_inp(18,9) = 'cloudopt09', 'idx_cld',
+!
+! 10. call
+!
+r_inp(1,10)= '', '',
+r_inp(2,10)= '', '',
+r_inp(3,10)= '', '',
+r_inp(4,10)= '', '',
+r_inp(5,10)= '', '',
+r_inp(6,10)= '', '',
+r_inp(7,10)= '', '',
+r_inp(8,10)= '', '',
+r_inp(9,10)= '', '',
+r_inp(10,10)= '', '',
+r_inp(11,10)= '', '',
+r_inp(12,10) = 'cloudopt10', 'sum_cov',
+r_inp(13,10) = 'cloudopt10', 'tau_cld_lw',
+r_inp(14,10) = 'cloudopt10', 'tau_cld_sw',
+r_inp(15,10) = 'cloudopt10', 'gamma_cld_sw',
+r_inp(16,10) = 'cloudopt10', 'omega_cld_sw',
+r_inp(17,10) = 'cloudopt10', 'clcv',
+r_inp(18,10) = 'cloudopt10', 'idx_cld',
+!
+! 11. call
+!
+r_inp(1,11)= '', '',
+r_inp(2,11)= '', '',
+r_inp(3,11)= '', '',
+r_inp(4,11)= '', '',
+r_inp(5,11)= '', '',
+r_inp(6,11)= '', '',
+r_inp(7,11)= '', '',
+r_inp(8,11)= '', '',
+r_inp(9,11)= '', '',
+r_inp(10,11)= '', '',
+r_inp(11,11)= '', '',
+r_inp(12,11) = 'cloudopt11', 'sum_cov',
+r_inp(13,11) = 'cloudopt11', 'tau_cld_lw',
+r_inp(14,11) = 'cloudopt11', 'tau_cld_sw',
+r_inp(15,11) = 'cloudopt11', 'gamma_cld_sw',
+r_inp(16,11) = 'cloudopt11', 'omega_cld_sw',
+r_inp(17,11) = 'cloudopt11', 'clcv',
+r_inp(18,11) = 'cloudopt11', 'idx_cld',
+!
+! 12. call
+r_inp(1,12)= '', '',
+r_inp(2,12)= '', '',
+r_inp(3,12)= '', '',
+r_inp(4,12)= '', '',
+r_inp(5,12)= '', '',
+r_inp(6,12)= '', '',
+r_inp(7,12)= '', '',
+r_inp(8,12)= '', '',
+r_inp(9,12)= '', '',
+r_inp(10,12)= '', '',
+r_inp(11,12)= '', '',
+r_inp(12,12) = 'cloudopt12', 'sum_cov',
+r_inp(13,12) = 'cloudopt12', 'tau_cld_lw',
+r_inp(14,12) = 'cloudopt12', 'tau_cld_sw',
+r_inp(15,12) = 'cloudopt12', 'gamma_cld_sw',
+r_inp(16,12) = 'cloudopt12', 'omega_cld_sw',
+r_inp(17,12) = 'cloudopt12', 'clcv',
+r_inp(18,12) = 'cloudopt12', 'idx_cld',
+!
+! 13. call
+!
+r_inp(1,13)= '', '',
+r_inp(2,13)= '', '',
+r_inp(3,13)= '', '',
+r_inp(4,13)= '', '',
+r_inp(5,13)= '', '',
+r_inp(6,13)= '', '',
+r_inp(7,13)= '', '',
+r_inp(8,13)= '', '',
+r_inp(9,13)= '', '',
+r_inp(10,13)= '', '',
+r_inp(11,13)= '', '',
+r_inp(12,13) = 'cloudopt13', 'sum_cov',
+r_inp(13,13) = 'cloudopt13', 'tau_cld_lw',
+r_inp(14,13) = 'cloudopt13', 'tau_cld_sw',
+r_inp(15,13) = 'cloudopt13', 'gamma_cld_sw',
+r_inp(16,13) = 'cloudopt13', 'omega_cld_sw',
+r_inp(17,13) = 'cloudopt13', 'clcv',
+r_inp(18,13) = 'cloudopt13', 'idx_cld',
+!
+! 14. call
+!
+r_inp(1,14)= '', '',
+r_inp(2,14)= '', '',
+r_inp(3,14)= '', '',
+r_inp(4,14)= '', '',
+r_inp(5,14)= '', '',
+r_inp(6,14)= '', '',
+r_inp(7,14)= '', '',
+r_inp(8,14)= '', '',
+r_inp(9,14)= '', '',
+r_inp(10,14)= '', '',
+r_inp(11,14)= '', '',
+r_inp(12,14) = 'cloudopt14', 'sum_cov',
+r_inp(13,14) = 'cloudopt14', 'tau_cld_lw',
+r_inp(14,14) = 'cloudopt14', 'tau_cld_sw',
+r_inp(15,14) = 'cloudopt14', 'gamma_cld_sw',
+r_inp(16,14) = 'cloudopt14', 'omega_cld_sw',
+r_inp(17,14) = 'cloudopt14', 'clcv',
+r_inp(18,14) = 'cloudopt14', 'idx_cld',
+!
+! 15. call
+!
+r_inp(1,15)= '', '',
+r_inp(2,15)= '', '',
+r_inp(3,15)= '', '',
+r_inp(4,15)= '', '',
+r_inp(5,15)= '', '',
+r_inp(6,15)= '', '',
+r_inp(7,15)= '', '',
+r_inp(8,15)= '', '',
+r_inp(9,15)= '', '',
+r_inp(10,15)= '', '',
+r_inp(11,15)= '', '',
+r_inp(12,15) = 'cloudopt15', 'sum_cov',
+r_inp(13,15) = 'cloudopt15', 'tau_cld_lw',
+r_inp(14,15) = 'cloudopt15', 'tau_cld_sw',
+r_inp(15,15) = 'cloudopt15', 'gamma_cld_sw',
+r_inp(16,15) = 'cloudopt15', 'omega_cld_sw',
+r_inp(17,15) = 'cloudopt15', 'clcv',
+r_inp(18,15) = 'cloudopt15', 'idx_cld',
+!
+! 16. call
+!
+r_inp(1,16)= '', '',
+r_inp(2,16)= '', '',
+r_inp(3,16)= '', '',
+r_inp(4,16)= '', '',
+r_inp(5,16)= '', '',
+r_inp(6,16)= '', '',
+r_inp(7,16)= '', '',
+r_inp(8,16)= '', '',
+r_inp(9,16)= '', '',
+r_inp(10,16)= '', '',
+r_inp(11,16)= '', '',
+r_inp(12,16) = 'cloudopt16', 'sum_cov',
+r_inp(13,16) = 'cloudopt16', 'tau_cld_lw',
+r_inp(14,16) = 'cloudopt16', 'tau_cld_sw',
+r_inp(15,16) = 'cloudopt16', 'gamma_cld_sw',
+r_inp(16,16) = 'cloudopt16', 'omega_cld_sw',
+r_inp(17,16) = 'cloudopt16', 'clcv',
+r_inp(18,16) = 'cloudopt16', 'idx_cld',
+!
+! 17. call
+r_inp(1,17)= '', '',
+r_inp(2,17)= '', '',
+r_inp(3,17)= '', '',
+r_inp(4,17)= '', '',
+r_inp(5,17)= '', '',
+r_inp(6,17)= '', '',
+r_inp(7,17)= '', '',
+r_inp(8,17)= '', '',
+r_inp(9,17)= '', '',
+r_inp(10,17)= '', '',
+r_inp(11,17)= '', '',
+r_inp(12,17) = 'cloudopt17', 'sum_cov',
+r_inp(13,17) = 'cloudopt17', 'tau_cld_lw',
+r_inp(14,17) = 'cloudopt17', 'tau_cld_sw',
+r_inp(15,17) = 'cloudopt17', 'gamma_cld_sw',
+r_inp(16,17) = 'cloudopt17', 'omega_cld_sw',
+r_inp(17,17) = 'cloudopt17', 'clcv',
+r_inp(18,17) = 'cloudopt17', 'idx_cld',
+!
+! 18. call
+!
+r_inp(1,18)= '', '',
+r_inp(2,18)= '', '',
+r_inp(3,18)= '', '',
+r_inp(4,18)= '', '',
+r_inp(5,18)= '', '',
+r_inp(6,18)= '', '',
+r_inp(7,18)= '', '',
+r_inp(8,18)= '', '',
+r_inp(9,18)= '', '',
+r_inp(10,18)= '', '',
+r_inp(11,18)= '', '',
+r_inp(12,18) = 'cloudopt18', 'sum_cov',
+r_inp(13,18) = 'cloudopt18', 'tau_cld_lw',
+r_inp(14,18) = 'cloudopt18', 'tau_cld_sw',
+r_inp(15,18) = 'cloudopt18', 'gamma_cld_sw',
+r_inp(16,18) = 'cloudopt18', 'omega_cld_sw',
+r_inp(17,18) = 'cloudopt18', 'clcv',
+r_inp(18,18) = 'cloudopt18', 'idx_cld',
+!
+! 19. call
+!
+r_inp(1,19)= '', '',
+r_inp(2,19)= '', '',
+r_inp(3,19)= '', '',
+r_inp(4,19)= '', '',
+r_inp(5,19)= '', '',
+r_inp(6,19)= '', '',
+r_inp(7,19)= '', '',
+r_inp(8,19)= '', '',
+r_inp(9,19)= '', '',
+r_inp(10,19)= '', '',
+r_inp(11,19)= '', '',
+r_inp(12,19) = 'cloudopt19', 'sum_cov',
+r_inp(13,19) = 'cloudopt19', 'tau_cld_lw',
+r_inp(14,19) = 'cloudopt19', 'tau_cld_sw',
+r_inp(15,19) = 'cloudopt19', 'gamma_cld_sw',
+r_inp(16,19) = 'cloudopt19', 'omega_cld_sw',
+r_inp(17,19) = 'cloudopt19', 'clcv',
+r_inp(18,19) = 'cloudopt19', 'idx_cld',
+!
+! 20. call
+!
+r_inp(1,20)= '', '',
+r_inp(2,20)= '', '',
+r_inp(3,20)= '', '',
+r_inp(4,20)= '', '',
+r_inp(5,20)= '', '',
+r_inp(6,20)= '', '',
+r_inp(7,20)= '', '',
+r_inp(8,20)= '', '',
+r_inp(9,20)= '', '',
+r_inp(10,20)= '', '',
+r_inp(11,20)= '', '',
+r_inp(12,20) = 'cloudopt20', 'sum_cov',
+r_inp(13,20) = 'cloudopt20', 'tau_cld_lw',
+r_inp(14,20) = 'cloudopt20', 'tau_cld_sw',
+r_inp(15,20) = 'cloudopt20', 'gamma_cld_sw',
+r_inp(16,20) = 'cloudopt20', 'omega_cld_sw',
+r_inp(17,20) = 'cloudopt20', 'clcv',
+r_inp(18,20) = 'cloudopt20', 'idx_cld',
+!
+! 21. call
+!
+r_inp(1,21)= '', '',
+r_inp(2,21)= '', '',
+r_inp(3,21)= '', '',
+r_inp(4,21)= '', '',
+r_inp(5,21)= '', '',
+r_inp(6,21)= '', '',
+r_inp(7,21)= '', '',
+r_inp(8,21)= '', '',
+r_inp(9,21)= '', '',
+r_inp(10,21)= '', '',
+r_inp(11,21)= '', '',
+r_inp(12,21) = 'cloudopt21', 'sum_cov',
+r_inp(13,21) = 'cloudopt21', 'tau_cld_lw',
+r_inp(14,21) = 'cloudopt21', 'tau_cld_sw',
+r_inp(15,21) = 'cloudopt21', 'gamma_cld_sw',
+r_inp(16,21) = 'cloudopt21', 'omega_cld_sw',
+r_inp(17,21) = 'cloudopt21', 'clcv',
+r_inp(18,21) = 'cloudopt21', 'idx_cld',
+!
+! 22. call
+r_inp(1,22)= '', '',
+r_inp(2,22)= '', '',
+r_inp(3,22)= '', '',
+r_inp(4,22)= '', '',
+r_inp(5,22)= '', '',
+r_inp(6,22)= '', '',
+r_inp(7,22)= '', '',
+r_inp(8,22)= '', '',
+r_inp(9,22)= '', '',
+r_inp(10,22)= '', '',
+r_inp(11,22)= '', '',
+r_inp(12,22) = 'cloudopt22', 'sum_cov',
+r_inp(13,22) = 'cloudopt22', 'tau_cld_lw',
+r_inp(14,22) = 'cloudopt22', 'tau_cld_sw',
+r_inp(15,22) = 'cloudopt22', 'gamma_cld_sw',
+r_inp(16,22) = 'cloudopt22', 'omega_cld_sw',
+r_inp(17,22) = 'cloudopt22', 'clcv',
+r_inp(18,22) = 'cloudopt22', 'idx_cld',
+!
+! 23. call of radiation
+!
+r_inp(1,23)  = '', '',
+r_inp(2,23)  = '', '',
+r_inp(3,23)  = '', '',
+r_inp(4,23)  = '', '',
+r_inp(5,23)  = '', '',
+r_inp(6,23)  = '', '',
+r_inp(7,23)  = '', '',
+r_inp(8,23)  = '', '',
+r_inp(9,23)  = '', '',
+r_inp(10,23) = '', '',
+r_inp(11,23) = '', '',
+r_inp(12,23) = 'cloudopt23', 'sum_cov',
+r_inp(13,23) = 'cloudopt23', 'tau_cld_lw',
+r_inp(14,23) = 'cloudopt23', 'tau_cld_sw',
+r_inp(15,23) = 'cloudopt23', 'gamma_cld_sw',
+r_inp(16,23) = 'cloudopt23', 'omega_cld_sw',
+r_inp(17,23) = 'cloudopt23', 'clcv',
+r_inp(18,23) = 'cloudopt23', 'idx_cld',
+!
+! 24. call
+!
+r_inp(1,24)= '', '',
+r_inp(2,24)= '', '',
+r_inp(3,24)= '', '',
+r_inp(4,24)= '', '',
+r_inp(5,24)= '', '',
+r_inp(6,24)= '', '',
+r_inp(7,24)= '', '',
+r_inp(8,24)= '', '',
+r_inp(9,24)= '', '',
+r_inp(10,24)= '', '',
+r_inp(11,24)= '', '',
+r_inp(12,24) = 'cloudopt24', 'sum_cov',
+r_inp(13,24) = 'cloudopt24', 'tau_cld_lw',
+r_inp(14,24) = 'cloudopt24', 'tau_cld_sw',
+r_inp(15,24) = 'cloudopt24', 'gamma_cld_sw',
+r_inp(16,24) = 'cloudopt24', 'omega_cld_sw',
+r_inp(17,24) = 'cloudopt24', 'clcv',
+r_inp(18,24) = 'cloudopt24', 'idx_cld',
+!
+! 25. call
+!
+r_inp(1,25)= '', '',
+r_inp(2,25)= '', '',
+r_inp(3,25)= '', '',
+r_inp(4,25)= '', '',
+r_inp(5,25)= '', '',
+r_inp(6,25)= '', '',
+r_inp(7,25)= '', '',
+r_inp(8,25)= '', '',
+r_inp(9,25)= '', '',
+r_inp(10,25)= '', '',
+r_inp(11,25)= '', '',
+r_inp(12,25) = 'cloudopt25', 'sum_cov',
+r_inp(13,25) = 'cloudopt25', 'tau_cld_lw',
+r_inp(14,25) = 'cloudopt25', 'tau_cld_sw',
+r_inp(15,25) = 'cloudopt25', 'gamma_cld_sw',
+r_inp(16,25) = 'cloudopt25', 'omega_cld_sw',
+r_inp(17,25) = 'cloudopt25', 'clcv',
+r_inp(18,25) = 'cloudopt25', 'idx_cld',
+!
+! 26. call
+!
+r_inp(1,26)= '', '',
+r_inp(2,26)= '', '',
+r_inp(3,26)= '', '',
+r_inp(4,26)= '', '',
+r_inp(5,26)= '', '',
+r_inp(6,26)= '', '',
+r_inp(7,26)= '', '',
+r_inp(8,26)= '', '',
+r_inp(9,26)= '', '',
+r_inp(10,26)= '', '',
+r_inp(11,26)= '', '',
+r_inp(12,26) = 'cloudopt26', 'sum_cov',
+r_inp(13,26) = 'cloudopt26', 'tau_cld_lw',
+r_inp(14,26) = 'cloudopt26', 'tau_cld_sw',
+r_inp(15,26) = 'cloudopt26', 'gamma_cld_sw',
+r_inp(16,26) = 'cloudopt26', 'omega_cld_sw',
+r_inp(17,26) = 'cloudopt26', 'clcv',
+r_inp(18,26) = 'cloudopt26', 'idx_cld',
+!
+! 27. call
+r_inp(1,27)= '', '',
+r_inp(2,27)= '', '',
+r_inp(3,27)= '', '',
+r_inp(4,27)= '', '',
+r_inp(5,27)= '', '',
+r_inp(6,27)= '', '',
+r_inp(7,27)= '', '',
+r_inp(8,27)= '', '',
+r_inp(9,27)= '', '',
+r_inp(10,27)= '', '',
+r_inp(11,27)= '', '',
+r_inp(12,27) = 'cloudopt27', 'sum_cov',
+r_inp(13,27) = 'cloudopt27', 'tau_cld_lw',
+r_inp(14,27) = 'cloudopt27', 'tau_cld_sw',
+r_inp(15,27) = 'cloudopt27', 'gamma_cld_sw',
+r_inp(16,27) = 'cloudopt27', 'omega_cld_sw',
+r_inp(17,27) = 'cloudopt27', 'clcv',
+r_inp(18,27) = 'cloudopt27', 'idx_cld',
+!
+! 28. call
+!
+r_inp(1,28)= '', '',
+r_inp(2,28)= '', '',
+r_inp(3,28)= '', '',
+r_inp(4,28)= '', '',
+r_inp(5,28)= '', '',
+r_inp(6,28)= '', '',
+r_inp(7,28)= '', '',
+r_inp(8,28)= '', '',
+r_inp(9,28)= '', '',
+r_inp(10,28)= '', '',
+r_inp(11,28)= '', '',
+r_inp(12,28) = 'cloudopt28', 'sum_cov',
+r_inp(13,28) = 'cloudopt28', 'tau_cld_lw',
+r_inp(14,28) = 'cloudopt28', 'tau_cld_sw',
+r_inp(15,28) = 'cloudopt28', 'gamma_cld_sw',
+r_inp(16,28) = 'cloudopt28', 'omega_cld_sw',
+r_inp(17,28) = 'cloudopt28', 'clcv',
+r_inp(18,28) = 'cloudopt28', 'idx_cld',
+!
+! 29. call
+!
+r_inp(1,29)= '', '',
+r_inp(2,29)= '', '',
+r_inp(3,29)= '', '',
+r_inp(4,29)= '', '',
+r_inp(5,29)= '', '',
+r_inp(6,29)= '', '',
+r_inp(7,29)= '', '',
+r_inp(8,29)= '', '',
+r_inp(9,29)= '', '',
+r_inp(10,29)= '', '',
+r_inp(11,29)= '', '',
+r_inp(12,29) = 'cloudopt29', 'sum_cov',
+r_inp(13,29) = 'cloudopt29', 'tau_cld_lw',
+r_inp(14,29) = 'cloudopt29', 'tau_cld_sw',
+r_inp(15,29) = 'cloudopt29', 'gamma_cld_sw',
+r_inp(16,29) = 'cloudopt29', 'omega_cld_sw',
+r_inp(17,29) = 'cloudopt29', 'clcv',
+r_inp(18,29) = 'cloudopt29', 'idx_cld',
+!
+! 30. call
+!
+r_inp(1,30)= '', '',
+r_inp(2,30)= '', '',
+r_inp(3,30)= '', '',
+r_inp(4,30)= '', '',
+r_inp(5,30)= '', '',
+r_inp(6,30)= '', '',
+r_inp(7,30)= '', '',
+r_inp(8,30)= '', '',
+r_inp(9,30)= '', '',
+r_inp(10,30)= '', '',
+r_inp(11,30)= '', '',
+r_inp(12,30) = 'cloudopt30', 'sum_cov',
+r_inp(13,30) = 'cloudopt30', 'tau_cld_lw',
+r_inp(14,30) = 'cloudopt30', 'tau_cld_sw',
+r_inp(15,30) = 'cloudopt30', 'gamma_cld_sw',
+r_inp(16,30) = 'cloudopt30', 'omega_cld_sw',
+r_inp(17,30) = 'cloudopt30', 'clcv',
+r_inp(18,30) = 'cloudopt30', 'idx_cld',
+!
+! 31. call
+!
+r_inp(1,31)= '', '',
+r_inp(2,31)= '', '',
+r_inp(3,31)= '', '',
+r_inp(4,31)= '', '',
+r_inp(5,31)= '', '',
+r_inp(6,31)= '', '',
+r_inp(7,31)= '', '',
+r_inp(8,31)= '', '',
+r_inp(9,31)= '', '',
+r_inp(10,31)= '', '',
+r_inp(11,31)= '', '',
+r_inp(12,31) = 'cloudopt31', 'sum_cov',
+r_inp(13,31) = 'cloudopt31', 'tau_cld_lw',
+r_inp(14,31) = 'cloudopt31', 'tau_cld_sw',
+r_inp(15,31) = 'cloudopt31', 'gamma_cld_sw',
+r_inp(16,31) = 'cloudopt31', 'omega_cld_sw',
+r_inp(17,31) = 'cloudopt31', 'clcv',
+r_inp(18,31) = 'cloudopt31', 'idx_cld',
+!
+! 32. call
+r_inp(1,32)= '', '',
+r_inp(2,32)= '', '',
+r_inp(3,32)= '', '',
+r_inp(4,32)= '', '',
+r_inp(5,32)= '', '',
+r_inp(6,32)= '', '',
+r_inp(7,32)= '', '',
+r_inp(8,32)= '', '',
+r_inp(9,32)= '', '',
+r_inp(10,32)= '', '',
+r_inp(11,32)= '', '',
+r_inp(12,32) = 'cloudopt32', 'sum_cov',
+r_inp(13,32) = 'cloudopt32', 'tau_cld_lw',
+r_inp(14,32) = 'cloudopt32', 'tau_cld_sw',
+r_inp(15,32) = 'cloudopt32', 'gamma_cld_sw',
+r_inp(16,32) = 'cloudopt32', 'omega_cld_sw',
+r_inp(17,32) = 'cloudopt32', 'clcv',
+r_inp(18,32) = 'cloudopt32', 'idx_cld',
+!
+! 33. call of radiation
+!
+r_inp(1,33)  = '', '',
+r_inp(2,33)  = '', '',
+r_inp(3,33)  = '', '',
+r_inp(4,33)  = '', '',
+r_inp(5,33)  = '', '',
+r_inp(6,33)  = '', '',
+r_inp(7,33)  = '', '',
+r_inp(8,33)  = '', '',
+r_inp(9,33)  = '', '',
+r_inp(10,33) = '', '',
+r_inp(11,33) = '', '',
+r_inp(12,33) = 'cloudopt33', 'sum_cov',
+r_inp(13,33) = 'cloudopt33', 'tau_cld_lw',
+r_inp(14,33) = 'cloudopt33', 'tau_cld_sw',
+r_inp(15,33) = 'cloudopt33', 'gamma_cld_sw',
+r_inp(16,33) = 'cloudopt33', 'omega_cld_sw',
+r_inp(17,33) = 'cloudopt33', 'clcv',
+r_inp(18,33) = 'cloudopt33', 'idx_cld',
+!
+/
+!! ------------------------------
+&CTRL_FUBRAD
+!
+!# FOR SOLAR CYCLE
+solfac = 0.5        ! 0: solar minimum, 1: solar maximum
+!                 !!! this is obsolete, if fubrad_solar in CPL is active
+!
+!! fb_mk_20120116+
+! set the spectral resolution of FUBRAD
+! Possible are 55 (default), 106, and 49 (old version, not recommended as it
+! leads to an inconsistent flux profile and misleading flux diagnostics)
+nbands = 55,    ! 55 (default)
+! fb_mk_20120116-
+/
+
+&CPL_FUBRAD
+!
+!# ! SOLAR CYCLE TIME SERIES; if commented, solfac in CTRL is used instead
+!# (see &CTRL_TS in import.nml)
+!
+!fubrad_solar = 'import_ts', 'solact',  ! F10.7 cm (1 parameter)
+fubrad_solar = 'import_ts', 'solspec', ! solar spectrum (50 parameters)
+!                                       ! (50, 56 or 107 parameters; number must
+!                                       ! equal nbands + 1 (see CTRL_FUBRAD))
+/

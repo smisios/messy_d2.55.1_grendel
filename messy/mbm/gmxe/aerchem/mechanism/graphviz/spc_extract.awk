@@ -1,0 +1,1 @@
+../../../../caaba/mecca/graphviz/spc_extract.awk

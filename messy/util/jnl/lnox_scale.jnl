@@ -1,0 +1,523 @@
+! ----------------------------------------------------------------------
+! FERRET SCRIPT TO ANALYSE / READJUST THE SCALING OF THE LIGTHNING NOx
+! SCALING PARAMETER r_scal_ff
+! Usage: go lnox_scale.jnl <lnox-output file> [ff_ave] [<regional flag file>]
+!
+! MANDATORY: <lnox-output file> 
+!            - is the output-file of LNOX run with l_mode_scal = T 
+!              (either .nc or .mc)
+!        
+! OPTIONAL: [ff_ave] 
+!           - is the desired average flash frequency [1/s]
+!           - default: 46.6 ! flashes / s 
+!                      global annual average (1995-2005) of LIS-OTD
+!           - for the regional analysis, the scaled value from the global
+!             model for the corresponding region should be used
+!
+! OPTIONAL: [<regional flag file]
+!           -  is a file containing the result of mecon_map2global.jnl 
+!              (or similar files containing a regional mask (1 or undefined) 
+!               named "flag") to calculate the LNOX quantities for the
+!               respective region
+!           - must not be used for analyses of regional model output
+!
+! Examples:
+! - go lnox_scale.jnl 01/lnox_Grewe_gp.mc
+! - go lnox_scale.jnl 01/lnox_Grewe_gp.mc " " flag_02.nc
+! - go lnox_scale.jnl 02/lnox_Grewe_gp.mc 15.7
+!
+! Notes: 
+! - works for version 2.4 of LNOX!
+!
+! ----------------------------------------------------------------------
+! Author: Patrick Joeckel, DLR, Nov 2012
+! ----------------------------------------------------------------------
+
+\cancel mode verify
+cancel data/all
+cancel region/all
+cancel variable/all
+cancel symbol/all
+!cancel viewport
+cancel mode logo 
+
+query/ignore $1"<Usage: GO lnox_scale.jnl lnox-output [ff_ave] [regional flag file]"
+
+let dpath = {spawn:"pwd"}
+define symbol dpath = `dpath[i=1]`
+
+! Grewe_gp, PaR_T_gp, AaP_M_gp, AaP_P_gp, FinIF_gp
+define symbol dfile = $1
+! Optional arguments
+
+! default: observed flash frequency (global annual average, 1995-2005):
+!          let ff_LIS_OTD = 46.6 ! flashes / s
+! for regional analysis, the scaled FF of the analyis from the global model
+! should be used
+define symbol ff_LIS_OTD = $2"46.6"
+let ff_LIS_OTD = ($ff_LIS_OTD)
+
+! file with regional mask (variable name "flag", e.g. output of
+! mecon_map2global.jnl
+define symbol ffile = $3"none"
+
+
+! get these from netCDF attributes below ...
+!let r_noxpf   = 15.6        ! kg(N)/flash
+!let r_eff     = 0.1         ! NOx production efficiency ratio (IC/CG)
+!let r_scal_ff = 1.0         ! scaling factor
+!let r_fpm2s_min = 1.433E-14 ! minimum number of flashes [1/(m^2 s)]
+!
+! ------------------------------------------------------------------------
+
+set data "($dfile)"  
+IF ($ffile%|none>FALSE|*>TRUE%) THEN
+   set data ($ffile)
+   set data 1
+ENDIF
+
+define symbol lnox_mode = `..lnox_mode`
+let r_noxpf   = `..lnox_r_noxpf`
+let r_eff     = `..lnox_r_eff`
+let r_scal_ff = `..lnox_r_scal_ff`
+let r_fpm2s_min = `..lnox_r_fpm2s_min`
+
+! ------------------------------------------------------------------------
+define symbol method = inst
+!define symbol method = ave
+
+!qqq+
+! for production simulations
+let/d FF = (FPSIC + FPSCG)
+let/d FF_AVE = (FPSIC_AVE + FPSCG_AVE)
+let/d pg = FPSCG/FF
+let/d pg_AVE = FPSCG_AVE/FF_AVE
+!qqq-
+
+!qqq+
+! for regional model
+let/d GEOLON = GEOLON_AVE
+let/d GEOLAT = GEOLAT_AVE
+let/d GX = GEOLON[l=1]
+let/d GY = GEOLAT[l=1]
+!qqq-
+
+! USE AVERAGES, IF INST. VALUES ARE NOT AVAILABLE
+IF ($method%|inst>TRUE|*>FALSE%) THEN
+   ! calculation with instantaneous values
+   define symbol FF = FF
+   define symbol FPSIC = FPSIC
+   define symbol FPSCG = FPSCG
+   define symbol pg = pg
+   define symbol NOxcg = NOxcg
+   define symbol NOxic = NOxic
+   ! USE AVERAGES, IF INST. VALUES ARE NOT AVAILABLE
+   let/d FF = FF_AVE
+   let/d FPSIC = FPSIC_AVE
+   let/d FPSCG = FPSCG_AVE
+   let/d pg = pg_ave
+   let/d NOxcg = NOxcg_AVE
+   let/d NOxic = NOxic_AVE
+ELSE
+   ! calculation with average values
+   define symbol FF = FF_AVE
+   define symbol FPSIC = FPSIC_AVE
+   define symbol FPSCG = FPSCG_AVE
+   define symbol pg = pg_AVE
+   define symbol NOxcg = NOxcg_AVE
+   define symbol NOxic = NOxic_AVE
+   ! USE INST. VALUES, IF AVERAGES ARE NOT AVAILABLE
+   let/d FF_AVE = FF
+   let/d FPSIC_AVE = FPSIC
+   let/d FPSCG_AVE = FPSCG
+   let/d pg_ave = pg
+   let/d NOxcg_ave = NOxcg
+   let/d NOxic_ave = NOxic
+ENDIF
+! ------------------------------------------------------------------------
+
+! ### time axis
+define symbol tunit = `dt,return=tunit`
+!
+! scale to "days"
+IF ($tunit%|second>TRUE|sec>TRUE|*>FALSE%) THEN
+   let tscal = 1/86400
+ENDIF
+IF ($tunit%|minute>TRUE|min>TRUE|*>FALSE%) THEN
+   let tscal = 1/1440
+ENDIF
+IF ($tunit%|hour>TRUE|*>FALSE%) THEN
+   let tscal = 1/24
+ENDIF
+IF ($tunit%|day>TRUE|dy>TRUE|*>FALSE%) THEN
+   let tscal = 1
+ENDIF
+
+! time span in days
+let delta_time = (T[gt=dt,l=`dt[i=1,j=1,l=@ngd]`]-T[gt=dt,l=1])*tscal
+
+! ------------------------------------------------------------------------
+! FLASH FREQUENCY
+! ------------------------------------------------------------------------
+! more ciriteria:
+! 1) only clouds of at least 3000 m thickness: this has been selected
+!    in SMIL before the call to LNOX_EMISS, so output contains only 
+!    these convective regions ...
+
+! unscaled total flash frequency [1/s] comes from file
+! FF from file
+
+! required scaling factor to achieve observed flash frequency
+! !!! must be global value, i.e., independent of later region
+let ff_scal = `ff_LIS_OTD / ($FF)[x=@sum,y=@sum,t=@ave]`
+
+IF `r_fpm2s_min LT 0` THEN
+   ! OLD:
+   ! filter out events with less than 1 flash / model time step
+   let flag_dt = IF (($FF)*dt GE 1) THEN 1
+   let flag_dt_scal = IF (($FF)*ff_scal*dt GE 1) THEN 1
+   define symbol notestr = \
+     (Note: frequencies ff * dt < 1 are not counted\!)
+ELSE
+   ! NEW:
+   ! filter out events with flash frequency density less than r_fpm2s_min
+   let flag_dt = IF ( (($FF)/(GBOXAREA/COS(Y[gy=GBOXAREA]/180*3.1415)) \
+                      GE r_fpm2s_min) ) THEN 1
+   let flag_dt_scal = \
+               IF ((($FF)*ff_scal/(GBOXAREA/COS(Y[gy=GBOXAREA]/180*3.1415))\
+               GE r_fpm2s_min) ) THEN 1
+   define symbol notestr = \
+     (Note: frequencies ff/(gboxarea/cos(lat)) < r_fpm2s_min are not counted\!)
+ENDIF
+
+! RAW
+let iCG = `($FPSCG)[x=@sum,y=@sum,t=@ave]`
+let iIC = `($FPSIC)[x=@sum,y=@sum,t=@ave]`
+let fCG = `iCG/(iCG+iIC)`
+
+! scaled frequencies
+! output
+let FPSIC_sc = ($FPSIC) * ff_scal * flag_dt_scal
+let FPSCG_sc = ($FPSCG) * ff_scal * flag_dt_scal
+define variable/title="scaled flash frequency"/unit="1/s" \
+    FF_sc    = FPSIC_sc + FPSCG_sc
+!
+let iCG_sc = `FPSCG_sc[x=@sum,y=@sum,t=@ave]`
+let iIC_sc = `FPSIC_sc[x=@sum,y=@sum,t=@ave]`
+let fCG_sc = `iCG_sc/(iCG_sc+iIC_sc)`
+
+! consistent with pg ?
+let FPSCG_sc_test = ($pg)     * ($FF) * ff_scal * flag_dt_scal
+let FPSIC_sc_test = (1-($pg)) * ($FF) * ff_scal * flag_dt_scal
+let FF_sc_test    = FPSIC_sc_test + FPSCG_sc_test
+!
+let iCG_sc_test = `FPSCG_sc_test[x=@sum,y=@sum,t=@ave]`
+let iIC_sc_test = `FPSIC_sc_test[x=@sum,y=@sum,t=@ave]`
+let fCG_sc_test = `iCG_sc_test/(iCG_sc_test+iIC_sc_test)`
+
+IF ($ffile%|none>FALSE|*>TRUE%) THEN
+   ! raw
+   let FPSCG_r = ($FPSCG) * FLAG[d=2,l=1]
+   let FPSIC_r = ($FPSIC) * FLAG[d=2,l=1]
+   define variable/title="scaled flash frequency"/unit="1/s" \
+       FF_r    = FPSIC_r + FPSCG_r
+   let iCG_r   = `FPSCG_r[x=@sum,y=@sum,t=@ave]`
+   let iIC_r   = `FPSIC_r[x=@sum,y=@sum,t=@ave]`
+   let fCG_r   = `iCG_r/(iCG_r+iIC_r)`
+   ! scaled
+   let FPSCG_r_sc = FPSCG_r * ff_scal * flag_dt_scal
+   let FPSIC_r_sc = FPSIC_r * ff_scal * flag_dt_scal
+   define variable/title="scaled flash frequency"/unit="1/s" \
+       FF_r_sc    = FPSIC_r_sc + FPSCG_r_sc  
+   let iCG_r_sc   = `FPSCG_r_sc[x=@sum,y=@sum,t=@ave]`
+   let iIC_r_sc   = `FPSIC_r_sc[x=@sum,y=@sum,t=@ave]`
+   let fCG_r_sc   = `iCG_r_sc/(iCG_r_sc+iIC_r_sc)`
+   ! scaled, consistent with pg?
+   let FPSCG_r_sc_test = ($pg)    *FLAG[d=2,l=1]*($FF)*ff_scal*flag_dt_scal
+   let FPSIC_r_sc_test = (1-($pg))*FLAG[d=2,l=1]*($FF)*ff_scal*flag_dt_scal
+   let FF_r_sc_test  = FPSIC_r_sc_test + FPSCG_r_sc_test
+   let iCG_r_sc_test = `FPSCG_r_sc_test[x=@sum,y=@sum,t=@ave]`
+   let iIC_r_sc_test = `FPSIC_r_sc_test[x=@sum,y=@sum,t=@ave]`
+   let fCG_r_sc_test = `iCG_r_sc_test/(iCG_r_sc_test+iIC_r_sc_test)`
+ENDIF
+
+! -----------------------------------
+
+say
+say ------------------------------------------------------------------------
+say ANALYSIS OF INPUT DATA
+say ------------------------------------------------------------------------
+say INPUT FILE: ($dpath)/($dfile)
+IF ($ffile%|none>FALSE|*>TRUE%) THEN
+   say additional analysis of region for: ($ffile)
+ENDIF
+say LNOX was run in mode                          : ($lnox_mode)
+say UNIT OF TIME AXIS                             : ($tunit)
+say LENGTH OF SIMULATION                          : `delta_time` days
+say used NOx production per flash                 : `r_noxpf` kg(N)/flash
+say used scaling factor                           : `r_scal_ff`
+say used NOx production efficiency ratio (IC/CG)  : `r_eff`
+say used cut-off flash density                    : `r_fpm2s_min` 1/(m^2 s)
+say
+say ------------------------------------------------------------------------
+say USER INTERFACE
+say ------------------------------------------------------------------------
+say desired annual spatial average flash freqency : `ff_LIS_OTD` flashes/s
+say VALUES, CALCULATION IS BASED ON (IF AVAILABLE): ($method)
+say 
+say ------------------------------------------------------------------------
+say FLASH FREQUENCY ANALYSIS
+say ------------------------------------------------------------------------
+say flash frquency before scaling:
+IF ($ffile%|none>FALSE|*>TRUE%) THEN
+   say . global:
+ENDIF
+say ... CG     = `iCG` 1/s
+say ... IC     = `iIC` 1/s
+say ... sum    = `iCG+iIC` 1/s
+say ... f_CG   = `fCG`
+IF ($ffile%|none>FALSE|*>TRUE%) THEN
+   say . in selected region:
+   say ... CG_r   = `iCG_r` 1/s
+   say ... IC_r   = `iIC_r` 1/s
+   say ... sum_r  = `iCG_r+iIC_r` 1/s (`(iCG_r+iIC_r)/(iCG+iIC)` of global)
+   say ... f_CG_r = `fCG_r`
+ENDIF
+say 
+say flash frequency after scaling with `ff_scal`:
+say ($notestr)
+IF ($ffile%|none>FALSE|*>TRUE%) THEN
+   say . global:
+ENDIF
+say ... CG     = `iCG_sc` 1/s
+say ... IC     = `iIC_sc` 1/s
+say ... sum    = `iCG_sc+iIC_sc` 1/s
+say ... f_CG   = `fCG_sc`
+IF ($ffile%|none>FALSE|*>TRUE%) THEN
+   say . in selected region:
+   say ... CG_r   = `iCG_r_sc` 1/s
+   say ... IC_r   = `iIC_r_sc` 1/s
+   say ... sum_r  = `iCG_r_sc+iIC_r_sc` 1/s (`(iCG_r_sc+iIC_r_sc)/(iCG_sc+iIC_sc)` of global)
+   say ... f_CG_r = `fCG_r_sc`
+ENDIF
+say
+say flash frequency after scaling with `ff_scal` (test for pg consistency):
+say ($notestr)
+IF ($ffile%|none>FALSE|*>TRUE%) THEN
+   say . global:
+ENDIF
+say ... CG     = `iCG_sc_test` 1/s
+say ... IC     = `iIC_sc_test` 1/s
+say ... sum    = `iCG_sc_test+iIC_sc_test` 1/s
+say ... f_CG   = `fCG_sc_test`
+IF ($ffile%|none>FALSE|*>TRUE%) THEN
+   say . in selected region:
+   say ... CG_r   = `iCG_r_sc_test` 1/s
+   say ... IC_r   = `iIC_r_sc_test` 1/s
+   say ... sum_r  = `iCG_r_sc_test+iIC_r_sc_test` 1/s (`(iCG_r_sc_test+iIC_r_sc_test)/(iCG_sc_test+iIC_sc_test)` of global)
+   say ... f_CG_r = `fCG_r_sc_test`
+ENDIF
+say
+
+! ------------------------------------------------------------------------
+! NOx production
+! ------------------------------------------------------------------------
+
+! NOx production [kg(N)/box/Zeitschritt] -> kg(N)/s
+let np = ( ($NOxcg)[x=@sum,y=@sum] + ($NOxic)[x=@sum,y=@sum] )/dt
+
+! integrate over time, convert to Tg(N), and scale up to 1 year
+let np_mod_1 = `(np[t=@din]/1e9) / delta_time * 365`
+! average over time, convert to Tg(N), and scale up to 1 year
+let np_mod_2 = `(np[t=@ave]/1e9) * 3600*24*365`
+
+! OFFLINE RECALCULATION
+! kg/s
+let zFPSCG = ($FPSCG) * flag_dt
+let zFPSIC = ($FPSIC) * flag_dt
+let np_off = (zFPSCG[x=@sum,y=@sum] + r_eff*zFPSIC[x=@sum,y=@sum]) * r_noxpf
+let np_off_mod_1 = `(np_off[t=@din]/1e9) / delta_time * 365`
+let np_off_mod_2 = `(np_off[t=@ave]/1e9) * 3600*24*365`
+
+! EXPECTED
+let np_sc = (FPSCG_sc[x=@sum,y=@sum] + \
+           r_eff*FPSIC_sc[x=@sum,y=@sum]) * r_noxpf
+let np_sc_1 = `(np_sc[t=@din]/1e9) / delta_time * 365`
+let np_sc_2 = `(np_sc[t=@ave]/1e9) * 3600*24*365`
+
+! EXPECTED (consistency with pg)
+let np_sc_test = (FPSCG_sc_test[x=@sum,y=@sum] + \
+           r_eff*FPSIC_sc_test[x=@sum,y=@sum]) * r_noxpf
+let np_sc_test_1 = `(np_sc_test[t=@din]/1e9) / delta_time * 365`
+let np_sc_test_2 = `(np_sc_test[t=@ave]/1e9) * 3600*24*365`
+
+IF ($ffile%|none>FALSE|*>TRUE%) THEN
+   ! raw
+   let NOxcg_r = ($NOxcg) * flag[d=2,l=1]
+   let NOxic_r = ($NOxic) * flag[d=2,l=1]
+   let np_r = ( NOxcg_r[x=@sum,y=@sum] + NOxic_r[x=@sum,y=@sum] )/dt
+   let np_r_mod_1 = `(np_r[t=@din]/1e9) / delta_time * 365`
+   let np_r_mod_2 = `(np_r[t=@ave]/1e9) * 3600*24*365`
+   ! offline
+   let zFPSCG_r = ($FPSCG) * flag_dt * flag[d=2,l=1]
+   let zFPSIC_r = ($FPSIC) * flag_dt * flag[d=2,l=1]
+   let np_off_r = (zFPSCG_r[x=@sum,y=@sum] \
+                + r_eff*zFPSIC_r[x=@sum,y=@sum]) * r_noxpf
+   let np_off_r_mod_1 = `(np_off_r[t=@din]/1e9) / delta_time * 365`
+   let np_off_r_mod_2 = `(np_off_r[t=@ave]/1e9) * 3600*24*365`
+   ! expected
+   let np_r_sc = (FPSCG_r_sc[x=@sum,y=@sum] + \
+                  r_eff*FPSIC_r_sc[x=@sum,y=@sum]) * r_noxpf
+   let np_r_sc_1 = `(np_r_sc[t=@din]/1e9) / delta_time * 365`
+   let np_r_sc_2 = `(np_r_sc[t=@ave]/1e9) * 3600*24*365`
+   ! expected, consistency with pg?
+   let np_r_sc_test = (FPSCG_r_sc_test[x=@sum,y=@sum] + \
+                       r_eff*FPSIC_r_sc_test[x=@sum,y=@sum]) * r_noxpf
+   let np_r_sc_test_1 = `(np_r_sc_test[t=@din]/1e9) / delta_time * 365`
+   let np_r_sc_test_2 = `(np_r_sc_test[t=@ave]/1e9) * 3600*24*365`
+ENDIF
+
+say ------------------------------------------------------------------------
+say NOx PRODUCTION ANALYSIS
+say ------------------------------------------------------------------------
+say average lightning-NOx production before scaling with `ff_scal`:
+IF ($ffile%|none>FALSE|*>TRUE%) THEN
+   say . global:
+ENDIF
+say ... method 1: `np_mod_1` Tg(N)/year
+say ... method 2: `np_mod_2` Tg(N)/year
+IF ($ffile%|none>FALSE|*>TRUE%) THEN
+   say . in selected region:
+   say ... method 1: `np_r_mod_1` Tg(N)/year (`np_r_mod_1/np_mod_1` of global)
+   say ... method 2: `np_r_mod_2` Tg(N)/year (`np_r_mod_2/np_mod_2` of global)
+ENDIF
+say 
+say recaluclated average lightning-NOx production before scaling with `ff_scal`:
+IF ($ffile%|none>FALSE|*>TRUE%) THEN
+   say . global:
+ENDIF
+say ... method 1: `np_off_mod_1` Tg(N)/year
+say ... method 2: `np_off_mod_2` Tg(N)/year
+IF ($ffile%|none>FALSE|*>TRUE%) THEN
+   say . in selected region:
+   say ... method 1: `np_off_r_mod_1` Tg(N)/year (`np_off_r_mod_1/np_off_mod_1` of global)
+   say ... method 2: `np_off_r_mod_2` Tg(N)/year (`np_off_r_mod_2/np_off_mod_2` of global)
+ENDIF
+say
+say lightning-NOx production scaled with `ff_scal`
+say (i.e., not taking into account the cut-off criterion\!):
+IF ($ffile%|none>FALSE|*>TRUE%) THEN
+   say . global:
+ENDIF
+say ... method 1: `np_mod_1*ff_scal` Tg(N)/year
+say ... method 2: `np_mod_2*ff_scal` Tg(N)/year
+IF ($ffile%|none>FALSE|*>TRUE%) THEN
+   say . in selected region:
+   say ... method 1: `np_r_mod_1*ff_scal` Tg(N)/year (`np_r_mod_1/np_mod_1` of global)
+   say ... method 2: `np_r_mod_2*ff_scal` Tg(N)/year (`np_r_mod_2/np_mod_2` of global)
+ENDIF
+say
+say expected lightning-NOx production after scaling with `ff_scal`:
+say ... method 1: `np_sc_1` Tg(N)/year
+say ... method 2: `np_sc_2` Tg(N)/year
+IF ($ffile%|none>FALSE|*>TRUE%) THEN
+   say . in selected region:
+   say ... method 1: `np_r_sc_1` Tg(N)/year (`np_r_sc_1/np_sc_1` of global)
+   say ... method 2: `np_r_sc_2` Tg(N)/year (`np_r_sc_2/np_sc_2` of global)
+ENDIF
+say
+say expected lightning-NOx production after scaling with `ff_scal`
+say (test for pg consistency):
+IF ($ffile%|none>FALSE|*>TRUE%) THEN
+   say . global:
+ENDIF
+say ... method 1: `np_sc_test_1` Tg(N)/year
+say ... method 2: `np_sc_test_2` Tg(N)/year
+IF ($ffile%|none>FALSE|*>TRUE%) THEN
+   say . in selected region:
+   say ... method 1: `np_r_sc_test_1` Tg(N)/year (`np_r_sc_test_1/np_sc_test_1` of global)
+   say ... method 2: `np_r_sc_test_2` Tg(N)/year (`np_r_sc_test_2/np_sc_test_2` of global)
+ENDIF
+say
+
+say "========================================================================"
+say SUMMARY
+say "========================================================================"
+say THE RESULTS ARE BASED ON A SIMULTION OF `delta_time` days
+say
+say MULTIPLY YOUR r_scal_ff with `ff_scal`
+say  * to achieve an annual spatial average flash frequency of `iCG_sc+iIC_sc` 1/s, and
+say  * expect a lightning NOx production of `(np_sc_1+np_sc_2)/2` Tg(N)/year
+say 
+IF ($ffile%|none>FALSE|*>TRUE%) THEN
+say Use ff_ave = `iCG_r_sc+iIC_r_sc` 1/s ...
+say ... (which is `(iCG_r_sc+iIC_r_sc)/(iCG_sc+iIC_sc)` of the global value) ...
+say ... as input to calculate the scaling factor for the region ...
+say ... and expect a lightning NOx production of `(np_r_sc_1+np_r_sc_2)/2` Tg(N)/year ...
+say ... (which is `(np_r_sc_1+np_r_sc_2)/(np_sc_1+np_sc_2)` of the global value)
+ENDIF
+say "========================================================================"
+say
+
+! ===========================================================================
+! PLOT RESULTS
+! ===========================================================================
+cancel viewport
+PPL SHASET RESET
+
+define variable/title="unscaled flash frequency"/unit="1/s" \
+       FF_plot = IF (($FF) GT 0) THEN ($FF)
+
+IF ($ffile%|none>FALSE|*>TRUE%) THEN
+ define variable/title="unscaled flash frequency"/unit="1/s" \
+        FF_r_plot = IF (FF_r GT 0) THEN FF_r
+ENDIF
+
+! ---------------------------------------------------------------------------
+let vnames = ..varnames
+let vreg = IF vnames EQ "geolon" THEN 1
+define symbol vreg = `vreg[i=@ngd]`
+IF ($vreg%|0>TRUE|*>FALSE%) THEN
+   ! GLOBAL MODEL
+   set viewport UL
+   shade FF_plot[t=@ave,x=-180:180]
+   go land
+
+   set viewport UR
+   shade FF_sc[t=@ave,x=-180:180]
+   go land
+ELSE
+   ! REGIONAL MODEL
+   set viewport UL
+   shade FF_plot[t=@ave],GEOLON[l=1],GEOLAT[l=1]
+   go land
+
+   set viewport UR
+   shade FF_sc[t=@ave],GEOLON[l=1],GEOLAT[l=1]
+   go land
+ENDIF
+
+! ---------------------------------------------------------------------------
+! GLOBAL MODEL: SHOW SELECTED REGION
+! ---------------------------------------------------------------------------
+IF ($ffile%|none>FALSE|*>TRUE%) THEN
+ let yf = Y[gy=flag[d=2]]*flag[d=2]
+ let xf = X[gx=flag[d=2]]*flag[d=2]
+! set region/x=`xf[i=@min,j=@min]`:`xf[i=@max,j=@max]`\
+!           /y=`yf[i=@min,j=@min]`:`yf[i=@max,j=@max]`
+
+ set viewport LL
+ shade/hlimits=`xf[i=@min,j=@min]`:`xf[i=@max,j=@max]` \
+      /vlimits=`yf[i=@min,j=@min]`:`yf[i=@max,j=@max]` \
+     FF_r_plot[t=@ave]
+ go land
+
+ set viewport LR
+ shade/hlimits=`xf[i=@min,j=@min]`:`xf[i=@max,j=@max]` \
+      /vlimits=`yf[i=@min,j=@min]`:`yf[i=@max,j=@max]` \
+      FF_r_sc[t=@ave]
+ go land
+
+! cancel region/x/y
+ENDIF
+! ---------------------------------------------------------------------------

@@ -1,0 +1,30 @@
+PROGRAM rnd
+
+  USE messy_main_constants_mem, ONLY: DP
+  USE messy_main_rnd,           ONLY: RND_MTW, &
+                                      rnd_init, rnd_number, rnd_finish
+  IMPLICIT NONE
+  INTEGER, PARAMETER :: MAX_NUM = 9999
+  INTEGER, PARAMETER :: SEED = 21451169
+  INTEGER :: j, id_rnd, status
+  REAL(DP), DIMENSION(MAX_NUM) :: harvest
+
+  ! --------------------------------------------------------------------------
+
+  CALL rnd_init(status, id_rnd, RND_MTW, SEED)
+  IF (status/=0) STOP
+
+  ! Call the generator to produce MAX_NUM numbers:
+  CALL rnd_number(id_rnd, harvest(:))
+  
+  OPEN (10,FILE='mcexp_seed.txt') 
+  DO j = 1, MAX_NUM
+    WRITE (10,*) INT(HUGE(1)*harvest(j))
+  ENDDO
+  CLOSE(10)
+
+  CALL rnd_finish(id_rnd)
+
+  ! --------------------------------------------------------------------------
+
+END PROGRAM rnd

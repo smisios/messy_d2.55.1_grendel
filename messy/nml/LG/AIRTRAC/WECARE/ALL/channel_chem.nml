@@ -1,0 +1,130 @@
+! -*- f90 -*-
+&CTRL
+! ---------------------------------------------------------------------
+! EXPERIMENT NAME
+! ---------------------------------------------------------------------
+EXP_NAME='$EXP_NAME',
+EXEC_CHECKSUM='$EXEC_CHECKSUM',
+I_VERBOSE_LEVEL = 1,
+! ---------------------------------------------------------------------
+! # FLUSH I/O BUFFER IN EVERY TIME STEP (DEFAULT: T (true))
+! # NOTE: F (false) might increase the overall performance
+!L_FLUSH_IOBUFFER = F,
+! ---------------------------------------------------------------------
+! # ADD NEW OUTPUT CHANNELS (MAX. 50)
+! ---------------------------------------------------------------------
+!ADD_CHANNEL( 1)   = 'tr_O3_tbud',
+! ---------------------------------------------------------------------
+! # ADD NEW CHANNEL OBJECT REFERENCES (MAX. 500)
+! # NOTES:
+! #  - SOURCE OBJECT NAME MAY CONTAIN WILDCARDS '?' AND '*'
+! #    (in this case, target object name is ignored)
+! #  - TARGET CHANNEL NAME MAY CONTAIN WILDCARDS '?' AND '*'
+! #  - TARGET OBJECT NAME SET TO SOURCE OBJECT NAME, IF ''
+! ---------------------------------------------------------------------
+ADD_REF(11)       = 'lggp',        'tpot',       'attila',    '',
+! ---------------------------------------------------------------------
+! # SET DEFAULT OUTPUT AND RESTART HANDLING
+!      - ''
+!      - OUTPUT-FILETYPE, RERUN-FILETYPE, NO. OF STEPS PER OUTPUT-FILE,
+!      - RERUN, IGNORE, INST, AVE, STD, MIN, MAX, CNT, CAV, RANGE(2)
+! # NOTES:
+! #    IGNORE = T  FORCES THE MODEL TO IGNORE POTENTIAL lrestreq FLAGS
+! #                FOR PSEUDO-INITIAL RUNS FROM RESTART FILES
+! ---------------------------------------------------------------------
+! # OUTPUT PRECISION (ASCII, (P)NETCDF, (P)NETCDF, GRIB, HDF4, HDF5)
+! # NOTES: - ONLY (P)NETCDF CURRENTLY IMPLEMENTED;
+! #        - (P)NETCDF: 1=NF(90)_FLOAT; 2=NF(90)_DOUBLE
+OUT_PREC = 1, 2, 2, 1, 1, 1,   ! for tests
+! ---------------------------------------------------------------------
+! # SET CHANNEL SPECIFIC DEFAULT OUTPUT AND RESTART HANDLING (MAX. 500)
+!      - channel-name
+!      - OUTPUT-FILETYPE, RERUN-FILETYPE, NO. OF STEPS PER OUTPUT-FILE,
+!      - RERUN, IGNORE, INST, AVE, STD, MIN, MAX, CNT, CAV, RANGE(2)
+! # NOTE: IF NO. OF STEPS PER OUTPUT-FILE <= 0, THE EVENT TRIGGER
+!         (CPL-NAMELIST, TIMER_TNF BELOW) CONTROLS THE FILE CONTENT
+! ---------------------------------------------------------------------
+OUT_DEFAULT       = '',$OFT, $OFT,-1, F,T, F,F,F,F,F, F,F, , ,
+!OUT_PREC          = 1, 1, 1, 1, 1, 1   
+ 
+OUT_CHANNEL(11) = 'qtimer'             2, 2, -1, F,F, F,T,F,F,F, F,F, , ,
+OUT_CHANNEL(12) = 'airtrac'            2, 2, -1, F,T, T,T,F,F,F, F,F, , ,
+OUT_CHANNEL(13) = 'attila',            2, 2, -1, F,T, T,T,F,F,F, F,F, , ,
+OUT_CHANNEL(14) = 'lgtmix',            2, 2, -1, F,T, F,T,F,F,F, F,F, , ,
+OUT_CHANNEL(15)  = 'rad',              2, 2, -1, F,F, T,T,F,F,F, F,F, , ,
+OUT_CHANNEL(16)  = 'rad??',            2, 2, -1, F,T, T,T,F,F,F, F,F, , ,
+OUT_CHANNEL(17) = 'scalc'              2, 2, -1, F,T, T,T,F,F,F, F,F, , ,
+OUT_CHANNEL(19)  = 'tracer_lggp',      2, 2, -1, F,T, F,T,F,F,F, F,F, , ,
+OUT_CHANNEL(20)  = 'tracer_lg',        2, 2, -1, F,T, F,T,F,F,F, F,F, , ,
+OUT_CHANNEL(22)  = 'tracer_pdef_lggp', 2, 2, -1, F,T, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL(23)  = 'tracer_pdef_lg',   2, 2, -1, F,T, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL(24)  = 'trexp*',           2, 2, -1, F,T, F,T,F,F,F, F,F, , ,
+OUT_CHANNEL(25) = 'viso',              2, 2, -1, F,F, T,T,F,F,F, F,F, , ,
+!
+OUT_OBJECT(1)   = 'airtrac','*',                   F,T, T,F,F,F,F, F,F, , ,
+OUT_OBJECT(2)   = 'airtrac','air*_0*_te'           F,T, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(8)   = 'attila','PLAT',                 F,T, T,F,F,F,F, F,F, , ,
+OUT_OBJECT(9)   = 'attila','PLON',                 F,T, T,F,F,F,F, F,F, , ,
+OUT_OBJECT(10)  = 'attila','PPRESS',               F,T, T,F,F,F,F, F,F, , ,
+OUT_OBJECT(11)  = 'attila','IPLON',                F,T, T,F,F,F,F, F,F, , ,
+OUT_OBJECT(12)  = 'attila','IPLAT',                F,T, T,F,F,F,F, F,F, , ,
+OUT_OBJECT(13)  = 'attila','IPLEV',                F,T, T,F,F,F,F, F,F, , ,
+OUT_OBJECT(14)  = 'attila','NCB',                  F,T, T,F,F,F,F, F,F, , ,
+OUT_OBJECT(15)  = 'attila','NCBL',                 F,T, T,F,F,F,F, F,F, , ,
+OUT_OBJECT(16)  = 'attila','AMCELL',               F,T, T,F,F,F,F, F,F, , ,
+OUT_OBJECT(17)  = 'attila','aps',                  F,T, T,T,T,F,F, F,F, , ,
+OUT_OBJECT(128)  = 'rad??','flx?',                 F,T, T,T,F,F,F, F,F, , ,
+OUT_OBJECT(129)  = 'rad??','flx?f',                F,T, T,T,F,F,F, F,F, , ,
+OUT_OBJECT(130)  = 'rad??','?rad?',                F,T, T,T,F,F,F, F,F, , ,
+OUT_OBJECT(131)  = 'rad??','?rad??',               F,T, T,T,F,F,F, F,F, , ,
+OUT_OBJECT(132)  = 'rad??','cl*',                  F,T, T,T,F,F,F, F,F, , ,
+OUT_OBJECT(133)  = 'rad??','totclfr*',             F,T, T,T,F,F,F, F,F, , ,
+OUT_OBJECT(251)  = 'tracer_lg','LossHNO3',         F,T, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(252)  = 'tracer_lg','LossHO2*',         F,T, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(253)  = 'tracer_lg','LossNOx',          F,T, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(254)  = 'tracer_lg','LossO3*',          F,T, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(255)  = 'tracer_lg','LossOH*',          F,T, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(256)  = 'tracer_lg','ProdHO2*',         F,T, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(257)  = 'tracer_lg','ProdO3*',          F,T, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(258)  = 'tracer_lg','ProdOH*',          F,T, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(259)  = 'tracer_lg','N',                F,T, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(260)  = 'tracer_lg','HNO4',             F,T, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(261)  = 'tracer_lg','HONO',             F,T, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(262)  = 'tracer_lg','PAN',              F,T, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(263)  = 'tracer_lg','HNO',              F,T, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(264)  = 'tracer_lg','N2O5',             F,T, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(265)  = 'tracer_lg','HNO3',             F,T, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(266)  = 'tracer_lg','CH4',              F,T, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(267)  = 'tracer_lg','O1D',              F,T, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(268)  = 'tracer_lg','O3',               F,T, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(269)  = 'tracer_lg','NO2',              F,T, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(270)  = 'tracer_lg','NO3',              F,T, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(271)  = 'tracer_lg','NO',               F,T, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(272)  = 'tracer_lg','HO2',              F,T, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(273)  = 'tracer_lg','O3P',              F,T, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(274)  = 'tracer_lg','OH',               F,T, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(275)  = 'tracer_lg','H2O',              F,T, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(276)  = 'tracer_lg','NOX',              F,T, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(277)  = 'tracer_lg','HNO3_tte_scav',    F,T, F,T,F,F,F, F,F, , ,
+OUT_OBJECT(278)  = 'tracer_lg','geosp',            F,T, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(279)  = 'tracer_lg','gboxarea',         F,T, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(280)  = 'tracer_lg','air*',             F,T, F,T,F,F,F, F,F, , ,
+OUT_OBJECT(281)  = 'tracer_lggp','air*',           F,T, F,T,F,F,F, F,F, , ,
+OUT_OBJECT(200)  = 'tracer_pdef_lg', 'MP_*',       F,T, T,F,F,F,F, F,F, , ,
+OUT_OBJECT(203)  = 'tracer_pdef_lggp', 'MP_*',     F,T, T,F,F,F,F, F,F, , ,
+OUT_OBJECT(206)  = 'qtimer', 'aps'                 F,F, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(207)  = 'qtimer', '*_ACC'               T,T, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(209)  = 'viso', '*'                     F,F, T,T,F,F,F, F,F, , ,
+
+/
+&CPL
+L_BM_ORIG_OUTPUT = F,
+TIMER_DEFAULT    = '',            6, 'hours',  'first', 0,
+!TIMER_DEFAULT    = '',            1, 'steps',  'first', 0,
+TIMER_CHANNEL(1) = 'qtimer',      1, 'steps',  'first', 0,
+
+TIMER_TNF_DEFAULT = '',           1, 'months', 'first', 0,
+TIMER_TNF_CHANNEL(1) = 'qtimer',  1, 'days',   'first', 0,
+/
+&CTRL_PNETCDF
+/

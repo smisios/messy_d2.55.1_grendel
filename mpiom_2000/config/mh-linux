@@ -1,0 +1,176 @@
+# Intel/Linux
+#
+ARCH       = LINUX
+CDIROOT    =
+#PRISMROOT  =
+PRISM_LIB  =
+
+unset NETCDF_LIB
+
+
+case "$mh_setup" in
+  sun)
+    NETCDFROOT = /sw/etch-ia32/netcdf-3.6.2-sun
+    MPIROOT =  /sw/etch-ia32/mpich2-1.0.7-sun
+    MPI_LIB = -lmpich
+    FC      = sunf95
+    FCFLAGS = -xtypemap=real:64,double:64,integer:32 -fpp \
+      -xfilebyteorder=big8:%all -O4 -dalign -openmp
+    ;;
+  nag)
+    NETCDFROOT = /sw/etch-ia32/netcdf-3.6.2-nag
+    MPIROOT =  /sw/etch-ia32/mpich2-1.0.7-nag
+    MPI_LIB = -lmpich -lpthread
+    FC      = nagf95
+    FCFLAGS =  -C=all -gline -nan -g -fpp \
+      -wmismatch=mpi_pack,mpi_unpack,mpi_bcast,mpi_send,mpi_recv,mpi_allreduce,\
+	mpi_isend,mpi_irecv,mpi_gather,mpi_sendrecv,streamwritevar \
+      -w=uda -w=alloctr -w=uep -w=x77
+    ;;
+  nag52)
+    NETCDFROOT = /sw/etch-ia32/netcdf-3.6.2-nag
+    MPIROOT    = /sw/etch-ia32/mpich2-1.0.8-nag
+    MPI_LIB    = -L$MPIROOT/lib -Wl,-Wl,,-rpath,,$MPIROOT/lib -lmpich -lrt -lpthread
+    MPI_C_LIB    = -L$MPIROOT/lib -Wl,-rpath,$MPIROOT/lib -lmpich -lrt -lpthread
+    FC      = nagfor
+    FCFLAGS = -C=all -gline -nan -g -fpp \
+      -wmismatch=mpi_pack,mpi_unpack,mpi_bcast,mpi_send,mpi_recv,mpi_allreduce,\
+        mpi_isend,mpi_irecv,mpi_gather,mpi_sendrecv,streamwritevar,\
+        nf_put_att_int \
+      -w=uda -w=alloctr -w=uep -w=x77
+    ;;
+  g95)
+    NETCDFROOT = /sw/etch-ia32/netcdf-3.6.2-gcc
+    MPIROOT = /sw/etch-ia32/mpich2-1.0.7-gnu
+    MPI_LIB = -lmpich -lpthread
+    FC      = g95
+    FCFLAGS = -cpp -fendian=big -fno_second_underscore
+    ;;
+  gfortran*)
+    NETCDFROOT = /sw/etch-ia32/netcdf-3.6.2-gcc
+    MPIROOT = /sw/etch-ia32/mpich2-1.0.7-gnu
+    MPI_LIB = -lmpich -lpthread
+    FC     = gfortran
+    FCFLAGS = -fconvert=big-endian -x f95-cpp-input \
+      -std=f2003 \
+      -mtune=native -march=i686 -mfpmath=sse -msse2 -mcx16 -mstackrealign
+    gfortran_version=`gfortran --version | head -n 1 | sed 's/.* \([0-9.]*\)/\1/'`
+    case "$gfortran_version" in
+      4.1|4.1.*|4.2|4.2.*)
+        CFLAGS = -DNAGf90Fortran
+        ;;
+      *)
+        CFLAGS = -DpgiFortran
+        ;;
+    esac
+    case "$mh_setup" in
+      *-debian_lenny_syslibs*)
+        unset NETCDFROOT
+        NETCDF_INCLUDE="-I/usr/include"
+	MPIROOT = /usr/lib/openmpi
+	MPI_LIB = -L$MPIROOT/lib -pthread -lmpi_f90 -lmpi_f77 -lmpi
+	MPI_INCLUDE = -I$MPIROOT/include -I$MPIROOT/lib
+        ;;
+    esac
+    case "$mh_setup" in
+      *-noopt*)
+        ;;
+      *-opt|*-opt-*|*)
+        CFLAGS = -O3 $CFLAGS
+        FCFLAGS = -O3 $FCFLAGS
+        ;;
+    esac
+    # OpenMP?
+    case "$mh_setup" in
+      *-omp|*-omp-*)
+        # openmp is currently not tested
+        FCFLAGS=$FCFLAGS -fopenmp
+        ;;
+    esac
+    case "$mh_setup" in
+      *-debug*)
+        FCFLAGS = -Wnonstd-intrinsics -Waliasing -Wampersand \
+          -Wline-truncation -Wcharacter-truncation -Wtabs -Wunderflow \
+          -Wconversion -g $FCFLAGS
+	CFLAGS = -g $CFLAGS
+        LDFLAGS = -g${LDFLAGS+ $LDFLAGS}
+        ;;
+      *)
+        CFLAGS = -momit-leaf-frame-pointer -fomit-frame-pointer $CFLAGS
+        FCFLAGS = -momit-leaf-frame-pointer -fomit-frame-pointer $FCFLAGS
+        ;;
+    esac
+    ;;
+  pgi|pgi-*)
+    NETCDFROOT = /sw/etch-ia32/netcdf-3.6.2-pgi
+    MPIROOT = /sw/etch-ia32/mpich2-1.0.7-pgi
+    FC=pgf95
+    FCFLAGS=-Mpreprocess -Mbyteswapio -traceback -g -C
+    ;;
+  ifort|ifort-*|intel|intel-*|*)
+    NETCDFROOT = /sw/etch-ia32/netcdf-3.6.2-intel
+    MPIROOT =  /sw/etch-ia32/mpich2-1.0.7-intel
+    MPI_LIB = -lmpich -lrt -lpthread
+    FC      = ifort
+    FCFLAGS = -mieee-fp -pc64 -fpe0 -i4 -heap-arrays \
+              -convert big_endian -fpp
+    CFLAGS = -DNAGf90Fortran
+#    LDFLAGS = -static-intel
+    AR = xiar
+    case "$mh_setup" in
+      *-numstable|*-numstable-*)
+        FCFLAGS = $FCFLAGS -prec-div
+	;;
+    esac
+    case "$mh_setup" in
+      *-noopt*)
+        FCFLAGS = $FCFLAGS -O0
+        ;;
+      *-opt|*)
+        CFLAGS = $CFLAGS -O
+        FCFLAGS = $FCFLAGS -O3 -msse4.1
+        ;;
+    esac
+    # Inter-procedural optimization - on by default
+    case "$mh_setup" in
+      *-noipo|*-noipo-*)
+        :
+        ;;
+      *-ipo|-ipo-*|*)
+        FCFLAGS = $FCFLAGS -ipo
+        FCLDFLAGS = ${FCLDFLAGS+$FCLDFLAGS }-ipo
+        # gcc cannot link with -ipo objects!
+        ac_cv_fc_mangling=lower case, underscore, no extra underscore
+        ;;
+    esac
+    # OpenMP?
+    case "$mh_setup" in
+      *-omp|*-omp-*)
+        # openmp is currently not tested
+        FCFLAGS = $FCFLAGS -openmp
+        ;;
+    esac
+    # insert debugging symbols?
+    case "$mh_setup" in
+      *-debug*)
+        CFLAGS  = ${CFLAGS+$CFLAGS }-g
+        FCFLAGS = $FCFLAGS -g -debug full -check -traceback
+        FCLDFLAGS = ${FCLDFLAGS+$FCLDFLAGS }-g -debug full -check -traceback
+        LDFLAGS = $LDFLAGS -g
+        ;;
+    esac
+    ;;
+esac
+
+CC       = gcc
+CFLAGS   = ${CFLAGS--O -DNAGf90Fortran}
+
+AR = ${AR-ar}
+AS = as
+
+
+SRCDIRS  =
+LIBS     =
+INCLUDES =
+
+FPP_DEFOPT = -D

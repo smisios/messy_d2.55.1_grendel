@@ -1,0 +1,302 @@
+! -*- f90 -*-
+&CTRL
+! ---------------------------------------------------------------------
+! EXPERIMENT NAME
+! ---------------------------------------------------------------------
+EXP_NAME='$EXP_NAME',
+EXEC_CHECKSUM='$EXEC_CHECKSUM',
+! ---------------------------------------------------------------------
+! # FLUSH I/O BUFFER IN EVERY TIME STEP (DEFAULT: T (true))
+! # NOTE: F (false) might increase the overall performance
+!L_FLUSH_IOBUFFER = F,
+I_VERBOSE_LEVEL = 0,
+! ---------------------------------------------------------------------
+! # ADD NEW OUTPUT CHANNELS (MAX. 50)
+! ---------------------------------------------------------------------
+! ---------------------------------------------------------------------
+! # ADD NEW CHANNEL OBJECT REFERENCES (MAX. 500)
+! # NOTES: 
+! #  - TARGET CHANNEL NAME MAY CONTAIN WILDCARDS '?' AND '*'
+! #  - TARGET OBJECT NAME SET TO SOURCE OBJECT NAME, IF ''
+! ---------------------------------------------------------------------
+!!$ADD_REF(1)        = 'g3b',   'aps',     '*',        '',
+!!$ADD_REF(2)        = 'g3b',   'geosp',   'tracer_gp','',
+!!$ADD_REF(3)        = 'sp',    'lsp',     'tracer_gp','',
+!!$ADD_REF(4)        = 'geoloc','gboxarea','tracer_gp','',
+!
+!ADD_REF(10)       = 'gl',   'q',        'g3b', '',
+!ADD_REF(11)       = 'gl',   'xl',       'g3b', '',
+!ADD_REF(12)       = 'gl',   'xi',       'g3b', '',
+!
+ADD_REF(1) = 'grid_def', 'philon_2d', '*', 'geolon',
+ADD_REF(2) = 'grid_def', 'philat_2d', '*', 'geolat',
+ADD_REF(3) = 'COSMO_ORI', 'RLAT', 'tracer_gp', '',
+ADD_REF(4) = 'COSMO_ORI', 'RLON', 'tracer_gp', '',
+ADD_REF(5) = 'COSMO_ORI', 'RLAT', 'COSMO', '',
+ADD_REF(6) = 'COSMO_ORI', 'RLON', 'COSMO', '',
+ADD_REF(7) = 'tracer_gp', 'Rn222', 'dradon', '',
+ADD_REF(8) = 'COSMO_ORI', 'VCOORD', 'COSMO*', '', !ub_ch_20100617
+!
+! ---------------------------------------------------------------------
+! # SET DEFAULT OUTPUT AND RESTART HANDLING
+!      - ''
+!      - OUTPUT-FILETYPE, RERUN-FILETYPE, NO. OF STEPS PER OUTPUT-FILE,
+!      - RERUN, IGNORE, INST, AVE, STD, MIN, MAX, CNT, CAV, RANGE(2)
+! # NOTES:
+! #    IGNORE = T  FORCES THE MODEL TO IGNORE POTENTIAL lrestreq FLAGS
+! #                FOR PSEUDO-INITIAL RUNS FROM RESTART FILES
+! ---------------------------------------------------------------------
+OUT_DEFAULT     = '', 2, 2, 1, F,F, F,F,F,F,F, F,F, , ,
+! ---------------------------------------------------------------------
+! # OUTPUT PRECISION (ASCII, (P)NETCDF, (P)NETCDF, GRIB, HDF4, HDF5)
+! # NOTES: - ONLY (P)NETCDF CURRENTLY IMPLEMENTED;
+! #        - (P)NETCDF: 1=NF(90)_FLOAT; 2=NF(90)_DOUBLE
+OUT_PREC = 2, 2, 2, 2, 2, 2
+! ---------------------------------------------------------------------
+! # SET CHANNEL SPECIFIC DEFAULT OUTPUT AND RESTART HANDLING (MAX. 500)
+!      - channel-name
+!      - OUTPUT-FILETYPE, RERUN-FILETYPE, NO. OF STEPS PER OUTPUT-FILE,
+!      - RERUN, IGNORE, INST, AVE, STD, MIN, MAX, CNT, CAV, RANGE(2)
+! # NOTE: IF NO. OF STEPS PER OUTPUT-FILE <= 0, THE EVENT TRIGGER
+!         (CPL-NAMELIST, TIMER_TNF BELOW) CONTROLS THE FILE CONTENT
+! ---------------------------------------------------------------------
+! ECHAM5 STANDARD
+! - NO OUTPUT
+!!$OUT_CHANNEL(  1)   = 'geoloc'    2, 2, 10, F,F, F,F,F,F,F, F,F, , ,
+!!$OUT_CHANNEL(  2)   = 'sp'        2, 2, 10, F,F, F,F,F,F,F, F,F, , ,
+!!$OUT_CHANNEL(  3)   = 'ls'        2, 2, 10, F,F, F,F,F,F,F, F,F, , ,
+!!$OUT_CHANNEL(  4)   = 'f'         2, 2, 10, F,F, F,F,F,F,F, F,F, , ,
+!!$OUT_CHANNEL(  5)   = 'g1a'       2, 2, 10, F,F, F,F,F,F,F, F,F, , ,
+!!$OUT_CHANNEL(  6)   = 'g1b'       2, 2, 10, F,F, F,F,F,F,F, F,F, , ,
+!!$OUT_CHANNEL(  7)   = 'g2a'       2, 2, 10, F,F, F,F,F,F,F, F,F, , ,
+!!$OUT_CHANNEL(  8)   = 'g2b'       2, 2, 10, F,F, F,F,F,F,F, F,F, , ,
+!!$OUT_CHANNEL(  9)   = 'gl'        2, 2, 10, F,F, F,F,F,F,F, F,F, , ,
+!!$OUT_CHANNEL( 10)   = 'scnbuf'    2, 2, 10, F,F, F,F,F,F,F, F,F, , ,
+!!$! - OUTPUT
+!!$OUT_CHANNEL( 11)   = 'g3b'       2, 2, 10, F,F, T,F,F,F,F, F,F, , ,
+!!$! GRIDPOINT TRACER OUTPUT
+OUT_CHANNEL( 12)   = 'tracer_gp',      2, 2, 1, F,F, T,F,F,F,F, F,F, , ,
+OUT_CHANNEL( 13)   = 'tracer_gp_te',   2, 2, 10, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL( 14)   = 'tracer_gp_m1',   2, 2, 10, F,F, T,F,F,F,F, F,F, , ,
+OUT_CHANNEL( 15)   = 'tracer_gp_x*',   2, 2, 10, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL( 16)   = 'tracer_pdef_gp', 2, 2, 10, F,F, F,T,F,F,F, F,F, , ,
+!!$! LAGRANGIAN TRACER OUTPUT
+!!$OUT_CHANNEL( 20)   = 'tracer_lg',      2, 2, 10, F,F, T,F,F,F,F, F,F, , ,
+!!$OUT_CHANNEL( 21)   = 'tracer_lg_te',   2, 2, 10, F,F, F,F,F,F,F, F,F, , ,
+!!$OUT_CHANNEL( 22)   = 'tracer_lg_m1',   2, 2, 10, F,F, F,F,F,F,F, F,F, , ,
+!!$OUT_CHANNEL( 23)   = 'tracer_lg_x*',   2, 2, 10, F,F, F,F,F,F,F, F,F, , ,
+!!$OUT_CHANNEL( 24)   = 'tracer_pdef_lg', 2, 2, 10, F,F, F,T,F,F,F, F,F, , ,
+!!$!
+!!$OUT_CHANNEL( 25)   = 'tracer_lggp',    2, 2, 10, F,F, T,F,F,F,F, F,F, , ,
+!!$!OUT_CHANNEL( 25)   = 'tracer_lggp',   2, 2, 10, F,F, F,F,F,F,F, F,T, 0.0, ,
+!!$OUT_CHANNEL( 26)   = 'tracer_pdef_lggp', 2, 2, 10, F,F, F,T,F,F,F, F,F, , ,
+!!$!
+!!$! MESSy SUBMODELS
+!!$OUT_CHANNEL( 30)     = 'ECHAM5',      2, 2, 10, F,F, T,F,F,F,F, F,F, , ,
+OUT_CHANNEL(40)      = 'COSMO_ORI',     2, 2, 1, F,F, T,F,F,F,F, F,F, , ,
+OUT_CHANNEL( 41)     = 'COSMO',         2, 2, 1, F,F, T,F,F,F,F, F,F, , ,
+OUT_CHANNEL( 42)     = 'COSMOm*',        2, 2, 10, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL( 43)     = 'COSMOc*',        2, 2, 10, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL( 44)     = 'COSMOp*',        2, 2, 10, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL( 45)     = 'COSMOz*',        2, 2, 10, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL( 46)     = 'COSMOs*',        2, 2, 10, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL( 47)     = 'MMDC4',           2, 2, 1, F,F, T,F,F,F,F, F,F, , ,
+OUT_CHANNEL( 48)     = 'MMDC4_IN',        2, 2, 1, F,F, T,F,F,F,F, F,F, , ,
+!!$OUT_CHANNEL( 52)     = 'airsea',      2, 2, 10, F,F, T,F,F,F,F, F,F, , ,
+!!$OUT_CHANNEL( 53)     = 'airsea_gp',   2, 2, 10, F,F, T,F,F,F,F, F,F, , ,
+!!$OUT_CHANNEL( 54)     = 'attila',      2, 2, 10, F,F, T,F,F,F,F, F,F, , ,
+!!$OUT_CHANNEL( 57)     = 'cloud',       2, 2, 10, F,F, T,F,F,F,F, F,F, , ,
+!!$OUT_CHANNEL( 58)     = 'convect',     2, 2, 10, F,F, T,F,F,F,F, F,F, , ,
+OUT_CHANNEL( 59)     = 'cvtrans',     2, 2, 10, F,F, F,F,F,F,F, F,F, , ,
+!!$OUT_CHANNEL( 60)     = 'd14co_gp',    2, 2, 10, F,F, F,T,T,F,F, F,F, , ,
+!!$OUT_CHANNEL( 61)     = 'd14co_lg',    2, 2, 10, F,F, F,T,T,F,F, F,F, , ,
+OUT_CHANNEL( 62)     = 'dradon',      2, 2, 10, F,F, F,T,T,F,F, F,F, , ,
+!OUT_CHANNEL( 62)     = 'dradon',      2, 2, 10, F,F, F,F,F,F,F, F,F, , ,
+!!$OUT_CHANNEL( 66)     = 'h2o*',        2, 2, 10, F,F, F,F,F,F,F, F,F, , ,
+!!$OUT_CHANNEL( 68)     = 'jval_gp',     2, 2, 10, F,F, F,F,F,F,F, F,F, , ,
+!!$OUT_CHANNEL( 69)     = 'jval_lg',     2, 2, 10, F,F, T,F,F,F,F, F,F, , ,
+!!$OUT_CHANNEL( 70)     = 'jval_diag',   2, 2, 10, F,F, T,F,F,F,F, F,F, , ,
+!!$OUT_CHANNEL( 71)     = 'lggp_gp',     2, 2, 10, F,F, T,F,F,F,F, F,F, , ,
+!!$OUT_CHANNEL( 72)     = 'lggp_lg',     2, 2, 10, F,F, T,F,F,F,F, F,F, , ,
+!!$OUT_CHANNEL( 73)     = 'lgtmix',      2, 2, 10, F,F, F,T,T,F,F, F,F, , ,
+!!$OUT_CHANNEL( 74)     = 'lgvflux',     2, 2, 10, F,F, F,T,T,F,F, F,F, , ,
+!!$OUT_CHANNEL( 75)     = 'lnox*',       2, 2, 10, F,F, F,T,F,F,F, F,F, , ,
+!!$OUT_CHANNEL( 76)     = 'lnox_lg',     2, 2, 10, F,F, F,T,T,F,F, F,F, , ,
+!!$OUT_CHANNEL( 77)     = 'm7',          2, 2, 10, F,F, F,F,F,F,F, F,F, , ,
+!!$OUT_CHANNEL( 78)     = 'mecca_gp',    2, 2, 10, F,F, T,F,F,F,F, F,F, , ,
+!!$OUT_CHANNEL( 79)     = 'mecca_lg',    2, 2, 10, F,F, T,F,F,F,F, F,F, , ,
+!!$OUT_CHANNEL( 80)     = 'mecca_aero',  2, 2, 10, F,F, T,F,F,F,F, F,F, , ,
+!!$OUT_CHANNEL( 83)     = 'mmforce',     2, 2, 10, F,F, F,F,F,F,F, F,F, , ,
+!!$OUT_CHANNEL( 84)     = 'msbm',        2, 2, 10, F,F, T,F,F,F,F, F,F, , ,
+OUT_CHANNEL( 85)     = 'offemis',      2, 2, 10, F,F, T,F,F,F,F, F,F, , ,
+OUT_CHANNEL( 89)     = 'ptrac_gp',       2, 2, 10, F,F, T,F,F,F,F, F,F, , ,
+!!$OUT_CHANNEL( 90)     = 'qbo',         2, 2, 10, F,F, T,F,F,F,F, F,F, , ,
+!!$OUT_CHANNEL( 93)     = 'scav',        2, 2, 10, F,F, F,F,F,F,F, F,F, , ,
+!!$OUT_CHANNEL( 94)     = 'scout_*',     2, 2, 10, F,F, T,F,F,F,F, F,F, , ,
+!!$OUT_CHANNEL( 95)     = 'sedi',        2, 2, 10, F,F, T,F,F,F,F, F,F, , ,
+!!$OUT_CHANNEL( 96)     = 's4d_*',       2, 2, 999, F,F, T,F,F,F,F, F,F, , ,
+!!$OUT_CHANNEL( 97)     = 'sorbit_*',    2, 2, 10, F,F, T,F,F,F,F, F,F, , ,
+!!$OUT_CHANNEL( 98)     = 'spe',         2, 2, 10, F,F, F,T,F,F,F, F,F, , ,
+!!$!## OUT_CHANNEL( 99) = 'timepos',     2, 2, 10, F,F, F,F,F,F,F, F,F, , ,
+!!$OUT_CHANNEL(100)     = 'tnudge_gp',   2, 2, 10, F,F, F,T,F,F,F, F,F, , ,
+!!$OUT_CHANNEL(101)     = 'tnudge_lg',   2, 2, 10, F,F, F,T,F,F,F, F,F, , ,
+!!$!## OUT_CHANNEL(102) = 'trexp',       2, 2, 10, F,F, F,F,F,F,F, F,F, , ,
+!!$OUT_CHANNEL(103)     = 'tropop',      2, 2, 10, F,F, T,F,F,F,F, F,F, , ,
+!!$OUT_CHANNEL(104)     = 'viso',        2, 2, 10, F,F, T,F,F,F,F, F,F, , ,
+!!$
+OUT_CHANNEL(150)     = 'import*',       2, 2, 10, F,F, T,F,F,F,F, F,F, , ,
+OUT_CHANNEL(151)     = 'mmd*',       2, 2, 100, F,F, T,F,F,F,F, F,F, , ,
+!!$OUT_CHANNEL(150)     = 'COSMO',       2, 2, 10, F,F, T,F,F,F,F, F,F, , ,
+!!$!
+!!$! ---------------------------------------------------------------------
+!!$! # SET CHANNEL OBJECT SPECIFIC OUTPUT AND RESTART HANDLING (MAX. 1000)
+!!$!      - channel-name
+!!$!      - object-name
+!!$!      - RERUN, IGNORE, INST, AVE, STD, MIN, MAX, CNT, CAV, RANGE(2)
+!!$! ---------------------------------------------------------------------
+!
+!
+OUT_OBJECT(700) = 'COSMO_ORI',  'U',     F,F, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(701) = 'COSMO_ORI',  'V',     F,F, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(702) = 'COSMO_ORI',  'W',     F,F, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(703) = 'COSMO_ORI',  'T',     F,F, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(710) = 'COSMO_ORI',  'PP',     F,F, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(711) = 'COSMO_ORI',  'T_SO',   F,F, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(712) = 'COSMO_ORI',  'W_SO',      F,F, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(713) = 'COSMO_ORI',  'W_SO_ICE',  F,F, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(714) = 'COSMO_ORI',  'U_BD',      F,F, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(715) = 'COSMO_ORI',  'V_BD',      F,F, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(716) = 'COSMO_ORI',  'W_BD',      F,F, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(717) = 'COSMO_ORI',  'T_BD',      F,F, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(718) = 'COSMO_ORI',  'QV_BD',     F,F, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(719) = 'COSMO_ORI',  'QS_BD',     F,F, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(720) = 'COSMO_ORI',  'QR_BD',     F,F, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(721) = 'COSMO_ORI',  'QG_BD',     F,F, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(722) = 'COSMO_ORI',  'QI_BD',     F,F, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(723) = 'COSMO_ORI',  'QC_BD',     F,F, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(724) = 'COSMO_ORI',  'PP_BD',     F,F, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(725) = 'COSMO_ORI',  'TKE',       F,F, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(726) = 'COSMO_ORI',  'TT_LHEAT',  F,F, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(727) = 'COSMO_ORI',  'RLONTOT',   F,F, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(728) = 'COSMO_ORI',  'RLATTOT',   F,F, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(729) = 'COSMO_ORI',  'TGRLAT',    F,F, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(730) = 'COSMO_ORI',  'CRLAT',     F,F, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(731) = 'COSMO_ORI',  'ACRLAT',    F,F, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(732) = 'COSMO_ORI',  'PS',        F,F, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(733) = 'COSMO_ORI',  'T_SNOW',    F,F, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(734) = 'COSMO_ORI',  'T_S',       F,F, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(735) = 'COSMO_ORI',  'T_G',       F,F, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(736) = 'COSMO_ORI',  'QV_S',      F,F, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(737) = 'COSMO_ORI',  'W_SNOW',    F,F, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(738) = 'COSMO_ORI',  'W_I',       F,F, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(739) = 'COSMO_ORI',  'H_SNOW',    F,F, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(740) = 'COSMO_ORI',  'RHO_SNOW',  F,F, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(741) = 'COSMO_ORI',  'T_M',       F,F, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(742) = 'COSMO_ORI',  'W_G1',      F,F, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(743) = 'COSMO_ORI',  'W_G2',      F,F, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(744) = 'COSMO_ORI',  'W_G3',      F,F, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(745) = 'COSMO_ORI',  'T_ICE',     F,F, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(746) = 'COSMO_ORI',  'T_MNW_LK',  F,F, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(747) = 'COSMO_ORI',  'T_WML_LK',  F,F, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(748) = 'COSMO_ORI',  'T_BOT_LK',  F,F, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(749) = 'COSMO_ORI',  'T_B1_LK',   F,F, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(750) = 'COSMO_ORI',  'C_T_LK',    F,F, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(751) = 'COSMO_ORI',  'H_ICE',     F,F, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(752) = 'COSMO_ORI',  'H_ML_LK',   F,F, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(753) = 'COSMO_ORI',  'H_B1_LK',   F,F, F,F,F,F,F, F,F, , ,
+!!$OUT_OBJECT(754) = 'COSMO_ORI',  '',     F,F, F,F,F,F,F, F,F, , ,
+!!$OUT_OBJECT(700) = 'COSMO_ORI',  '',     F,F, F,F,F,F,F, F,F, , ,
+!OUT_OBJECT(701) = 'COSMO_c',  'FC',      F,F, F,F,F,F,F, F,F, , ,
+!OUT_OBJECT(702) = 'COSMO_c',  'HSURF',   F,F, F,F,F,F,F, F,F, , ,
+!OUT_OBJECT(703) = 'COSMO_c',  '*4D',     F,F, F,F,F,F,F, F,F, , ,
+!!$OUT_OBJECT(704) = 'COSMO_c',  'RLON',     F,F, F,F,F,F,F, F,F, , ,
+!!$OUT_OBJECT(705) = 'COSMO_c',  'RLAT',     F,F, F,F,F,F,F, F,F, , ,
+!!$OUT_OBJECT(805) = 'COSMO_m',  'VMAX_10M',  F,F, F,F,F,F,F, F,F, , ,
+!!$OUT_OBJECT(810) = 'COSMO_m',  '*4D',     F,F, F,F,F,F,F, F,F, , ,
+!!$OUT_OBJECT(811) = 'COSMO_m',  'PMSL',    F,F, F,F,F,F,F, F,F, , ,
+!!$OUT_OBJECT(812) = 'COSMO_m',  'TOT_PREC',    F,F, F,F,F,F,F, F,F, , ,
+!!$OUT_OBJECT(813) = 'COSMO_m',  'HTOP_*',    F,F, F,F,F,F,F, F,F, , ,
+!!$OUT_OBJECT(814) = 'COSMO_m',  'HBAS_*',    F,F, F,F,F,F,F, F,F, , ,
+!!$OUT_OBJECT(815) = 'COSMO_m',  '*_ANAI',    F,F, F,F,F,F,F, F,F, , ,
+!!$OUT_OBJECT(816) = 'COSMO_m',  'DBZ_*',    F,F, F,F,F,F,F, F,F, , ,
+!!$OUT_OBJECT(817) = 'COSMO_m',  'RUNOFF*',    F,F, F,F,F,F,F, F,F, , ,
+!!$OUT_OBJECT(818) = 'COSMO_m',  'RAIN_GSP',    F,F, F,F,F,F,F, F,F, , ,
+!!$OUT_OBJECT(819) = 'COSMO_m',  'RAIN_GSP',    F,F, F,F,F,F,F, F,F, , ,
+!!$OUT_OBJECT(820) = 'COSMO_m',  'SNOW_GSP',    F,F, F,F,F,F,F, F,F, , ,
+!!$OUT_OBJECT(821) = 'COSMO_m',  'RAIN_CON',    F,F, F,F,F,F,F, F,F, , ,
+!!$OUT_OBJECT(822) = 'COSMO_m',  'SNOW_CON',    F,F, F,F,F,F,F, F,F, , ,
+!!$OUT_OBJECT(823) = 'COSMO_m',  'FRESHSNW',    F,F, F,F,F,F,F, F,F, , ,
+!!$!OUT_OBJECT(817) = 'COSMO_m',  'RUNOFF*',    F,F, F,F,F,F,F, F,F, , ,
+!!$!OUT_OBJECT(817) = 'COSMO_m',  'RUNOFF*',    F,F, F,F,F,F,F, F,F, , ,
+!!$OUT_OBJECT(850) = 'COSMO_p',  '*4D',     F,F, F,F,F,F,F, F,F, , ,
+!!$OUT_OBJECT(860) = 'COSMO_z',  '*4D',     F,F, F,F,F,F,F, F,F, , ,
+!----------------------------------------------------------------------------
+OUT_OBJECT(810) = 'MMDC4',  'geoloni_lm',   F,F, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(811) = 'MMDC4',  'loni_lm',      F,F, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(812) = 'MMDC4',  'geolati_lm',   F,F, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(813) = 'MMDC4',  'lati_lm',      F,F, F,F,F,F,F, F,F, , ,
+!----------------------------------------------------------------------------
+OUT_OBJECT(920) = 'COSMO', 'tm1_BD',      F,F, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(921) = 'COSMO', 'ppm1_BD',     F,F, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(922) = 'COSMO', 'um1_BD',      F,F, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(923) = 'COSMO', 'vm1_BD',      F,F, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(924) = 'COSMO', 'qv_BD',       F,F, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(925) = 'COSMO', 'qc_BD',       F,F, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(926) = 'COSMO', 'qi_BD',       F,F, F,F,F,F,F, F,F, , ,
+!!$OUT_OBJECT(927) = 'COSMO', 'massfu',       T,F, F,F,F,F,F, F,F, , ,
+!!$OUT_OBJECT(928) = 'COSMO', 'massfd',       T,F, F,F,F,F,F, F,F, , ,
+!!$OUT_OBJECT(929) = 'COSMO', 'u_entr',       T,F, F,F,F,F,F, F,F, , ,
+!!$OUT_OBJECT(930) = 'COSMO', 'd_entr',       T,F, F,F,F,F,F, F,F, , ,
+!!$OUT_OBJECT(931) = 'COSMO', 'u_detr',       T,F, F,F,F,F,F, F,F, , ,
+!!$OUT_OBJECT(932) = 'COSMO', 'd_detr',       T,F, F,F,F,F,F, F,F, , ,
+!!$OUT_OBJECT(933) = 'COSMO', 'cv_precflx',       T,F, F,F,F,F,F, F,F, , ,
+!!$OUT_OBJECT(934) = 'COSMO', 'cv_snowflx',       T,F, F,F,F,F,F, F,F, , ,
+!OUT_OBJECT(935) = 'COSMO', 'cv_iwc',       T,F, F,F,F,F,F, F,F, , ,
+!OUT_OBJECT(936) = 'COSMO', 'cv_lwc',       T,F, F,F,F,F,F, F,F, , ,
+!OUT_OBJECT(937) = 'COSMO', 'cv_rform',       T,F, F,F,F,F,F, F,F, , ,
+!OUT_OBJECT(938) = 'COSMO', 'cv_sform',       T,F, F,F,F,F,F, F,F, , ,
+OUT_OBJECT(950) = 'mmd*', 'Test_Ar',       F,F, F,F,F,F,F, F,F, , ,
+/
+! #########################################################################
+&CPL
+! --------------------------------------------- 
+! ENABLE ADDITIONAL BASEMODEL  OUTPUT ?
+! -> OUTPUT TIME INTERVAL => PUTDATA in ECHAM5.nml for ECHAM5
+!                         => ncomb/hcomb etc in GRIBOUT in INPUT_IO for COSMO 
+!L_BM_ORIG_OUTPUT = T,
+! --------------------------------------------- 
+! --------------------------------------------- 
+! SET OUTPUT INTERVALS FOR ALL CHANNELS (DEFAULT + INDIVIDUAL)
+! NOTE: CHANNEL OUTPUT OF tdiag, tdiag_gp, nudg, nudg_gp
+!       WILL BE SYNCHRONIZED TO THE SHORTEST OUTPUT INTERVAL (IF PRESENT !)
+! NOTE: First match (wildcard) counts 
+! --------------------------------------------- 
+TIMER_DEFAULT    = '',     2, 'months', 'last', 0, 
+!IMER_DEFAULT    = '',     1, 'hours',  'first', 0,
+!TIMER_DEFAULT    = '',     20, 'minutes',  'first', 0,
+!TIMER_DEFAULT    = '',      1, 'steps',  'first', 0,
+!TIMER_DEFAULT    = '',      6, 'hours',  'first', 0,
+!TIMER_DEFAULT    = '',     1, 'days',  'first', 0,
+! --------------------------------------------- 
+!TIMER_CHANNEL(  1) = 'qtimer', 1, 'hours',   'first', 0,  
+TIMER_CHANNEL(  1) = 'COSMO', 2, 'hours',   'first', 0,  
+!TIMER_CHANNEL(  2) = 'COSMOc*', 7, 'steps',   'first', 0, 
+!TIMER_CHANNEL(  3) = 'COSMOm*', 3 'steps',   'first', 0, 
+!TIMER_CHANNEL(  4) = 'COSMO*', 12, 'minutes',   'first', 0,  ! qqq
+!TIMER_CHANNEL(  5) = 'COSMOz*', 1, 'months',   'first', 0,  ! qqq
+!TIMER_CHANNEL(  6) = 'COSMOs*', 11, 'steps',   'first', 0,  ! qqq
+!TIMER_CHANNEL(  7) = 'COSMO_ORI', 3, 'steps',   'first', 0,  ! qqq
+!TIMER_CHANNEL(  2) = 'MMDC4*', 3, 'steps',   'first', 0,  ! qqq
+!TIMER_CHANNEL(  2) = 'mmdclnt', 1, 'steps',   'first', 0,  ! qqq
+!TIMER_CHANNEL(  3) = 'mmdserv', 6, 'minutes',   'first', 0,  ! qqq
+!TIMER_CHANNEL(  3) = 'import*', 9, 'steps',   'first', 0,  ! qqq
+TIMER_CHANNEL(  4) = 'tracer*', 1, 'hours',   'first', 0,  ! qqq
+TIMER_CHANNEL(  3) = 'mmd*', 3, 'steps',   'first', 0,  ! qqq
+/
+&CTRL_PNETCDF
+!---------------------------------------------------------------------------
+!MPI_IO_HINT(1) = 'IBM_largeblock_io','true',
+!MPI_IO_HINT(2) = 'IBM_io_buffer_size','2949120',
+!MPI_IO_HINT(3) = 'IBM_sparse_access','true',
+!---------------------------------------------------------------------------
+/

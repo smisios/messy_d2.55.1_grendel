@@ -1,0 +1,176 @@
+# -*- Makefile -*- Time-stamp: <2019-02-11 14:46:45 joec_pa>
+###############################################################################
+##### PLATFORM SPECIFIC SETTINGS (LINUX64) ####################################
+###############################################################################
+ARCH       = LINUX64
+
+###########################################################################
+### DEFAULTS
+###########################################################################
+#### DEFAULT COMPILE MODE
+if test -z "$RUNMODE" ; then
+   RUNMODE=PRODUCTION
+fi
+
+#### SET DEFAULT PROFILING MODE
+if test -z "$PROFILEMODE" ; then
+   PROFILEMODE=NONE
+fi
+
+##### TOOLS
+#AR       = ar
+#ARFLAGS  = cvr
+#NMFLAGS  =
+
+ ##### F95 EXTENSIONS
+    DEFOPT   = -D
+    MODOPT   = -I
+
+  #########################################################################
+  ### ANYTHING ELSE ... new architecture configuration
+  #########################################################################
+
+    # Compiler choice
+    TMPF90=`mpif90 -show | awk '{print $1}'`
+    echo $TMPF90
+    case $TMPF90 in
+	pgf*)
+	    COMPILER=PGI
+	    ;;
+	ifort*)
+	    COMPILER=INTEL
+	    ;;
+	*)
+	    ERRSTR='Error: no openmpi module loaded!'
+	    ;;
+     esac
+
+
+    case $PROFILEMODE in
+	NONE*)
+	    # default: no profiling (nothing to do)
+	    PREF90 =
+	    ;;
+	SCALASCA*)
+	    # corresponding module must be loaded
+	    PREF90 = scorep
+	    ;;
+	VAMPIR*)
+	    # corresponding module must be loaded
+	    PREF90 = vtf90 -vt:mpi -vt:f90
+	    ;;
+	*)
+	    ERRSTR='Error: unknown profiling mode selected! To solve ./configure [options] PROFILEMODE=SCALASCA|VAMPIR'
+	    ;;
+    esac
+
+    case $COMPILER in
+
+	INTEL)
+	    COMPILER = INTEL
+	    CXX      = g++
+	    CC       = $MPICC
+	    CFLAGS   = -g -O  -Df2cFortran
+	    F90      = $PREF90 mpif90
+	    F90VERS  = `$F90 --version | awk '{if (NR == 1) print}'`
+	    F90ADDOPT= -xHost -liomp5
+	    FC       = mpif90
+	    FFLAGS = -fpp -O2  -fp-model precise $F90ADDOPT
+	    ##### F95 COMPILER FLAG TO OBTAIN DOUBLE PRECISION
+	    F90R8    = -autodouble
+	    ##### F95 COMPILER FLAGS
+	    case $RUNMODE in
+		DEBUGOPT*)
+		    F90FLAGS =  -g -traceback -debug all -check all -fpp -O2 -fp-model precise -fp-speculation=safe -fno-alias -no-ansi-alias -lpthread -save-temps
+		    ;;
+		DEBUG*)
+		    F90FLAGS =  -g -traceback -debug all -check all -fpp -O0 -fp-model precise -fp-speculation=safe -fno-alias -no-ansi-alias -lpthread -save-temps
+		    ;;
+		PRODUCTION*)
+		    F90FLAGS = -fpp -O2 -sox -cpp -D__INTEL_v11 -fp-model strict -align all -fno-alias -lpthread -save-temps -no-wrap-margin $F90ADDOPT
+		    ;;
+		*)
+		    ERRSTR='Error: wrong run-time mode selected! To solve ./configure [options] RUNMODE=DEBUG|DEBUGOPT|PRODUCTION'
+	    esac
+	    ;;
+	PGI)
+	    CXX      = g++
+	    CC       = $MPICC
+	    CFLAGS   = -g -O  -Df2cFortran
+	    F90      = $PREF90 mpif90
+	    F90VERS  = `$F90 --version | awk '{if (NR == 1) print}'`
+	    F90ADDOPT= -Mllvm
+	    FC       = mpif90
+	    FFLAGS = -Mpreprocess -O2  -Kieee $F90ADDOPT
+	    ##### F95 COMPILER FLAG TO OBTAIN DOUBLE PRECISION
+	    F90R8    = -r8
+	    ##### F95 COMPILER FLAGS
+	    case $RUNMODE in
+		DEBUGOPT*)
+		    F90FLAGS =  -g -traceback -C -Mpreprocess -O2 -Kieee -lpthread
+		    ;;
+		DEBUG*)
+		    F90FLAGS =  -g -traceback -C  -Mpreprocess  -O0 -Kieee  -lpthread
+		    ;;
+		PRODUCTION*)
+		    F90FLAGS = -Mpreprocess -O2 -lpthread  $F90ADDOPT
+		    ;;
+		*)
+		    ERRSTR='Error: wrong run-time mode selected! To solve ./configure [options] RUNMODE=DEBUG|DEBUGOPT|PRODUCTION'
+		    ;;
+	    esac
+	    ;;
+	 *)
+	    ERRSTR='Error: no or wrong compiler suite selected! To solve use INTEL|PGI'
+	    ;;
+	 esac
+
+	 ### (1) MESSAGE PASSING INTERFACE (options a and b are exclusive!)
+	 ####    a) use mpi-compiler wrappers (preferable!) and keep
+	 ####       MPIROOT and MPI_LIB unset.
+	 ####    b) set MPIROOT and MPI_LIB (e.g. for MPI-1
+	 ###        MPI_LIB = mpichf90nc mpich)
+	 MPIROOT    =
+	 MPI_LIB    =
+	 ### (2) NETCDF LIBRARY (options a and b are exclusive!)
+	 ###     a) set NETCDFROOT (must contain lib/libnetcdf.a and
+	 ###        include/netcdf.inc) (for necdf-3)
+	 ###     b) set SPEC_NETCDF_INC to include path and
+	 ###        SPEC_NETCDF_LIB to ld-options (-L ...  -l...)
+	 NETCDFROOT =
+	 SPEC_NETCDF_INC = $EBROOTNETCDFMINFORTRAN/include
+	 SPEC_NETCDF_LIB = -L$EBROOTNETCDF/lib64 -lnetcdf  -L$EBROOTNETCDFMINFORTRAN/lib -lnetcdff
+	 ###
+	 ### (3) BLAS and LAPACK LIBRARIES (options a, b and are exclusive)
+	 ###     a) keep all entries empty -> blas/lapack contained in
+	 ###        distribution will be compiled and used
+	 ###     b) specify *ROOT (path to library) and
+	 ###        and *_LIB (name of library without "-llib" and ".a",
+	 ###        e.g., BLASROOT=/usr/lib and BLAS_LIB=blas for
+	 ###        /usr/lib/libblas.a)
+	 ###     c) specifiy SPEC_LABLA_LIB with full ld options)
+	 BLASROOT   =
+	 BLAS_LIB   =
+	 LAPACKROOT =
+	 LAPACK_LIB =
+	 SPEC_LABLA_LIB =
+	 ### (4) EMOS and SPHERE LIBRARIES (for INTERA only);
+	 ###     a) keep empty, if not available
+	 ###     b) similar as option b) for BLAS/LAPACK
+	 EMOSROOT   =
+	 EMOS_LIB   =
+	 SPHEREROOT =
+	 SPHERE_LIB =
+	 ### (5) ADDITONAL LIBRARIES REQUIRED FOR LINKING (full ld options)
+	 SPEC_LIB   =
+	 CUDAROOT   = $EBROOTCUDA
+	 ### (6) SPECIAL LIBRARIES FOR FORCHECK
+	 FCKLIBS    =
+ #    YAXTROOT=$EBROOTYAXT
+ #    YAXT_INCLUDE=$YAXTROOT/include
+ #    YAXT_LIB=$YAXTROOT/lib
+
+
+###########################################################################
+###########################################################################
+###########################################################################

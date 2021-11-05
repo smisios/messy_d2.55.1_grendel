@@ -1,0 +1,3052 @@
+-------------------------------------------------------------------------------
+
+3.28  =  4.0:
+=============
+
+Changes in src_lheat_nugde:
+  lhn_prof_search: new criteria for choosing a point as valuable
+  reference precipitaion: integegration of precipitation flux startes
+                          at layer k which is the first to be greater
+                          or equal than the maximum of the flux within
+                          the column
+  vertical restriction: definition of the uppest layer by indication
+                        the temperature of the layer
+  diagnosis: introduction of rain histogram
+  IO:        bugfix of generation of INPUT-filename (D. Leuenberger)
+             reproducibility check, possibility to ingnore date by
+             namelist noobs_date
+Changes in data_lheat_nudge.f90, and organize_assimilation.f90
+  New Namelist variables for
+  - data input: noobs_date,n_noobs
+  - reference precipitaion: rqrsgflux
+  - vertical restriction: ktop_temp
+
+                                                   Klaus Stephan
+
+All modified files of the library <lm_f90> release V3_28:
+
+===== data_lheat_nudge.f90, modified by: Klaus Stephan =====
+New Namelist variables for
+- data input: noobs_date,n_noobs
+- reference precipitaion: rqrsgflux
+- vertical restriction: ktop_temp
+===== organize_assimilation.f90, modified by: Klaus Stephan =====
+New Namelist variables for LHN:
+- data input: noobs_date,n_noobs
+- reference precipitaion: rqrsgflux
+- vertical restriction: ktop_temp
+===== src_lheat_nudge.f90, modified by: Klaus Stephan =====
+lhn_prof_search: new criteria for choosing a point as valuable
+reference precipitaion: integegration of precipitation flux startes
+at layer k which is the first to be greater
+or equal than the maximum of the flux within
+the column
+vertical restriction: definition of the uppest layer by indication
+the temperature of the layer
+diagnosis: introduction of rain histogram
+IO:        bugfix of generation of INPUT-filename (D. Leuenberger)
+reproducibility check, possibility to ingnore date by
+namelist noobs_date
+
+-------------------------------------------------------------------------------
+
+3.27:
+=====
+
+Another bugfix for writing analysis files when using a flexible
+dt: the reference time in the pds was not set correct.
+
+Ulrich Schaettler
+
+-------------------------------------------------------------------------------
+
+3.26:
+=====
+
+Again some bug fixes and technical adaptations were necessary:
+
+- The check, that only full hours can be chosen for output of analysis
+  files (lanalysis=.TRUE.) has been adapted to the flexible time step
+  (Modifications in io_utilities, src_output, organize_data)
+
+- Bug fix in organize_physics, if running with nincrad=1
+
+- Bug fix in organize_diagnosis, if using nincgp
+
+- More debug output in src_allocation (for deallocating fields)
+
+Ulrich Schaettler
+
+-------------------------------------------------------------------------------
+
+3.25:
+=====
+
+This version contains only bugfixes:
+
+For I/O:
+ - for the old 2-layer soil model some variables were not recognized
+   because of a missing ELSE statement in src_input
+
+ - for the output of synthetic satellite images of MSG 2, a corresponding
+   IF-clause was missing in src_output
+
+ - The output of the lat- and lon-fields to NetCDF-files was reshuffled
+
+ - Some CF units have been adapted in src_setup_vartab
+
+ - The output of nincbound to YUSPECIF has been eliminated in organize_data,
+   because this is not a Namelist variable any more
+
+ - An IF-clause has been moved outside DO-Loops at the end of turbtran
+
+Ulrich Schaettler
+
+
+All modified files of the library <lm_f90> release V3_25:
+
+===== organize_data.f90, modified by: Ulrich Schaettler =====
+Eliminated nincbound for Namelist output in YUSPECIF
+===== src_input.f90, modified by: Ulrich Schaettler =====
+Corrections for reading data from the old 2-layer soil model
+===== src_output.f90, modified by: Ulrich Schaettler =====
+Corrections for writing synthetic satellite images for MSG2
+Modifications for writing lat/lon values to NetCDF files
+===== src_setup_vartab.f90, modified by: Ulrich Schaettler =====
+Corrected CF units for W_I and QCVG_CON
+===== turbtran.incf, modified by: Ulrich Schaettler =====
+Moved an IF-clause outside DO-Loops in line 1193ff
+
+-------------------------------------------------------------------------------
+
+3.24
+====
+
+The main reasons for the new version are:
+
+ - Bug corrections and technical adaptations
+
+ - The control, when min- and max-values (e.g. TMIN_2M) have to be
+   re-initialized has been changed according to the control of (e.g.)
+   hincbound.
+   The namelist variable nincmxu and nincmxt have been eliminated, to
+   use a flexible control for all dt. Only hincmxu and hincmxt can be
+   specified now.
+
+ - Changes in the graupel scheme (Subroutine hydci_pp_gr in src_gscp)
+   according to the latest changes in the cloud ice scheme (hydci_pp)
+   (Axel Seifert)
+
+ - Special grid point assignment for Lindenberg reports
+   and adaptation of quality control for aircraft humidity (Christoph Schraff)
+
+ - Bug corrections and adaptations in the Latent Heat Nudging (Klaus Stephan)
+    => the namelist variables lhn_diagprec, rlhn_scale_dp have been eliminated
+    => the routines hydci_lhn, hydci_gr_lhn in src_gscp have been eliminated;
+       they are not used any more
+
+
+Ulrich Schaettler
+
+===== data_lheat_nudge.f90, modified by: Klaus Stephan =====
+Eliminated Namelist variables lhn_diag, rlhn_scale_dp
+===== data_runcontrol.f90, modified by: Ulrich Schaettler =====
+Eliminated nincmxu, nincmxt and introduced control as for other increments
+===== lmorg.F90, modified by: Ulrich Schaettler =====
+Bug correction in call to dfi_initialization
+Eliminated nincmxu and introduced control as for other increments
+===== near_surface.f90, modified by: Ulrich Schaettler =====
+Eliminated nincmxt and introduced control as for other increments
+===== organize_assimilation.f90, modified by: Klaus Stephan =====
+Eliminated Namelist variables lhn_diagprec, rlhn_scale_dp for Latent Heat Nudging
+===== organize_data.f90, modified by: Ulrich Schaettler =====
+Initialization and distribution of NL variable ydir (for output directory)
+===== organize_diagnosis.f90, modified by: Ulrich Schaettler =====
+Removed identical printouts
+===== src_allocation.f90, modified by: Ulrich Schaettler =====
+Added prints for verbosity of output
+===== src_artifdata.f90, modified by: Michael Baldauf =====
+Use lmulti_layer to determine which fields have to be initialized
+===== src_conv_kainfri.f90, modified by: Burkhardt Rockel, Ulrich Schaettler =====
+Initialization of some index levels for DO loop in line 1160ff
+===== src_gscp.f90, modified by: Axel Seifert =====
+Adapted hydci_pp_gr to the new version hydci_pp
+Eliminated subroutines hydci_pp_gr and hydci_gr_lhn, which are not used 
+any more
+===== src_input.f90, modified by: Ulrich Schaettler =====
+SR check_required has to work with global idbg_level, not the local izdebug
+===== src_lheat_nudge.f90, modified by: Klaus Stephan =====
+Bug correction for scale_fac: limitation of fac_lhn_up only after LOG
+Bug correction for summing up temperatures: nnow_nnold must be used
+Changes in lhn_blacklist_dx_open_and_read: no check for date
+ktop_lhn, kbot_lhn were replaced by 1 and ke
+Introduced another section: vertical restriction of increments
+A change in the diagnostic output
+Eliminated calls to subroutines hydci_pp_gr and hydci_gr_lhn
+Eliminated Namelist variables lhn_diagprec, rlhn_scale_dp
+===== src_mult_local.f90, modified by: Christoph Schraff =====
+QC VOF flags corrected: flag zero aircraft winds, flag RH if T is flagged.
+===== src_obs_proc_aof.f90, modified by: Christoph Schraff =====
+Special grid point assignment for Lindenberg reports.
+===== src_output.f90, modified by: Ulrich Schaettler =====
+Eliminated nincmxu, nincmxt and introduced control as for other increments
+===== src_setup.f90, modified by: Ulrich Schaettler =====
+Changed defaults of namelist variables lreproduce, lreorder, ltime_barrier
+Added security checks for the namelist variables in /TUNING/
+Eliminated nincmxu, nincmxt and introduced control as for other increments
+===== src_setup_vartab.f90, modified by: Ulrich Schaettler =====
+Corrected CF name, description and unit for TKE
+===== src_sing_local.f90, modified by: Christoph Schraff =====
+Quality control adapted for aircraft humidity observations.
+===== src_turbdiff.f90, modified by: Ulrich Schaettler =====
+Introduced call to exchg_boundaries for wind-tendencies again;
+it is necessary for imode_turb=2/3!
+===== turbdiff.incf, modified by: Ulrich Schaettler =====
+Introduced call to exchg_boundaries for wind-tendencies again;
+it is necessary for imode_turb=2/3!
+===== utilities.f90, modified by: Ulrich Schaettler =====
+Bug correction in computation of acthour in get_utc_date
+
+-------------------------------------------------------------------------------
+
+3.23:
+=====
+
+The modifications for this new version can be put to the following groups:
+
+ 1) Bug Corrections:
+    Again we eliminated several bugs in the model. 
+
+     - src_gscp.f90: Subroutine hydci_pp
+       Some variables have to be initialized in every loop step, otherwise the
+       model could crash or give unreproducible results.
+       There were also some corrections for latent heat nudging.
+
+       This affects the results for itype_gscp=3 and lprogprec=.TRUE.
+
+     - turbtran.incf:
+       The final calculations of tfh- and tfm-values with respect to the 
+       laminar layer have been removed, because it was the wrong definition for
+       the use in turbdiff.
+
+       This affects the results for itype_tran=2
+       
+     - src_relaxation.f90:
+       The boundary relaxation and the Rayleigh damping has been skipped for
+       the last time step, because this would need a boundary data set for 
+       the next hour, which is not available. With the Runge-Kutta dynamical
+       core there were problems with this relaxation step.
+
+       This affects the results in the last output step.
+
+     - src_relaxation.f90:
+       A Rayleigh damping has been introduced for qr, qs, qg for itype_spubc=2.
+       Some more corrections have been done for this case, which will also
+       affect the results.
+
+     - src_runge_kutta.f90; Subroutine check_cfl_horiz_advection
+       Correction for computing the CFL criterion
+
+     - src_slow_tendencies_rk.f90:
+       Correction in the case of l3dturb_metr=.TRUE. (and l3dturb=.TRUE.)
+      
+     - dfi_initialization.f90:
+       Bug correction for re-calculating the boundary fields after the
+       adiabatic backward step.
+
+       This affects the results, if digital filtering is used.
+
+     - src_gridpoints.f90:
+       => Treatment of gpsoil for short meteographs has been corrected.
+  
+       => Correction for calculating the nearest grid point to a chosen
+          meteograph point. Because of this error, wrong grid points were
+          chosen for some meteograph points. 
+
+        This affects the ASCII output for some Meteographs.
+
+     - src_output.f90:
+       => Reset of summation variables in climate mode must not be done after
+          writing a Restart-file, but it must be done after the start of a
+          Restart run, when this step also is an output step.
+
+        This affects the results (of accumulated variables) in climate mode
+
+       => corrected the computation of q_sedim, which must be done with 
+          qi(:,:,:,nnew)
+
+        This affects the results of q_sedim
+
+     - src_sat_tbs.f90:
+       The value for the zenith angle is limited to the range -89.5 ... +89.5
+       because there are problems in the RTTOV-library otherwise.
+
+       This would affect the results only over the poles.
+
+     - numeric_utilities.f90; Subroutine lap2:
+       Some loop boundaries have been adapted
+
+     - parallel_utilities.f90:
+       Several variables were initialized before passing to MPI-routines
+
+
+ 2) New Features and Technical Changes
+
+     - src_relaxation.f9O:
+       A new treatment for the lateral boundaries for qr, qs, qg has been
+       added. To avoid problems at the boundaries, it can be chosen that
+       boundary relaxation for these variables is only done if it is an 
+       inflow condition. 
+       New Namelist variable itype_lbcqx:  = 1: as before   (default)
+                                           = 2: new treatment
+
+     - src_output.f90:
+       Added possibility to write CEILING as output variable:
+       This is the height above MSL, for which cloud coverage is > 4/8.
+
+     - Flexibility for the time step dt:
+       It is now possible to use a dt which does not "fit" into a full hour.
+       So n * dt = 3600.0 with an integer n is not a necessary requirement 
+       any more. This gives more flexibility in choosing a proper time step
+       and is important for operational time constraints.
+
+       If a time step dt does not fit into a full hour, but I/O has to be 
+       done for full hours, the time step next to the full hour is used for 
+       doing the I/O. Therefore, there could be a time shift between the 
+       variables and the full hour by up to dt/2.
+
+       This needed adaptations for controlling the I/O, grid point calculations,
+       mean values and when to run certain physical parameterizations. Some
+       Namelist variables have been eliminated, with which these actions could
+       be controlled:
+
+        - nstart:                must be done with hstart: 
+                                 only full hours can be specified for 
+                                 starting a model run
+
+        - nincbound:             must be done with hincbound:
+                                 possible values are 0.25, 0.5 or 
+                                 multiples of full hours
+
+        - hincconv, hinctura:    must be done with nincconv, ninctura
+
+     - Runge-Kutta scheme:
+       => src_runge_kutta.f90, src_fast_waves_rk.f90:
+          Some adaptations have been done for using the digital filtering
+ 
+       => In case ldiabf_lh=.TRUE., the field tinc_lh has to be written to
+          the restart files.
+
+     - Debug control output:
+       The logical Namelist switch ldebug in the group /RUNCTL/ has been 
+       eliminated, because it was not consequently implemented and not 
+       flexible enough.
+
+       Instead we introduced an integer Namelist variable idbg_level.
+       Depending on the value of idbg_level, the amount of debug output is
+       increased:
+          0: no output at all
+          1: only minor control output
+          2: this is the usual output, as it was before  (default value)
+          5: output, which component is called (in every time step)
+         ...
+
+        This switch is not fully implemented yet, suggestions are welcomed!
+
+        In addition to idbg_level, the following logical switches have been
+        implemented, to switch on the debug output only for special components.
+        This helps to keep the debug output to an acceptable level, if only
+        a special component has to be debugged (default values are .FALSE.):
+          ldebug_dyn:    if .TRUE., debug output for dynamics
+          ldebug_gsp:    if .TRUE., debug output for grid scale precipitation
+          ldebug_rad:    if .TRUE., debug output for radiation
+          ldebug_tur:    if .TRUE., debug output for turbulence
+          ldebug_con:    if .TRUE., debug output for convection
+          ldebug_soi:    if .TRUE., debug output for soil model
+          ldebug_io :    if .TRUE., debug output for I/O
+          ldebug_dia:    if .TRUE., debug output for diagnostics
+          ldebug_ass:    if .TRUE., debug output for assimilation
+          ldebug_lhn:    if .TRUE., debug output for latent heat nudging
+
+        And also new is the Namelist variable lprintdeb_all, with which the
+        debug output can be switched on for all tasks in a parallel run:
+            .TRUE.:  all tasks print debug output
+            .FALSE.: only task 0 prints debug output
+
+     - Flushing of ASCII output
+       The flushing of ASCII output, which has been introduced lately by
+       just closing and re-opening the files, is critical on some machines
+       and can lead to a performance slow-down. 
+
+       Therefore we introduced a Namelist switch ldump_ascii (in RUNCTL),
+       with which this flushing can be controlled:
+        .TRUE.:  do the flushing (default)
+        .FALSE.: the flushing is switched off
+
+ 3) Nudging
+
+     - data_obs_process.f90:
+       There have been technical adaptations for changes in the file "makeaof",
+       to introduce AMDAR humidity data.
+
+     - organize_assimilation.f90:
+       Modifications for Namelist Input for Latent Heat Nudging
+
+ 4) Diagnosis
+
+     - Introduced the possibility to calculate volume- and surface integrals 
+       over an arbitrary cuboid.
+       => new Module:  src_integrals.f90
+          this is called from organize_diagnosis.f90
+
+       => new Namelist variables in /DIACTL/:
+           l_integrals: if .TRUE., compute the integrals (default is .FALSE.)
+           i_min_integ, i_max_integ:        to determine the edges of the 
+           j_min_integ, j_max_integ         cuboid with grid points
+           k_min_integ, k_max_integ
+
+     - src_gridpoints.f90:
+       Adapted the grid point output for lgpspec to the Single Column Model.
+       => new data module:  data_1d_global.f90
+
+ 5) Turbulence / Soil Model
+    Introduced a field for the laminar reduction factor for evaporation.
+    This field is determined in the (new) transfer scheme (itype_tran=2) and 
+    used in the soil model.
+    For the old transfer scheme (itype_tran=1) this field is initialized to
+    a default value of 1.
+
+ 6) Radiation: 
+    => Topographical corrections in radiation scheme
+       Introduced the topographical corrections for radiation calculations.
+       To use these corrections, additional external parameters have to be 
+       read by the model (skyview, slo_asp, slo_ang, horizon). These will be 
+       provided by the INT2LM in a subsequent version. Therefore, the use of 
+       this feature is not straightforward at the moment.
+
+       A namelist switch "lradtopo" has been introduced in /PHYCTL/ to switch
+       on/off the topographic corrections. Default is .FALSE.
+
+    => The computation of the solar and photosynthetic radiation at the 
+       surface (sobs and pabs) has been changed in case of running the 
+       radiation on a coarser grid (nradcoarse > 1) and averaging the 
+       radiative forcing (lradf_avg=.TRUE.)
+
+       This affects the results in this case.
+
+
+ 7) Changes of Namelist Defaults
+    In the Namelist groups PHYCTL, TUNING and RUNCTL, some default values have
+    been changed, to adapt the settings to the operational use.
+
+    /RUNCTL/
+      Variable         new Default               old Default
+        lreproduce       TRUE                       FALSE
+        lreorder         FALSE                      TRUE 
+        ltime_barrier    FALSE                      TRUE 
+
+    /PHYCTL/
+      Variable         new Default               old Default
+        lprogprec        TRUE                       FALSE
+        lforest          TRUE                       FALSE
+        lconv            TRUE                       FALSE
+        lmulti_layer     TRUE                       FALSE
+        lmelt            TRUE                       FALSE
+        lmeltvar         TRUE                       FALSE
+        lexpcor          TRUE                       FALSE
+        hincrad          1.0                         0.0
+        nincrad            0                         360
+        ninctura           1                           3
+        itype_gscp         3 (use of cloud ice)        2 (no cloud ice)
+        itype_turb         3 (use of prog. TKE)        1 (old turbulence)
+        itype_tran         2 (new transfer scheme)     1 (old transfer scheme)
+        itype_wcld         2                           1
+        itype_synd         2                           1
+        imode_turb         1                           0
+        icldm_turb         2                           1
+
+    /TUNING/
+      Variable         new Default               old Default
+        crsmin           150.0                       60.0
+        tkesmot            0.15                      -1.0
+        wichfakt           0.15                      -1.0
+        securi             0.85                      -1.0
+        tkhmin             1.0                       -1.0
+        tkmmin             1.0                       -1.0
+        rlam_mom           0.0                       -1.0
+        rlam_heat          1.0                       -1.0
+        rat_sea           20.0                        1.0
+        c_lnd              2.0                        1.0
+        c_sea              1.5                        1.0
+        patlen           500.0                        0.0
+        turlen           500.0                       -1.0
+        z0m_dia            0.2                       -1.0
+        a_heat             0.74                      -1.0
+        a_mom              0.92                      -1.0
+        d_heat            10.1                       -1.0
+        d_mom             16.6                       -1.0
+        c_diff             0.2                       -1.0
+
+-------------------------------------------------------------------------------
+
+ 8) Summary of new and obsolete Namelist variables
+
+    /RUNCTL/
+      obsolete  nstart               only use hstart now
+                ldebug               use idbg_level instead (see below)
+
+
+      new       ldump_ascii
+                idbg_level
+                ldebug_dyn
+                ldebug_gsp
+                ldebug_rad
+                ldebug_tur
+                ldebug_con
+                ldebug_soi
+                ldebug_io 
+                ldebug_dia
+                ldebug_ass
+                ldebug_lhn
+                lprintdeb_all
+
+    /GRIBIN/
+      obsolete  nincbound             only use hincbound 
+                                          (=0.25, 0.5 or full hours)
+
+    /DIACTL/
+      new       l_integrals           for computing area- and surface integrals
+                imin_integ            to determine the cuboid for the integrals
+                imax_integ
+                jmin_integ
+                jmax_integ
+                kmin_integ
+                kmax_integ
+
+
+    /PHYCTL/
+      new       lradtopo              for computing topographic corrections
+                                      in the radiation
+                nhori                 number of sectors for the horizont array
+                                      by the topographic correction of the 
+                                      radiation
+
+
+      obsolete  hinctura              only use ninctura 
+                hincconv              only use nincconv 
+
+    /DYNCTL/
+      new       itype_lbcqx           
+
+-------------------------------------------------------------------------------
+
+3.22:
+=====
+
+A new version of hydci_pp with major changes in the parameterization of
+snow is included: Variable intercept parameter based on Field et al. (2005),
+temperature-dependent sticking efficiency, changes in geometry and
+fall speed of snow.
+Use of Seifert and Beheng (2001) warm rain scheme with a constant
+cloud droplet number concentration.
+
+Some bugs for writing and reading restart files in the Runge-Kutta scheme
+have been eliminated.
+
+Axel Seifert, Jochen Foerstner
+
+
+All modified files of the library <lm_f90> release V3_22:
+
+===== data_gscp.f90, modified by: Axel Seifert =====
+Initial Release
+===== organize_data.f90, modified by: Jochen Foerstner =====
+Corrected check that restarts are only written after nudging ends
+===== organize_physics.f90, modified by: Jochen Foerstner =====
+Corrections for Runge-Kutta Restart: TKE has to be put to "nnew"
+===== src_gscp.f90, modified by: Axel Seifert =====
+New version of hydci_pp with major changes in the parameterization of
+snow: Variable intercept parameter based on Field et al. (2005),
+temperature-dependent sticking efficiency, changes in geometry and
+fall speed of snow.
+Use of Seifert and Beheng (2001) warm rain scheme with a constant
+cloud droplet number concentration.
+===== src_input.f90, modified by: Jochen Foerstner =====
+Corrections for Runge-Kutta Restart: variables have to be put to "nnew"
+===== src_radiation.f90, modified by: Axel Seifert =====
+Adapted a constant for computation of cloud cover of ice clouds
+===== src_setup.f90, modified by: Jochen Foerstner =====
+For explicit lateral boundary conditions: replaced the EXP function by COS
+
+-------------------------------------------------------------------------------
+
+3.21:
+=====
+
+This version again contains several changes to existing features, but also some
+new components.
+
+
+ 1) Ensemble Mode:          new feature
+ -----------------
+
+    This feature is new, to prepare Ensemble Prediction with the LM. In this
+    mode, additional values of the Product Definition Section (PDS) of the GRIB
+    records are set, to identify the ensemble and the special members of the
+    ensemble. 
+
+      - new Namelist variable in /RUNCTL/:         leps  (Default: .FALSE.)
+
+      - new Namelist group /EPSCTL/:    
+           iepstyp :  ID of the ensemble generation type (ID >= 0)
+           iepstot :  total number of ensemble members   (   >= 0)
+           iepsmem :  ID of the member in the ensemble   (ID >= 0)
+
+        these identifiers of the ensemble are put to values 50-52 of the PDS:
+           ipds(50)   = iepstyp
+           ipds(51)   = iepstot
+           ipds(52)   = iepsmem
+
+      - the Namelist group /EPSCTL/ is read in the (new) organization 
+        subroutine organize_eps.f90.
+
+      - another new Namelist group has been introduced:    /TUNING/
+        this new group is independent from the setting of leps, but has been
+        introduced to have a better control of the setups of the different
+        ensemble members. Most of the variables of these Namelist group have 
+        been moved from the namelist group /PHYCTL/, but there are also some 
+        new variables.
+
+             Variables in /TUNING/, moved from /PHYCTL/:
+                rlam_mom, rlam_heat, rat_sea, rat_lam, rat_can,          
+                tkesmot, wichfakt, securi, tkhmin, tkmmin,               
+                c_lnd, c_sea, c_soil, e_surf, pat_len, z0m_dia, tur_len, 
+                a_heat, a_mom, d_heat, d_mom, c_diff, crsmin,            
+
+        Note: most of these variables are used in the turbulence schemes and
+              have been moved from the module data_runcontrol.f90 to the new 
+              module data_turbulence.f90.
+              The variables crsmin and rat_lam, which are used in the
+              soil model, have been moved to data_soil.f90
+
+             New Variables in /TUNING/
+                clc0, q_crit,    (former local variables in subroutine
+                                  cloud_diag in meteo_utilities.f90)
+                qi0, qc0         (former local variables zqc0, zqi0
+                                  in module src_gscp.f90)
+
+         the Namelist group /TUNING/ is read in the (new) subroutine
+         input_tuning in the module src_setup.f90.
+
+
+ 2) Changes in the setup:
+ ------------------------
+
+    New Namelist variable in /LMGRID/:      polgam  (Default: 0.0)
+       This is the angle between the north poles of the systems, if the
+       input data has a different rotation (possible in the CLM mode).
+       The default corresponds to the use in the forecast mode, where
+       the input data has the same rotation as the LM domain.
+       
+    Initialization of the 3D mask array ("hd_mask_dcoeff") for horizontal 
+    diffusion in the subroutine "constants_fields". The use of this field
+    in module hori_diffusion.f90 slightly changes the results. This must
+    be due to different optimizations by the compiler.
+
+
+ 3) Changes in the Utilities:
+ ----------------------------
+
+     - meteo_utilities.f90:
+        => a new subroutine "calrho_tp_pp" has been added to compute the
+           air density (for t*p*-dynamics)
+        => in the subroutine "cloud_diag" the variable ql is not bounded 
+           by MIN any more
+        => in the subroutine "reference_atmosphere" 2 additional indices
+           klv950, klv700 are computed
+
+     - numeric_utilities.f90:
+        => the interfaces to the Laplace-operators have been changed to 
+           introduce the 3D mask array for the horizontal diffusion 
+
+     - numeric_utilities_rk.f90:
+        => new subroutines: multiplicative filling
+        => new functions:   integral_3d_wg, clipping_2
+
+     - pp_utilities.f90:
+        => changed some constants in subroutine radar_lm_ray
+
+
+ 4) Changes in the I/O:
+ ----------------------
+
+    There were several changes in the I/O-System, and some of them do change
+    the results of the output data.
+
+     - New Namelist Variables llb_qr_qs, llb_qg to read lateral boundaries
+       for the variables qr, qs, qg.
+
+     - In the Leapfrog scheme, the newest timelevel "nnew" has been written 
+       up to now. But this time scheme already is valid for the 
+       output step + dt. To be correct, the timelevel "nnow" has to be written.
+
+     - For the FLake model (llake=.TRUE.), the check whether T_S or T_S_LAKE
+       has to be read, has been modified.
+
+     - CLM: For climate runs, the treatment of variables with time range 
+       indicator 3 or 4 (mean values and summations) has been changed. 
+       For lbdclim=.TRUE., the summations and mean values are calculated 
+       between output steps. 
+      
+     - In the I/O-lists, all variable names have to be written with upper 
+       case letters now (affects dBZ...).
+
+     - There are several new variables in the variable table (src_setup_vartab)
+       (some of them already were in the table, but there were no official
+        Grib numbers for them). These variables are now officially registered,
+        with the following Grib numbers and tables:
+
+  Nr Tab these variables are used in the LMK:
+  58 201  HBAS_SC        cloud base for shallow convection clouds (above msl)
+  59 201  HTOP_SC        cloud top for shallow convection clouds (above msl)
+  40 201  TQG            specific graupel content, grid scale, 
+                         vertically integrated
+
+         these variables are used in the restarts
+ 148 201  TKETENS        tendency of turbulent kinetic energy
+ 140 201  RCLD           standard deviation of saturation deficit
+
+         these variables (analysis increments) are used in the assimilation
+         scheme for monitoring
+  21 204  FF_ANAI        analysis increment of wind speed
+  22 204  DD_ANAI        analysis increment of wind direction
+  23 204  T_ANAI         analysis increment of temperature
+  24 204  FI_ANAI        analysis increment of geopotential
+  25 204  P_ANAI         analysis increment of pressure
+  26 204  PMSL_ANAI      analysis increment of pressure reduced to MSL
+  27 204  QV_ANAI        analysis increment of specific humidity
+  28 204  QC_ANAI        analysis increment of specific cloud water content
+  29 204  TQV_ANAI       analysis increment of precipitable water
+  30 204  TQC_ANAI       analysis increment of cloud water
+
+         these variables will be used for the computation of the water budget
+         (the computation of the water budget is not yet implemented)
+ 236 201  EVATRA_SUM     sum of all contributions to evapotranspiration
+ 237 201  TRA_SUM        total transpiration from all soil layers
+ 238 201  TOTFORCE_S     total forcing at soil surface
+ 239 201  RESID_WSO      residuum of soil moisture
+
+         these variables are computed in a new subroutine (cal_conv_ind) in
+         the module pp_utilities (work by our Swiss colleagues)
+ 143 201  CAPE_MU        convective available potential energy  of most 
+                         unstable parcel
+ 144 201  CIN_MU         convective inhibition of most unstable parcel
+ 145 201  CAPE_ML        convective available potential energy  of
+ 146 201  CIN_ML         convective inhibition of mean surface layer parcel
+ 149 203  SI             showalter index
+ 147 203  SLI            surface lifted index
+
+         and some variables which did not have an official GRIB number before
+ 147 201  TKE_CON        convective turbulent kinetic energy
+ 241 201  CAPE_CON       convective available potential energy   (cape)
+ 243 201  QCVG_CON       moisture convergence for Kuo-type closure
+         
+ 230 201  DBZ            unattenuated radar reflectivity in Rayleigh 
+                         approximation
+
+        In addition to the variable QRS (which is still used for the restarts),
+        the variable Q_SEDIM for the sedimenting variables has been introduced
+        with the same Grib number as QRS (q_sedim = qrs - qi).
+
+     - There were some adaptations for the NetCDF format:
+        => for the soil layers, the mid levels instead of the boundaries of
+           the levels is now coded (variable czmls instead of czhls)
+        => the variable Z0 is now written instead of GZ0
+        => some NetCDF standard names have been corrected
+        => changes in subroutine "write_nc_gdefs" to meet CF standard
+        => the land-sea-mask is now written to the files
+        => use value "undefncdf" for undefined points 
+           (e.g. water points for land variables)
+
+
+     - Some technical changes in the I/O:
+        => the 2m coding of QV_2M has been corrected in src_setup_vartab
+        => an error variable has been initialized in scatter_data
+        => some loop limits have been adapted in organize_data
+
+
+ 5) Changes for the Restarts:
+ ----------------------------
+
+    The restart was not running properly in the CLM Version because of 
+    some bugs, which have been corrected now:
+
+     - The lists for the restart variables have been corrected in organize_data
+
+     - organize_input must not be called with lfirst=.TRUE. in restart runs
+       (wrong boundary data sets are read then)
+
+     - Restart files are now written one time step earlier, to avoid a problem
+       when writing restart files in the last time step of the simulation
+       (because the next boundary data set is not available then and the 
+       computed values are not reproducible).
+       This means also, that a restart run has to begin a time step earlier.
+
+     - Restart files can only be written for nhour_restart > hstart
+
+     - Additional variables are written for llake=.TRUE.
+ 
+     - There are no more warnings, if ipds is "out of range".
+
+     - for climate runs, init_canopy has to be called for every time step,
+       because the external parameters are not constant any more.
+
+ 6) Changes in the parameterizations:
+ ------------------------------------
+
+    - Grid Scale Precipitation (src_gscp.f90)
+       the former local variables zqc0, zqi0, which were defined and set
+       in every subroutine in the module src_gscp.f90, are now global 
+       variables (qc0, qi0 in data_constants.f90) and are set via the
+       Namelist group /TUNING/.
+
+       There were changes from the LMK development in subroutines
+       hydci_pp_gr and hydci_gr_lhn.
+
+    - Radiation (src_radiation.f90)
+       => a new CO2 scenario has been added for CLM (A2)
+       => t_g is now used alternatively for determining the soil type
+          of a grid cell in the radiation (for CLM)
+       => the interface of the subroutine cloud_diag (from meteo_utilities.f90)
+          has been changed. The (now global) variables clc0, q_crit have
+          been added.
+       => the option of calculating the radiation on a coarser grid has been
+          introduced (Namelist variables lradf_avg, nradcoarse)
+
+    - Turbulence (src_turbulence.f90, src_turbdiff.f90)
+       => There was a bug in the vectorization of 2 DO WHILE Loops in 
+          turbtran.incf. The numbering of points that have finished the 
+          computations in the loop, counted too much points, so that
+          the process stopped early (diagnosis of 2m and 10m variables).
+      !!  This affects the results !!
+
+       => A numerical security check for the second term of the explicit 
+          vertical TKE diffusion has been formulated.
+      !!  This affects the results !!
+
+       => Several variables have been put from data_runcontrol.f90 to the 
+          new data-module data_turbulence.f90 and are now set via the 
+          new Namelist Group /TUNING/ (see above).
+       => the interface of the subroutine cloud_diag (from meteo_utilities.f90)
+          has been changed. The (now global) variables clc0, q_crit have
+          been added.
+       => for some computations the use of the FLake model is checked
+       => the option of a dry turbulence scheme has been added 
+          (can be chosen with icldm_turb=-1)
+
+    - Convection:
+      Prepared use of the Bechtold convection scheme. But it has not been 
+      added yet.
+       => New Namelist variable lbechtol
+
+    - Soil Models (src_soil.f90, src_soil_multlay.f90)
+       => the variables crsmin, rat_lam have been put from data_runcontrol.f90
+          to data_soil.f90 and are now set via the new Namelist group /TUNING/
+       => If present, graupel is used in addition to rain and snow.
+
+       and only for the multilayer soil model:
+       => the first step (ntstep = 0) is now done with dt instead of dt/2
+       => Modifications to avoid soil water content below air dryness point
+       => Gravitational runoff calculation modified in case of frozen 
+          soil layer
+
+    - FLake Model
+       => General update of the model and some technical adaptations
+       => Some computations in the turbulence schemes have been adapted, 
+          to take into account the lake points
+
+
+ 7) Changes in the dynamics:
+ ---------------------------
+
+    - New Namelist variables betagw, beta2ws, beta2gw for treatment of sound
+      and gravity waves (analog betasw)
+
+    - New Namelist variable crltau: time factor for relaxation time
+
+    - New Namelist variable lhdiff_mask: 
+         use a 3D domain mask for horizontal diffusion
+     
+      To apply the horizontal diffusion only to selected grid points, a 
+      3D mask array "hd_mask_dcoeff" is used, which is either 1 (default)
+      or 0, where no horizontal diffusion should be computed. This array
+      is preset in the setup and at the beginning of the time stepping.
+
+    - Bug correction in the second option of the Rayleigh damping
+      to ensure reproducible results
+
+    - Boundary relaxation: added the treatment of qr, qs, qg
+
+    - Runge-Kutta dynamical core:
+      All changes from the LMK development have been incorporated to the
+      official LM version now. In addition, the module src_runge_kutta.f90
+      has been splitted into 3 different modules:
+       => src_runge_kutta.f90:  Organization of the Runge-Kutta time stepping
+       => src_advection_rk.f90: All subroutines dealing with advection for 
+                                the Runge-Kutta scheme
+       => src_slow_tendencies_rk.f90: All subroutines dealing with computing 
+                                the slow tendencies for the Runge-Kutta scheme
+
+      In src_runge_kutta.f90, the first boundary exchange is not necessary
+      ("exchange_boundaries_nnow").
+
+      In fast_waves_rk.f90, the boundary exchange for suten, svten must not be
+      done with datatypes, because the memory for these variables is allocated
+      in each time step in src_runge_kutta.f90 and the memory foot print can be
+      different each time.
+
+   - Changes to run with a deep atmosphere:
+     Additional terms have been added to run with a deep atmosphere.
+     Two namelist switches have been introduced (default: FALSE)
+      => lcori_deep:  if =.TRUE.: take cos(phi) coriolis terms into account
+      => ladv_deep:   if =.TRUE.: use all metric advective terms
+
+ 8) Changes in the assimilation:
+ -------------------------------
+
+    - New module:  data_lhn_diag.f90:  for diagnostic calculations in the
+                                       latent heat nudging
+
+    - New Namelist variable lhn_wweight, to apply weighting with respect to
+      mean horizontal wind
+
+    - New variables pr_mod_sum, pr_ref_sum for computations on cumulated 
+      precipitation (for testing output only)
+
+    - Changed some default settings of Namelist variables in 
+      organize_assimilation.f90
+
+    - Changes in src_lheat_nudge.f90
+  
+    - Time integration of analysis increments introduced for diagnostic 
+      purposes
+
+
+ 9) Changes in the diagnostics:
+ ------------------------------
+ 
+    - Calculation of mean values
+      Following variables have been included in the calculation of mean values:
+      qi, qr, qs, qg
+
+      Because there are too many variables now for 1 file, the ASCII file
+      YUPRMEAN has been splitted to 
+       => YUPRMASS: containing mass variables (pressure, wind speed)
+       => YUPRHUMI: containing humidity variables (qx, precipitation)
+
+
+    - Grid Point output
+       => special grid point output has been adapted to new format
+       => removed blanks from station names and adapted search for stations
+       => the specification of the grid points in the Namelist DIACTL has 
+          been changed:
+            before: variables igp_tot, jgp_tot, rlatgp_tot, rlongp_tot
+                    could be specified. 
+
+               Example:  igp_tot=  3, 10, 103, 411,
+                         jgp_tot= 95,  3, 208, 656,
+                    or:  rlatgp_tot=  50.0, 43.8, 5.9,
+                         rlongp_tot=  10.0,  3.8 -2.5,
+
+            now:  the possibility of specifying also a station name is 
+                  provided. The specification of the grid points must now
+                  be done via a structure "stationlist_tot" with the 
+                  components:  
+                  igp_tot, jgp_tot, rlatgp_tot, rlongp_tot, ystation_name
+
+               Example:
+                 ystationlist_tot=  3, 95,  0.0, 0.0, '-',
+                                   10, 46, -3.8, 5.9, 'MY_NAME',
+                                    0,  0, 50,0, 8.7, 'FRANKFURT',
+
+               The following rules hold:
+                  1) If the grid point indices igp_tot, jgp_tot /= are given,
+                     the rlatgp_tot, rlongp_tot-values are not considered
+                  2) Only if igp_tot=0, jgp_tot=0, the values from rlatgp_tot,
+                     rlongp_tot are taken.
+                  3) ystation_name can be any string (max. 20 characters),
+                     which must not contain any blanks.
+                  4) ystation_name ='-', =' ' or ='' means that no name is 
+                     specified. A name of this grid point is searched in the
+                     station list that is implemented in the LM.
+                     If no name is found, the lat- and lon-values of this
+                     gridpoint is put to the name of the file.
+
+       => In the grid point output, some units have been changed (as in GME):
+             - qc, qi are now written in mg/kg  (instead of g/kg)
+             - tcm, tch are now written as tcm*windspeed, tch*windspeed
+
+       => The computation of all variables is now based on timeleve "nnow"
+          (to be consistent with the output)
+
+
+    - Computation of synthetic satellite images
+       => The satellite zenith angle is computed now and is taken into 
+          account for the RTTOV computations
+       => The computation of all variables is now based on timelevel "nnow"
+          (to be consistent with the output)
+
+    - Computation of near surface variables
+       => The summation of variables with time range indicator 3 or 4 starts
+          only for ntstep > 0, because the computations for ntstep = 0 and 
+          ntstep = 1 are the same!
+       => The computation of all variables is now based on timelevel "nnow"
+          (to be consistent with the output)
+
+
+ 10) Changes in the main program:
+ --------------------------------
+
+    - Setting boundary values for qr, qs, qg is only necessary, if no
+      boundary values are read (llb_qr_qs=.FALSE., llb_qg=.FALSE.)
+
+
+ 11) More technical changes:
+ ---------------------------
+
+    - Some variable names have been changed to meet CF standards:
+        sunshhrs   -->  dursun
+        sodwdir    -->  sodwddm
+        tbnds      -->  bnds
+
+    - Unused statement functions have been removed in meteo_utilities.f90,
+      src_mult_local.f90, src_sfcana.f90, src_sing_local.f90
+
+    - the output for YUSOLVER has been modified (semi-implicit time stepping)
+
+    - for adiabatic runs, the Namelist group /PHYCTL/ is now read anyhow,
+      to provide a consistent set of Namelist settings.
+
+
+
+
+
+      Summary of the Namelist Changes
+      ===============================
+
+
+ Changes in existing groups:
+ ---------------------------
+
+ group:      new:               description:                        Default:
+
+ /LMGRID/    polgam             angle between the north poles       0.0
+                                of the systems   
+
+ /RUNCTL/    leps               to switch on/off the ensemble mode  .FALSE.
+
+ /DYNCTL/    betagw             beta-variable for treatment of      0.4
+                                gravity-waves in w
+
+             beta2sw,           beta-variable for treatment of      0.4
+                                soundwaves in p*, T*
+
+             beta2gw,           beta-variable for treatment of      0.4
+                                gravity-waves in p*, T*
+
+             crltau,            time factor for relaxation time     1.0
+                                tau_r = crltau * dt
+
+             lhdiff_mask,       use 3D-domain mask for horizontal   .FALSE.
+                                diffusion
+
+             lcori_deep,        if =.TRUE.: take cos(phi) coriolis  .FALSE.
+                                            terms into account
+
+             ladv_deep,         if =.TRUE.: use all metric          .FALSE.
+                                            advective terms
+
+ /PHYCTL/    nradcoarse         number of horizontal gridpoints for    1
+                                radiation on coarser grid
+
+             lradf_avg          average radiative forcings if       .FALSE.
+                                radiation is calculated on 
+                                a coarser grid
+
+             lbechtol           to choose Bechtold convection       .FALSE.
+
+ /DIACTL/    stationlist_tot    specification of grid points for        -
+                                grid point output
+
+     Format of stationlist_tot: 
+         igp_tot, jgp_tot, rlatgp_tot, rlongp_tot, ystation_name
+
+     Example:
+         ystationlist_tot=  3, 95,  0.0, 0.0, '-',
+                           10, 46, -3.8, 5.9, 'MY_NAME',
+                            0,  0, 50,0, 8.7, 'FRANKFURT',
+
+     The following rules hold:
+        1) If the grid point indices igp_tot, jgp_tot /= are given,
+           the rlatgp_tot, rlongp_tot-values are not considered
+        2) Only if igp_tot=0, jgp_tot=0, the values from rlatgp_tot,
+           rlongp_tot are taken.
+        3) ystation_name can be any string (max. 20 characters),
+           which must not contain any blanks.
+        4) ystation_name ='-', =' ' or ='' means that no name is
+           specified. A name of this grid point is searched in the
+           station list that is implemented in the LM.
+           If no name is found, the lat- and lon-values of this
+           gridpoint is put to the name of the file.
+
+ /GRIBIN/    llb_qr_qs          if .TRUE.: take qr_bd- and qs_bd-values from 
+                                           lateral boundaries file 
+                                else: qr_bd and qs_bd are set in the model
+             llb_qg             if .TRUE.: take qg_bd-values from 
+                                           lateral boundaries file 
+                                else: qg_bd is set in the model
+
+
+ /NUDGING/   lhn_wweight        apply a weighting with respect to the mean 
+                                horizontal wind
+
+
+
+ new Namelist groups:
+ --------------------
+
+ 1) /EPSCTL/  iepstyp :  ID of the ensemble generation type (ID >= 0)
+              iepstot :  total number of ensemble members   (   >= 0)
+              iepsmem :  ID of the member in the ensemble   (ID >= 0)
+
+    This Namelist group is read in the organization subroutine organize_eps.f90
+
+
+ 2) /TUNING/  
+    These variables were moved from /PHYCTL/. For a description and the
+    default values see the old documentations:
+
+              rlam_mom, rlam_heat, rat_sea, rat_lam, rat_can,
+              tkesmot, wichfakt, securi, tkhmin, tkmmin,
+              c_lnd, c_sea, c_soil, e_surf, pat_len, z0m_dia, tur_len,
+              a_heat, a_mom, d_heat, d_mom, c_diff, crsmin,
+
+
+     New Variables in /TUNING/
+
+       name:    description:                                      Default:
+
+       clc0     cloud cover at saturation                          0.5
+       q_crit   critical value for normalized over-saturation      4.0
+       qi0      cloud ice threshold for autoconversion             0.0
+       qc0      cloud water threshold for autoconversion           0.0
+
+
+
+     This Namelist group is read in the subroutine input_tuning in the module
+     src_setup.f90.
+
+
+      Changes in the ASCII output
+      ===========================
+
+ 1) The two ASCII files YUPRGRPT and YUPRMEAN are not written any more.
+ 2) For YUPRGRPT, which contained all output from grid points, several 
+    M_xxx-files are written, one for every chosen grid point.
+ 3) The file YUPRMEAN has been splitted into the two files 
+      - YUPRMASS (which contains the mass variables) and 
+      - YUPRHUMI (which contains the humidity variables).
+
+
+      Changes of the Results
+      ======================
+
+
+ 1) The use of the field hd_mask_dcoeff in module hori_diffusion.f90 
+    slightly changes the results. This must be due to different 
+    optimizations by the compiler.
+
+ 2) In the subroutine "cloud_diag" in module meteo_utilities.f90 the
+    value of ql is not constrained by MIN anymore.
+
+ 3) In the Leapfrog scheme, the timelevel "nnow" is now written for the
+    result data (was nnew before).
+
+ 4) There was a bug in the vectorization of 2 DO WHILE Loops in 
+    turbtran.incf. The numbering of points that have finished the 
+    computations in the loop, counted too much points, so that
+    the process stopped too early (diagnosis of 2m and 10m variables).
+
+    A numerical security check for the second term of the explicit 
+    vertical TKE diffusion has been formulated.
+    
+ 5) The first step (ntstep = 0) of the multi-layer soil model must be done 
+    with dt instead of dt/2 (when working with the leapfrog scheme), to have 
+    the correct time for the soil variables (it is now a 2 timelevel scheme, 
+    not 3 time level as in the leapfrog).
+
+    There have been modifications to avoid soil water content below air 
+    dryness point and the gravitational runoff calculation has been 
+    modified in case of frozen soil layer
+
+ 6) Synthetic satellite images:
+    The satellite zenith angle is computed now and is taken into 
+    account for the RTTOV computations.
+    Like for the other output, the computation of all variables is now 
+    based on timelevel "nnow" (to be consistent with the output)
+
+-------------------------------------------------------------------------------
+
+3.20_2:
+=======
+
+This is an intermediate sub-version, not yet in the SCCS system of DWD.
+It contains several changes regarding NetCDF IO and running with restart
+files in case of climate runs.
+
+
+
+===== data_fields.f90, modified by: Burkhardt Rockel =====
+Renamed variable sunshhrs, sodwdir to dursun, sodwddm
+===== data_io.f90, modified by: Burkhardt Rockel =====
+Changes in idims_id_out definitions; Added "undefncdf"
+===== data_modelconfig.f90, modified by: Burkhardt Rockel =====
+Introduced new Namelist parameter polgam
+===== dfi_initialization.f90, modified by: Burkhardt Rockel =====
+Renamed variable sunshhrs to dursun
+===== dummy_netcdf.f90, modified by: Ulrich Schaettler, Burkhardt Rockel =====
+added nf90_enotatt
+adapted return-values (Linux-compiler complained about)
+===== io_utilities.f90, modified by: Ulrich Schaettler =====
+Adapt check_record to use of undefined values in netcdf
+===== lmorg.F90, modified by: Ulrich Schaettler =====
+Read Namelist Input for physics in any case (also for "dry" runs)
+===== meteo_utilities.f90, modified by: Ulrich Schaettler =====
+Put statement functions which are not used to a comment
+===== near_surface.f90, modified by: Burkhardt Rockel =====
+Renamed sunshhrs, sodwdir to dursun, sodwddm
+===== organize_data.f90, modified by: Ulrich Schaettler, Burkhardt Rockel =====
+Adaptation of a loop-limit in input_gribout; adaptation of the restart lists
+In case of restart must not call organize_input with lfirst=.TRUE.
+===== organize_diagnosis.f90, modified by: Burkhardt Rockel =====
+Introduced polgam
+===== organize_dynamics.f90, modified by: Ulrich Schaettler =====
+Eliminate settings of physical Namelist Input for "dry" runs
+===== organize_physics.f90, modified by: Ulrich Schaettler, Burkhardt Rockel =====
+Bug correction in distributing Namelist input
+Maximum value for ico2_rad set to 6
+In case of climate runs, call init_canopy every time step
+===== semi_implicit.f90, modified by: Ulrich Schaettler =====
+Adapted output for YUSOLVER
+===== src_allocation.f90, modified by: Burkhardt Rockel =====
+Renamed sunshhrs, sodwdir to dursun, sodwddm
+===== src_gridpoints.f90, modified by: Ulrich Schaettler =====
+Removed blanks from the station names; adapted search for stations
+===== src_input.f90, modified by: Ulrich Schaettler, Burkhardt Rockel =====
+Initialize error code (implcode) variable in scatter_data
+Some adaptations for reading T_S_LAKE for the FLake-Model
+Changed "tbnds" to "bnds" in read_nc_gdefs
+Changed from soil layer boundaries to mid soil layer
+Deleted Z0 -> GZ0 replacement as special case for netCDF
+===== src_mult_local.f90, modified by: Ulrich Schaettler =====
+Put statement functions which are not used to a comment
+===== src_obs_proc_aof.f90, modified by: Burkhardt Rockel =====
+Introduced variable polgam
+===== src_obs_processing.f90, modified by: Burkhardt Rockel =====
+Introduced variable polgam
+===== src_output.f90, modified by: Ulrich Schaettler, Burkhardt Rockel =====
+changes in write_nc_gdefs to meet netCDF CF standards
+land/sea masks in netCDF output included
+polgam introduced
+Save the vertical coordinate parameters in restart files
+===== src_radiation.f90, modified by: Ulrich Schaettler, Burkhardt Rockel =====
+Added A2 scenarios for CO2; renamed variable sowdir to sodwddm
+Use alternatively t_g for determining soil type of grid cell
+===== src_setup.f90, modified by: Burkhardt Rockel =====
+Introduced new Namelist parameter polgam
+===== src_setup_vartab.f90, modified by: Burkhardt Rockel =====
+Renamed sunshhrs to dursun; corrected 2m-coding for QV_2M;
+Corrected several netCDF standard_names
+===== src_sfcana.f90, modified by: Ulrich Schaettler =====
+Put statement functions which are not used to a comment
+===== src_sing_local.f90, modified by: Ulrich Schaettler =====
+Put statement functions which are not used to a comment
+===== utilities.f90, modified by: Ulrich Schaettler, Burkhardt Rockel =====
+Added polgam in transformation function rla2rlarot;
+polgam is not used as optional parameter any more
+
+-------------------------------------------------------------------------------
+
+3.20:
+=====
+
+This version is only a correction for the output of data files:
+
+- In organize_data.f90 now%nextstep is limited to values less or equal
+  now%outsteps
+
+Helmut Frank
+
+===== organize_data.f90, modified by: Helmut Frank =====
+Limit now%nextstep to values less or equal now%outsteps to avoid that
+the boundary of array now%ngrib is exceeded.
+
+-------------------------------------------------------------------------------
+
+3.19:
+=====
+
+This version is mainly a correction update:
+
+- In src_sfcana.f90, the value for igds(9) was still set to 0
+  (instead of 8)
+
+- In the multi layer soil model, the snow temperature and the water
+  equivalent of snow are set to consistent values at the beginning
+
+- In the TKE scheme, a bug was corrected  related to the Exner-factor
+  in the explicit correction and some formal modification
+
+- In the Runge-Kutta scheme, the computation of the small time steps
+  was corrected for the parallel version
+
+- Restart: the variable t_g has also to be saved
+
+- FLake Model: to save the T_S values from the Nudging, T_S_LAKE (= T_S)
+  is read at the beginning
+
+- For reading/writing NetCDF data, the soil levels are coded as half levels,
+  not as main levels as in Grib.
+
+Ulrich Schaettler
+  (with work from Erdmann Heise, Matthias Raschendorfer, Jochen Foerstner)
+
+
+All modified files of the library <lm_f90> version 3.19:
+
+===== data_fields.f90, modified by: Ulrich Schaettler =====
+New field T_S_LAKE to save lake values from Nudging cycle
+===== data_modelconfig.f90, modified by: Ulrich Schaettler =====
+New variable to store the depth of soil half levels (for NetCDF I/O)
+===== io_utilities.f90, modified by: Ulrich Schaettler =====
+In read_netcdf: skip variables in the initial list, that are not present
+===== organize_assimilation.f90, modified by: Klaus Stephan =====
+Some adaptations for Latent Heat Nudging
+===== organize_data.f90, modified by: Ulrich Schaettler =====
+Some corrections for writing restart files;
+In case of llake, read an additional initial field (T_S_LAKE)
+===== organize_diagnosis.f90, modified by: Ulrich Schaettler =====
+Corrected a bug in computing grid point indices for given lat-lon values
+===== organize_dynamics.f90, modified by: Ulrich Schaettler =====
+Corrected distribution of logbuf
+===== organize_physics.f90, modified by: Ulrich Schaettler =====
+Provide the depths of soil half levels for NetCDF IO
+===== organize_satellites.f90, modified by: Ulrich Schaettler =====
+If an error occurs during the computations, the model will abort
+===== src_allocation.f90, modified by: Ulrich Schaettler =====
+Added field T_S_LAKE for saving the lake temperatures in the Nudging cycle
+===== src_input.f90, modified by: Ulrich Schaettler =====
+Adaptations to read "old" NetCDF data and restart data
+===== src_output.f90, modified by: Ulrich Schaettler =====
+Corrections in the NetCDF output
+===== src_runge_kutta.f90, modified by: Michael Baldauf =====
+Corrections for computing small time step
+===== src_setup_vartab.f90, modified by: Ulrich Schaettler =====
+Added field t_s_lake for the lake model
+===== src_sfcana.f90, modified by: Ulrich Schaettler =====
+Corrected specification of igds_out(9)
+===== src_soil_multlay.f90, modified by: Erdmann Heise =====
+Remove spurious snow and set consistent t_snow and w_snow at the beginning
+===== turbdiff.incf, modified by: Matthias Raschendorfer \/ Jochen Foerstner =====
+Correction of a bug related to the Exner-factor in the explicit correction
+and some formal modifications
+===== turbtran.incf, modified by: Jochen Foerstner \/ Matthias Raschendorfer =====
+Application of the lower limit for the roughness length over sea
+not only during the initialization of 'gz0'
+
+-------------------------------------------------------------------------------
+
+3.18:
+=====
+
+This version contains many new features and changes. It is a major step
+forward to a new release of LM (Version 4.1). The changes are documented in
+a separate short description and will be incorporated in the new User Guide
+for the new LM release. Therefore the documentation here is very short:
+
+ => For the CLM (Climate LM) Version:
+     - Additional boundary fields to enable long-term climate simulations
+     - Additional output fields
+     - Possibility to specify a CO2-concentration
+     - Possibility to specify the depth of bottom of last hydrological 
+       active soil layer
+     - Spectral Nudging
+
+ => In the I/O component:
+     - possibility to write Restart-files
+     - Option to choose I/O in NetCDF format
+     - Changes in coding the vertical coordinate parameters 
+     - Introduction of Namelist parameter ldwd_grib_use, to allow usage of
+       grib code different from DWD
+     - Possibility to write subdomains for Grib output
+
+ => In the physical parameterizations:
+     - Introduction of the FLake model
+     - Correction of run-off in the multi-layer soil model
+     - Technical change in the radiation: all include files are now really
+       included in the file src_radiation.f90
+
+ => Changes for the Runge-Kutta scheme and the LMK:
+     - Possibility to use additional metric terms for the 3D turbulence
+     - Possibility to use a dynamical bottom boundary condition
+     - Possibility to use a different dynamics/physics coupling
+     - Optimizations (and general update) of Runge-Kutta scheme
+
+ => Changes in the diagnostics:
+     - Grid point output is now written to a single file for every grid point
+     - Grid points for output can be specified by geographical latitude and 
+       longitude values
+
+ => Changes in the assimilation:
+     - New, stability-dependent thresholds for radiosonde humidity (apart
+       from the stability-dependent correction, the thresholds at observation
+       time are equal to the new GME-OI values).
+
+     - New multi-level check for radiosonde humidity (formally as in GME-OI).
+
+     - New (option for) spatial consistency check of radiosonde- (and GPS-)
+       derived integrated water vapour (IWV). In data-pour areas, this becomes
+       a first-guess check on IWV.
+
+     - Some minor bug corrections and code adaptations to re-establish
+       reproducibility independently from domain decomposition and from
+       verification switch.
+
+     - Some minor preparations for use of real-data 1DVar satellite retrievals
+       (MSG, NOAA15-18), e.g. on diagnostic output.
+
+     - New option for alternative weighting of multiple observations so that
+       the total weight will always increase with increasing number of
+       observations. Note that this weighting renders the effective horizontal
+       correlation scales a bit less adaptive to the data density.
+
+     - New option for scaling the horizontal correlation scale for surface
+       pressure data as a function of data density.
+
+     - New option to compute analyses increments (except for nudging
+       coefficients and balancing) separately for different observation types,
+       in order to improve the relative weighting between e.g. one radiosonde
+       observation and a large number of surface observations. With this
+       option, the alternative weighting of multiple observations should
+       probably be selected because otherwise the total weight becomes even
+       smaller with increasing number of data.
+
+     - Frequent flushing of diagnostic output files.
+
+     - Caution messages on insufficient ODR size to specific file 'YUCAUTN'.
+       Suggestions are delivered for how much the ODR size should be increased
+       (the increase suggested is in most cases but not always sufficient).
+
+     - latent heat nudging: general update of the scheme
+
+
+ => Additionals:
+     - Some more output fields have been added: RELHUM_2M, TQS, TQR, TQG
+     - lw_freeslip fully implemented: If lw_freeslip=.FALSE., boundary
+       values for w are now read and relaxation is done.
+     - New KIND parameters isingle/idouble for generic formulation of
+       several subroutines in parallel_utilities.f90, utilities.f90
+
+-------------------------------------------------------------------------------
+
+3.17:
+=====
+
+This version introduces the prognostic density for surface snow layer
+in the multi-layer soil model.
+
+To control the use of the snow density, two new NAMELIST variables
+are defined in the group /GRIBIN/:
+
+ - lana_rho_snow:  if .TRUE.,  the field rho_snow is in the initial file
+                               for the LM
+
+ - lan_rho_snow:   if .TRUE.,  the field with tri=0 is read from the 
+                               initial file (field comes from external
+                               analyses or GME interpolation)
+                   if .FALSE., the field with tri=13 is read
+                               (coming from LM Nudging cycle)
+
+A new output variable, H_SNOW (height of snow) has been added.
+
+Besides the new variables H_SNOW, RHO_SNOW some more variables have been
+added to the (long) grid point output: clcl, clcm, clch, clct, umfl_s, 
+vmfl_s, hhl, hml, lai, plcov, rootdp
+
+
+Ulrich Schaettler
+    (with work from Reinhold Schrodin)
+
+All modified files of the library <lm_f90> version 3.17:
+
+===== data_fields.f90, modified by: Reinhold Schrodin =====
+New fields rho_snow (prognostic snow density) and h_snow (snow height) added
+===== data_io.f90, modified by: Ulrich Schaettler =====
+New Namelist variable lana_rho_snow to read prognostic snow density
+Enlarged lanfld, to select snow density from analyses or interpolated 
+GME data.
+===== data_soil.f90, modified by: Reinhold Schrodin =====
+New variables (crhosmin, crhosmaxf, crhosmin, crhosmaxt, csnow_tmin)
+and changed variables (crhosmin_ml,crhosmax_ml) for ageing of snow density 
+calculation
+===== organize_data.f90, modified by: Ulrich Schaettler =====
+Corrected check, whether variables appearing in an I/O list are allocated
+Input of new Namelist parameters lana_rho_snow, lan_rho_snow
+===== src_allocation.f90, modified by: Reinhold Schrodin =====
+Add prognostic snow density rho_snow and snow heigth h_snow
+===== src_gridpoints.f90, modified by: Reinhold Schrodin =====
+Additional variables: rho_snow, h_snow
+===== src_setup_vartab.f90, modified by: Ulrich Schaettler =====
+Bug correction for pointer connection to for_e, for_d
+Added field rho_snow (prognostic snow density), h_snow (snow height)
+===== src_sfcana.f90, modified by: Michael Buchhold =====
+Changed unit-of-timerange for Grib records to 1 (instead of 0 before)
+===== src_soil_multlay.f90, modified by: Reinhold Schrodin =====
+LME adaptations to GME soil model modifications (B. Ritter):
+- Constant snow density (250 kg/m**3) replaced by prognostic snow density
+formulation (min = 50 kg/m**3, max = 400 kg/m**3)
+- Adjustment of soil temperatures in presence of snow
+- Extended formulation of transfer coefficient limitation
+
+-------------------------------------------------------------------------------
+
+3.16:
+=====
+
+In this version, all developments done for the LMK up to now have been 
+incorporated in the official LM library. The new / changed features are 
+(in short)
+
+  - New formulation of advection for the moisture quantities. Now it is
+    possible to choose courant number independent Eulerian or Semi-Lagrangian
+    variants.
+
+  - A set of new namelist switches has been introduced to control the runs 
+    using the new Runge-Kutta dynamical core. For a description of these 
+    switches see the new User Guide (to be completed soon).
+
+The other changes are:
+
+  - A modification to the prognostic turbulence scheme to avoid numerical
+    instabilities. New Namelist variables have been introduced for that
+    (tkesmot, wichfakt, securi, tkhmin, tkmmin)
+
+  - Multi-layer soil model: The two former subroutines terra1_multlay and
+    terra2_multlay are now combined to one subroutine, which is called
+    before the convection scheme. 
+    The evaporation treatment at plant wilting point has been modified and
+    the soil water diffusion term is now driven by the gradient of the total
+    soil water concentration (water+ice).
+
+  - Radiation: New external parameters for evergreen and deciduous forest
+    (for_e, for_d) are used to determine the effect of snow covered forests
+    on solar snow albedo.
+
+  - Tiedtke convection scheme: correction of maximal possible convective
+    gust, if no precipitation occurs.
+
+  - Input of data: smaller modifications to read the fields from the soil
+    moisture analysis correctly when using the new multi-layer soil model.
+
+  - Surface analysis: changed sorting of abs array (because of compiler
+    problems on the new IBM machines)
+
+And some minor bug corrections:
+
+  - organize_assimilation.f90; data_nudge_all.f90:
+    Variable rlhn_scale_dp was erroneously declared as INTEGER instead of REAL
+
+  - utilities.f90:
+    Corrected call to intrinsic procedure REAL
+
+  - src_sing_local.f90:
+    Bug correction in subroutine surf_obs.
+
+  - organize_satellites.f90:
+    qs must only be used, if it is allocated.
+
+
+Ulrich Schaettler
+    (with work from Jochen Foerstner, Thorsten Reinhardt, Reinhold Schrodin,
+     Bodo Ritter, Matthias Raschendorfer, et.al.)
+
+All modified files of the library <lm_f90> version 3.16:
+
+===== data_constants.f90, modified by: Ulrich Schaettler =====
+Added dielectric constants for water and ice; added density of ice
+===== data_io.f90, modified by: Ulrich Schaettler =====
+Introduced new NL parameter: lana_qg; ysuffix
+Added new entries in structure ar_des (idef_stat) and pp_nl (ysuffix)
+===== data_nudge_all.f90, modified by: Ulrich Schaettler =====
+Bug correction: rlhn_scale_dp was erroneously defined as Integer
+===== data_runcontrol.f90, modified by: Matthias Raschendorfer, Jochen Foerstner =====
+New Namelist parameters
+- for Turbulence scheme: tkesmot, wichfakt, securi, tkhmin, tkmmin
+- for Convection:        lshallow   (for shallow convection)
+lconv_inst (output of top_con/bas_con)
+- for Radiation:         lforest (for use of external fields for_e, for_d)
+- for Runge-Kutta scheme: lsl_adv_qx, lva_impl_dyn, lva_impl_qvqc
+(lvertad_impl eliminated)
+yef_adv_qx, nbl_exchg, ieva_order, intcr_max
+===== fast_waves_rk.f90, modified by: Jochen Foerstner =====
+Converted former external subroutine to a module with a module procedure
+===== hori_diffusion.f90, modified by: Ulrich Schaettler =====
+Changes for the use in the Runge-Kutta scheme (converted SR to MODULE)
+===== io_utilities.f90, modified by: Ulrich Schaettler =====
+Eliminated time check for T_CL and W_CL in case of LM2LM
+===== lmorg.F90, modified by: Ulrich Schaettler =====
+Adaptations for the 2 time level Runge-Kutta scheme
+===== meteo_utilities.f90, modified by: Jochen Foerstner, Ulrich Schaettler =====
+Included new SR for computing calrho_densities
+Modification in SR satad, to "save" the start values for the temperature
+===== numeric_utilities.f90, modified by: Ulrich Schaettler, Michael Baldauf =====
+Moved several routines to new utility-module numeric_utilities_rk
+Added new subroutine interpol_sl_tricubic
+Bug correction for computing the backward trajectory for SL advection
+===== numeric_utilities_rk.f90, modified by: Jochen Foerstner =====
+Initial release
+===== organize_assimilation.f90, modified by: Ulrich Schaettler =====
+Bug Correction: rlhn_scale_dp was erroneously defined as Integer
+===== organize_data.f90, modified by: Thorsten Reinhardt, Helmut Frank, Ulrich Schaettler =====
+Introduced new NL Parameter lana_qg;                             (T.R.)
+Implemented test, whether output variables are really allocated; (U.S.)
+Adapted ynaman to the use of the multi-layer soil model          (H.F.)
+===== organize_dynamics.f90, modified by: Ulrich Schaettler =====
+New Namelist parameters for the Runge-Kutta scheme;
+Changed default values for some other parameters
+===== organize_physics.f90, modified by: M. Raschendorfer, J. Foerstner, R. Schrodin =====
+New Namelist variables for Physics, Turbulence scheme and shallow convection
+Multi layer soil model completely called before convection
+===== organize_radiation.incf, modified by: Reinhold Schrodin =====
+Effect of snow covered forests on solar snow albedo (prepared)
+===== organize_satellites.f90, modified by: Davide Cesari =====
+Use of qs only, if it is allocated
+===== pp_utilities.f90, modified by: Axel Seifert =====
+Introduced new SR radar_lm_ray and gamma_fct for computing radar images
+===== src_2timelevel.f90, modified by: Ulrich Schaettler =====
+Adapted call to procedure hori_diffusion to module procedure comp_hori_diff
+===== src_allocation.f90, modified by: Reinhold Schrodin =====
+Allocation and deallocation of new variables for_e and for_d
+===== src_conv_shallow.f90, modified by: Jochen Foerstner =====
+Initial release
+===== src_conv_tiedtke.f90, modified by: Erdmann Heise =====
+Correction of zvddraf (maximal possible convective gust)
+Introduction of lconv_inst, to choose whether instantaneous or min/max
+values of top_con/bas_con are written.
+===== src_gscp.f90, modified by: Thorsten Reinhardt =====
+Some editorial changes
+===== src_input.f90, modified by: Ulrich Schaettler, Helmut Frank =====
+Adapted length of pathname for input-directory (U.S.)
+Adaptation to read W_SO also from the soil moisture analysis
+Read T_SO(1:ke_soil+1) from the Nudging, even if T_SO(0) is read from 
+the SST analysis                                                 (H.F.)
+===== src_leapfrog.f90, modified by: Ulrich Schaettler =====
+Adapted call to procedure hori_diffusion to module procedure comp_hori_diff
+===== src_output.f90, modified by: Ulrich Schaettler =====
+Adapted length of pathname for output-directory
+Calculate new fields for output of radar images
+===== src_radiation.f90, modified by: Reinhold Schrodin =====
+Use variables for_e and for_d from data_fields, csalb_snow_fd and
+csalb_snow_fe from data_soil
+===== src_relaxation.f90, modified by: Ulrich Schaettler =====
+Correction for lhn: compute time level nold only in 3tl scheme
+===== src_runge_kutta.f90, modified by: Jochen Foerstner =====
+New formulation of advection for the moisture quantities
+(Courant number independent Eulerian and Semi-Lagrangian variants)
+Optimizations
+===== src_setup.f90, modified by: Ulrich Schaettler =====
+Added dielectric constants for water and ice; density for ice
+===== src_setup_vartab.f90, modified by: Ulrich Schaettler =====
+Added fields to the table: for_e, for_d, clc_con, clw_con
+Added an additional entry in the list description (idef_stat), to indicate
+whether a corresponding field is allocated
+===== src_sfcana.f90, modified by: Michael Buchhold =====
+Erroneous sorting of abs array fixed. Subroutine ia_comp modified.
+Sort on station ID cancelled.
+Size of obs array modified.
+Number of sucsessive correction scans increased for t2m and rf2m
+===== src_sing_local.f90, modified by: Guy DeMorsier =====
+Bug correction in SR surf_obs.
+===== src_soil_multlay.f90, modified by: Reinhold Schrodin =====
+- Modification of evaporation treatment at plant wilting point
+- Soil water transport: Soil water diffusion term driven by the gradient
+of the total soil water concentration (water + ice)
+- Combining terra1_multlay and terra2_multlay in terra_multlay
+===== src_turbdiff.f90, modified by: Matthias Raschendorfer =====
+Introduction of the parameters tkesmot, wichfakt, securi, tkhmin, tkmmin
+===== stab_funct.incf, modified by: Matthias Raschendorfer =====
+Removal of obsolete restrictions
+===== turb_param.incf, modified by: Matthias Raschenorfer =====
+Introduction of the smoothing parameter tsmot and some further input parameter
+===== turbdiff.incf, modified by: Matthias Raschendorfer =====
+Introduction of the smoothing parameter 'tsmot'; removal of the parameter 'q_max'.
+Changing the restriction in order to avoid a singularity in the stability function.
+Modification of vertical diffusion in the TKE-equation
+===== turbtran.incf, modified by: Matthias Raschendorfer =====
+Some adaptations to the modifications in 'turbdiff.incf'
+===== utilities.f90, modified by: Ulrich Schaettler =====
+Bug correction in the call to intrinsic function REAL
+
+-------------------------------------------------------------------------------
+
+3.15:
+=====
+
+This version contains (again) two bug fixes and some modifications
+for the LME
+
+ - Aerosol bug fix in organize_radiation.incf:
+   While porting this code to the LM coding rules, some lines have been
+   forgotten. Therefore wrong aerosol profiles have been used up to now.
+
+ - Additional computation of surface pressure after reading the first
+   boundary file:
+   If the initial data are coming from an analysis (nudging) and the
+   boundary data from a forecast model (e.g. GME), the initial and boundary
+   data are mixed (in subroutine id_mix_bd from src_input.f90). After this
+   mixing the surface pressure has to be computed again, in order to fit
+   to the changed atmospheric pressure.
+
+ - Observation processing:
+   Some dimensions have been changed to be able to process more observations
+   (necessary for LME).
+
+ - The calculation of the maximal wind gusts (vmax10m) has been modified
+   analogous to the GME 40km/40layers formulation. This was necessary for
+   the LME, where the lowest model level is in 10m height.
+
+ - The internal function FLOAT, which is no Fortran90 standard (but has been
+   provided by most compilers), has been replaced by the standard internal
+   function REAL.
+
+ - New Namelist variable nunit_of_time: unit of time-range (Grib-code)
+   The only unit of time-range that had been implemented in the LM up to now
+   was "1" (time-range of 1 hour). The unit of time range can now be set by
+   the namelist variable "nunit_of_time" in the group /GRIBOUT/.
+   Implemented values are:
+      0:  1 minute
+      1:  1 hour
+      2:  1 day
+     10:  3 hours
+     11:  6 hours
+     12: 12 hours
+     13: 15 minutes       (this is not official Grib1 standard)
+     14: 30 minutes       (this is not official Grib1 standard)
+
+   The values 13 and 14 are no official Grib1 standard, but they are necessary
+   for output frequencies < 1 hour.
+
+
+Ulrich Schaettler
+   (with work from Felix Ament, Bodo Ritter, Reinhold Schrodin,
+    Christoph Schraff, Jan-Peter Schulz)
+
+All modified files of the library <lm_f90> version 3.15:
+
+===== data_io.f90, modified by: Ulrich Schaettler =====
+Introduced new NL Parameter: nunit_of_time
+===== dfi_initialization.f90, modified by: Ulrich Schaettler =====
+Replaced FLOAT by REAL
+===== io_utilities.f90, modified by: Ulrich Schaettler =====
+Replaced FLOAT by REAL; Implemented unit_of_time in check-routines
+===== lmorg.F90, modified by: Ulrich Schaettler =====
+Replaced FLOAT by REAL
+===== near_surface.f90, modified by: Jan-Peter Schulz =====
+Adapt calculation of vmax_10m to the GME 40km/40L formulation
+===== numeric_utilities.f90, modified by: Michael Baldauf =====
+Eliminated Subroutine adv_sl_trilin_dt1_3tl (not longer needed)
+===== organize_data.f90, modified by: Ulrich Schaettler =====
+Introduced new NL Parameter: nunit_of_time; Added check, whether start,
+end and hincbound can be resolved by dt
+===== organize_diagnosis.f90, modified by: Ulrich Schaettler =====
+Changes to open and close file YUPRMEAN in every output step
+===== organize_dynamics.f90, modified by: Ulrich Schaettler =====
+Replaced FLOAT by REAL
+===== organize_physics.f90, modified by: Ulrich Schaettler =====
+Editorial changes
+===== organize_radiation.incf, modified by: Reinhold Schrodin, Bodo Ritter, Felix Ament =====
+Bug correction for computing aerosols
+Replaced FLOAT by REAL (Ulrich Schaettler)
+===== src_artifdata.f90, modified by: Ulrich Schaettler =====
+Replaced FLOAT by REAL
+===== src_conv_kainfri.f90, modified by: Ulrich Schaettler =====
+Replaced FLOAT by REAL
+===== src_conv_tiedtke.f90, modified by: Ulrich Schaettler =====
+Replaced FLOAT by REAL
+===== src_input.f90, modified by: Ulrich Schaettler =====
+Calculate surface pressure again after reading first boundary data set
+(to be consistent with atmospheric pressure after id_mix_bd)
+Modifications to read boundary files also in 0.5/0.25 hourly increments
+===== src_meanvalues.f90, modified by: Ulrich Schaettler =====
+Open and close file YUPRMEAN for every output step (to save the results)
+Replaced FLOAT by REAL
+===== src_mult_local.f90, modified by: Ulrich Schaettler =====
+Replaced FLOAT by REAL
+===== src_obs_proc_aof.f90, modified by: Ulrich Schaettler =====
+Replaced FLOAT by REAL
+===== src_obs_processing.f90, modified by: Christoph Schraff =====
+(LME:) Fraction of maxmll/maxmlo and of maxsgl/maxsgo slightly increased.
+Replaced FLOAT by REAL (Ulrich Schaettler)
+===== src_output.f90, modified by: Ulrich Schaettler =====
+Replaced FLOAT by REAL; Implemented NL variable nunit_of_time
+===== src_relaxation.f90, modified by: Ulrich Schaettler =====
+Replaced FLOAT by REAL
+===== src_sfcana.f90, modified by: Christoph Schraff =====
+Size of obs arrays made dependent on (old) namelist param. 'maxsgo' (LME).
+Replaced FLOAT by REAL (Ulrich Schaettler)
+===== src_sing_local.f90, modified by: Ulrich Schaettler =====
+Replaced FLOAT by REAL
+===== utilities.f90, modified by: Ulrich Schaettler =====
+Replaced FLOAT by REAL
+
+-------------------------------------------------------------------------------
+
+3.14:
+=====
+
+This version is primarily a bug fix in the setup for running the new
+multi-layer soil model. The surface temperature t_so(0) is now
+initialized also over sea for all timelevels.
+
+Besides, more features have been implemented or changed:
+
+ - New type for Rayleigh-damping in the upper levels:
+   Choosing the new namelist variable itype_spubc==2, the damping
+   is done using filtered LM fields instead of boundary fields.
+   With itype_spubc==1 (default), the former version is chosen.
+
+ - Update for the latent heat nudging:
+   A new namelist variable rlhn_scale_dp (scaling factor for
+   diagnostically reference precipitation)
+
+ - Runge-Kutta Scheme:
+   The possibility for using an upwind 1st order and centered differences
+   2nd order advection operator has been introduced.
+
+ - Setup:
+   If the I/O-lists contain variable names that are not in the LM Grib
+   tables, the program prints error messages and aborts.
+
+ - LMSynSat:
+   For the computation of the synthetic satellite images the sum
+   qi+qs is now used.
+
+ - Grid Scale Precipitation:
+   The adaptations for latent heat nudging have been introduced in the
+   routines kessler_pp, hydor_pp and hydci_pp_gr.
+
+ - Turbulence:
+   The prognostic treatment of TKE has been introduced also for the
+   3D turbulence scheme.
+
+
+And some more bugs/inconsistencies have been removed:
+
+ - src_input/src_artifdata:
+   The computation of llandmask has been corrected, so that grid points
+   with fr_land=0.5 are now treated as land points (to be consistent with
+   other LM components)
+
+ - slow_tendencies:
+   The computation of the sensible and latent heat flux now use the
+   same lower boundary condition than the dynamical computation.
+
+ - turbtran.incf:
+   The upper boundary condition for 2 DO WHILE loops has been adjusted
+   (correction by NEC for vectorization)
+
+
+Change of results:
+
+ The results of the LM will be changed slightly by the new setting of
+ llandmask (more points are now treated as land points). Besides that,
+ the compiler options for src_gscp have been changed to exclude the
+ option -qipa. This also changes the results sligthly.
+
+
+Ulrich Schaettler (with work from Thorsten Reinhardt, Jochen Foerstner,
+                   Klaus Stephan, Lucio Torrisi, Felix Ament)
+
+
+All modified files of the library <lm_f90> version 3.14:
+
+===== data_modelconfig.f90, modified by: Ulrich Schaettler =====
+Introduced variable ke_rd: lowest level with Rayleigh damping
+===== data_nudge_all.f90, modified by: Klaus Stephan =====
+Introduced new Namelist variable rlhn_scale_dp: scaling factor for
+diagnostically reference precipitation
+===== environment.f90, modified by: Ulrich Schaettler =====
+Bug fix in the routine extend_field
+===== fast_waves_rk.f90, modified by: Jochen Foerstner =====
+Upwind-1st order and centered-2nd order operator in advection form
+===== lmorg.F90, modified by: Ulrich Schaettler =====
+Adapted treatment of t_s for new multi-layer soil model
+===== numeric_utilities.f90, modified by: Jochen Foerstner =====
+Changes in the vertical advection routine for Runge-Kutta scheme
+===== organize_assimilation.f90, modified by: Klaus Stephan =====
+Introduced namelist variable rlhn_scale_dp
+===== organize_data.f90, modified by: Ulrich Schaettler =====
+Introduced error message, if variables from I/O-lists cannot be found in
+the LM Grib tables
+===== organize_dynamics.f90, modified by: Jochen Foerstner =====
+Possibility of iadv_order = 1/2
+===== organize_satellites.f90, modified by: Thorsten Reinhardt, Christian Keil =====
+Use of qi+qs for computation of LMSynSat
+===== slow_tendencies.f90, modified by: Ulrich Schaettler =====
+Correction in the computation of latent and sensible heat flux (to be
+consistent with lower boundary condition)
+===== src_allocation.f90, modified by: Ulrich Schaettler =====
+Corrections for allocation of soil variables for old soil model
+===== src_artifdata.f90, modified by: Ulrich Schaettler =====
+Adjusted computation of llandmask: fr_land=0.5 is a land point now!!!
+Editorial changes
+===== src_gscp.f90, modified by: Thorsten Reinhardt =====
+Adaptations for latent heat nudging also in hydor_pp, kessler_pp, hydci_pp_gr
+===== src_input.f90, modified by: Ulrich Schaettler =====
+Initialization of t_so(0) for all time levels;
+Initializations for Rayleigh-damping only for itype_spubc==1
+Adjusted computation of llandmask: fr_land=0.5 is a land point now!!!
+===== src_lheat_nudge.f90, modified by: Klaus Stephan =====
+Update of the scheme
+===== src_relaxation.f90, modified by: Lucio Torrisi =====
+Introduction of new type of Rayleigh damping: it uses filtered LM fields
+instead of boundary fields
+===== src_runge_kutta.f90, modified by: Jochen Foerstner =====
+Enhanced formulation of moist turbulence for 3D turbulence scheme
+===== src_setup.f90, modified by: Jochen Foerstner =====
+Eliminated irunge_kutta, which is not set in this stage of the LM
+===== src_turbdiff.f90, modified by: Jochen Foerstner =====
+Introduced prognostic treatment of TKE also for 3D turbulence scheme
+(use lprog_tke)
+===== src_turbulence.f90, modified by: Jochen Foerstner =====
+Modifications for the 3D turbulence scheme
+===== turbtran.incf, modified by: Jochen Foerstner =====
+Introduced new types of turbulent diffusion parameterizations
+Replaced SIGN function
+Adjusted upper boundary of DO-WHILE loops (by NEC)
+===== utilities.f90, modified by: Ulrich Schaettler =====
+New filter routine smooth9 for new type of Rayleigh damping (Lucio Torrisi)
+Changes in horizontal_filtering (Jochen Foerstner)
+
+-------------------------------------------------------------------------------
+
+3.13:
+=====
+
+This version introduces 3 new features and a modified version of
+the multi-layer soil model. In addition some more technical 
+changes have been implemented
+
+1: Introduction of Graupel Scheme (Thorsten Reinhardt)
+   To switch on: itype_gscp=4
+
+2: Introduction of a 3D turbulence scheme (only in combination
+   with Runge-Kutta scheme). Together with this scheme a 
+   prognostic treatment of TKE can be chosen.
+   (Jochen Foerstner, Gerd Vogel, Hans Herzog)
+   To switch on the 3D turbulence:  itype_turb=5/7
+   To switch on the prognostic TKE treatment: lprog_tke=.TRUE.
+
+3: Introduction of latent heat nudging for the assimilation
+   (Klaus Stephan, Stefan Klink, Christina Koepken)
+   For the setting of new Namelist variables see the Documentation
+
+4: Modified version of multi-layer soil model
+   (Reinhold Schrodin, Bodo Ritter, Erdmann Heise)
+   This scheme has been adapted to the GME scheme.
+
+5: Further modifications:
+   - src_relaxation:           Lucio Torrisi
+      Preparation of a second option for Rayleigh damping
+      This option is not fully implemented; the filtering of the 
+      LM fields is still missing
+
+   - organize_satellites:      Christian Keil / Thorsten Reinhardt
+      Corrected computation of total cloud water content.
+
+   - organize_data:            Ulrich Schaettler
+     The subroutine "setup_vartab" has been removed from organize_data
+     and put to a source module src_setup_vartab, because of long
+     compilation time.
+
+
+Ulrich Schaettler
+
+-------------------------------------------------------------------------------
+
+3.12:
+=====
+
+This version prepares the assimilation of 1dVAR satellite retrievals,
+introduces an option for a revised quality control for humidity and
+a new multi-level check, and re-organises the observation processing.
+
+It also allows to initialise the prognostic precipitation fields,
+and corrects some bugs.
+
+New namelist parameters: 'lana_qr_qs', 'ldiniprec'.
+
+In detail:
+
+1. Nudging: Preparation of the assimilation of 1dVAR satellite retrievals
+            from MSG or ATOVS radiances by:
+   -> introducing a new module 'src_obs_1dvar_org.f90' which contains the
+      framework of organising the observation processing (i.e. production)
+      of satellite retrievals
+   -> defining ODR arrays for the retrieved profiles as interface to the
+      nudging
+   -> including these profiles in the process of computing the observation
+      increments (without further quality control), spreading and nudging
+      (i.e. once the retrievals are available they can be nudged immediately)
+   -> defining new variables (in 'data_nudge_all') which may become namelist
+      parameters in a later version when the production of the retrievals
+      by means of a 1dVAR minimization is included.
+
+2. Nudging: Option (active if 'qcvf(4) > 0') for a revised quality control
+            of vertical profiles with:
+   -> new (smaller) stability-dependent thresholds for the quality control
+      of (radiosonde) humidity profiles, which are based on the thresholds
+      used in the OI of GME, but enhanced within stable layers and inversions
+   -> a new formulation of the multi-level check, based on that used in the
+      OI scheme of GME for humidity
+   -> a reduction of the temporal enhancement of quality control thresholds
+
+3. Nudging: Re-organization of the observation processing:
+   -> Inclusion of all include-files (*.incf) in the source module(s)
+   -> Outsourcing of various subroutines from 'src_obs_processing.f90' to
+      other, new modules:
+      -> 'src_obs_proc_util': utilities used in the obs processing, including
+                              all tasks which require (also time-dependent)
+                              model fields within the obs processing
+      -> 'src_obs_proc_aof' : basic processing specific to obs read from AOF
+      -> 'src_obs_proc_air' : processing steps specific to aircraft obs
+   -> Subroutine 'organize_obs_proc' cleaned from most explicit computations
+      by moving initialisation steps to new routines 'obs_*_init'
+
+4. Nudging: Revisions to redundancy checking:
+   -> no redundancy checking between PILOTs and profilers
+   -> rejection (instead of setting to passive) of reports that are
+      completely contained in other reports in order to prevent them from
+      entering the ODR array and to reduce the probability of the ODR
+      being too small to accommodate all active observations
+
+5. Prognostic precipitation: Revised initialisation (up to this version,
+                             it was always initialised with zero !) :
+   -> diagnostic initialisation by calling a revised 'hydci' in the first
+      timestep, selected by a new namelist parameter 'ldiniprec'
+   -> prognostic initialisation by reading prognostic rain and snow from
+      the initial fields given by the nudging analysis at the initial time,
+      selected by a new namelist parameter 'lana_qr_qs'
+
+6. Bug corrections:
+   -> Nudging: Tiny correction to avoid sub-saturation due to rounding errors
+   -> Nudging: Correction in 'local_sort_reports' to allow for the
+               verification of all passsive reports in the ODR
+   -> Nudging: Minor bug fix on the spreading in the lowest model layer
+   -> Nudging: Minor bug fix on a print-out to prevent array bound violations
+   -> Surface analysis: Corrected timing of closing files
+   -> Leapfrog: Bug fix for variable zqiwt (dimension ke --> ke+1)
+   -> organize_data: 'ilevbotnoframe' correctly included in namelist
+
+Christoph Schraff
+
+All modified files of the library <lm_f90> version 3.12:
+
+===== data_io.f90, modified by: Christoph Schraff =====
+New namelist variable 'lana_qr_qs'to read prognostic rain and snow.
+===== data_nudge_all.f90, modified by: Christoph Schraff =====
+Extension to (prepare to) include assimilation of satellite retrievals:
+Introduce variables that may become namelist parameters in a later version.
+===== data_nudge_local.f90, modified by: Christoph Schraff =====
+Extension to (prepare to) include assimilation of satellite retrievals.
+Introduction of several limits / errors for revised optional humidity
+thresholds. Introduction of analysis layers and standard layers for revised
+optional multi-level check.
+===== data_obs_process.f90, modified by: Christoph Schraff =====
+Bug correction to render RESHAPE (for noct??) consistent with array size.
+Extension of code type descriptions to include satellite retrievals.
+===== data_obs_record.f90, modified by: Christoph Schraff =====
+Extension to (prepare to) include assimilation of satellite retrievals.
+ODR header element 'nhadif' (height diff) replaced by 'nhsurf' (orography).
+===== data_runcontrol.f90, modified by: Christoph Schraff =====
+New Namelist variable ldiniprec for initialising prognostic rain / snow.
+===== organize_data.f90, modified by: Christoph Schraff =====
+Adaptation to read prognostic rain / snow from analysis file according
+to new namelist variable 'lana_qr_qs'.
+===== organize_physics.f90, modified by: Christoph Schraff =====
+New Namelist variable 'ldiniprec'.
+===== src_correl_cutoff.f90, modified by: Christoph Schraff =====
+Another small bug fix for print-out to prevent array bound violations.
+===== src_gscp.f90, modified by: Guenther Doms \/ Christoph Schraff =====
+Diagnostic initialisation of prognostic rain and snow.
+===== src_leapfrog.f90, modified by: Ulrich Schaettler =====
+Bug fix for variable zqiwt (has to be allocated with ke+1).
+===== src_mult_local.f90, modified by: Christoph Schraff =====
+Extension to (prepare to) include assimilation of satellite retrievals.
+New QC option (qcvf(4) > 0) with reduced, stability-dependent quality control
+thresholds for humidity and a new formulation of multi-level check (like OI).
+===== src_mult_spread.f90, modified by: Christoph Schraff =====
+Extension to (prepare to) include assimilation of satellite retrievals.
+Minor bug correction related to the spreading in the lowest model layer.
+===== src_nudging.f90, modified by: Christoph Schraff =====
+Extension to (prepare to) include assimilation of satellite retrievals.
+===== src_obs_1dvar_org.f90, modified by: Christoph Schraff =====
+Initial version, with basic setup of organize_1dvar only.
+===== src_obs_proc_air.f90, modified by: Christoph Schraff =====
+Initial release
+===== src_obs_proc_aof.f90, modified by: Christoph Schraff =====
+Initial release, based on some previous modules of src_obs_processing.
+No redundancy checking between PILOTs and profilers.
+Avoid verification of reports that are completely contained in other reports.
+Very small correction to avoid sub-saturation due to rounding errors.
+===== src_obs_proc_util.f90, modified by: Christoph Schraff =====
+Initial release
+===== src_obs_processing.f90, modified by: Christoph Schraff =====
+Extension of array allocations and diagnostic printing to prepare to include
+the assimilation of satellite retrievals.
+Outsourcing of various subroutines to new modules 'src_obs_proc_air',
+'src_obs_proc_aof', and 'src_obs_proc_util'. Inclusion of former include-
+files 'obs_read_gps' and 'obs_print***'. Subroutine 'organize_obs_proc'
+cleaned from most explicit computations by moving initialisation steps
+to new routines 'obs_proc_init', 'obs_aof_init', and 'obs_gps_init'.
+===== src_sfcana.f90, modified by: Christoph Schraff =====
+Bug correction on timing of closing files.
+===== src_sing_local.f90, modified by: Christoph Schraff =====
+Extension to (prepare to) include assimilation of satellite retrievals.
+Correction to allow for verification of all passsive reports.
+Optional reduction for temporal enhancement of quality control thresholds.
+===== src_sing_spread.f90, modified by: Christoph Schraff =====
+Minor bug correction related to the spreading in the lowest model layer.
+===== misc/dependencies =====
+Dependencies adapted to the file modifications
+===== misc/global =====
+New global modification comments replaced
+===== misc/objfiles =====
+List of object files adapted to the dependencies list
+-------------------------------------------------------------------------------
+
+3.11:
+=====
+
+FPE trapping for IBM machines introduced.
+
+!! NOTE !! With this change, the first ifdef has been introduced to the LM.
+           The reason is that a IBM-specific routine is called for trapping
+           floating point execptions without using compiler options that
+           would slow down the program execution.
+           To activate this routine, the main program lmorg has to be compiled
+           with -DFPEABORT. The main program now has the extension F90 !!
+
+Michael Gertz
+
+All modified files of the library <lm_f90> version 3.11:
+
+===== lmorg.F90, modified by: Michael Gertz =====
+FPE trapping for IBM machines introduced
+
+-------------------------------------------------------------------------------
+
+3.10:
+=====
+
+This version is only a correction update:
+
+The treatment of the error values from the RTTOV-library has been
+changed.
+ - If a violation of the soft-limit occurs, the synthetic
+   satellite images are computed anyhow.
+ - If the hard limits are violated, only this special step is skipped.
+ - If a general error occurs, the computation of the satellite images
+   is switched of, but the LM integration is going on.
+
+In all cases, WARNING messages are written to standard output.
+
+Ulrich Schaettler
+
+All modified files of the library <lm_f90> version 3.10:
+
+===== data_runcontrol.f90, modified by: Ulrich Schaettler =====
+Added variable isynsat_stat for the status of synthetic satellite images
+===== organize_data.f90, modified by: Ulrich Schaettler =====
+Added check of isynsat_stat, whether synthetic satellite images are written
+===== organize_satellites.f90, modified by: Ulrich Schaettler =====
+Added status of synthetic satellite images to transfer to output routines
+===== src_sat_tbs.f90, modified by: Ulrich Schaettler =====
+Changed treatment of error values from RTTOV-library
+
+-------------------------------------------------------------------------------
+
+3.9:
+====
+
+This version is a correction update:
+
+There were some bugs in the computation of the backward trajectories
+for the semi-Lagrange advection of precipitation.
+
+Ulrich Schaettler / Michael Baldauf
+
+All modified files of the library <lm_f90> version 3.9:
+
+===== numeric_utilities.f90, modified by: Michael Baldauf =====
+Bug corrections in backtraj_trilin_dt1_3tl, backtraj_trilin_dt2_3tl
+
+-------------------------------------------------------------------------------
+
+3.8:
+====
+
+This version is a correction update:
+
+ - There were inconsistencies in the treatment of the linked list for the
+   Namelist group /GRIBOUT/ between the output for the model levels and
+   the output for the synthetic satellite images. This has been corrected.
+
+ - There was a bug in the scheme for the prognostic precipitation.
+
+ - Some optimizations and technical changes for the Runge-Kutta scheme
+   have also been implemented.
+
+Ulrich Schaettler / Jochen Foerstner / Thorsten Reinhardt
+
+===== fast_waves_rk.f90, modified by: Jochen Foerstner =====
+Some optimizations and corrections for l2dim and lperi; editorial changes
+===== lmorg.f90, modified by: Ulrich Schaettler =====
+Correction in initialize_loop for the 2 timelevel scheme.
+===== organize_data.f90, modified by: Ulrich Schaettler =====
+Bug-Fix in the treatment of the linked-list for Namelist group /GRIBOUT/
+Replaced FLOAT by REAL
+===== organize_physics.f90, modified by: Jochen Foerstner =====
+For the 2 timelevel scheme and prognostic precipitation, the precipitation
+scheme (renamed to hydci_pp) is now also called after the dynamics.
+===== organize_satellites.f90, modified by: Ulrich Schaettler =====
+Changed communicator icomm_cart to icomm_world for the Namelist distribution
+===== src_2timelevel.f90, modified by: Jochen Foerstner =====
+Introduced check of CFL-criterion and print global indices in case
+of violation
+===== src_gscp.f90, modified by: Jochen Foerstner \/ Thorsten Reinhardt =====
+Technical changes for using hydci_pp also for the Runge-Kutta scheme
+Bug-fix and additional optimizations in hydci_pp
+===== src_output.f90, modified by: Ulrich Schaettler =====
+Bug-Fix in the treatment of the linked-list for Namelist group /GRIBOUT/
+===== src_runge_kutta.f90, modified by: Jochen Foerstner =====
+Technical changes and some optimizations
+===== src_setup.f90, modified by: Jochen Foerstner =====
+Corrections for runs with l2dim and the Runge-Kutta scheme
+
+-------------------------------------------------------------------------------
+
+3.7:
+====
+
+Summary:
+--------
+
+In this LM version there are 3 new and some changed features:
+
+The three new features are:
+
+ - Prognostic treatment of rain and snow in the 3 timelevel Leapfrog scheme
+ - Additional options for the 2 timelevel Runge-Kutta scheme
+ - Computation of synthetic satellite images (for Meteosat7 and MSG)
+
+And the changed features are:
+
+ - Renaming of some GRIB names (important for namelist input and Grib I/O)
+ - Adaptations in the TKE-scheme
+ - Choice of precipitation scheme (Namelist variable itype_gscp)
+ - Check of humidity variables and setting to zero, if they are too small
+
+
+New Namelist Variables:
+-----------------------
+
+These are the new Namelist variables. For a more detailed description 
+see below:
+
+  - Namelist group /RUNCTL/:
+     -> luse_rttov   .FALSE.  to switch on/off the synthetic satellite images
+
+  - Namelist group /PHYCTL/:
+     -> rat_sea        1.0    laminar scaling factor for heat over sea and land
+     -> lprogprec    .FALSE.  prognostic treatment of rain and snow for 
+                              3-timelevel leapfrog scheme
+     -> ltrans_prec  .TRUE.   to switch on/off the transport of rain and snow,
+                              if lprogprec=.TRUE. 
+
+  - Namelist group /DYNCTL/:
+     -> irunge_kutta    0     choosing the Runge-Kutta scheme
+     -> irk_order       2     choosing the order of the scheme
+     -> iadv_order      3     choosing the order for the horizontal advection
+     -> hd_corr_u      1.0    correction factor for horizontal diffusion 
+                              flux of u,v,w
+     -> xkd            0.1    coefficient for divergence damping
+     -> lvertad_impl  .TRUE.  for switching on/off implicit vertical 
+                              advection in the Runge-Kutta-scheme
+
+
+Changed Grib Names:
+-------------------
+
+To be consistent with GME and other models, some GRIB variable names 
+have been changed. This affects the Namelist Group /GRIBOUT/
+
+    old name        new name
+      GPH            FI
+      IWV            TQV
+      ICI            TQI
+      ICW            TQC
+      GZ0            Z0
+      ALB            ALB_RAD
+      IWATER         TWATER
+      IDIV_HUM       TDIV_HUM
+      PHI            RLAT
+      RLA            RLON
+   
+Also some internal variable names dealing with values for latitudes and/or
+longitudes have been changed for the same reason (rla -> rlon, phi -> rlat,
+tgphi -> tgrlat, cphi -> crlat, acphir -> acrlat).
+
+
+Detailed Description:
+---------------------
+
+New features:
+
+ - Prognostic treatment of rain and snow in the 3 timelevel Leapfrog scheme:
+   A semi-Lagrange advection of rain and snow has been implemented in the
+   dynamics. It can be switched on with the new Namelist parameter
+   lprogprec (in the group /PHYCTL/). For the precipitation scheme, a 
+   new routine "hydci_pplf" has been implemented in src_gscp.f90. The only
+   possible choice for itype_gscp then is "3" (see below: treatment of 
+   itype_gscp).
+
+ - Additional options for the 2 timelevel Runge-Kutta scheme:
+   In addition to the existing scheme in the module src_2timelevel.f90 
+   (by Almut Gassmann), normal Runge-Kutta variants of 2nd- and 3rd-order
+   as well as a slightly more sophisticated 3rd-order TVD-Runge-Kutta
+   (total variation diminishing) scheme are now implemented in the new
+   module src_runge_kutta.f90.
+   In contrary to the scheme by Almut Gassmann, the Runge-Kutta-loop 
+   in src_runge_kutta.f90 contains the effects of the complete slow 
+   tendencies (especially the whole 3D advection is computed in each 
+   Runge-Kutta-step). The integration of the small time steps is done 
+   in the new routine fast_waves_rk.f90.
+
+   The type of scheme is set with the new namelist-Parameter "irunge_kutta"
+      0: Scheme by Almut Gassmann 
+      1: normal Runge-Kutta-scheme 
+      2: TVD Runge-Kutta-scheme
+
+   The order of the scheme (valid only for irunge_kutta=1) is set with
+   the new namelist-Parameter irk_order (value: 1, 2 or 3).
+
+   In addition, the order of the operator for the horizontal advection of
+   the variables u, v, w, pp an T is choosen via the namelist-Parameter
+   iadv_order (value: 3, 4, 5 or 6).
+
+   Best choice is: irunge_kutta=2, irk_order=3, iadv_order=5.
+
+ - Computation of synthetic satellite images (for Meteosat and MSG):
+   An interface to the RTTOV7-library (the Radiative Transfer Model)
+   has been introduced into the LM. This interface has been developed 
+   at the DLR Institute for Atmospheric Physics in Oberpfaffenhofen.
+   With this interface and the RTTOV7-library it is possible to compute 
+   "synthetic" satellite images (brightness temperatures and radiances) 
+   derived from model variables for Meteosat5-7 and Meteosat Second Generation.
+   The RTTOV7-library has been developed by UKMO et.al. in the framework of 
+   the ESA NWP-SAF. To use the RTTOV7 library, a license is necessary.
+   To switch on/off the computation of the synthetic satellite images, a 
+   new Namelist Variable luse_rttov has been introduced (in group /RUNCTL/).
+   If luse_rttov=.TRUE., an additional Namelist group /SATCTL/ is read in,
+   in which additional control variables can be set.
+   For a detailed description of the interface and the Namelist parameters,
+   see the User Guide (not yet ready).
+
+
+Implemented changes to existing schemes:
+
+ - A Namelist variable "rat_sea" has been introduced to set the ratio of the
+   laminar scaling factor for heat over sea and land. Default for this
+   variable is rat_sea = 1.0.
+   A factor in the computation of the stability-function "sm" (in the 
+   file stab_funct.incf) has been changed.
+
+ - The treatment of the Namelist variable "itype_gscp" has been changed.
+   Up to now it was:
+     for 2- and 3-timelevel scheme:
+       itype_gscp
+           1: a warm-rain scheme                        (kessler)
+           2: a scheme including snow                   (hydor)
+           3: a scheme including cloud-ice              (hydci)
+     only for the 2-timelevel scheme:
+           4: same as 2 with prognostic treatment of    (hydorprog)
+              rain and snow
+           5: same as 3 with prognostic treatment of    (hydciprog)
+              rain and snow
+
+   Now the treatment is as follows: Valid values for itype_gscp are 1, 2 and 3:
+   Prognostic treatment of rain and snow is switched on/off with lprogprec.
+   Depending on l2tls (to choose between 2- and 3-timelevel scheme), lprogprec
+   and itype_gscp, the following routines are called:
+
+      l2tls:     |          .FALSE.           ||          .TRUE.            |
+                 |                            ||                            |
+      lprogprec: |  .FALSE.          .TRUE.   ||   .FALSE.          .TRUE.  |
+    ------------ |                            ||                            |
+     itype_gscp  |                            ||                            |
+    -------------------------------------------------------------------------
+                 |                            ||                            |
+         1       |  kessler           ----    ||   kessler            ---   |
+                 |                            ||                            |
+         2       |  hydor             ----    ||   hydor          hydorprog |
+                 |                            ||                            |
+         3       |  hydci          hydci_pplf ||   hydci          hydciprog |
+                 |                            ||                            |
+
+   Depending on itype_gscp, an internal logical switch lprog_qi is set, with
+   which the LM will determine, whether cloud-ice treatment is switched on
+   or off.
+
+ - In the main program lmorg.f90, a check of all humidity variables
+   (qv, qc, qi, qr, qs, qrs) has been introduced: if these variables become
+   too small (< 1.0E-15), they are set to zero.
+   
+ - A new Namelist parameter hd_corr_u to control the horizontal diffusion
+   of the wind speeds (default 1.0) has been introduced in the group
+   /DYNCTL/.
+
+In addition, some technical changes have been implemented:
+
+ - The optimization of the power functions in src_gscp (replaced by 
+   EXP(... * LOG(..)) had to be modified. This must only be done, if
+   the argument for the LOG-function is not zero.
+
+ - The routine for the boundary exchange (exchg_boundaries) has been enlarged
+   to exchange up to 24 variables at the same time
+
+ - A consistent treatment of unit-numbers for ASCII-files has been introduced
+   to avoid that the same unit number is used twice in the model. For that
+   purpose, 2 new routines have been introduced in the module environment.f90:
+     -> get_free_unit(iunit)
+         returns a unit-number (between 21 and 100), which is not yet used
+         if iunit < 0, no more free unit number is available
+     -> release_unit(iunit):
+         sets the unit-number free again
+
+ - The routine model_abort (in the module environment.f90) has been changed,
+   so that now also processors with id /= 0 can write error messages.
+   But still, if an error in processor 0 occurs, this is the first and only
+   processor that will report the error. All processors with id /= 0 first 
+   sleep for 30 seconds. Their processes are either killed by processor 0 or 
+   they will report their errors then. If processor 0 gets an error, it will
+   close all files with unit numbers determined by the new routine 
+   "get_free_unit".
+
+
+Ulrich Schaettler / Guenther Doms / Michael Baldauf / Jochen Foerstner
+(et.al.)
+
+===== data_fields.f90, modified by: Ulrich Schaettler =====
+New fields for computing synthetic satellite images (synme5-7, synmsg)
+New field for storing convective cloud water (clw_con)
+Renamed alb (alb_rad), idiv_hum (tdiv_hum), phi (rlat), rla (rlon),
+cphi (crlat), acphir (acrlat), tgphi (tgrlat) (for consistency with GME
+===== data_io.f90, modified by: Ulrich Schaettler =====
+New variables for specifying additional GRIB tables and an output list for
+synthetic satellite images;
+increased number of possible pressure levels for output
+===== data_nudge_all.f90, modified by: Ulrich Schaettler =====
+Eliminated initialization of the unit numbers in Section 5.3
+===== data_runcontrol.f90, modified by: Ulrich Schaettler =====
+New Namelist parameters for computing synthetic satellite images,
+for turning on/off prognostic precipitation
+for control variables for 2 tl scheme         and
+for the ratio of laminar scaling factors for heat over sea and land
+===== data_satellites.f90, modified by: Ulrich Schaettler =====
+Initial release
+===== dfi_initialization.f90, modified by: Ulrich Schaettler =====
+Replaced type_gscp by lprog_qi; Adaptations for 2 timelevel scheme
+===== dummy_rttov.f90, modified by: Ulrich Schaettler =====
+Initial release
+===== environment.f90, modified by: Ulrich Schaettler =====
+Increased number of optional variables for exchg_boundaries.
+Introduced new routines get_free_unit and release_unit for ascii-file
+handling; added closing of ascii-files to model_abort
+===== fast_waves.f90, modified by: Ulrich Schaettler =====
+Renamed cphi (crlat), acphir (acrlat)
+===== fast_waves_rk.f90, modified by: Jochen Foerstner =====
+Initial release
+===== hori_diffusion.f90, modified by: Jochen Foerstner \/ Ulrich Schaettler =====
+Adaptations for horizontal diffusion of moisture quantities with orographic
+limiter (for new Runge-Kutta scheme)
+Renamed cphi (crlat)
+===== init_radiation.incf, modified by: Ulrich Schaettler =====
+Renamed phi to rlat
+===== io_utilities.f90, modified by: Ulrich Schaettler =====
+Adaptations in routine make_fn for checking the extension of file names
+===== lmorg.f90, modified by: Ulrich Schaettler =====
+Introduced CALLs to new component for computing synthetic satellite images.
+Adaptations in the boundary exchange for prognostic precipitation.
+Treatment of humidity-variables (are set to 0.0, if they are too small)
+===== meteo_utilities.f90, modified by: Ulrich Schaettler =====
+Editorial changes
+===== numeric_utilities.f90, modified by: Jochen Foerstner + Michael Baldauf =====
+New routines and functions for positive definite horizontal and vertical
+advection and for normal advection for the Runge-Kutta scheme.
+New routines for the semi-Lagrange advection of the moisture variables
+Replaced cphi by crlat
+===== obs_assign_gridpt.incf, modified by: Ulrich Schaettler =====
+Replaced zcphi by zcrlat (due to global renaming)
+===== organize_assimilation.f90, modified by: Ulrich Schaettler =====
+Introduced handling for unit numbers of ascii files
+===== organize_data.f90, modified by: Ulrich Schaettler =====
+Possibility for specifying additional GRIB tables;
+Organization for output of synthetic satellite images as GRIB fields;
+Adaptations in calc_ngrib for writing GRIB files every 15/30 minutes;
+Adaptations for checking, if cloud-ice is turned on/off
+===== organize_diagnosis.f90, modified by: Ulrich Schaettler =====
+Changed treatment of unit-numbers for ASCII-file handling
+===== organize_dynamics.f90, modified by: Ulrich Schaettler =====
+New Namelist variables for selecting new Runge-Kutta time stepping
+===== organize_physics.f90, modified by: Ulrich Schaettler =====
+Namelist Input for new variable lprogprec; ltrans_prec; rat_sea
+Changed selection of precipitation module
+===== organize_radiation.incf, modified by: Ulrich Schaettler =====
+Renamed alb (alb_rad), phi (rlat), rla (rlon)
+===== organize_satellites.f90, modified by: Ulrich Schaettler =====
+Initial release
+===== semi_implicit.f90, modified by: Ulrich Schaettler =====
+Renamed cphi (crlat), acphir (acrlat)
+===== slow_tendencies.f90, modified by: Michael Baldauf =====
+Selection of correct time level for cloud ice qi, depending on lprogprec
+===== src_2timelevel.f90, modified by: Ulrich Schaettler =====
+Renamed cphi (crlat), acphir (acrlat), tgphi (tgrlat)
+Introduced switch lprog_qi for selection of qloud-ice treatment
+===== src_allocation.f90, modified by: Ulrich Schaettler =====
+Renamed alb (alb_rad), idiv_hum (tdiv_hum), phi (rlat), rla (rlon)
+Renamed cphi (crlat), acphir (acrlat), tgphi (tgrlat)
+===== src_artifdata.f90, modified by: Ulrich Schaettler =====
+Adapted dimension of kzdims for routine exchg_boundaries
+===== src_conv_kainfri.f90, modified by: Ulrich Schaettler =====
+Replaced itype_gscp by lprog_qi and lprogprec
+===== src_conv_tiedtke.f90, modified by: Ulrich Schaettler =====
+Store convective cloud water on clw_con
+===== src_diagbudget.f90, modified by: Ulrich Schaettler =====
+Replaced type_gscp by global variable lprog_qi
+Renamed idiv_hum (tdiv_hum), cphi (crlat), acphir (acrlat)
+===== src_gather_info.f90, modified by: Ulrich Schaettler =====
+Renamed cphi by crlat (due to global renaming)
+===== src_gridpoints.f90, modified by: Ulrich Schaettler =====
+Renamed alb (alb_rad), phi (rlat), rla (rlon)
+===== src_gscp.f90, modified by: Guenther Doms =====
+New Subroutine hydci_pplf for prognostic treatment of precipitation
+(only possible, if running with cloud ice)
+Eliminated a CYCLE-Statement in Section 2 of hydorprog to get reproducible
+results  (by Jochen Foerstner)
+===== src_input.f90, modified by: Ulrich Schaettler =====
+Changed treatment of unit-numbers for ASCII-file handling
+===== src_leapfrog.f90, modified by: Michael Baldauf =====
+Added semi-Lagrange advection of precipitation
+Determination of time level for qi depending on lprog_qi and lprogprec
+Replaced local variable xkd by global Namelist parameter xkd
+(by Jochen Foerstner)
+Renamed cphi (crlat), acphir (acrlat)
+===== src_meanvalues.f90, modified by: Ulrich Schaettler =====
+Changed treatment of unit-numbers for ASCII-file handling
+===== src_nudging.f90, modified by: Ulrich Schaettler =====
+Renamed cphi (crlat), acphir (acrlat)
+===== src_output.f90, modified by: Ulrich Schaettler =====
+Adaptations for output of synthetic satellite images as GRIB fields;
+Possibility for specifying additional GRIB tables
+Renamed phi to rlat
+===== src_radiation.f90, modified by: Ulrich Schaettler =====
+Replace local logical variable lcl_ice by global variable lprog_qi
+Renamed alb (alb_rad), phi (rlat), rla (rlon)
+===== src_relaxation.f90, modified by: Ulrich Schaettler =====
+Introduced lprog_qi for treatment of cloud-ice
+===== src_runge_kutta.f90, modified by: Jochen Foerstner =====
+Initial release
+===== src_sat_tbs.f90, modified by: Christian Keil (DLR) \/ Ulrich Schaettler =====
+Initial Release
+===== src_setup.f90, modified by: Ulrich Schaettler =====
+Read new Namelist parameters for computing synthetic satellite images
+Replaced phi(rlat), rla(rlon), cphi(crlat), acphir(acrlat), tgphi(tgrlat)
+===== src_sfcana.f90, modified by: Ulrich Schaettler =====
+Renamed phi (rlat), rla (rlon);
+Changed treatment of unit-numbers for ASCII-file handling
+===== src_soil_multlay.f90, modified by: Reinhold Schrodin \/ Ulrich Schaettler =====
+Adapted use of nold to 2 time level scheme and some corrections
+===== src_turbdiff.f90, modified by: Matthias Raschendorfer =====
+Introduction of the parameter rat_sea
+===== src_turbulence.f90, modified by: Ulrich Schaettler =====
+Eliminated parameter itype_gscp.
+===== stab_funct.incf, modified by: Matthias Raschendorfer =====
+Replaced factor a5 in above formula to a6 (in the last line)
+===== time_utilities.f90, modified by: Ulrich Schaettler =====
+Changed treatment of unit number for ascii output file
+===== turbdiff.incf, modified by: Ulrich Schaettler =====
+Increased dimension of kzdims
+===== turbtran.incf, modified by: Matthias Raschendorfer =====
+Introduction of the parameter rat_sea
+
+-------------------------------------------------------------------------------
+
+3.6:
+====
+
+In this LM version the following changes have been implemented:
+
+ - New multi-layer soil model:
+   Besides an updated version of src_soil_multlay.f90 the whole organization
+   and data handling for the new multi-layer soil model has been changed.
+
+    -> The new variables T_SO, W_SO and W_ICE are coded with leveltyp 111
+       and octet(8) of the product definition section (is pds(10)) gives the
+       depth of the layer in centimeters.
+       NOTE: At DWD the first layer is chosen to be in the depth of 0.5 cm.
+             This cannot be coded correctly, so it will be coded with 1 cm.
+
+    -> The multi-layer soil model can be switched on by setting the following
+       namelist variables (in group /PHYCTL/):
+         lmulti_layer=.TRUE.,
+         ke_soil = 7,
+         czml_soil = 0.005, 0.02, 0.06, 0.18, 0.54, 1.62, 4.86, 14.58,
+       The values for ke_soil and czml_soil are the default values chosen for
+       the GME at DWD. The LM must run with the same layers, because there is
+       no vertical interpolation of soil layers.
+       NOTE: The values for czml_soil are given in meters!
+
+ - Bug corrections in the digital filtering (dfi_initialization.f90):
+   When setting the boundary values for the adiabatic backward integration,
+   there was no check, whether the moisture variables (qv, qc, qi) remain
+   positive definit. With cloud ice (qi) switched on, it could happen that
+   negative values of qi occured. This is avoided now.
+
+   Also, the possibility to use frames for the boundary values has now
+   been introduced.
+
+ - Changes in the assimilation:
+   New option to assimilate single SATOB winds similarly to aircraft winds.
+
+   Modifications to assimilation of GPS-derived Integrated Water Vapour (IWV):
+   -> new namelist variable 'rhfgps' for horizontal correlation scale
+   -> extrapolation below orography for determination of IWV increments
+   -> revised ice-to-water correction of IWV (for model version without
+      cloud ice)
+   -> revised GPS observation error flag in the VOF
+
+   Minor bug corrections and modifications within the nudging:
+   -> no further bias correction of Vaisala RS80 bias-corrected humidity data
+   -> default for namelist variable 'tconbox' doubled
+   -> improved general, statistical, warning, and error messages
+      (and ensuring the printing of error messages at calls of model_abort)
+
+ - Checks of the IOSTAT-values when reading the NAMELIST-groups:
+   These values have not been checked before, but the IBM does not abort,
+   when error occure while reading a NAMELIST group. So the IOSTAT-values
+   are now checked and the program is aborted by "model_abort" in case of
+   errors.
+
+!! NOTE !!
+   For that reason the handling of reading the different groups for
+   GRIBOUT had to changed! To know, how many different groups have to be
+   read by the program, a new NAMELIST parameter
+    ngribout:   number of different groups /GRIBOUT/ for Grib output
+   has been introduced in the group /IOCTL/. The default is ngribout=1.
+   If you want to have more groups for /GRIBOUT/, you have to change
+   this value.
+
+ - Optimizations for vector computers:
+   There were some suggestions by NEC (Switzerland and Germany) for
+   optimizations when running on vector processors:
+
+    -> src_gscp.f90:
+       Most of the power-functions (a**b) have been replaced by EXP-LOG calls
+       (EXP(LOG(a)*b). This is faster also on the IBM.
+
+    -> src_sing_spread.f90:
+       A loop has been splitted into 2 single loops for better vectorization.
+
+    -> turbtran.incf:
+       Modification of 2 DO-WHILE loops in order to enable vectorization
+       of DO-loops contained.
+
+    -> coe_so.incf and coe_th.incf:
+       In both routines all the loops contained are combined into one
+       single loop. This reduces the number of temporary arrays and
+       memory traffic.
+
+ - Further bug corrections:
+
+Ulrich Schaettler / Christoph Schraff / Reinhold Schrodin
+(et.al.)
+
+All modified files of the library <lm_f90> version 3.6:
+
+===== coe_so.incf, modified by: Ulrich Schaettler =====
+Put all computations in a single loop (Optimization by NEC Germany)
+===== coe_th.incf, modified by: Ulrich Schaettler =====
+Put all computations in a single loop (Optimization by NEC Germany)
+===== data_fields.f90, modified by: Reinhold Schrodin =====
+New field freshsnow for new multi-layer soil model added
+===== data_io.f90, modified by: Ulrich Schaettler =====
+Introduced new variable ngribout for indicating, how many GRIBOUT namelist
+groups are present. Increased character length for directory names.
+===== data_modelconfig.f90, modified by: Reinhold Schrodin =====
+Added (and changed) some variables for multi-layer soil model
+===== data_nudge_all.f90, modified by: Christoph Schraff =====
+New namelist variable 'rhfgps' for horizontal correlation scale for GPS data.
+===== data_obs_process.f90, modified by: Christoph Schraff =====
+SATOB only as single-level reports. Correction at data events descriptions.
+===== data_radiation.f90, modified by: Ulrich Schaettler =====
+Editorial changes (some lines have been too long)
+===== data_soil.f90, modified by: Reinhold Schrodin =====
+Adapted several variables for new multi-layer soil model
+===== dfi_initialization.f90, modified by: Ulrich Schaettler =====
+Limit the boundary values for the humidity variables to MIN=0.0;
+Introduced use of frames for the boundary variables
+===== io_utilities.f90, modified by: Ulrich Schaettler =====
+Additional checks for "time range indicator" and "unit of time range"
+in the Subroutines check_lm_grid and check_gme_grid
+===== lmorg.f90, modified by: Ulrich Schaettler =====
+Changed interface for calling the digital filtering dfi_initialization
+===== obs_air_make_mult.incf, modified by: Christoph Schraff =====
+Improved warning messages on horiz./vertic. collocation of reports.
+Ensuring error message at model_abort.
+===== obs_air_org_mult.incf, modified by: Christoph Schraff =====
+Ensuring error message at model_abort.
+===== obs_multi_level.incf, modified by: Christoph Schraff =====
+No further bias correction of Vaisala RS80 bias-corrected humidity data.
+===== obs_print_events.incf, modified by: Christoph Schraff =====
+SATOB taken into account for warning message related to array size.
+===== obs_print_verif.incf, modified by: Christoph Schraff =====
+Introduction of SATOB reports. Error flag for GPS TZD revised.
+Ensuring error message at model_abort.
+===== obs_read_distribute.incf, modified by: Christoph Schraff =====
+Introduction of obs type SATOB. Ensuring error message at model_abort.
+===== obs_redundancy.incf, modified by: Christoph Schraff =====
+Inclusion of observation type SATOB.
+===== obs_save_head.incf, modified by: Christoph Schraff =====
+Introduction of observation type SATOB.
+===== obs_single_level.incf, modified by: Christoph Schraff =====
+Introduction of observation type SATOB.
+===== organize_assimilation.f90, modified by: Christoph Schraff =====
+New namelist variable 'rhfgps' for horizontal correlation scale for GPS data.
+Default for 'tconbox' doubled.
+Checked the IOSTAT-value for reading the namelist group /nudging/
+===== organize_data.f90, modified by: Ulrich Schaettler =====
+Changes for the multi-layer soil model;
+Modifications for checking the IOSTAT-value when reading the NAMELISTs
+===== organize_diagnosis.f90, modified by: Ulrich Schaettler =====
+Adaptations for multi-layer soil model;
+Modifications for checking the IOSTAT-value when reading the NAMELISTs
+===== organize_dynamics.f90, modified by: Ulrich Schaettler =====
+Modifications for checking the IOSTAT-value when reading the NAMELIST
+===== organize_physics.f90, modified by: Reinhold Schrodin =====
+Adaptations for the multi-layer soil model;
+Modifications for checking the IOSTAT-value when reading the NAMELIST
+===== organize_radiation.incf, modified by: Reinhold Schrodin =====
+Adaptations for multi-layer soil model
+===== parallel_utilities.f90, modified by: Ulrich Schaettler =====
+Corrected a bug in Subroutine ij_local
+===== src_allocation.f90, modified by: Reinhold Schrodin =====
+Allocation and deallocation of variables for multi-layer soil model
+===== src_conv_kainfri.f90, modified by: Marco Arpagaus =====
+Cleaned code, minor bug corrections
+===== src_correl_cutoff.f90, modified by: Christoph Schraff =====
+Printout for SATOB data. Bug correction for print-out.
+===== src_gather_info.f90, modified by: Christoph Schraff =====
+Improved statistics on assimilated observation increments for ps, and
+statistics on multi-level reports discriminated for observation types.
+Additional print-out on the processing of GPS-derived IWV observations.
+Ensuring the printing of error messages at calls of model_abort.
+===== src_gridpoints.f90, modified by: Ulrich Schaettler =====
+Initiated output for multi-layer soil model
+===== src_gscp.f90, modified by: Ulrich Schaettler =====
+Replaced most power-functions by EXP (... * LOG(...)) for optimization
+===== src_input.f90, modified by: Ulrich Schaettler =====
+Adaptations for multi-layer soil model and additional checks for data input
+===== src_mult_local.f90, modified by: Christoph Schraff =====
+Horizontal correlation scale for GPS data given by namelist variable: rhfgps.
+For GPS stations below orography, constant extrapolation of model values at
+lowest model level in order to determine model-derived values of IWV. 
+Current model humidity profile instead of model saturation profile used for 
+ice-to-water correction of observed IWV. Time-dependent QC threshold for IWV.
+Zero IWV observation increments also used. QC flags also used if .not. lqc.
+Correction to decrease excess in frquency of zero qv-increments from IWV obs.
+===== src_mult_spread.f90, modified by: Christoph Schraff =====
+Horizontal correlation scale for GPS data given by namelist variable 'rhfgps'
+===== src_nudging.f90, modified by: Christoph Schraff =====
+Bug correction for print-out at geostrophic wind correction.
+===== src_obs_processing.f90, modified by: Christoph Schraff =====
+Introduction of obs type SATOB. Ensuring error message at model_abort.
+===== src_output.f90, modified by: Ulrich Schaettler =====
+Adaptations for multi-layer soil model
+===== src_radiation.f90, modified by: Reinhold Schrodin =====
+Adaptations for multi-layer soil model
+===== src_setup.f90, modified by: Ulrich Schaettler =====
+Modifications for checking the IOSTAT-value when reading the NAMELISTs
+===== src_sing_local.f90, modified by: Christoph Schraff =====
+Introduction of SATOB reports. Minor bug corrections: no T-2m at timestep 0;
+no integer of infinite ('rmdi') station height.
+===== src_sing_spread.f90, modified by: Christoph Schraff \/ NEC (\/Ulrich Schaettler) =====
+Introduction of SATOB reports.
+Splitting of a Loop for better vectorization.
+===== src_soil_multlay.f90, modified by: Reinhold Schrodin =====
+Reformulation of bare soil evaporation, transpiration, snow density, 
+snow height, snow melting, subsoil runoff calculation
+===== turbdiff.incf, modified by: Ulrich Schaettler =====
+Only editorial changes
+===== turbtran.incf, modified by: Ulrich Schaettler =====
+Optimizations for vectorization: modification of 2 DO WHILE loops
+Modification of an IF...ELSEIF... Statement for vectorization in Section 4f
+===== utilities.f90, modified by: Ulrich Schaettler =====
+Eliminated Subroutine istringlen (use F90 intrinsic LEN_TRIM instead)
+
+-------------------------------------------------------------------------------
+
+3.5:
+====
+
+The following features have been implemented in this LM version:
+
+ - A change in the radiation scheme for the interpretation of clouds when
+   running with the cloud ice scheme. The formulation has been adapted to
+   the global model GME.
+
+ - Restructuring of the diagnostics (the YU* Files):
+   > The modules src_diagnosis.f90 and src_differences.f90 have been
+     eliminated, because these options have not been used.
+
+!!!  NOTE:
+!!   All Namelist variables for these options have to be removed from the
+     Namelist group /DIACTL/:
+        ldia, n0dia, h0dia, nincdia, hincdia,
+              istartdia_tot, jstartdia_tot, ienddia_tot, jenddia_tot,
+        ldiffdia, n0diffdia, h0diffdia, nincdiffdia, hincdiffdia
+
+   > The grid point output (long and short form) has been adapted to include
+     cloud ice and to use new (english) variable names.
+
+!!!  NOTE:
+!!   The format of the short and long grid point output has been changed!!
+
+ - Implementation of zenith total (wet, hydrostatic) delay: a routine
+   "calztd" has been added to the module "pp_utilities.f90" to compute the
+   total (ZTD), the wet (ZWD) and the hydrostatic (ZHD) zenith delay for the
+   GPS signal through the atmosphere (ZTD = ZWD + ZHD).
+   All 3 variables can be chosen as additional GRIB output fields. They are
+   implemented in the DWD grib table 202 as element numbers
+    121: ZTD
+    122: ZWD
+    123: ZHD
+   with level type = 1 (two-dimensional fields).
+
+ - Optimizations for the communications:
+   > The global communication in the radiation scheme for computing the global
+     maximum of zmaxmu0 has been eliminated by computing zmaxmu0 for a whole
+     latitude in every processor.
+
+   > The two global communications in org_leapfrog have been combined to
+     one call.
+
+   > The boundary exchange for the surface pressure in lmorg.f90 and
+     dfi_initialization.f90 has been eliminated. The surface pressure is now
+     computed in routine near_surface.f90 for the whole domain (before it
+     was computed in src_relaxation.f90 for the interior domain).
+
+   > In dfi_initialization, a bug has been corrected for the communication
+     of variables for the convection scheme. These variables have been
+     forgotten before.
+
+ - Optimizations for the boundary exchange:
+   Several kinds of performing the communication for the boundary exchange
+   have been implemented.
+
+   > Up to now only an explicit buffering of the data to a sending buffer
+     ("sendbuf": using routines putbuf and getbuf) and an immediate send
+     (MPI_Isend) together with a blocking receive (MPI_Recv) has been
+     realized.
+
+     Now there is the choice of the explicit buffering or an implicit buffering
+     by using MPI-datatypes. For every boundary exchange an MPI-datatype is
+     defined and the buffering can then be done implicitly by the system
+     (and at least on the IBM more efficiently).
+
+     The buffering can be chosen with the new Namelist parameter "ldatatypes"
+     in the group /RUNCTL/:
+
+        ldatatypes = .TRUE.   :  implicit buffering
+                   = .FALSE.  :  explicit buffering   (Default)
+
+
+   > The exchange can then be done using one of the three kinds:
+
+       1) immediate send, blocking receive and wait on the sender side
+       2) immediate receive, blocking send and wait on the receiver side
+       3) using MPI_Sendrecv
+
+     The type of communication for the boundary exchange can be chosen by the
+     new Namelist parameter "ncomm_type" in the group /RUNCTL/, which can be
+     1, 2 or 3. The default is ncomm_type = 1.
+
+
+   > In addition, most barriers for the time-measurement can now be switched
+     off by setting the new Namelist parameter "ltime_barrier" to .FALSE.
+     The default is ltime_barrier = .TRUE. (as it was up to now).
+
+   The defaults of the three new NAMELIST parameters
+      ldatatypes    = .FALSE.
+      ltime_barrier = .TRUE.
+      ncomm_type    = 1
+   is set in a way that the boundary exchange is done in the same way as
+   before.
+
+   The new options can be tested on every machine to see if a gain in runtime
+   can be achieved. On the IBM we a see a gain in forecast mode of up to
+   10 percent by setting
+      ldatatypes    = .TRUE.
+      ltime_barrier = .FALSE.
+      ncomm_type    = 3
+
+-------------------------------------------------------------------------------
+
+3.4:         
+====
+
+This version contains small changes in the Tiedtke convection
+(src_conv_tiedtke.f90) to suppress "convective drizzle".
+A minimum moisture convergence and  a minimum grid-scale lifting
+are now used and the precipitation computation is changed.
+
+Erdmann Heise / Ulrich Schaettler
+
+
+
+All modified files of the library <lm_f90> version 3.4:
+
+===== src_conv_tiedtke.f90, modified by: Erdmann Heise =====
+Introduce some modifications to suppress 'convective drizzle'
+
+-------------------------------------------------------------------------------
+
+3.3:         
+====
+
+This version introduces the option to assimilate GPS data,
+the possibility to use bias-corrected radiosonde humidity,
+and a bug correction on output fields used for TRIVIS.
+
+1. Nudging: Introduction of an option to assimilate integrated
+   water vapour (IWV) from ground-based GPS data.
+   The GPS observations are read from a dedicated ASCII file
+   named 'gps' in COST 716 format. 'Observed' humidity profiles
+   derived from IWV by scaling model humidity profiles are nudged
+   like radiosonde humidity profiles. (The horizontal correlation
+   scale is set a fixed value of 0.45 of that used for radiosondes.)
+   ==> New namelist variables:
+     - 'gnudggp' : nudging coefficient for GPS data
+     - 'maxgpo'  : max. number of GPS data
+     - 'lgps'    : data of obs. type GPS used in exclusion area
+     - 'lcd096'  : data of code type GPS used in exclusion area
+     - 'lgpsbias': bias correction applied to GPS data
+     Note that the namelist of previous versions does not need to
+     be changed as long as GPS data are not to be used.
+
+2. Nudging: Additional code number in instrument specification for
+   reports with bias-corrected (Vaisala RS80) radiosonde humidity.
+   The bias correction itself is done in MAKEAOF / BUFR2AOF.
+
+3. Bug correction in 'calclmod' of  pp_utilities  related to
+   output fields used for TRIVIS.
+
+Christoph Schraff
+
+All modified files of the library <lm_f90> version 3.3:
+
+===== data_nudge_all.f90, modified by: Christoph Schraff =====
+New namelist variables 'gnudggp', 'maxgpo', 'lgps', 'lcd096', 'lgpsbias'
+and new file unit for assimilation of ground-based GPS-derived integrated
+water vapour data. Code type numbers moved from 'data_obs_process'.
+===== data_nudge_local.f90, modified by: Maria Tomassini + Christoph Schraff =====
+Administration arrays for GPS reports introduced.
+===== data_obs_process.f90, modified by: Maria Tomassini + Christoph Schraff =====
+Index for GPS reports introduced.
+===== data_obs_record.f90, modified by: Maria Tomassini + Christoph Schraff =====
+Extension of ODR for GPS reports.
+Flag for Vaisala RS80 humidity bias correction in station characteristics.
+===== obs_print_events.incf, modified by: Christoph Schraff =====
+New report events and warning messages for of GPS reports.
+===== obs_print_out.incf, modified by: Christoph Schraff =====
+Introduction of GPS reports.
+===== obs_print_statist.incf, modified by: Christoph Schraff =====
+New report events and warning messages for of GPS reports.
+===== obs_print_verif.incf, modified by: Christoph Schraff =====
+Introduction of GPS reports.
+===== obs_read_gps.incf, modified by: Maria Tomassini + Christoph Schraff =====
+Initial release
+===== obs_save_head.incf, modified by: Christoph Schraff =====
+Flag for bias correction of Vaisala RS80 humidity data.
+===== organize_assimilation.f90, modified by: Christoph Schraff =====
+New namelist variables 'gnudggp', 'maxgpo', 'lgps', 'lcd096', and 'lgpsbias'
+for assimilation of ground-based GPS-derived integrated water vapour data.
+===== pp_utilities.f90, modified by: Guenther Doms =====
+Bug corrction in calclmod.
+===== src_conv_tiedtke.f90, modified by: Jan-Peter Schulz =====
+Neglected downdraft windspeed (for testing)
+===== src_gather_info.f90, modified by: Christoph Schraff =====
+Quality control output for GPS IWV data.
+===== src_mult_local.f90, modified by: Maria Tomassini + Christoph Schraff =====
+Extension for assimilation of GPS-derived IWV.
+===== src_mult_spread.f90, modified by: Maria Tomassini + Christoph Schraff =====
+Extension for assimilation of GPS-derived IWV.
+===== src_obs_processing.f90, modified by: Maria Tomassini + Christoph Schraff =====
+Extension for reading from a dedicated file and processing of GPS-derived
+IWV data.
+===== src_sing_local.f90, modified by: Maria Tomassini + Christoph Schraff =====
+Administating and sorting reports for assimilation of GPS-derived IWV.
+===== utilities.f90, modified by: Christoph Schraff =====
+Introduction of subroutines 'convert_month' and 'to_upper' (for GPS data).
+
+-------------------------------------------------------------------------------
+
+3.2:         
+====
+
+In this version, the cloud ice threshold for autoconversion is set to 0
+(in subroutine hydci of module src_gscp.f90), to improve the performance
+of the cloud ice scheme (analogous to the global model GME).
+
+Besides, some optimizations have been performed in the communications.
+The computations for the horizontal diffusion, which are identical in the
+leapfrog-scheme and the 2timelevel scheme have been put to an external
+subroutine hori_diffusion.f90.
+
+Also, it is now possible to work with boundary data defined on frames
+and with Rayleigh damping. For that, a new namelist variable (ilevbotnoframe)
+has been introduced. For the first ilevbotnoframe levels, the boundary
+data has to be specified for the full grid.
+(Based on the work of Lucio Torrisi, UGM Rome).
+
+(Ulrich Schaettler)
+
+-------------------------------------------------------------------------------
+
+3.1:         (identical to Version 2.19)
+====
+
+Created on and operational since 27th of January, 2003.
+
+-------------------------------------------------------------------------------
+

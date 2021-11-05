@@ -1,0 +1,127 @@
+# 1 "../modules/mo_memory_gl.f90"
+MODULE mo_memory_gl
+!------------------------------------------------------------------------------
+!
+! Modules used
+!
+
+  USE mo_kind,        ONLY: dp
+  USE mo_linked_list, ONLY: t_stream
+# 12
+
+  USE mo_memory_base, ONLY: new_stream, delete_stream, add_stream_element, &
+                            default_stream_setting
+
+  USE mo_netCDF,      ONLY: max_dim_name
+# 19
+
+! mz_pj_20040325+
+  USE messy_main_tracer_mem_bi, ONLY: xt, xt_a ,pxt, pxt_a, &
+                                      xt_c, pxt_c ! op_sb_20191007
+! mz_pj_20040325-
+
+  USE mo_filename,    ONLY: trac_filetype
+
+  IMPLICIT NONE
+!------------------------------------------------------------------------------
+!
+! Public entities
+!
+
+  PRIVATE
+
+! mz_pj_20040325+
+  PUBLIC :: xt, xt_a, xt_c ! op_sb_20191007
+! mz_pj_20040325-
+
+
+  PUBLIC :: construct_gl ! construct the gl table
+  PUBLIC :: destruct_gl  ! destruct  the gl table
+
+  PUBLIC :: gl           ! the gl table
+# 46
+
+!------------------------------------------------------------------------------
+
+! declaration of predefined fields within this module
+
+  REAL(dp), SAVE, POINTER, PUBLIC :: q(:,:,:)    ! mz_jb_20031205: SAVE added
+  REAL(dp), SAVE, POINTER, PUBLIC :: xl(:,:,:)   ! mz_jb_20031205: SAVE added
+  REAL(dp), SAVE, POINTER, PUBLIC :: xi(:,:,:)   ! mz_jb_20031205: SAVE added
+# 56
+
+  REAL(dp), POINTER, PUBLIC :: lammp(:,:,:)
+  REAL(dp), POINTER, PUBLIC :: phimp(:,:,:)
+  REAL(dp), POINTER, PUBLIC :: sigmp(:,:,:)
+
+! declaration of table with 3d-field entries
+
+  TYPE (t_stream), POINTER :: gl
+# 66
+
+
+! private storage for tracer fields
+
+# 72
+
+
+CONTAINS
+!------------------------------------------------------------------------------
+# 82
+
+  SUBROUTINE construct_gl (lnlon, lnlev, lngl, &
+                            nlon,  nlev, ngl)
+
+    INTEGER, INTENT (in) :: lnlon, lnlev, lngl
+    INTEGER, INTENT (in) ::  nlon,  nlev,  ngl
+
+
+    INTEGER                      :: dim1(3), dim1p(3)
+# 96
+
+    CHARACTER (len=max_dim_name) :: dim1n(3)
+
+
+! construct the gl table
+!
+! all information specific to this table is set in this subroutine
+
+
+! overwrite default entries for the predefined fields
+! allocate the predefined fields
+
+! assign pointers
+
+    dim1p = (/  lnlon,  lnlev, lngl  /)
+    dim1  = (/   nlon,   nlev,  ngl  /)
+    dim1n = (/   "lon ","lev ","lat "/)
+
+# 118
+
+
+    CALL default_stream_setting (gl ,dimnames=dim1n ,lrerun=.TRUE. ,table=128)
+
+    CALL add_stream_element (gl,'q',    q,    code=133 ,longname='specific humidity'        ,units='kg/kg')
+    CALL add_stream_element (gl,'xl',   xl,   code=153 ,longname='cloud water'              ,units='kg/kg')
+    CALL add_stream_element (gl,'xi',   xi,   code=154 ,longname='cloud ice'                ,units='kg/kg')
+    CALL add_stream_element (gl,'lammp',lammp,lpost=.FALSE., &
+         lrerun=.FALSE.,contnorest=.TRUE.) 
+    CALL add_stream_element (gl,'phimp',phimp,lpost=.FALSE., &
+         lrerun=.FALSE.,contnorest=.TRUE.) 
+    CALL add_stream_element (gl,'sigmp',sigmp,lpost=.FALSE., &
+         lrerun=.FALSE.,contnorest=.TRUE.) 
+
+# 196
+
+
+  END SUBROUTINE construct_gl
+!------------------------------------------------------------------------------
+  SUBROUTINE destruct_gl
+
+    CALL delete_stream (gl)
+# 207
+
+
+  END SUBROUTINE destruct_gl
+!------------------------------------------------------------------------------
+END MODULE mo_memory_gl

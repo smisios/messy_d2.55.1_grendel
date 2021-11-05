@@ -1,0 +1,68 @@
+! -*- f90 -*-
+
+&CTRL
+cloud_param = 4,       ! switch for cloud scheme
+                       ! 1 = original ECHAM5 cloud scheme
+                       ! 2 = ECHAM5 - CDNC scheme (Lohmann et al., 2007)
+                       ! 3 = ECHAM5 - CDNC/ICNC scheme (Lohmann et al., 2007)
+                       ! 4 = ECHAM5 - CDNC/ICNC scheme (Lohmann et al., 2010)
+                       ! 5 = ECHAM5 - CDNC/ICNC scheme (Kuebbeler et al., 2014)
+ncdnc       = 2,       ! activation for CDNC scheme
+                       ! 1 = Lin & Leaitch
+                       ! 2 = Abdul-Razzak & Ghan
+nicnc       = 2,       ! ICNC scheme:
+                       ! 0 = OFF
+                       ! 1 = Prognostic ICNC  (Lohmann, 2000)
+                       ! 2 = Prognostic ICNC + Cirrus (Kaercher and Lohmann, 2002)
+lcover      = F,       ! logical switch for extra cloud cover calculation 
+                       ! default: T (Tompkins); F (Sundqvist)
+rset_ccraut = T, 4.2,  ! autoconversion rate (typical range: 1-10)
+rset_ccsaut = T,1200., ! aggregation rate (typical range: 100-1200)
+/
+
+&CTRL_L10
+!# Lohmann (2010)
+!cdncmin = 40.0e6,   ! minimum cloud droplet number concentration [m^(-3)]
+!
+!# immersion nucleation is computed by Barahona and Nenes, 2009b 
+!# (F = by Lohmann and Diehl, 2006)
+!limm_BN09   = F,    ! 
+!
+/
+
+&CTRL_K14
+!# Kuebbeler (2014)
+cdncmin    = 20.0e6, ! minimum cloud droplet number concentration [m^(-3)]
+nfrzaer = 4,         ! Number of freezing aerosol particle types in cirrus
+                     ! (only for cloud_param = 5 and icnc = 2)
+                     ! 1 = homogeneous freezing
+                     ! 2 = DU deposition + hom. freezing
+                     ! 3 = DU deposition + DU immersion + hom. freezing
+                     ! 4 = DU dep. + DU imm. + BC imm./dep. + hom. freezing
+nexti = 1,           ! Number of external ice modes
+                     ! 0 = without pre-existing ice crystals
+                     ! 1 = with pre-existing ice crystals                     
+f_bc_active = 0.1,   ! Fraction of active BC ice nuclei in cirrus
+                     ! (only for naerfrz = 4)
+/
+
+&CPL
+l_cdnc_calc = F,     ! True for additional CDNC parameterisation calculations
+i_cdnc_calc = 5,     ! switch for number of CDNC parameterisation calculation
+                     ! 0 = DEFAULT ECHAM5 only at starting date
+                     ! 1 = DEFAULT ECHAM5, but each time step
+                     ! 2 = Rotstayn parameterisation
+                     ! 3 = Jones parameterisation
+                     ! 4 = Menon parameterisation
+                     ! 5 = Abdul-Razzak & Ghan parameterisation (activation)
+                     ! 6 = Lin & Leaitch parameterisation (activation)
+
+                     ! 9 = all parameterisations (if possible)
+i_cdnc_cpl = 0,      ! switch for number of CDNC parameterisation feedback
+                     !    (must be equal to i_cdnc_calc or i_cdnc_calc = 9)
+aer_stream = 'gmxe_gp',   ! channel name of aerosol model for cdnc coupling
+sup_sat_scheme = 1   ! way how to calculate critical supersaturation
+                     ! 1 = traditional ARG
+                     ! 2 = external source, e.g. gmxe
+                     ! 3 = using Petters & Kreidenweiss approach
+/

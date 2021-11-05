@@ -1,0 +1,772 @@
+% work areas are denoted by #####
+%
+%
+%new intro chapter starting 31/05/01
+
+%$Source: /server/cvs/mpiom1/mpi-om/doc/tecdoc_mpiom/Attic/c5.tex,v $\\
+%$Revision: 1.1.2.1.4.2.2.2.2.3.2.1 $\\
+%$Date: 2006/03/07 14:50:43 $\\
+%$Name: mpiom_1_2_0 $\\
+
+
+%\pagenumbering{arabic}
+\thispagestyle{empty}
+ 
+\chapter[Time Stepping]
+{\Large{\bf Time Stepping}\label{ch:timestepping}}
+
+
+\section{Time stepping method}
+\label{ch:timestepping:method}
+
+
+The motions associated with the vertically integrated velocity field (barotropic
+part) are solved implicitly which  damps the external
+gravity wave mode and thus allows the use of  a longer time-step in the integrations.
+Time stepping in MPI-OM is based on the idea of operator splitting, which
+is also called {\sl time splitting} or {\sl method of fractional steps},
+as described by e.g.\ \citet{press88}. 
+The method is illustrated with the following example (taken from \citet{press88}).
+
+Suppose you have an initial value equation of the form
+\begin{eqnarray}
+{{\partial u}\over{\partial t}} = \mbox{\op L}u
+\end{eqnarray}
+where {\op L} is some operator. While {\op L} is not necessarily linear, suppose that it can
+at least be written as a linear sum of $m$ pieces, which act additively on $u$,
+\begin{eqnarray}
+\mbox{\op L}u=\mbox{\op L}_1u+\mbox{\op L}_2u + \cdots \mbox{\op L}_m u
+\end{eqnarray}
+Finally, suppose that for each of the pieces, you already know a differencing scheme
+for updating the variable $u$ from time-step $n$ to time-step $n+1$, valid if
+that piece of the operator were the only one on the right-hand side. We will write
+these updating symbolically as
+\begin{eqnarray}
+u^{n+1} & = & \mbox{\op U}_1(u^n,\Delta t)\nonumber \\
+u^{n+1} & = & \mbox{\op U}_2(u^n,\Delta t)\nonumber \\
+        & \cdots & \\
+u^{n+1} & = & \mbox{\op U}_m(u^n,\Delta t)\nonumber
+\end{eqnarray}
+Now, one form of operator splitting would be to get from $n$ to $n+1$ by the
+following sequence of updating:
+\begin{eqnarray}
+u^{n+(1/m)} & = & \mbox{\op U}_1(u^n,\Delta t) \nonumber \\
+u^{n+(2/m)} & = & \mbox{\op U}_2(u^{n+(1/m)},\Delta t) \nonumber \\
+            & \cdots & \\
+u^{n+1} & = & \mbox{\op U}_m(u^{n+(m-1)/m},\Delta t) \nonumber
+\end{eqnarray}
+
+This operator splitting is used in {\sl MPI-OM}.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Klar wie Klosbruehe
+\section{Timestepping in the Model}
+\label{ch:timestepping:model}
+
+The timestepping proceeds by the method of operator splitting or fractional steps
+as described in Section~\ref{ch:timestepping:method}. 
+That is, prognostic variables are updated
+successively in several subroutines.
+Prescribed forcing is read in at the start of each time-step after which the 
+sea ice dynamics equations are solved by means of 
+%successive over-relaxation with Chebychev acceleration.
+functional iteration with under relaxation.
+Then the sea ice thermodynamics are implemented.
+The ocean momentum equation  is first solved partially for the friction terms and 
+then the advection terms.
+This results in a partially updated momentum equation which is 
+decomposed into baroclinic and barotropic subsystems.
+These are solved separately as described below.
+As in HOPE \citep{wolff97} the prognostic equation for the free surface is solved
+implicitly, which allows for the model's barotropic time-step
+to equal the baroclinic time-step.
+
+All subroutine called during one time step are listed in table \ref{tb:timestepping:sbr}
+and are described in the following.
+All symbols are explained in section \ref{sec:appendix:los} ``list of variables''.
+
+
+\begin{table}[ht]
+\begin{footnotesize}
+        \begin{tabular}[t]{l|p{8cm}|l}
+        \hline
+          SBR name &
+          Action &
+          Ref. \\
+        \hline\hline
+         \texttt{octher.f90} &	   
+           -boundary forcing on salt and temperature
+	   
+           -baroclinic pressure
+	   
+           -convective adjustment
+	   
+           -vertical eddy viscosity and diffusivity coefficients &
+          \ref{ch:timestepping:octher} \\	  
+         \texttt{-ocice.f90} &
+	   Sea ice model as described by \citet{hibler79}&
+          ch. \ref{ch:ice} \\		  
+         \texttt{--growth.f90} &
+	   Update of ice thickness, compactness, snow depth, upper ocean
+           temperature and salinity due to atmospheric heat and freshwater fluxes.
+          \\	
+         \texttt{ocwind.f90} &
+	   Update ocean velocities with the surface stress (wind forcing).&
+          \ref{ch:timestepping:ocwind} \\
+         \texttt{octide.f90} &
+	   Include forcing from tides (optional).&
+          \\
+         \texttt{ocmodmom.f90} &
+	   Decomposition into barotropic and baroclinic field.&
+          \ref{ch:timestepping:ocmodmom} \\
+%         \texttt{ocbarp.f90} &
+%	   &
+%          \\
+         \texttt{occlit.f90} &
+	   Solution of the baroclinic system.&
+          \ref{ch:timestepping:occlit} \\
+         \texttt{bartim.f90} &
+	   Calculate sea level hight for the barotropic subsystem with gauss elimination and back-substitution (default).&
+          \ref{ch:timestepping:bartim}\\
+         \texttt{troneu.f90} &
+	   Calculate sea level hight for the barotropic subsystem with iterative solver (SOR, optional).&
+          \ref{ch:timestepping:troneu}\\
+         \texttt{ocvtro.f90} &
+	   Calculate new barotropic velocities.&
+          \ref{ch:timestepping:ocvtro}\\
+         \texttt{ocvtot.f90} &
+	   Calculate new total velocities $u, v$ and $w$.&
+          \ref{ch:timestepping:ocvtot}\\	  
+         \texttt{ocuad.f90} &
+	   Advection of momentum analogous to \texttt{ocadpo.f90} in u direction.&
+          \ref{ch:timestepping:ocuad}\\	  
+         \texttt{ocvad.f90} &
+	   Advection of momentum analogous to \texttt{ocadpo.f90} in v direction.&
+          \\		  
+         \texttt{slopetrans.f90} &
+	   Calculate bottom bondary layer (BBL) transport for tracer advection (optional).&
+          \ref{ch:timestepping:slopetrans}\\		  
+         \texttt{ocadpo.f90} &
+	   Computes advection with a second order total variation diminishing (TVD) scheme 
+	   \citep{Sweby:1984}. Called for temperature and salinity (optional).&
+          \ref{ch:timestepping:ocadpo}\\		  
+         \texttt{ocadfs.f90} &
+	   Compute advection with predictor-corrector scheme
+           or the quick-scheme as proposed by \citet{Farrow:1995} (optional).&
+          \ref{ch:timestepping:ocadfs}\\		  
+         \texttt{ocjitr.f90} &
+	   Parameterize sub grid-scale eddy-induced tracer transport
+           following \citet{Gent:1995} (optional).&
+          \ref{ch:timestepping:ocjitr}\\	  
+         \texttt{octdiff\_base.f90} &
+	   Compute tracer-independent matrices for horizontal, isopycnal diffusion.&
+          \ref{ch:timestepping:octdiff-base}\\		  
+         \texttt{octdiff\_trf.f90} &
+	   Calculate vertical diffusion and 
+	   harmonic and biharmonic horizontal diffusion 
+	   (with matrices calculated in \texttt{octdiff\_base.f90})
+	   for temperature and salinity.&
+          \ref{ch:timestepping:octdiff-trf}\\	  	  
+         \texttt{relax\_ts.f90} &
+	   3-D restoring of temperature and salinity to initial conditions.&
+          \ref{ch:timestepping:relax-ts}\\	
+%         \texttt{octimf.f90} &
+%	   Update u and v velocities with ... ???? &
+%          \\		  
+         \texttt{ocschep.f90} &
+	   Harmonic horizontal diffusion of momentum. &
+          \ref{ch:timestepping:ocschep}\\		  
+         \texttt{ocvisc.f90} &
+	   Vertical diffusion of momentum, 
+	   bottom friction, biharmonic horizontal momentum diffusion &
+%	   and shear dependent diffusion&
+          \ref{ch:timestepping:ocvisc}\\			  
+        \end{tabular}
+\end{footnotesize}
+\caption{List of subroutine calls during one time-step.}
+\label{tb:timestepping:sbr}
+\end{table}
+
+
+\subsection{octher.f90}
+\label{ch:timestepping:octher}
+\subsubsection{boundary forcing}
+
+TO DO: The source has to be cleaned up. Encapsulate different parameterizations. 
+CPP flag "NURMISCH" is identical to "CDVOCON == 0".  "NURDIFF" has to be default.
+
+In ice free or non--compact ice covered areas the salinity is changed according to
+\begin{eqnarray}
+S^{n+1/m}\bigg\vert_{k=1}& = &S^n\bigg\vert_{k=1} + \Delta t\lambda_{S}\left(
+                 S_{Levitus} - S^n\bigg\vert_{k=1}\right)\cdot (1-A)
+\end{eqnarray}
+where $A$ is the sea ice compactness. The salinity is further modified
+in the sea ice model due to freezing or melting processes.
+In addition, the sea surface temperature can relaxed to a SST climatology \citep{Levitus:1998}
+\begin{eqnarray}
+\Theta^{n+1/m}=\Theta_1^n + \Delta t \: \lambda_T\cdot(\Theta_{Levitus}-\Theta^n\bigg\vert_{k=1})
+\end{eqnarray}
+Default for the time constants is $\lambda_{S} = 3.*10^{-7}$ and $\lambda_{T} = 0.$ 
+$\lambda_{S}$ and $\lambda_{T}$ can be modified in the namelist (\ref{tb:using:namelist}).
+Both are weighted with the actual thickness of the first layer with respect to a thickness of 20~m
+($\lambda = \lambda_{namelist}*20~m/DZW_{(1)}$).
+Salinity and temperature restoring does only work if MPI-OM is not coupled to ECHAM. 
+ 
+\clearpage
+ 
+Discharge from rivers is affecting salinity and sea surface elevation. 
+\begin{eqnarray}
+S^{n+1/m}\bigg\vert_{k=1}& = &S^n\bigg\vert_{k=1} + {{\Delta z_{w}}\over{\Delta z_{1} + \Delta R_{input}}}\\
+ZO^{n+1/m}& = &ZO + \Delta R_{input}\\
+\end{eqnarray}
+Local river input is calculated from discharge data for the given position (see section \ref{sec:using:input}):
+\begin{eqnarray}
+\Delta R_{input}& = &{{discharge*\Delta t}\over{\Delta x*\Delta y}}
+\end{eqnarray}
+ 
+%DRIV=GIRIV(I,J)*DT/(DLXP(I,J)*DLYP(I,J))
+%     SAO(I,J,1)=SAO(I,J,1)*ZZZDZ/(ZZZDZ+DRIV)
+%      ZO(I,J)=ZO(I,J)+DRIV
+
+
+\subsubsection{baroclinic pressure and stability}
+
+
+Hydrostatic pressure and stratification is computed.
+Potential temperatures $\Theta$ are converted to in--situ temperatures $T$ (subroutine \texttt{adisitj.f90})
+by solving the \citet{Gill:1982} formula with a Newton's method.
+The density is computed in subroutine \texttt{rho1j.f90} with the \citet{unesco83} formula.
+
+\begin{eqnarray}
+p_1 &=& g\Delta z_{w1}\: \rho\left(S_1^{n+2/m}, T_1^{n+2/m}, p_{1(ref)}\right)\\
+p_k &=& p_{k-1} + g\Delta z_{wk}\: \rho\left(S_k^{n+2/m}, T_k^{n+2/m}, p_{k(ref)}\right)\\
+{{\partial\rho_k}\over{\partial z}} &=& {1\over\Delta z_{uk}} (\rho_{k-1}-\rho_k)^{n+2/m}
+\end{eqnarray}
+where the density $\rho$ is calculated using a reference pressure
+\begin{eqnarray}
+p_{(ref)k}= g\rho_0 h_k
+\end{eqnarray}
+where $h_k$ is the  depth of layer $k$.
+
+There are several choices for parameterization of convection currently available in the \mbox{MPI-OM} model.
+\begin{itemize}
+\item
+Default in cases of unstable stratification is a combination of vertical diffusion and mixing.
+Other mechanisms are activated with compile flags (table \ref{tb:using:cpp-flags-physical}). 
+\item
+Compile flag "NURDIFF" disables the default mixing.
+\item
+Compile flag "UMKLAP" activates the convective adjustment. 
+Convective adjustment follows \citet{bryan69}.
+Traditionally this technique involved the full mixing of vertically adjacent grid cells 
+in the presence of static instability.
+The \mbox{MPI-OM} formulation is similar but only mixes the upper grid cell with an equivalent thickness
+of the lower grid cell.
+This approach aims to increase the penetrative depth of convection.
+It is done with only one sweep through the water column per timestep, i.e.
+for $\rho_z > 0$
+\begin{eqnarray}
+\Theta_k^{n+3/m} = {{\displaystyle \Delta z_{wk-1}\Theta_{k-1}^{n+2/m}+\Delta z_{wk}\Theta_{k}^{n+2/m}}\over
+               {\displaystyle \Delta z_{wk-1}+\Delta z_{wk}}}\\
+S_k^{n+3/m} = {{\displaystyle \Delta z_{wk-1}S_{k-1}^{n+2/m}+\Delta z_{wk}S_{k}^{n+2/m}}\over
+               {\displaystyle \Delta z_{wk-1}+\Delta z_{wk}}}
+\end{eqnarray}
+for stable stratification $\rho_z < 0$ (or {\tt ICONVA = 0})
+\begin{eqnarray}
+\Theta_k^{n+3/m} =\Theta_{k}^{n+2/m}\\
+S_k^{n+3/m} =S_{k}^{n+2/m}
+\end{eqnarray}
+If convective adjustment was active the stratification array is adjusted.
+
+\item
+Compile flag "PLUME" activates the so-called "PLUME" convection scheme (subroutine \texttt{nlopps.f90}). 
+It is based on an original routine by E. Skyllingstad and T. Paluszkiewicz.
+It is a much more physically based parameterization based on the
+penetrative plume convection scheme of \citet{paluszkiewicz97}.
+Plume convection was found to significantly improve the deep water characteristics and
+the simulation of Southern Ocean sea ice in the {HOPE} model \citep{kim2001}.
+However, the penetrative plume convection scheme is computationally quite expensive.
+%For the parameter setting {\tt IEDDY = 1}
+
+\item
+If the compile flag  "NURMISCH" is set, only the  Richardson number depending coefficients are used for the diffusion.
+Richardson number depending  coefficients for eddy viscosity and eddy diffusivity 
+are computed every timestep \citep{pacanowski81}.
+%(see e.g.\ Pacanowski and Philander, 1981, Monin and Yaglom, 1971, Jones, 1973).
+Additionally, a mixed layer turbulence contribution is included.
+
+\begin{eqnarray}\label{av1}
+A_V^{\bf n+1} &=& \lambda_V A_V^n + (1-\lambda_V)\left[ {A_{V0}\over{1+(C_{RA} Ri)^2}}
+\right] + A_B+ \delta_{\Delta T} W_T \\ \label{dv1}
+D_V^{\bf n+1} &=& \lambda_V D_V^n + (1-\lambda_V)\left[ {D_{V0}\over{1+(C_{RD} Ri)^2}}
+\right] + \delta_{\Delta T} W_T
+\end{eqnarray}
+
+where $0 \leq \lambda \leq 1$, $A_{V0}$ and $D_{V0}$ are constant values,
+$A_B$ is the background mixing (set to $10^{-6}\mbox{ m}^2/\mbox{s}^{-1}$),
+ $W_T$ is a value for
+a wind induced mixed layer turbulence (increased turbulent
+viscosity and diffusivity), $\delta_{\Delta T}$ is a
+switch which is 1 for a vertical temperature difference to the sea surface temperature smaller than a preset $\Delta T$
+and 0 elsewhere, and $Ri$ is the local Richardson number
+\begin{eqnarray}
+Ri = - {{g\partial\rho/ \partial z}\over{(\partial  u/ \partial z)^2+(\partial v/ \partial z)^2}}
+\end{eqnarray}
+Eqs.\ (\ref{av1}) and (\ref{dv1}) are slightly modified with respect to
+the original formulations by \citet{pacanowski81}.
+
+% For {\tt IEDDY = 0}
+% all eddy coefficients are set constant in time and space.
+\item
+If the compile flag  "NURMISCH" is not set,
+in cases of unstable stratification the coefficient is replaced by the mixing term "CDVOCON" which is set in the 
+namelist (table \ref{tb:using:namelist}), if "CDVOCON" is larger that the Richardson coefficient.
+This leads to a greatly enhanced vertical diffusion in the presence of static instability
+(e.g.\ Marotzke, 1991; Klinger at al., 1996). \nocite{marotzke91,klinger96}
+Such an approach avoids the excessive intermediate mixing associated with the traditional adjustment scheme
+by introducing a timescale associated with the choice of (constant) convective-diffusion coefficient.
+\end{itemize}
+
+\subsection{ocwind.f90}
+\label{ch:timestepping:ocwind}
+
+TO DO: Clean Up, get rid of "SICOMU" and "SICOMV".
+
+Wind stress and ice stress (per unit density) are added to the ocean velocities.
+\begin{eqnarray}
+u^{n+(1/m)} = u^n + \Delta t {{\tau^{x}_{wind}}\over{\Delta z_{w1}}}\cdot(1-A) + \Delta t {{\tau^{x}_{ice}}\over{\Delta z_{w1}}}\cdot A \\
+v^{n+(1/m)} = v^n + \Delta t {{\tau^{y}_{wind}}\over{\Delta z_{w1}}}\cdot(1-A) + \Delta t {{\tau^{y}_{ice}}\over{\Delta z_{w1}}}\cdot A 
+\end{eqnarray}
+$A$ is the sea ice compactness. The ice stress is computed in subroutine \texttt{ocice.f90}.
+
+
+\subsection{ocice.f90}
+\label{ch:timestepping:ocice}
+
+The sea ice model is computed in routine \texttt{ocice.f90} and its subroutines \texttt{growth.f90}, 
+\texttt{budget.f90} and \texttt{obudget.f90}. A detailed described is given in chapter "Sea Ice Model".
+
+In addition, the penetration of solar radiation is described in \texttt{ocice.f90} by a simple vertical
+profile, constant with latitude and longitude.
+
+\begin{eqnarray}
+{I\over{I_0}}=(1-R)e^{(z/D)}
+\end{eqnarray}
+
+The radiation profile is converted to an absorption profile and used to update the temperatures.
+There is no heat-flux through the bottom of the ocean, so all remaining heat is absorbed in the bottom layer.
+If the marine biogeochemical model HAMOCC is included, there is an option to calculate the absorption as a 
+function of chlorophyll. 
+
+\subsection{ocmodmom.f90}
+\label{ch:timestepping:ocmodmom}
+
+The velocity fields $({\bf v}=(u,v))$ are decomposed into barotropic
+(vertically averaged) and baroclinic parts
+\begin{eqnarray}
+{\bf V}&=&\int_{-H}^0 {\bf v} \: dz \\
+{\bf v}' &=& {\bf v} - {1\over H}\int_{-H}^0 {\bf v} \: dz
+\end{eqnarray}
+The definition of ${\bf V}=(U,V)$ was chosen to be consistent with the coding, i.\ e.\ it is
+the barotropic transport mode not a velocity.
+
+\subsection{ocbarp.f90}
+\label{ch:timestepping:ocbarp}
+
+TO DO: No real function. Fill common block VSE, VZE, USO, UZO. Move to "bartim.f90" ????
+
+\subsection{occlit.f90}
+\label{ch:timestepping:occlit}
+
+Solution of the baroclinic system. See section \ref{ch:timestepping:subsystem}
+
+\subsection{bartim.f90}
+\label{ch:timestepping:bartim}
+
+Calculate sea level hight for the barotropic subsystem with an implicit method.
+The equations are solved with a Gaussian triangulisation method.
+Requires the subroutines \texttt{ocbarp.f90} and \texttt{trian.f90}.
+See section \ref{ch:timestepping:subsystem}.
+
+\subsection{troneu.f90}
+\label{ch:timestepping:troneu}
+
+If the compile flag  "SOR" is set (table \ref{tb:using:cpp-flags-physical}), the equations for the barotropic subsystem are solved by iteration
+which requires less memory, but considerably more cpu time.
+Requires the subroutines \texttt{itprep.f90} and \texttt{trotest.f90}.
+See section \ref{ch:timestepping:subsystem}.
+
+\subsection{ocvtro.f90}
+\label{ch:timestepping:ocvtro}
+
+The ``new'' sea level values are used to calculate new barotropic velocities.
+%using eqs.\ \ref{uvdir}.
+
+\subsection{ocvtot.f90}
+\label{ch:timestepping:ocvtot}
+
+
+\begin{itemize}
+\item
+Baroclinic and barotropic velocities are added to give total velocity fields.
+The vertical velocity component is calculated from the continuity equation ($h$ is
+layer thickness)
+
+\parbox{13cm}{\begin{eqnarray*}
+{\partial w^{n+1}\over{\partial z}}&=& -\beta\left[ {\partial\over\partial x}(hu^{n+1})
++ {\partial\over\partial y}(hv^{n+1})\right] \\
+ & &-(1-\beta)\left[ {\partial\over\partial x}(hu^{n})
++ {\partial\over\partial y}(hv^{n})\right]\end{eqnarray*}}\hfill
+\parbox{1cm}{\begin{eqnarray}\end{eqnarray}}
+
+ The total velocity field of the new time step is available
+in this subroutine
+for further use (e.\ g.\ for diagnostics and post--processing).
+\item
+A very powerful consistency test for  the barotropic implicit
+system and/or the correct back-substitution
+ is available at this point, i.e. the consistency
+of sea level change with the vertical velocity at z=0
+\begin{eqnarray}
+{\partial\zeta\over\partial t} - w|_{z=0} = 0
+\end{eqnarray}
+The results of this test should be of  round--off--error precision
+(modified by the effects of twofold differencing, empirically : $10^{-8}$).
+
+\item
+Update time levels of velocity and sea level fields.
+
+\item
+Time memory of viscous dissipation according to local rate of strain ${\tt TURB}_{E/O}$.
+
+\end{itemize}
+
+\subsection{ocuad.f90 and ocvad.f90}
+\label{ch:timestepping:ocuad}
+Advection of momentum analogous to \texttt{ocadpo.f90} in u and v direction.
+
+\subsection{slopetrans.f90}
+\label{ch:timestepping:slopetrans}
+Calculate bottom bondary layer (BBL) transport for tracer advection. 
+For more details see section \ref{sec:bbl}.
+
+\subsection{ocadpo.f90}
+\label{ch:timestepping:ocadpo}
+TO DO: BBL and ocadpo are not default. Is it necessary to 
+compute the new vertical velocities in ocadpo (20 times with BGC)? 
+
+First, new vertical velocities are calculated, including the BBL transport velocities.
+Second, advection of scalar traces is computed with a second order total variation 
+diminishing (TVD) scheme \citep{Sweby:1984}.
+The total variation of a solution is defined as:
+\begin{eqnarray}
+TV_{(u^{n+1})}&=&\sum{u^{n+1}_{k+1}-u^{n+1}_{k}}
+\end{eqnarray}
+A difference scheme is defined as being total variation 
+diminishing (TVD) if:
+\begin{eqnarray}
+TV_{(u^{n+1})}&\le&TV_{(u^{n})}
+\end{eqnarray}
+Momentum advection of tracers is by a mixed scheme that
+employs a weighted average of both central-difference and upstream methods.
+The weights are chosen in a two step process. First, according to the 
+ratio of the first minus the second spatial derivative
+over the first spatial derivative of the advected quantity T,
+\begin{eqnarray}
+r=max\left\{0,{|T^{\prime}|-|T^{\prime\prime}| \over |T^{\prime}|}\right\}
+\end{eqnarray}
+with $T^{\prime}=T_{k-1}-T_{k+1}$ and $T^{\prime\prime}=T_{k-1}+T_{k+1}-2\cdot T_{k}$.
+If the second derivative is small usage of central-differencing is save and therefor favorably.
+In contrast, if the first derivative is small and the second derivative is large there
+is an extrema in the middle and an upstream scheme is preferred.
+
+In a second step the ratio is weighted with strength of the flow
+(the time it takes to fully ventilate the grid-box). 
+Water transport in and out of a grid-box is given as:
+\begin{eqnarray}
+U_{in}&=&0.5\cdot\delta t \cdot\delta x \cdot\delta y \cdot(w_k +|w_{k-1}|) \nonumber \\
+U_{out}&=&0.5\cdot\delta t \cdot\delta x \cdot\delta y \cdot(|w_{k+1}|-w_{k+1})
+\end{eqnarray}
+The total weight $R$ is defined as:
+\begin{eqnarray}
+R=min\left\{1,{\delta x \cdot\delta y \cdot\delta z \over U_{in}+U_{out}}\cdot r\right\}
+\end{eqnarray}
+If the flow is weak and $r$ is small, the magnitude of this ratio 
+is less than 1 and the weights favor usage of central-differencing.
+With a stronger flow or a larger $r$ the upstream scheme is preferred.
+The idea is to incorporate the benefit of positive-definiteness of the upstream scheme
+(and thus limit numerically spurious tracer sources and sinks),
+while avoiding large implicit numerical diffusion in regions where strong gradients
+exist in the tracer field.
+
+Advection is computed as follows. Tracer transport in and out of a grid-box is defined as:
+\begin{eqnarray}
+T_{in}&=& U_{in}\cdot(1-R)\cdot T_k + R\cdot 0.5 \cdot (T_k+T_{k-1}) \nonumber \\
+T_{out}&=& U_{out}\cdot(1-R)\cdot T_k + R\cdot 0.5 \cdot (T_k+T_{k+1})
+\end{eqnarray}
+
+The new tracer concentration $T_k^{n+1}$ is given by the old concentration $T_k^n$ 
+plus tracer in-, and out-fluxes,
+normalized by the "new" volume of the grid-box (volume plus in-, and out-fluxes of water).
+\begin{eqnarray}
+T_k^{n+1}&=&  \left(T_k^n \cdot\delta x \cdot\delta y \cdot\delta z  
++ T_{in \, k+1} - T_{in \, k} - T_{out \, k} + T_{out \, k-1}\right)\cdot{1\over V_{new}}
+\nonumber \\
+V_{new}&=& \delta x \cdot\delta y \cdot\delta z 
++ U_{in \, k+1} - U_{in \, k} - U_{out \, k} + U_{out \, k-1}
+\end{eqnarray}
+
+
+
+\subsection{ocadfs.f90}
+\label{ch:timestepping:ocadfs}
+Compute advection with either a predictor-corrector scheme
+or with the quick-scheme as proposed by \citet{Farrow:1995}.
+This routine does not work with BBL transport (\ref{ch:timestepping:slopetrans}).
+\subsection{ocjitr.f90}
+\label{ch:timestepping:ocjitr}
+Parameterize sub grid-scale eddy-induced tracer transport
+following \citet{Gent:1995}. The advection at the end is done with an upwind scheme.
+\subsection{octdiff\_base.f90}
+\label{ch:timestepping:octdiff-base}
+Tracer-independent matrices for horizontal, isopycnal diffusion are computed for use 
+in \texttt{octdiff\_trf.f90}.
+See also equation \ref{eqn:kiso} in chapter \ref{ch:numeric}.
+\subsection{octdiff\_trf.f90}
+\label{ch:timestepping:octdiff-trf}
+Calculate vertical diffusion and harmonic and biharmonic horizontal diffusion 
+(with matrices calculated in \texttt{octdiff\_base.f90}) for scalar tracers
+(temperature and salinity).
+\subsection{relax\_ts.f90}
+\label{ch:timestepping:relax-ts}
+3-D restoring of temperature and salinity to initial conditions \citep{levitus98}.
+\subsection{ocschep.f90}
+\label{ch:timestepping:ocschep}
+Harmonic horizontal diffusion of momentum.
+\subsection{ocvisc.f90}
+\label{ch:timestepping:ocvisc}
+TO DO: clean up, TRIDSY to TRIDSY(i,j,k) as in HAMOCC routine octdiff\_bgc.f90 ?
+
+Horizontal velocities are modified due to bottom friction, vertical harmonic momentum diffusion 
+and horizontal biharmonic momentum diffusion. 
+The vertical diffusion uses the vertical friction "avo" calculated in \texttt{oocther.f90}.
+
+
+%Bottom friction (linear)
+%\begin{eqnarray}
+%{{\partial {\bf v}_{-H}}\over{\partial t}}&=& -\epsilon \cdot{\bf v}_{-H}\\
+%{\bf v}_{-H}^{n+5/m}&=&{\bf v}_{-H}^{n+4/m} -\Delta t\: \epsilon \cdot{\bf v}_{-H}^{n+4/m}
+%\end{eqnarray}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Baroclinic and Barotropic Subsystem}
+\label{ch:timestepping:subsystem} 
+
+Denoting the internal baroclinic pressure divided by reference density as $p^{\prime}$,
+and the three dimensional baroclinic velocities as ($u^{\prime},v^{\prime},w^{\prime}$),
+the partially updated baroclinic momentum equations can be expressed by
+\begin{equation}
+\label{eqn:baroclinic_mom_u}
+{\partial u^{\prime} \over{\partial t}} - f v^{\prime}
+= 
+{1 \over{H}} \int_{-H}^{\zeta}{\partial p^{\prime} \over{\partial x}}dz
+- {\partial p^{\prime} \over{\partial x}}
+\end{equation}
+\begin{equation}
+\label{eqn:baroclinic_mom_v}
+{\partial v^{\prime} \over{\partial t}} + f u^{\prime}
+=
+{1 \over{H}} \int_{-H}^{\zeta}{\partial p^{\prime} \over{\partial y}}dz
+- {\partial p^{\prime} \over{\partial y}}
+\end{equation}
+where $x$, $y$, $z$ and $t$ indicate the curvilinear parallel, curvilinear meridional,
+vertical and temporal dimensions respectively.
+The local depth is given by $H$, 
+$\zeta$ is the sea surface displacement from the z-coordinate uppermost surface,
+and $f$ is the Coriolis parameter.
+Assuming only disturbances of small amplitude (linearization) 
+allows the vertical density advection
+to be expressed as 
+${\partial \rho \over{\partial t}}=-w{\partial \rho \over{\partial z}}$.
+This can be combined with the time derivative of the hydrostatic approximation
+(${\partial \rho^2 \over{\partial z \partial t}}=
+{-g \over \rho_0 }{\partial \rho \over{\partial t}}$)
+to give an equation for the time evolution of the linearized internal baroclinic pressure
+\begin{equation}
+\label{eqn:baroclinic_press}
+{\partial^{2} p^{\prime} \over{\partial z \partial t}}
+=
+{w g \over \rho_0} {\partial \rho \over \partial z}.
+\end{equation}
+Then the baroclinic subsystem is closed with the baroclinic continuity equation.
+\begin{equation}
+\label{eqn:baroclinic_cont}
+  {\partial u^{\prime} \over{\partial x}} 
++ {\partial v^{\prime} \over{\partial y}} 
++ {\partial w^{\prime} \over{\partial z}} 
+= 0
+\end{equation}
+
+Introducing the superscripts $n$ and $n+1$ to denote 
+old and new time levels respectively,
+the time discretization of the partially updated 
+linearized baroclinic subsystem can then be written as
+\begin{eqnarray}
+\label{eqn:baroclinic_mom_u_discr}
+u^{\prime^{n+1}} - u^{\prime^{n}}
+&=&
+\alpha \Delta{t}
+\left(
+f v^{\prime^{n+1}}
++ {1 \over{H}} \int_{-H}^{\zeta}p_{x}^{\prime^{n+1}} dz
+- p_{x}^{\prime^{n+1}}
+\right)
+\nonumber \\
+&&
++ (1-\alpha) \Delta{t}
+\left(
+f v^{\prime^{n}}
++ {1 \over{H}} \int_{-H}^{\zeta}p_{x}^{\prime^{n}} dz
+-p_{x}^{\prime^{n}}
+\right)
+\\
+\label{eqn:baroclinic_mom_v_discr}
+v^{\prime^{n+1}} - v^{\prime^{n}}
+&=&
+\alpha \Delta{t}
+\left(
+- f u^{\prime^{n+1}}
++ {1 \over{H}} \int_{-H}^{\zeta}p_{y}^{\prime^{n+1}} dz
+- p_{y}^{\prime^{n+1}}
+\right)
+\nonumber \\
+&&
++ (1-\alpha) \Delta{t}
+\left(
+- f u^{\prime^{n}}
++ {1 \over{H}} \int_{-H}^{\zeta}p_{y}^{\prime^{n}} dz
+-p_{y}^{\prime^{n}}
+\right)
+\\
+\label{eqn:baroclinic_press_discr}
+p_{z}^{\prime^{n+1}} - p_{z}^{\prime^{n}}
+&=&
+{g \over \rho_0} \Delta{t} \rho_z
+\left(
+\beta w^{\prime^{n+1}} + (1-\beta)w^{\prime^{n}}
+\right)
+\end{eqnarray}
+Here $\Delta t$ is the model's timestep,
+and $0 \le \alpha, \beta \le 1$ 
+are stability coefficients partially weighting 
+the new velocities to the old velocities.
+For stability reasons it is required that $\alpha \ge 1-\alpha$ and $\beta\ge 1-\beta$.
+In the semi-implicit case where $\alpha = \beta = {1 \over 2}$ the system is neutrally
+stable, but similar to the familiar leapfrog-scheme this tends to produce
+a computational mode with \mbox{$2\Delta t$} oscillations. 
+These are suppressed
+by the choice $\alpha$ = 0.55 and $\beta$ = 0.5.
+The system is solved iteratively with the old baroclinic velocities used as a first guess.
+
+For the partially updated barotropic subsystem, the momentum equations are
+\begin{equation}
+\label{eqn:barotropic_mom_u}
+{\partial U \over{\partial t}}
+- f V
++ g H {\partial \zeta \over{\partial x}}
++ \int_{-H}^{\zeta} {\partial \over{\partial x}}p^{\prime}dz
+= 0
+\end{equation}
+\begin{equation}
+\label{eqn:barotropic_mom_v}
+{\partial V \over{\partial t}}
++ f U
++ g H {\partial \zeta \over{\partial y}}
++ \int_{-H}^{\zeta} {\partial \over{\partial y}}p^{\prime}dz
+= 0
+\end{equation}
+where $U$ and $V$ are the partially updated barotropic velocities 
+on the model's curvilinear grid.
+The barotropic subsystem is closed with a continuity equation accounting for the
+time derivative of the sea level $\zeta$
+\begin{equation}
+\label{eqn:barotropic_cont}
+  {\partial \zeta \over{\partial t}}
++ {\partial U     \over{\partial x}}
++ {\partial V     \over{\partial y}}
+=
+Q_{\zeta}
+\end{equation}
+where the forcing term $Q_{\zeta}$ represents the surface freshwater flux 
+(see Eqn~\ref{eqn:sfwf1} below).
+The sea level is partially updated according to $Q_{\zeta}$ before the
+baroclinic subsystem is solved and so is ignored in the following time discretization.
+
+Denoting the partially updated sea level by $\zeta^{\prime}$,
+the discretized partially updated barotropic subsystem can then be written as 
+\begin{eqnarray}
+\label{eqn:barotropic_mom_u_discr}
+U^{n+1} - U^{n} -f \Delta t
+\left( \alpha V^{n+1} + (1-\alpha)V^{n} \right)
+&&
+\nonumber \\
++ g H \Delta t 
+\left( \alpha \zeta_x^{\prime^{n+1}} + (1-\alpha) \zeta_x^{\prime^n}  \right)
++ \Delta t 
+\int_{-H}^{\zeta}p_{x}^{\prime^{n+1}} dz
+&=& 0
+\\
+%\end{eqnarray}
+%\begin{eqnarray}
+\label{eqn:barotropic_mom_v_discr}
+V^{n+1} - V^{n} +f \Delta t
+\left( \alpha U^{n+1} + (1-\alpha)U^{n} \right)
+&&
+\nonumber \\
++ g H \Delta t
+\left( \alpha \zeta_y^{\prime^{n+1}} + (1-\alpha) \zeta_y^{\prime^n}  \right)
++ \Delta t 
+\int_{-H}^{\zeta}p_{y}^{\prime^{n+1}} dz
+&=& 0
+\end{eqnarray}
+\begin{equation}
+\label{eqn:barotropic_cont_discr}
+\zeta^{\prime^{n+1}} - \zeta^{\prime^n} 
++ \Delta t 
+%\left( \beta U_x^{n+1} + (1-\beta)U_x^{n} 
+%  +    \beta V_y^{n+1} + (1-\beta)V_y^{n} \right)
+\left( \beta ( U_x^{n+1} + V_y^{n+1}) + (1-\beta) (U_x^{n} + V_y^{n}) \right)
+= 0
+\end{equation}
+where the partial temporal relaxation weights $\alpha$ and $\beta$ are the same as
+for the baroclinic subsystem.
+The set of equations \ref{eqn:barotropic_mom_u_discr}, \ref{eqn:barotropic_mom_v_discr}
+and \ref{eqn:barotropic_cont_discr} is rearranged into matrix form and solved by
+Gaussian elimination with back substitution.
+Alternatively, when the model dimensions exceed the availability of core computing memory,
+the matrix can be solved iteratively using successive over-relaxation.
+For a discussion of how the implicit free surface approach of \mbox{MPI-OM}
+compares with explicit treatment of the free surface the reader is referred to \citet{griffies2000}.
+
+Momentum advection of tracers is by a mixed scheme that
+employs a weighted average of both central-difference and upstream methods.
+The weights are chosen according to the ratio of the second spatial derivative
+over the first spatial derivative of the advected quantity.
+When the magnitude of this ratio 
+is less than 1 the weights favor usage of central-differencing,
+and when greater than 1 the upstream scheme is preferred.
+The idea is to incorporate the benefit of positive-definiteness of the upstream scheme
+(and thus limit numerically spurious tracer sources and sinks),
+while avoiding large implicit numerical diffusion in regions where strong gradients
+exist in the tracer field.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\clearpage
+
+
+
+  
+

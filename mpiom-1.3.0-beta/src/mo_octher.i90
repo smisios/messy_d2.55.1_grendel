@@ -1,0 +1,607 @@
+# 1 "mo_octher.f90"
+ MODULE mo_octher
+
+  USE mo_param1
+  USE mo_mpi
+  USE mo_parallel
+  USE mo_commo1
+  USE mo_commoau1
+  USE mo_commoau2
+  USE mo_units
+
+
+
+# 17
+
+
+
+  IMPLICIT NONE
+
+ CONTAINS
+
+  SUBROUTINE octher
+
+  integer :: l
+  
+!-----------------------------------------------------------------------
+!
+!     sbr octher computes
+!
+!          relax_surf     -  boundary forcing on salt, temperature and zeta
+!          river_runoff -  only in the uncoupled model
+!          convection   -  baroclinic pressure in each layer +  convective adjustment
+!          calc_rinum   -  richardson-number depending coefficients for
+!                          vertical diffusion of momentum (avo) and
+!                          temperature and salinity (dvo)
+!          calc_den     -  update of density field
+!
+!
+!
+!-----------------------------------------------------------------------
+  
+
+
+# 48
+
+
+    CALL relax_surf      ! only in the uncoupled model
+
+    CALL river_runoff
+
+# 58
+
+
+
+
+    CALL convection
+
+    CALL calc_rinum
+
+    CALL calc_dens
+
+  END SUBROUTINE octher
+
+
+  SUBROUTINE relax_surf
+        
+    INTEGER    i,j
+    REAL       reiscon,zsurf(ke),oldso
+
+!     boundary forcing on temperature, salt and zeta
+!     relaxation time on salinity   : 1./ relsal
+
+!$omp parallel private (i,j,reiscon,oldso)
+!$omp do
+
+    DO j=1,je
+       DO i=1,ie
+          
+          eminpo(i,j)=0.
+          
+          reiscon=0.
+          IF(sicomo(i,j).LE.0.01) THEN
+             reiscon=1.
+          ENDIF
+          
+
+          reiscon=1.-sicomo(i,j)
+
+          oldso=sao(i,j,1)
+          sao(i,j,1)=sao(i,j,1)+dt*relsal*reiscon*(relsao(i,j)-sao(i,j,1))
+          tho(i,j,1)=tho(i,j,1)+dt*reltem*(reltho(i,j)-tho(i,j,1))
+
+# 104
+
+          eminpo(i,j)=(ddpo(i,j,1)+zo(i,j)-sictho(i,j)*rhoicwa             &
+                     -sicsno(i,j)*rhosnwa)                                 &
+                     *(MAX(oldso,1.e-3)/MAX(sao(i,j,1),1.e-3)-1.)
+       ENDDO
+    ENDDO
+!$omp end do
+
+    dti=1./dt
+
+!$omp do
+    DO j=1,je
+       DO i=1,ie
+          zo(i,j)=(zo(i,j)+eminpo(i,j))*weto(i,j,1)
+          eminpo(i,j)=eminpo(i,j)*dti                       !uwe eminpo in m/s
+       ENDDO
+    ENDDO
+!$omp end do
+!$omp end parallel
+
+  END SUBROUTINE relax_surf
+
+
+
+  SUBROUTINE river_runoff_ini
+
+
+!  initialisation of river input locations
+
+# 178
+
+
+
+# 203
+
+
+
+
+  END SUBROUTINE river_runoff_ini
+
+
+  SUBROUTINE river_runoff
+
+    INTEGER i,j,n,monmon
+    REAL driv,zzzdz,awert,ewert
+
+
+    rivrun(:,:)=0.                   !  runoff diagnostic
+
+# 259
+
+
+!$omp parallel private(i,j,driv,zzzdz)
+!$omp do
+    DO j=1,je
+       DO i=1,ie   
+          zzzdz=MAX(almzer,ddpo(i,j,1)+zo(i,j)-sictho(i,j)*rhoicwa        &
+               -sicsno(i,j)*rhosnwa)
+!       if(weto(i,j,1).lt.0.5.and.giriv(i,j).gt.0.)then
+!           write(io_stdout,*)'alarm! river ',n,i,j
+!       endif
+          driv=giriv(i,j)*dt/(dlxp(i,j)*dlyp(i,j))
+!uwe      use actual layerthickness for mass/salt conservation
+          sao(i,j,1)=sao(i,j,1)*zzzdz/(zzzdz+driv)
+          zo(i,j)=zo(i,j)+driv
+          preco(i,j)=preco(i,j)+driv/dt
+          prech(i,j)=prech(i,j)+driv/dt
+          rivrun(i,j)=driv/dt
+       ENDDO
+    ENDDO
+!$omp end do
+!$omp end parallel
+
+
+
+
+# 319
+
+
+
+
+  END SUBROUTINE river_runoff
+
+  SUBROUTINE convection
+
+    USE mo_mean
+
+    INTEGER i,j,k
+    
+    REAL, ALLOCATABLE :: convefo(:,:)
+
+    REAL rhuppo(ie,je)
+    REAL zsurf(ke)
+    REAL stabio1,thick,disti,ctmpotb,dtts
+    REAL tupper,tlower,supper,slower,ddhelp,sq,tq,helpswi,switc
+
+
+ 
+!$omp parallel private(i,j,k,thick, disti,stabio1,tq,sq,switc,    &
+!$omp                  helpswi,tupper, tlower,                    &
+!$omp                  supper, slower, ddhelp,ctmpotb)
+
+!
+!=====================================================================
+!
+!     b)
+
+
+!
+!     baroclinic pressure and stability
+!
+!
+!---------------------------------------------------------------------
+!
+!     b.1) upper layer
+!
+
+    zsurf(1)=1.
+    DO k=2,ke
+       zsurf(k)=0.
+    ENDDO
+
+!$omp do
+    DO j=1,je
+
+       if(IMEAN.ne.0) then
+       if (LCONVDIAG) then
+!sjm convection diagnostics
+! potential energy before convection
+
+
+          ALLOCATE(convefo(ie,je))
+          
+          DO i=1,ie
+             convefo(i,j)=0.
+          ENDDO
+          
+          DO k=1,ke
+             DO i=1,ie
+                shelp(i,j)=sao(i,j,k)
+                thelp(i,j)=tho(i,j,k)
+             ENDDO
+             
+             CALL adisitj(thelp,shelp,preff(k),j)
+             CALL rho1j(thelp,shelp,preff(k),rhelp,j)
+             
+             DO i=1,ie
+                thick = ddpo(i,j,k) &
+                     +zo(i,j)-(sicsno(i,j)*rhosno+sictho(i,j)*rhoice)/rhowat
+                convefo(i,j)=convefo(i,j) &
+                     - weto(i,j,k)*rhelp(i,j)*thick*(tiestw(k)+thick*0.5)
+             ENDDO
+          ENDDO
+       endif
+    endif
+       DO i=1,ie
+          vk1e(i,j,1)=0.
+          shelp(i,j)=sao(i,j,1)
+          thelp(i,j)=tho(i,j,1)
+       ENDDO
+       
+       CALL adisitj(thelp,shelp,preff(1),j)
+       CALL rho1j(thelp,shelp,preff(1),rhelp,j)
+       
+       DO i=1,ie
+          stabio(i,j,1) = 0.
+          po(i,j,1)     = g*tiestu(1)*0.00097*rhelp(i,j)
+          s1o(i,j,1)    = rhelp(i,j)
+       ENDDO
+       
+       DO k=2,ke
+          
+          disti=1./dz(k)
+          DO i=1,ie
+             shelp(i,j)=sao(i,j,k)
+             thelp(i,j)=tho(i,j,k)
+          ENDDO
+          
+          CALL adisitj(thelp,shelp,preff(k),j)
+          CALL rho1j(thelp,shelp,preff(k),rhelp,j)
+          
+          DO i=1,ie
+             shelp(i,j)=sao(i,j,k-1)
+             thelp(i,j)=tho(i,j,k-1)
+          ENDDO
+          
+          CALL adisitj(thelp,shelp,preff(k),j)
+          CALL rho1j(thelp,shelp,preff(k),rhuppo,j)
+          
+          DO i=1,ie
+             s1o(i,j,k)=rhelp(i,j)
+             stabio1 = disti * ( rhelp(i,j) - rhuppo(i,j) )
+             po(i,j,k) = po(i,j,k-1) + g*dz(k)*0.00049*(rhelp(i,j)+rhuppo(i,j))
+!
+
+
+!uwe     salt conservation 12/99
+             tq=((ddpo(i,j,k-1)+zsurf(k-1)*(zo(i,j)-sictho(i,j)*rhoicwa          &
+                  -sicsno(i,j)*rhosnwa))        &
+                  *tho(i,j,k-1)+ddpo(i,j,k)*tho(i,j,k))                         &
+                  /(ddpo(i,j,k)+ddpo(i,j,k-1)                                   &
+                  +zsurf(k-1)*(zo(i,j)-sictho(i,j)*rhoicwa-sicsno(i,j)*rhosnwa) &
+                  +(1.-weto(i,j,k)))
+             sq=((ddpo(i,j,k-1)+zsurf(k-1)*(zo(i,j)-sictho(i,j)*rhoicwa          &
+                  -sicsno(i,j)*rhosnwa))        &
+                  *sao(i,j,k-1)+ddpo(i,j,k)*sao(i,j,k))                         &
+                  /(ddpo(i,j,k)+ddpo(i,j,k-1)                                   &
+                  +zsurf(k-1)*(zo(i,j)-sictho(i,j)*rhoicwa-sicsno(i,j)*rhosnwa) &
+                  +(1.-weto(i,j,k)))
+
+!
+!lk not used
+!lk        switc=(half-sign(half,stabio(i,j,k)))*weto(i,j,k)
+             switc=MAX(0.,-stabio1/(1.e-11+ABS(stabio1)))*weto(i,j,k)
+!-et      converei=converei+switc
+!
+
+             helpswi=switc
+             switc=0.
+
+!
+             vk1e(i,j,k)=switc
+!
+
+             tho(i,j,k-1) = tq * switc + (one-switc) * tho(i,j,k-1)
+             tho(i,j,k)   = tq * switc + (one-switc) * tho(i,j,k)
+             sao(i,j,k-1) = sq * switc + (one-switc) * sao(i,j,k-1)
+             sao(i,j,k)   = sq * switc + (one-switc) * sao(i,j,k)
+# 492
+
+!
+             stabio1=(one-switc)*stabio1
+             stabio(i,j,k)=MAX(stabio1,0.)
+!
+
+             switc=helpswi
+
+!
+             IF(kcondep(i,j).EQ.k-1) kcondep(i,j) = kcondep(i,j)+NINT(switc)
+
+          ENDDO
+       ENDDO
+!
+    ENDDO ! j-loop
+!$omp end do
+    
+
+# 516
+
+
+    if(IMEAN.ne.0)then
+    if (LCONVDIAG) then
+!sjm potential energy after convection
+       
+!$omp do
+       DO j=1,je
+          DO k=1,ke
+             DO i=1,ie
+                shelp(i,j)=sao(i,j,k)
+                thelp(i,j)=tho(i,j,k)
+             ENDDO
+          
+             CALL adisitj(thelp,shelp,preff(k),j)
+             CALL rho1j(thelp,shelp,preff(k),rhelp,j)
+          
+             DO i=1,ie
+                thick = ddpo(i,j,k)                                               &
+                     + zo(i,j)-(sicsno(i,j)*rhosno+sictho(i,j)*rhoice)/rhowat
+                convefo(i,j)=convefo(i,j)                                         &
+                     + weto(i,j,k)*rhelp(i,j)*thick*(tiestw(k)+thick*0.5)
+             ENDDO
+          ENDDO
+          
+!sjm accumulate mean monthly diagnostics
+          DO i=1,ie
+             ctmpotb = kcondep(i,j)
+             tmcdo(i,j) = MAX(tmcdo(i,j),ctmpotb)  !depth of surface overturn
+             tmceo(i,j) = tmceo(i,j)+convefo(i,j)         !potential energy release
+          ENDDO
+       
+       ENDDO ! j-loop
+!$omp end do
+
+       DEALLOCATE(convefo)
+
+    endif
+ endif
+ 
+!$omp end parallel
+    
+  END SUBROUTINE convection
+
+  SUBROUTINE calc_rinum
+
+    USE mo_mean
+
+    INTEGER i,j,k,ko,ku
+    REAL rinumo,stabeps,switc,avo1,dvo1,dudo,gor,hho
+    REAL topnah,wpendep,wtdecay,relne,relax,dudz,drdz0,cra,crd,zsurf(ke)
+
+!$omp parallel private(i,j,k, rinumo,ku,ko,stabeps,wtdecay,dudo,hho    &
+!$omp                 ,switc,avo1,dvo1)
+
+!======================================================================
+!
+!     d)
+!
+!                   calculation of richardson number dependent
+!                      vertical eddy viscosity   av     and
+!                      vertical eddy diffusivity dv
+!
+!
+!         rinum : ( (g/rho)*d(rho)/dz ) / ( (d(velocity)/dz)**2 )
+!                  richardson number (even,odd ==> rinume,rinumo)
+!         gor   : g/rho
+!
+!         av0   : numerical value of vertical eddy viscosity in case
+!                 of neutral stability, i.e. free turbulence
+!
+!---------------------------------------------------------------------
+    zsurf(1)=1.
+    DO k=2,ke
+       zsurf(k)=0.
+    ENDDO
+
+!
+    relne=0.4
+    relax=1.-relne
+!
+    dudz=1.e4
+    drdz0=1.e-3
+!
+    gor=g/1025.
+!
+!--------------------------------------------------------------------
+!
+!     c.1)
+!
+!     vertical eddy viscosity  (for momentum equation)
+!
+!--------------------------------------------------------------------
+!
+!     d.1)    mixed-layer turbulence
+!
+!  amplitude of turbulence decays by factor wtdecay every model level.
+!  turbulence stops once density difference reaches the equivalent of
+!   wtdt
+!  temperature difference.
+!  turbulence under ice is / is not  enhanced.
+!                             ==
+    cra=5.
+    crd=5.
+
+    wpendep=40.
+    relne=0.4
+    relax=1.-relne
+    wtdecay=EXP(-dzw(1)/wpendep)
+
+!$omp do
+    DO j=1,je
+       DO i=1,ie
+!hh       t1o(i,j,1)=wt*2.*(1.-sicomo(i,j))*fu10(i,j)**3*wtdecay
+!hh       s1o(i,j,1)=wt*(1.-sicomo(i,j))*fu10(i,j)**3*wtdecay
+
+          t1o(i,j,1)=wt*(1.-sicomo(i,j))**2*fu10(i,j)**3
+          s1o(i,j,1)=wt*(1.-sicomo(i,j))**2*fu10(i,j)**3
+# 637
+
+# 640
+
+       ENDDO
+    ENDDO
+!$omp end do
+    
+    if (iMEAN.ne.0)then
+       if (LDIFFDIAG) then
+          wtmix(:,:,1)=s1o(:,:,1)
+       endif
+    endif
+
+
+!$omp do
+    DO j=2,je1
+
+       DO k=2,ke
+          ku=MIN(k+1,ke)
+          ko=MAX(k-1,1)
+          stabeps=cstabeps/dzw(ko)
+          wtdecay=EXP(-dzw(ko)/wpendep)
+
+          topnah=0.0
+          DO i=2,ie1
+
+             t1o(i,j,1)=t1o(i,j,1)*wtdecay*stabeps                            &
+                  /(stabeps+0.5*(stabio(i,j,k)+(1.-zsurf(ko))*stabio(i,j,ko)))
+             
+             s1o(i,j,1)=s1o(i,j,1)*wtdecay*stabeps                            &
+                  /(stabeps+0.5*(stabio(i,j,k)+(1.-zsurf(ko))*stabio(i,j,ko)))
+   
+             if (iMEAN.ne.0)then           
+                if (LDIFFDIAG) then
+                   wtmix(i,j,k)=s1o(i,j,1)
+                endif
+             endif
+             
+
+             dudo=almzer + weto(i,j,k) * di(k)**2                                  &
+                  * (   ( uko(i-1,j,k) - uko(i-1,j,ko) )**2                        &
+                  + ( uko(i,j,k)   - uko(i,j,ko)   )**2                        &
+                  + ( vke(i,j-1,k) - vke(i,j-1,ko) )**2                        &
+                  + ( vke(i,j,k)   - vke(i,j,ko)   )**2   ) *0.5
+             
+             hho=weto(i,j,k)*(amsuo(i,j,k)+amsuo(i-1,j,k)+amsue(i,j-1,k)       &
+                  +amsue(i,j,k))*0.25
+             
+             rinumo=hho*MAX(gor*stabio(i,j,k)/dudo,0.)
+             
+             
+             switc=(half-SIGN(half,stabio(i,j,k)))*weto(i,j,k)
+
+             avo1 = avo(i,j,k)
+             avo1 = (relax*MIN(avo1,av0+abackv(k))+relne*(t1o(i,j,1)     &
+                  +av0/((1.+ cra*rinumo)**2)+abackv(k)+topnah))*weto(i,j,k)   
+             
+             avo(i,j,k)=weto(i,j,k)*MAX(cavocon*(1.e-11-stabio(i,j,k))      &
+                  /(1.e-11+ABS(stabio(i,j,k))),avo1)
+!
+             dvo1 = dvo(i,j,k)
+             dvo1 = (relax*MIN(dvo1,dv0+s1o(i,j,1))+relne*(s1o(i,j,1)    &
+                  +dv0/((1.+ crd*rinumo)**3)+dbackv(k)+topnah))*weto(i,j,k)   
+             
+
+# 705
+
+             dvo(i,j,k)=weto(i,j,k)*MAX(cdvocon*(1.e-11-stabio(i,j,k))        &
+                  /(1.e-11+ABS(stabio(i,j,k))),dvo1)
+
+# 711
+
+
+             stabio(i,j,k)=MAX(stabio(i,j,k),0.)
+
+          ENDDO
+       ENDDO
+    ENDDO ! j-loop
+!$omp end do
+    
+
+!$omp single
+    CALL bounds_exch('p',s1o(:,:,1),'mo_octher 10')
+    CALL bounds_exch('p',t1o(:,:,1),'mo_octher 11')
+!#ifdef bounds_exch_save
+    CALL bounds_exch('p',dvo,'mo_octher 12')
+    CALL bounds_exch('p',avo,'mo_octher 13')
+    CALL bounds_exch('p',stabio,'mo_octher 14')
+!#endif
+!$omp end single
+
+
+    avo(:,:,kep)=0.
+    dvo(:,:,kep)=0.
+
+!$omp end parallel
+
+  END SUBROUTINE calc_rinum
+
+
+
+  SUBROUTINE calc_dens
+
+    INTEGER i,j,k
+!$omp parallel private(i,j,k)
+!$omp do
+    DO j=1,je
+
+       DO i=1,ie
+          shelp(i,j)=0.0
+          thelp(i,j)=0.0
+       ENDDO
+
+!uwe  include downward propagation of tho and sao in land
+
+       DO k=2,ke
+          DO i=1,ie
+             IF(weto(i,j,k).LT.0.5)THEN
+                tho(i,j,k)=tho(i,j,k-1)
+                sao(i,j,k)=sao(i,j,k-1)
+             ENDIF
+          ENDDO
+       ENDDO
+
+!uwe  compute pressure and density new
+
+       DO k=1,ke
+          DO i=1,ie
+             thelp(i,j)=tho(i,j,k)
+             shelp(i,j)=sao(i,j,k)
+          ENDDO
+          CALL adisitj(thelp,shelp,preff(k),j)
+          CALL rho1j(thelp,shelp,preff(k),rhelp,j)
+
+!uwe   po noch sauber bestimmen, aus rhoo noch machen!!!
+
+          DO i=1,ie
+             rhoo(i,j,k)=rhelp(i,j)
+          ENDDO
+       ENDDO
+    ENDDO 
+!$omp end do
+!$omp end parallel
+
+  END SUBROUTINE calc_dens
+
+ END MODULE mo_octher

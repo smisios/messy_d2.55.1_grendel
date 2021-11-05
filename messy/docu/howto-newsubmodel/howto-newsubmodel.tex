@@ -1,0 +1,182 @@
+\def\myfiledate{\today}
+
+\documentclass[a4paper,12pt,twoside]{article}
+\usepackage{ucs}\usepackage[utf8x]{inputenc}
+
+\ifx\pdfoutput\undefined %
+  %\usepackage{draftcopy}
+  \usepackage[dvips]{graphicx} % LaTeX
+  \DeclareGraphicsExtensions{.eps}
+\else %
+  \usepackage[pdftex]{graphicx} % pdfLaTeX
+  %\DeclareGraphicsExtensions{.pdf,.png,.jpg}
+  \DeclareGraphicsExtensions{.pdf}
+\fi
+
+%\usepackage[square]{natbib}
+\usepackage{chem}
+%\usepackage{afterpage}
+%\usepackage{url}
+\usepackage{color}
+%\usepackage{rotating} % loads graphicx
+%\usepackage{longtable}
+%\usepackage{eclclass}
+%\usepackage{verbatim}
+%\usepackage{html}
+%\usepackage{multicol}
+
+\def\nosep{\setlength\parsep{0mm}\setlength\topsep{0mm}\setlength\itemsep{0mm}}
+
+\oddsidemargin-10mm
+\evensidemargin-13mm
+\topmargin-20mm
+\textheight250mm
+\textwidth170mm
+\raggedbottom
+\parindent0mm
+\parskip1.0ex plus0.5ex minus0.5ex
+\renewcommand{\arraystretch}{1}
+\renewcommand{\topfraction}{0.95}
+\renewcommand{\dbltopfraction}{0.95}
+\renewcommand{\bottomfraction}{0.95}
+\renewcommand{\floatpagefraction}{0.95}
+\renewcommand{\dblfloatpagefraction}{0.95}
+\renewcommand{\textfraction}{0.01}
+\setcounter{topnumber}{3}
+\makeatletter\def\captioncont{\@dblarg{\@caption\@captype}}\makeatother
+
+\newcommand{\todo}[1]{{\uppercase{\bf ((TODO: #1))}}}
+
+\def\mytitle{How to write a new MESSy submodel}
+
+\begin{document}
+
+\begin{center}
+  {\LARGE\bf\mytitle}\\[3mm]
+  Version from \myfiledate
+\end{center}
+
+Adapting your model code to the MESSy standard has several advantages:
+
+\begin{itemize}\nosep
+\item You have access to data from all other MESSy submodels during the
+  model simulation (online-coupling).
+\item Your code will become part of the MESSy community model.
+\item You can easily upgrade to newer MESSy versions without the need to
+  make any changes to your code.
+\end{itemize}
+
+Here is a quick receipe how to turn your code into a MESSy submodel. In
+the following text, the name ``XYZ'' is used for the new submodel.
+
+\section{How to write a MESSy box model}
+
+First of all, you must produce a ``box-model'' version of your code.
+This is easy when starting from scratch but may require some effort when
+the model is spread over several files as part of a historically grown
+code.
+
+It should be noted, that the term ``box model'' is used loosely here: It
+refers to the model in its smallest possible entity. For chemistry, this
+is indeed a 0-dimensional box. For other processes (e.g. vertical
+transport) it would be a 1-dimensional column.
+
+\begin{enumerate}\nosep
+\item Write down explicitly what input is needed by your submodel and
+  what output is produced. THIS MUST BE A COMPLETE LIST! Do not forget
+  any ``unimportant'' variables!
+\item If necessary, convert your code from Fortran77 to Fortran90 or even more
+  recent Fortran standards. The
+  tool \code{freeform}
+  (\url{http://marine.rutgers.edu/po/tools/perl/freeform}) can simplify
+  that task.
+\item Put your code into the file \code{messy_}{\em xyz}\code{.f90} and
+  divide it into three phases:
+  \begin{itemize}\nosep
+  \item initialization
+  \item integration (e.g.\ executed during time loop)
+  \item finalization
+  \end{itemize}
+  This file is from now on called the ``core'' file, or more precisely
+  the ``submodel core layer'' (SMCL) file.
+\item Create a very simple base model called \code{messy_}{\em
+    xyz}\code{_box.f90}, which formally serves as the ``submodel interface
+  layer'' (SMIL) and the ``basemodel interface layer'' (BMIL), and in which
+  you: 
+  \begin{itemize}\nosep 
+   \item Define ALL values of the parameters that
+         the core file needs as input. These values can be either constant or
+         time-dependent.  
+   \item Call the initialization in the core file.  
+   \item Call the integration in the core file (either once or repeatedly 
+         within a time loop).  
+   \item Call the finalization in the core file.  
+  \end{itemize} 
+  Each of these subroutines transfers data as subroutine parameters to and
+  from the core file.
+\item Your box model may use the generic files that MESSy provides in
+  \begin{itemize}\nosep
+  \item \code{messy/smcl/messy_main_constants_mem.f90}
+  \item \code{messy/smcl/messy_main_tools.f90}
+  \item \code{messy/smcl/messy_main_blather.f90}
+  \end{itemize} 
+\item Create a \code{Makefile} to compile the boxmodel.
+\end{enumerate}
+
+\section{How to integrate your code into MESSy}
+
+If you have followed the above procedure strictly, your code is now
+ready for integration into the MESSy framework:
+
+\begin{enumerate}\nosep
+\item Put the core file \code{messy_}{\em xyz}\code{.f90} into the
+  directory \code{messy/smcl/}.
+\item Create the directory \code{messy/mbm/}{\em xyz}\code{/} and put
+  the box model file \code{messy_}{\em xyz}\code{_box.f90} and the
+  \code{Makefile} into it.
+\item Create a link of the core file into the box model directory:\\
+  \code{ln} \code{-s} \code{messy/smcl/messy_}{\em xyz}\code{.f90}
+  \code{messy/mbm/}{\em xyz}\code{/}\\
+  This link ensures that exactly the same core file is used for the box
+  model and for all other MESSy basemodels.
+  If you have used any of the generic MESSy
+  files \code{messy/smcl/messy_main_[constants_mem,tools,blather].f90},
+  you must link them also into the boxmodel directory.
+\item Create a new file \code{messy/smil/messy_}{\em
+    xyz}\code{_si.f90}. This file is similar to the box model file
+  \code{messy_}{\em xyz}\code{_box.f90}. However, instead of
+  ``inventing'' typical input data for the submodel, it extracts the
+  necessary data from the BMIL. Make sure that there is no
+  basemodel-specific code in \code{messy/smcl/messy_}{\em xyz}\code{.f90}
+  and no submodel-specific code in \code{messy/smil/messy_}{\em
+    xyz}\code{_si.f90}! In this file you can utilize the MESSy infrastructure
+  provided by the \code{messy_main_*.f90} files.
+\item To achieve that a model simulation also executes your new
+  submodel, you need to adapt the following MESSy files:
+  \begin{itemize}
+  \item \code{messy/bmil/messy_main_control_*.inc}: Insert calls
+    to your subroutines in \code{messy_}{\em xyz}\code{_si.f90} here.
+    There are several entry points in the initialization phase, the main time
+    loop, and the finalization phase in this file. Be aware of the naming
+    convention of the main entry points.
+  \item \code{messy/bmil/messy_main_switch_bi.f90}: Add the
+    submodel string (\code{modstr}), the submodel version
+    (\code{modver}), and the logical \code{USE_}{\em XYZ} here.
+  \item \code{messy/smcl/messy_main_switch.f90}: Add the logical
+    \code{USE_}{\em XYZ} here.
+  % \item Run \code{gmake} \code{messycheck} to confirm that your submodel
+  %   is MESSy conform.
+  % \item Add your new submodel to \code{messy/util/validate}, then run
+  %   \code{gmake} \code{validate} to confirm that your submodel is MESSy
+  %   conform.
+  \item Add \code{USE_}{\em XYZ}\code{=.TRUE.} to the namelist file
+    \code{switch.nml}.
+  \item For custom-made output, add the new submodel to the namelist
+    file \code{channel.nml}.
+  \end{itemize}
+\end{enumerate}
+
+The easiest way to make these additions is to look how other submodels
+are implemented in these files (e.g.\ \code{BUFLY}).
+
+\end{document}

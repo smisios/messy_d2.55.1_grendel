@@ -1,0 +1,1458 @@
+# 1 "../../messy/smil/messy_lnox_si.f90"
+# 1 "../../messy/bmil/messy_main_ppd_bi.inc" 1 
+! -*- f90 -*-
+# 11
+
+
+! ----------------------------------------------------------------------
+! SETTINGS FOR VARIOUS BASEMODELS
+! ----------------------------------------------------------------------
+! SO FAR FOR ALL MESSy BASEMODES
+
+
+
+
+! ORDER: h,v,[n],h (TRRANK=3)  OR h,v,h,[n] (TRRANK=4)
+
+
+
+
+! ORDER: h,h,[n],v (TRRANK=3)  OR h,h,v,[n] (TRRANK=4)
+# 29
+
+
+# 33
+
+
+
+
+! ----------------------------------------------------------------------
+! GENERIC SETTINGS
+! ----------------------------------------------------------------------
+
+! ----------------------------------------------------------------------
+! ORDER: h,v,[n],h OR h,v,h,[n]
+
+! ----------------------------------------------------------------------
+
+! op_pj_20170228: macros required for TTRANK=3 (messy_main_tracer)
+
+
+
+
+
+
+
+
+
+
+
+
+
+! classical RI to pass one `jrow` to SMCL:
+
+
+
+
+
+! only ONEMIS, BIOBURN, GMXE, VEG:
+
+
+
+
+
+
+! op_pj_20170228: macros required for TTRANK=4 (messy_main_tracer)
+# 97
+
+!
+! ----------------------------------------------------------------------
+
+! ----------------------------------------------------------------------
+
+! ----------------------------------------------------------------------
+! ORDER: h,h,[n],v OR h,h,v,[n]
+# 160
+
+! ----------------------------------------------------------------------
+# 2 "../../messy/smil/messy_lnox_si.f90" 2 
+
+# 8
+
+
+! ***********************************************************************
+MODULE messy_lnox_si
+! ***********************************************************************
+
+! MESSy-SMIL FOR (SUB-)SUBMODEL LNOX
+!
+! LNOX = LIGHTNING NOx EMISSION PARAMETERIZATION (LNOx)
+!
+! Authors:
+! Patrick Joeckel, MPICH,  Aug 2003
+! Pozzer Andrea,   MPICH,  Giu 2005, Lagrangian
+! Holger Tost,     MPICH,  Jan 2007, added AaP parameterisations
+! Astrid Kerkweg,  UNI-MZ, Jun 2012, added Dahl parameterisation
+! Patrick Joeckel, DLR,    Nov 2012, revision, 2 modes of operation
+! Patrick Joeckel, DLR,    Sep 2014, - added Finney parameterisation
+!                                    - entire submodel completely revised;
+!                                      Note: results differ numerically,
+!                                      due to usage of grid-box area:
+!                                      - old: grvol/grheight
+!                                      - new: gboxarea_2d
+! Francisco Javier Perez-Invernon, DLR, Aug 2020: extended Finney param.
+!
+! TODO:
+!  1) calculate scaling factors for various resolutions
+!  2) set pointers to channel objects, only if required
+!  3) clean up scheme of Dahl, 2010 (COSMO only)
+!     - update to COSMO 5.0 or above
+!     - channel output
+!     - avoid trigger, if possible
+!     - avoid MPI_ALLREDUCE (SUM) (decomposition dependent result!)
+!     - ...
+
+  USE messy_main_blather_bi,    ONLY: start_message_bi, end_message_bi
+  USE messy_main_channel,       ONLY: STRLEN_OBJECT
+# 50
+
+
+  USE messy_lnox
+# 56
+
+
+  IMPLICIT NONE
+  INTRINSIC :: NULL
+  PRIVATE
+  SAVE
+
+# 65
+
+
+! PARAMETERISATION SPECIFIC CHANNEL OBJECTS:
+! Grewe:
+! - mean updraft velocity [m/s]
+  REAL(DP),  DIMENSION(:,:), POINTER    :: muv => NULL()
+!
+! Allen & Pickering, massflux:
+! - (convective) updraft mass flux [kg/m^2/s]
+!   at sigma = p/ps = 0.44 (or at p=440 hPa ?)
+  REAL(DP),  DIMENSION(:,:), POINTER    :: umf => NULL()
+!
+! Allen & Pickering, precipitation:
+! - convective precipitation at surface [kg m^-2 s^-1]
+  REAL(DP),  DIMENSION(:,:), POINTER    :: precon => NULL()
+!
+! Finney et al., cloud ice flux
+! - updraft cloud ice flux at 440 hPa [kg m^-2 s^-1]
+  REAL(DP),  DIMENSION(:,:), POINTER    :: phiice => NULL()
+!
+! Finney et al., cloud ice flux, extended (through external iso-surface)
+! - updraft cloud ice flux at 440 hPa [kg m^-2 s^-1]
+  REAL(DP),  DIMENSION(:,:), POINTER    :: phiice_ext => NULL()
+
+! POINTERS TO CHANNEL OBJECTS FOR COUPLING
+! conv. cloud top index
+  REAL(DP), DIMENSION(:,:),   POINTER  :: cu_jkt  => NULL()
+! conv. cloud base index
+  REAL(DP), DIMENSION(:,:),   POINTER  :: cu_jkb  => NULL()
+!
+!!$  ! updraft velocity [m/s]
+!!$  REAL(DP), DIMENSION(:,:,:), POINTER  :: cu_xupdr
+!!$  ! 0 degree level index
+!!$  REAL(DP), DIMENSION(:,:),   POINTER  :: cu_jkfreeze
+!!$  ! SPECIAL FOR MIDLEVEL CONVECTION
+!!$  ! conv. cloud top index
+!!$  REAL(DP), DIMENSION(:,:),   POINTER  :: cu_jkt_mid
+!!$  ! conv. cloud base index
+!!$  REAL(DP), DIMENSION(:,:),   POINTER  :: cu_jkb_mid
+!!$  ! 0 deg. level index
+!!$  REAL(DP), DIMENSION(:,:),   POINTER  :: cu_jkfreeze_mid
+!
+! conv. updraft massflux [kg m-^2 s^-1]
+  REAL(DP), DIMENSION(:,:,:), POINTER  :: umassf 
+! conv. precipitation [kg m-^2 s^-1]
+  REAL(DP), DIMENSION(:,:,:), POINTER  :: precflx_cv 
+
+! ice-flux through external iso-surface
+  REAL(DP), DIMENSION(:,:), POINTER  :: fice_i
+!!$  REAL(DP), DIMENSION(:,:), POINTER  :: fice_f
+
+! GLOBAL NAMELIST PARAMETERS ('COUPLING' PARAMETERS)
+! channel,object for cloud bottom level
+  CHARACTER(LEN=STRLEN_OBJECT) :: c_bot(2)    = ''
+! channel,object for cloud top level
+  CHARACTER(LEN=STRLEN_OBJECT) :: c_top(2)    = ''
+! channel,object for external iso-surface (for extended ice-flux param.)
+  CHARACTER(LEN=STRLEN_OBJECT) :: c_iif(2)    = ''
+!
+!!$  ! channel,object for updraft velocity
+!!$  CHARACTER(LEN=STRLEN_OBJECT) :: c_updr(2)   = ''
+!!$  ! channel,object for cloud freezing level
+!!$  CHARACTER(LEN=STRLEN_OBJECT) :: c_freeze(2) = ''
+!
+!!$  ! SPECIAL FOR MID-LEVEL CONVECTION
+!!$  LOGICAL            :: l_midlevel = .FALSE.
+!!$  ! channel,object for cloud bottom level
+!!$  CHARACTER(LEN=STRLEN_OBJECT)  :: c_bot_mid(2)    = ''
+!!$  ! channel,object for cloud top level
+!!$  CHARACTER(LEN=STRLEN_OBJECT)  :: c_top_mid(2)    = ''
+!!$  ! channel,object for cloud freezing level
+!!$  CHARACTER(LEN=STRLEN_OBJECT)  :: c_freeze_mid(2) = ''
+
+! channel,object for conv. updraft massflux
+  CHARACTER(LEN=STRLEN_OBJECT)  :: c_massfu(2) = ''
+! channel,object for conv. precipitation
+  CHARACTER(LEN=STRLEN_OBJECT)  :: c_precflx(2) = ''
+
+! CALCLUATE lAGRANGIAN RATE COEFFICIENTS?
+  LOGICAL :: l_calc_lg = .FALSE.
+!
+! lightning emiss [kgN/s/M3] LG
+  REAL(DP), DIMENSION(:),     POINTER  :: xnox_lg
+! l.NOx tend. [mol/mol/s] LG
+  REAL(DP), DIMENSION(:),     POINTER  :: telnox_lg
+
+! GLOBAL PARMETERS
+! WHICH TRACERS SHOULD SEE LNOx ?
+  INTEGER                            :: nlntrac_gp = 0 ! no of lightning NOx GP
+  INTEGER                            :: nlntrac_lg = 0 ! no of lightning NOx LG
+  INTEGER, DIMENSION(:), POINTER     :: idt_list_gp => NULL()
+  INTEGER, DIMENSION(:), POINTER     :: idt_list_lg => NULL()
+
+! pointer for channel objects:
+  TYPE lnox_set
+! cloud properties
+     REAL(DP), DIMENSION(:,:),   POINTER  :: cth       => NULL()
+     REAL(DP), DIMENSION(:,:),   POINTER  :: cbh       => NULL()
+     REAL(DP), DIMENSION(:,:),   POINTER  :: czh       => NULL()
+! flash frequencies, densities, ...
+     REAL(DP), DIMENSION(:,:),   POINTER  :: ff        => NULL()
+     REAL(DP), DIMENSION(:,:),   POINTER  :: pg        => NULL()
+     REAL(DP), DIMENSION(:,:),   POINTER  :: fpscg     => NULL()
+     REAL(DP), DIMENSION(:,:),   POINTER  :: fpsic     => NULL()
+     REAL(DP), DIMENSION(:,:),   POINTER  :: fpsm2cg   => NULL()
+     REAL(DP), DIMENSION(:,:),   POINTER  :: fpsm2ic   => NULL()
+     REAL(DP), DIMENSION(:,:),   POINTER  :: npcanz    => NULL()
+! (GP) NOx production ...
+     REAL(DP), DIMENSION(:,:),   POINTER  :: NOxcg     => NULL()
+     REAL(DP), DIMENSION(:,:),   POINTER  :: NOxic     => NULL()
+     REAL(DP), DIMENSION(:,:,:), POINTER  :: xnox_gp   => NULL()
+     REAL(DP), DIMENSION(:,:,:), POINTER  :: telnox_gp => NULL()
+!!$     ! (LG)
+!!$     REAL(DP), DIMENSION(:),     POINTER  :: xnox_lg   => NULL()
+!!$     REAL(DP), DIMENSION(:),     POINTER  :: telnox_lg => NULL()
+  END TYPE lnox_set
+  TYPE(lnox_set), DIMENSION(:), POINTER  :: lnox      => NULL()
+  INTEGER                                :: numbers
+  INTEGER                                :: i_ff_cpl = 1 ! default
+
+# 189
+
+
+! SUBROUTINES/FUNCTIONS
+  PUBLIC :: lnox_initialize
+  PUBLIC :: lnox_init_memory
+  PUBLIC :: lnox_init_coupling
+  PUBLIC :: lnox_physc
+  PUBLIC :: lnox_global_end
+  PUBLIC :: lnox_free_memory
+!PRIVATE :: lnox_read_nml_cpl
+
+CONTAINS
+
+! ========================================================================
+  SUBROUTINE lnox_initialize
+
+! LIGHTNING NOx EMISSION PARAMETERIZATION INITIALIZATION
+!
+! Author: Patrick Joeckel, MPICH, Aug 2003
+
+    USE messy_main_blather_bi, ONLY: error_bi
+    USE messy_main_mpi_bi,     ONLY: p_parallel_io, p_io, p_bcast
+# 213
+
+    USE messy_main_tools,      ONLY: find_next_free_unit
+
+    IMPLICIT NONE
+
+! LOCAL
+    CHARACTER(LEN=*), PARAMETER :: substr = 'lnox_initialize'
+    INTEGER                     :: iou    ! I/O unit
+    INTEGER                     :: status ! error status
+
+! INITIALIZE MAIN-CTRL
+    IF (p_parallel_io) THEN
+       iou = find_next_free_unit(100,200)
+       CALL lnox_read_nml_ctrl(status, iou)
+       IF (status /= 0) CALL error_bi(' ',substr)
+    END IF
+    CALL p_bcast(l_mode_scal, p_io)
+    CALL p_bcast(i_ffcalc, p_io)
+    CALL p_bcast(i_iccg, p_io)
+    CALL p_bcast(i_shape, p_io)
+    CALL p_bcast(r_scal_ff(:), p_io)
+    CALL p_bcast(r_noxpf(:), p_io)
+    CALL p_bcast(r_eff(:), p_io)
+    CALL p_bcast(r_Grewe_A, p_io)
+    CALL p_bcast(r_Grewe_B, p_io)
+
+! INITIALIZE COUPLING-CONTROL
+    IF (p_parallel_io) THEN
+       iou = find_next_free_unit(100,200)
+       CALL lnox_read_nml_cpl(status, iou)
+       IF (status /= 0) CALL error_bi(' ',substr)
+    END IF
+!!$    CALL p_bcast(c_updr(1), p_io)
+!!$    CALL p_bcast(c_updr(2), p_io)
+    CALL p_bcast(c_top(1), p_io)
+    CALL p_bcast(c_top(2), p_io)
+    CALL p_bcast(c_bot(1), p_io)
+    CALL p_bcast(c_bot(2), p_io)
+    CALL p_bcast(c_iif(1), p_io)
+    CALL p_bcast(c_iif(2), p_io)
+!!$    CALL p_bcast(c_freeze(1), p_io)
+!!$    CALL p_bcast(c_freeze(2), p_io)
+!
+!!$    CALL p_bcast(l_midlevel, p_io)
+!!$    CALL p_bcast(c_top_mid(1), p_io)
+!!$    CALL p_bcast(c_top_mid(2), p_io)
+!!$    CALL p_bcast(c_bot_mid(1), p_io)
+!!$    CALL p_bcast(c_bot_mid(2), p_io)
+!!$    CALL p_bcast(c_freeze_mid(1), p_io)
+!!$    CALL p_bcast(c_freeze_mid(2), p_io)
+    CALL p_bcast(l_calc_lg, p_io)
+    CALL p_bcast(i_ff_cpl, p_io)
+    CALL p_bcast(c_massfu(1),  p_io)
+    CALL p_bcast(c_massfu(2),  p_io)
+    CALL p_bcast(c_precflx(1), p_io)
+    CALL p_bcast(c_precflx(2), p_io)
+
+# 276
+
+
+# 280
+
+
+  END SUBROUTINE lnox_initialize
+! ========================================================================
+
+! ========================================================================
+  SUBROUTINE lnox_init_memory
+
+! LNOx MODULE ROUTINE (ECHAM-5 INTERFACE)
+!
+! - define LNOx specific channel(s) and allocate memory for
+!   global fields
+! - look for NO tracer(s)
+!
+! Author: Patrick Joeckel, MPICH, Aug 2003
+
+    USE messy_main_channel_error_bi, ONLY: channel_halt
+    USE messy_main_channel_bi,       ONLY: GP_2D_HORIZONTAL &
+
+    , GP_3D_MID, LG_ATTILA
+# 302
+
+    USE messy_main_tracer_mem_bi,   ONLY: GPTRSTR, LGTRSTR
+    USE messy_main_tracer_tools_bi, ONLY: tracer_halt
+    USE messy_main_mpi_bi,          ONLY: p_parallel_io
+    USE messy_main_tracer,          ONLY: get_tracer_list
+    USE messy_main_constants_mem,   ONLY: STRLEN_MEDIUM
+    USE messy_main_channel,         ONLY: new_channel, new_channel_object &
+                                        , new_attribute
+
+    IMPLICIT NONE
+
+! LOCAL
+    CHARACTER(LEN=*), PARAMETER             :: substr = 'lnox_init_memory'
+    INTEGER                                 :: status
+    INTEGER                                 :: ji
+    INTEGER                                 :: ind
+    INTEGER                                 :: jt
+    CHARACTER(LEN=STRLEN_MEDIUM), DIMENSION(:), POINTER :: subnames => NULL()
+
+    IF (i_ffcalc /= IPARAM_ALL) THEN 
+       numbers   = 1
+    ELSE
+!qqq not yet tested
+!#ifdef DAHL2000
+!      numbers = 7
+!#else
+       numbers = 6
+!#endif
+    ENDIF
+    ALLOCATE(lnox(numbers))
+
+    CALL start_message_bi(modstr,'CHANNEL DEFINITION GRID POINT',substr)
+
+    parameterisation_loop: DO ji = 1, numbers
+
+       IF (numbers == 1) THEN
+          ind = i_ffcalc
+       ELSE
+          ind = ji
+       END IF
+
+! define new channel
+       CALL new_channel(status, modstr//paramnames(ind)//'_gp',&
+            reprid=GP_2D_HORIZONTAL)
+       CALL channel_halt(substr, status)
+
+       IF (l_mode_scal) THEN
+          CALL new_attribute(status, modstr//paramnames(ind)//'_gp', &
+               TRIM(modstr)//'_mode', c='test simulation to readjust scaling')
+          CALL channel_halt(substr, status)
+       ELSE
+          CALL new_attribute(status, modstr//paramnames(ind)//'_gp', &
+               TRIM(modstr)//'_mode', c='production simulation')
+          CALL channel_halt(substr, status)
+       ENDIF
+
+       CALL new_attribute(status, modstr//paramnames(ind)//'_gp', &
+            TRIM(modstr)//'_r_fpm2s_min', r=fpm2s_min )
+       CALL channel_halt(substr, status)
+       CALL new_attribute(status, modstr//paramnames(ind)//'_gp', &
+            TRIM(modstr)//'_r_fpm2s_min_unit', c='1/(m^2 s)' )
+       CALL channel_halt(substr, status)
+
+       CALL new_attribute(status, modstr//paramnames(ind)//'_gp', &
+            TRIM(modstr)//'_r_scal_ff', r=r_scal_ff(ind))
+       CALL channel_halt(substr, status)
+
+       CALL new_attribute(status, modstr//paramnames(ind)//'_gp', &
+            TRIM(modstr)//'_r_noxpf', r=r_noxpf(ind))
+       CALL channel_halt(substr, status)
+
+       CALL new_attribute(status, modstr//paramnames(ind)//'_gp', &
+            TRIM(modstr)//'_r_eff', r=r_eff(ind))
+       CALL channel_halt(substr, status)
+
+! define channel elements
+       IF (l_mode_scal) THEN
+          CALL new_channel_object(status, modstr//paramnames(ind)//'_gp',     &
+               'ff', p2=lnox(ji)%ff)
+          CALL channel_halt(substr, status)
+          CALL new_attribute(status, modstr//paramnames(ind)//'_gp', 'ff', &
+               'long_name', c='unscaled flash frequency')
+          CALL channel_halt(substr, status)
+          CALL new_attribute(status, modstr//paramnames(ind)//'_gp', 'ff', &
+               'units', c='1/s')
+          CALL channel_halt(substr, status)
+
+          CALL new_channel_object(status, modstr//paramnames(ind)//'_gp',     &
+               'pg', p2=lnox(ji)%pg)
+          CALL channel_halt(substr, status)
+          CALL new_attribute(status, modstr//paramnames(ind)//'_gp', 'pg', &
+               'long_name', c='fraction of CG')
+          CALL channel_halt(substr, status)
+          CALL new_attribute(status, modstr//paramnames(ind)//'_gp', 'pg', &
+               'units', c='[0,1]')
+          CALL channel_halt(substr, status)
+       END IF
+
+       CALL new_channel_object(status, modstr//paramnames(ind)//'_gp',     &
+            'fpscg', p2=lnox(ji)%fpscg)
+       CALL channel_halt(substr, status)
+       CALL new_attribute(status, modstr//paramnames(ind)//'_gp', 'fpscg', &
+            'long_name', c='CG flash frequency')
+       CALL channel_halt(substr, status)
+       CALL new_attribute(status, modstr//paramnames(ind)//'_gp', 'fpscg', &
+            'units', c='1/s')
+       CALL channel_halt(substr, status)
+
+       CALL new_channel_object(status, modstr//paramnames(ind)//'_gp',     &
+            'fpsic', p2=lnox(ji)%fpsic)
+       CALL channel_halt(substr, status)
+       CALL new_attribute(status, modstr//paramnames(ind)//'_gp', 'fpsic', &
+            'long_name', c='IC flash frequency')
+       CALL channel_halt(substr, status)
+       CALL new_attribute(status, modstr//paramnames(ind)//'_gp', 'fpsic', &
+            'units', c='1/s')
+       CALL channel_halt(substr, status)
+
+       CALL new_channel_object(status, modstr//paramnames(ind)//'_gp',       &
+            'fpsm2cg', p2=lnox(ji)%fpsm2cg)
+       CALL channel_halt(substr, status)
+       CALL new_attribute(status, modstr//paramnames(ind)//'_gp', 'fpsm2cg', &
+            'long_name', c='CG flash density')
+       CALL channel_halt(substr, status)
+       CALL new_attribute(status, modstr//paramnames(ind)//'_gp', 'fpsm2cg', &
+            'units', c='1/s/m2')
+       CALL channel_halt(substr, status)
+
+       CALL new_channel_object(status, modstr//paramnames(ind)//'_gp',       &
+            'fpsm2ic', p2=lnox(ji)%fpsm2ic)
+       CALL channel_halt(substr, status)
+       CALL new_attribute(status, modstr//paramnames(ind)//'_gp', 'fpsm2ic', &
+            'long_name', c='IC flash density')
+       CALL channel_halt(substr, status)
+       CALL new_attribute(status, modstr//paramnames(ind)//'_gp', 'fpsm2ic', &
+            'units', c='1/s/m2')
+       CALL channel_halt(substr, status)
+
+       CALL new_channel_object(status, modstr//paramnames(ind)//'_gp',       &
+            'npcanz', p2=lnox(ji)%npcanz)
+       CALL channel_halt(substr, status)
+       CALL new_attribute(status, modstr//paramnames(ind)//'_gp', 'npcanz',  &
+            'long_name', c='no. of lightning events')
+       CALL channel_halt(substr, status)
+       CALL new_attribute(status, modstr//paramnames(ind)//'_gp', 'npcanz',  &
+            'units', c=' ')
+       CALL channel_halt(substr, status)
+
+       CALL new_channel_object(status, modstr//paramnames(ind)//'_gp',       &
+            'NOxcg', p2=lnox(ji)%NOxcg)
+       CALL channel_halt(substr, status)
+       CALL new_attribute(status, modstr//paramnames(ind)//'_gp', 'NOxcg',   &
+            'long_name', c='CG NOx lightning emission')
+       CALL channel_halt(substr, status)
+       CALL new_attribute(status, modstr//paramnames(ind)//'_gp', 'NOxcg',   &
+            'units', c='kg(N)')
+       CALL channel_halt(substr, status)
+
+       CALL new_channel_object(status, modstr//paramnames(ind)//'_gp',       &
+            'NOxic', p2=lnox(ji)%NOxic)
+       CALL channel_halt(substr, status)
+       CALL new_attribute(status, modstr//paramnames(ind)//'_gp', 'NOxic',   &
+            'long_name', c='IC NOx lightning emission')
+       CALL channel_halt(substr, status)
+       CALL new_attribute(status, modstr//paramnames(ind)//'_gp', 'NOxic',   &
+            'units', c='kg(N)')
+       CALL channel_halt(substr, status)
+
+       CALL new_channel_object(status, modstr//paramnames(ind)//'_gp',       &
+            'cth', p2=lnox(ji)%cth)
+       CALL channel_halt(substr, status)
+       CALL new_attribute(status, modstr//paramnames(ind)//'_gp', 'cth',     &
+            'long_name', c='cloud top height')
+       CALL channel_halt(substr, status)
+       CALL new_attribute(status, modstr//paramnames(ind)//'_gp', 'cth',     &
+            'units', c='m')
+       CALL channel_halt(substr, status)
+
+       CALL new_channel_object(status, modstr//paramnames(ind)//'_gp',       &
+            'cbh', p2=lnox(ji)%cbh)
+       CALL channel_halt(substr, status)
+       CALL new_attribute(status, modstr//paramnames(ind)//'_gp', 'cbh',     &
+            'long_name', c='cloud bottom height')
+       CALL channel_halt(substr, status)
+       CALL new_attribute(status, modstr//paramnames(ind)//'_gp', 'cbh',     &
+            'units', c='m')
+       CALL channel_halt(substr, status)
+
+       CALL new_channel_object(status, modstr//paramnames(ind)//'_gp',       &
+            'czh', p2=lnox(ji)%czh)
+       CALL channel_halt(substr, status)
+       CALL new_attribute(status, modstr//paramnames(ind)//'_gp', 'czh',     &
+            'long_name', c='depth of cloud below 0 degC')
+       CALL channel_halt(substr, status)
+       CALL new_attribute(status, modstr//paramnames(ind)//'_gp', 'czh',     &
+            'units', c='m')
+       CALL channel_halt(substr, status)
+
+! lrestreq is needed for MECO(n), in case case xnox is scaled down
+! using mmdclnt; otherwise the results are restart dependend
+       CALL new_channel_object(status, modstr//paramnames(ind)//'_gp',       &
+            'xnox', p3=lnox(ji)%xnox_gp, reprid = GP_3D_MID, lrestreq=.TRUE.)
+       CALL channel_halt(substr, status)
+       CALL new_attribute(status, modstr//paramnames(ind)//'_gp', 'xnox',    &
+            'long_name', c='lightning NOx emission')
+       CALL channel_halt(substr, status)
+       CALL new_attribute(status, modstr//paramnames(ind)//'_gp', 'xnox',    &
+            'units', c='kg(N)/s/m3')
+       CALL channel_halt(substr, status)
+
+       CALL new_channel_object(status, modstr//paramnames(ind)//'_gp',       &
+            'telnox', p3=lnox(ji)%telnox_gp, reprid = GP_3D_MID &
+            ,lrestreq=.TRUE.)
+       CALL channel_halt(substr, status)
+       CALL new_attribute(status, modstr//paramnames(ind)//'_gp', 'telnox',  &
+            'long_name', c='lightning NOx emission tendency')
+       CALL channel_halt(substr, status)
+       CALL new_attribute(status, modstr//paramnames(ind)//'_gp', 'telnox',  &
+            'units', c='mol/mol/s')
+       CALL channel_halt(substr, status)
+
+! ADD OBJECTY WHICH ARE SPECIFIC FOR THE ACTUAL PARAMETERISATION
+       SELECT CASE(ind)
+       CASE(IPARAM_PaR_T)
+!
+! NO ADDITIONAL PARAMETER (cth is output for all parameterisations)
+!
+       CASE(IPARAM_Grewe)
+!
+          CALL new_channel_object(status, modstr//paramnames(ind)//'_gp', &
+               'muv', p2=muv, reprid = GP_2D_HORIZONTAL )
+          CALL channel_halt(substr, status)
+          CALL new_attribute(status, modstr//paramnames(ind)//'_gp', 'muv', &
+               'long_name', c='mean updraft velocity')
+          CALL channel_halt(substr, status)
+          CALL new_attribute(status, modstr//paramnames(ind)//'_gp', 'muv',  &
+               'units', c='m/s')
+          CALL channel_halt(substr, status)
+!
+       CASE(IPARAM_AaP_M)
+!
+          CALL new_channel_object(status, modstr//paramnames(ind)//'_gp', &
+               'umf', p2=umf, reprid = GP_2D_HORIZONTAL )
+          CALL channel_halt(substr, status)
+          CALL new_attribute(status, modstr//paramnames(ind)//'_gp', 'umf', &
+               'long_name', c='updraft mass flux at sigma = p/ps = 0.44')
+          CALL channel_halt(substr, status)
+          CALL new_attribute(status, modstr//paramnames(ind)//'_gp', 'umf',  &
+               'units', c='kg/m^2/s')
+          CALL channel_halt(substr, status)
+!
+       CASE(IPARAM_AaP_P)
+!
+          CALL new_channel_object(status, modstr//paramnames(ind)//'_gp', &
+               'precon', p2=precon, reprid = GP_2D_HORIZONTAL )
+          CALL channel_halt(substr, status)
+          CALL new_attribute(status, modstr//paramnames(ind)//'_gp', 'precon', &
+               'long_name', c='convective precipitation at ground')
+          CALL channel_halt(substr, status)
+          CALL new_attribute(status, modstr//paramnames(ind)//'_gp', 'precon', &
+               'units', c='mm/s')
+          CALL channel_halt(substr, status)
+!
+       CASE(IPARAM_FinIF)
+!
+          CALL new_channel_object(status, modstr//paramnames(ind)//'_gp', &
+               'phiice', p2=phiice, reprid = GP_2D_HORIZONTAL )
+          CALL channel_halt(substr, status)
+          CALL new_attribute(status, modstr//paramnames(ind)//'_gp', 'phiice', &
+               'long_name', c='convective cloud ice flux at 440 hPa')
+          CALL channel_halt(substr, status)
+          CALL new_attribute(status, modstr//paramnames(ind)//'_gp', 'phiice', &
+               'units', c='kg/m^2/s')
+          CALL channel_halt(substr, status)
+!
+       CASE(IPARAM_extIF)
+!
+          CALL new_channel_object(status, modstr//paramnames(ind)//'_gp', &
+               'phiice', p2=phiice_ext, reprid = GP_2D_HORIZONTAL )
+          CALL channel_halt(substr, status)
+          CALL new_attribute(status, modstr//paramnames(ind)//'_gp', 'phiice', &
+               'long_name', c='convective cloud ice flux through '//&
+               &TRIM(c_iif(1))//'::'//TRIM(c_iif(2)))
+          CALL channel_halt(substr, status)
+          CALL new_attribute(status, modstr//paramnames(ind)//'_gp', 'phiice', &
+               'units', c='kg/m^2/s')
+          CALL channel_halt(substr, status)
+       END SELECT
+
+    END DO parameterisation_loop
+
+    CALL end_message_bi(modstr,'CHANNEL DEFINITION GRID POINT',substr)
+
+!!#D attila +
+
+    IF (l_calc_lg) THEN
+
+       CALL start_message_bi(modstr, &
+            'CHANNEL DEFINITION FOR LAGRANGIAN STUDIES',substr)
+
+! define new channel
+       CALL new_channel(status, modstr//'_lg', reprid=LG_ATTILA)
+       CALL channel_halt(substr, status)
+
+! output: only final result
+       CALL new_channel_object(status, modstr//'_lg', 'xnox', p1=xnox_lg &
+            , reprid = LG_ATTILA )
+       CALL channel_halt(substr, status)
+       CALL new_attribute(status, modstr//'_lg', 'xnox' &
+            , 'long_name', c='lightning NOx emission')
+       CALL channel_halt(substr, status)
+       CALL new_attribute(status, modstr//'_lg', 'xnox', 'units', c='kgN/s/m3')
+       CALL channel_halt(substr, status)
+
+       CALL new_channel_object(status, modstr//'_lg', 'telnox', p1=telnox_lg &
+            , reprid = LG_ATTILA )
+       CALL channel_halt(substr, status)
+       CALL new_attribute(status, modstr//'_lg', 'telnox' &
+            , 'long_name', c='lightning NOx emission tendency')
+       CALL channel_halt(substr, status)
+       CALL new_attribute(status, modstr//'_lg', 'telnox', 'units' &
+            , c='mol/mol/s')
+       CALL channel_halt(substr, status)
+
+       CALL end_message_bi(modstr, &
+            'CHANNEL DEFINITION FOR LAGRANGIAN STUDIES',substr)
+
+    END IF
+
+!!#D attila -
+
+    CALL start_message_bi(modstr, 'LOOKING FOR TRACERS', substr)
+
+    CALL get_tracer_list(status, GPTRSTR, 'NO', idt_list_gp, subnames)
+    CALL tracer_halt(substr, status)
+    nlntrac_gp = SIZE(idt_list_gp)
+    IF (p_parallel_io) WRITE(*,*) 'GP-TRACERS:'
+    DO jt=1, nlntrac_gp
+       IF (p_parallel_io) THEN
+          IF (TRIM(subnames(jt)) == '') THEN
+             WRITE(*,*) ' ... NO'
+          ELSE
+             WRITE(*,*) ' ... NO_'//TRIM(subnames(jt))
+          END IF
+       END IF
+# 650
+
+    END DO
+
+!!#D attila +
+
+    IF (l_calc_lg) THEN
+       CALL get_tracer_list(status, LGTRSTR, 'NO', idt_list_lg, subnames)
+       CALL tracer_halt(substr, status)
+       nlntrac_lg = SIZE(idt_list_lg)
+       IF (p_parallel_io) WRITE(*,*) 'LG-TRACERS:'
+       DO jt=1, nlntrac_lg
+          IF (p_parallel_io) THEN
+             IF (TRIM(subnames(jt)) == '') THEN
+                WRITE(*,*) ' ... NO'
+             ELSE
+                WRITE(*,*) ' ... NO_'//TRIM(subnames(jt))
+             END IF
+          END IF
+!#ifdef MESSYTENDENCY ! not yet implemented for LG tracers
+!       CALL mtend_register(my_handle, mtend_id_tracer, idt=idt_list_lg(jt))
+!#endif
+       END DO
+    END IF
+
+!!#D attila -
+
+    IF (ASSOCIATED(subnames)) DEALLOCATE(subnames)
+    NULLIFY(subnames)
+
+    CALL end_message_bi(modstr, 'LOOKING FOR TRACERS', substr)
+
+  END SUBROUTINE lnox_init_memory
+! ========================================================================
+
+! ========================================================================
+  SUBROUTINE lnox_init_coupling
+
+! LNOX MODULE ROUTINE (ECHAM-5 INTERFACE, PRIVATE)
+!
+! initialize 'coupling' to online channels
+!
+! Author: Patrick Joeckel, MPICH, Jan 2004
+
+    USE messy_main_mpi_bi,           ONLY: p_parallel_io
+!!$    USE messy_main_tracer_mem_bi, ONLY: GPTRSTR, LGTRSTR
+!!$    USE messy_main_tracer_bi,     ONLY: tracer_halt
+    USE messy_main_channel_error_bi, ONLY: channel_halt
+# 700
+
+    USE messy_main_channel,          ONLY: get_channel_object
+!!$    USE messy_main_tracer,        ONLY: get_tracer_list
+!!$    USE messy_main_constants_mem, ONLY: STRLEN_MEDIUM
+
+    IMPLICIT NONE
+    INTRINSIC :: TRIM, ASSOCIATED, SIZE
+
+! LOCAL
+    CHARACTER(LEN=*), PARAMETER       :: substr = 'lnox_init_coupling'
+    INTEGER                           :: status
+
+    CALL start_message_bi(modstr,'COUPLING INITIALIZATION',substr)
+
+!!$    IF (p_parallel_io) THEN
+!!$       WRITE(*,*) 'Checking for updraft velocity ...'
+!!$       WRITE(*,*) '    channel: ',TRIM(c_updr(1))
+!!$       WRITE(*,*) '    object : ',TRIM(c_updr(2))
+!!$    END IF
+!!$    CALL get_channel_object(status, TRIM(c_updr(1)), TRIM(c_updr(2)) &
+!!$         , p3=cu_xupdr)
+!!$    CALL channel_halt(substr, status)
+
+    IF (p_parallel_io) THEN
+       WRITE(*,*) 'Checking for cloud bottom level ...'
+       WRITE(*,*) '    channel: ',TRIM(c_bot(1))
+       WRITE(*,*) '    object : ',TRIM(c_bot(2))
+    END IF
+    CALL get_channel_object(status, TRIM(c_bot(1)), TRIM(c_bot(2))  &
+         , p2=cu_jkb)
+    CALL channel_halt(substr, status)
+
+    IF (p_parallel_io) THEN
+       WRITE(*,*) 'Checking for cloud top level ...'
+       WRITE(*,*) '    channel: ',TRIM(c_top(1))
+       WRITE(*,*) '    object : ',TRIM(c_top(2))
+    END IF
+    CALL get_channel_object(status, TRIM(c_top(1)), TRIM(c_top(2))  &
+         , p2=cu_jkt)
+    CALL channel_halt(substr, status)
+
+!!$    IF (p_parallel_io) THEN
+!!$       WRITE(*,*) 'Checking for cloud freezing level ...'
+!!$       WRITE(*,*) '    channel: ',TRIM(c_freeze(1))
+!!$       WRITE(*,*) '    object : ',TRIM(c_freeze(2))
+!!$    END IF
+!!$    CALL get_channel_object(status, TRIM(c_freeze(1)), TRIM(c_freeze(2))  &
+!!$         , p2=cu_jkfreeze)
+!!$    CALL channel_halt(substr, status)
+
+!!$    IF (l_midlevel) THEN
+!!$       IF (p_parallel_io) THEN
+!!$          WRITE(*,*) 'Checking for cloud bottom level (midlevel) ...'
+!!$          WRITE(*,*) '    channel: ',TRIM(c_bot_mid(1))
+!!$          WRITE(*,*) '    object : ',TRIM(c_bot_mid(2))
+!!$       END IF
+!!$       CALL get_channel_object(status, TRIM(c_bot_mid(1)) &
+!!$            , TRIM(c_bot_mid(2))  &
+!!$            , p2=cu_jkb_mid)
+!!$       CALL channel_halt(substr, status)
+!!$
+!!$       IF (p_parallel_io) THEN
+!!$          WRITE(*,*) 'Checking for cloud top level (midlevel) ...'
+!!$          WRITE(*,*) '    channel: ',TRIM(c_top_mid(1))
+!!$          WRITE(*,*) '    object : ',TRIM(c_top_mid(2))
+!!$       END IF
+!!$       CALL get_channel_object(status, TRIM(c_top_mid(1)) &
+!!$            , TRIM(c_top_mid(2))  &
+!!$            , p2=cu_jkt_mid)
+!!$       CALL channel_halt(substr, status)
+!!$
+!!$       IF (p_parallel_io) THEN
+!!$          WRITE(*,*) 'Checking for cloud freezing level (midlevel) ...'
+!!$          WRITE(*,*) '    channel: ',TRIM(c_freeze_mid(1))
+!!$          WRITE(*,*) '    object : ',TRIM(c_freeze_mid(2))
+!!$       END IF
+!!$       CALL get_channel_object(status, TRIM(c_freeze_mid(1)) &
+!!$            , TRIM(c_freeze_mid(2))  &
+!!$            , p2=cu_jkfreeze_mid)
+!!$       CALL channel_halt(substr, status)
+!!$    END IF
+
+    IF (p_parallel_io) THEN
+       WRITE(*,*) 'Checking for convective massflux ...'
+       WRITE(*,*) '    channel: ', TRIM(c_massfu(1))
+       WRITE(*,*) '    object : ', TRIM(c_massfu(2))
+    END IF
+    CALL get_channel_object(status, TRIM(c_massfu(1)), TRIM(c_massfu(2)) &
+         , p3=umassf)
+    CALL channel_halt(substr, status)
+
+    IF (p_parallel_io) THEN
+       WRITE(*,*) 'Checking for convective precipitation flux ...'
+       WRITE(*,*) '    channel: ', TRIM(c_precflx(1))
+       WRITE(*,*) '    object : ', TRIM(c_precflx(2))
+    END IF
+    CALL get_channel_object(status, TRIM(c_precflx(1)), TRIM(c_precflx(2)) &
+         , p3=precflx_cv)
+    CALL channel_halt(substr, status)
+
+    IF ((i_ffcalc == IPARAM_extIF) .OR. (i_ffcalc == IPARAM_ALL)) THEN
+       IF (p_parallel_io) THEN
+          WRITE(*,*) 'Checking for external iso-surface for extended'//&
+               &' ice-flux param. ...'
+          WRITE(*,*) '    channel: ',TRIM(c_iif(1))
+          WRITE(*,*) '    object : ',TRIM(c_iif(2))
+       END IF
+
+       CALL get_channel_object(status, TRIM(c_iif(1)), TRIM(c_iif(2))//'_i' &
+            , p2=fice_i)
+       CALL channel_halt(substr, status)
+!!$    CALL get_channel_object(status, TRIM(c_iif(1)), TRIM(c_iif(2))//'_f' &
+!!$         , p2=fice_f)
+!!$    CALL channel_halt(substr, status)
+    END IF
+       
+# 822
+
+
+    CALL end_message_bi(modstr,'COUPLING INITIALIZATION',substr)
+
+  END SUBROUTINE lnox_init_coupling
+! ========================================================================
+
+! ========================================================================
+  SUBROUTINE lnox_physc
+
+! LNOx MODULE ROUTINE (ECHAM-5 INTERFACE)
+!
+! - transfer required fields from/to 1 for the
+!   calculation of NOx emission by lightning
+! - add lightning NOx to tendency of NO - tracer(s)
+!
+! Author: Patrick Joeckel, DLR, Sep 2014
+
+    USE messy_main_constants_mem, ONLY: N_A, M_air, R_gas, g, MN
+    USE messy_main_data_bi,       ONLY: &
+           slf                & ! land - sea fraction [0 (sea) ... 1 (land)]
+         , press_3d           & ! atmospheric pressure [Pa]
+         , aps                & ! surface pressure [Pa]
+         , tm1_3d             & ! temperature at t-1 [K]
+         , tte_3d             & ! temperature tendency [K/s]
+         , qm1_3d             & ! specific humidity at t-1 [kg/kg]
+         , qte_3d             & ! specific humidity tendency [kg/kg/s]
+         , xim1_3d            & ! ice water content at t-1 [kg/kg]
+         , xite_3d            & ! ice water content tendency [kg/kg/s]
+         , aclc               !& ! (large scale) cloud cover
+    USE messy_main_grid_def_mem_bi, ONLY:jrow, kproma, nlev
+    USE messy_main_grid_def_bi,     ONLY: &
+           grmass             & ! grid mass [kg]
+         , grvol              & ! grid vol. [m3]
+         , coslat_2d          & ! cos(latitude)
+         , gboxarea_2d        & ! grid box area [m^2]
+         , altitude_gnd       & ! height above ground [m]
+         , deltaz             !& ! vertical layer thickness [m]
+    USE messy_main_timer,         ONLY: time_step_len, delta_time 
+
+    USE messy_main_tracer_mem_bi, ONLY: pxtte=>qxtte
+
+    USE messy_main_blather_bi,    ONLY: error_bi
+
+    IMPLICIT NONE
+    INTRINSIC :: INT, LOG, MAX, SIZE, REAL
+
+! LOCAL
+    CHARACTER(LEN=*), PARAMETER :: substr = 'lnox_physc'
+    INTEGER                     :: jk
+!
+! POINTERS TO DIAGNOSTIC CHANNEL OBJECTS
+! flash frequency (unscaled)
+    REAL(DP), DIMENSION(:),   POINTER  :: ff => NULL()
+! CG fraction
+    REAL(DP), DIMENSION(:),   POINTER  :: pg => NULL()
+! flashes per second CG
+    REAL(DP), DIMENSION(:),   POINTER  :: fpscg => NULL()
+! flashes per second IC
+    REAL(DP), DIMENSION(:),   POINTER  :: fpsic => NULL()
+! flashes / (s m^2) CG
+    REAL(DP), DIMENSION(:),   POINTER  :: fpsm2cg => NULL()
+! flashes / (s m^2) IC
+    REAL(DP), DIMENSION(:),   POINTER  :: fpsm2ic => NULL()
+! number of conv. events
+    REAL(DP), DIMENSION(:),   POINTER  :: npcanz => NULL()
+! CG NOx lightn. em. [kg(N)]
+    REAL(DP), DIMENSION(:),   POINTER  :: NOxcg => NULL()
+! IC NOx lightn. em. [kg(N)]
+    REAL(DP), DIMENSION(:),   POINTER  :: NOxic => NULL()
+! cloud top height [m]
+    REAL(DP), DIMENSION(:),   POINTER  :: cth => NULL()
+! cloud bottom height [m]
+    REAL(DP), DIMENSION(:),   POINTER  :: cbh => NULL()
+! cloud depth < 0 degC [m]
+    REAL(DP), DIMENSION(:),   POINTER  :: czh => NULL()
+! lightning NOx emiss [kgN/s/M3] GP
+    REAL(DP), DIMENSION(:,:), POINTER  :: xnox_gp   => NULL()
+! l.NOx tend. [mol/mol/s] GP
+    REAL(DP), DIMENSION(:,:), POINTER  :: telnox_gp => NULL()
+!
+! ADDITIONAL LOCAL FIELDS
+    REAL(DP), DIMENSION(kproma,nlev) :: temp   ! temperature [K]
+    REAL(DP), DIMENSION(kproma,nlev) :: q      ! specific humidity [kg/kg]
+    REAL(DP), DIMENSION(kproma,nlev) :: tvirt  ! virtual temperature
+    REAL(DP), DIMENSION(kproma,nlev) :: prhoa  ! air density [kg m-3]
+    INTEGER,  DIMENSION(kproma)      :: npcbot ! cloud base [level]
+    INTEGER,  DIMENSION(kproma)      :: npctop ! cloud top  [level]
+!
+    REAL(DP), DIMENSION(kproma)      :: zcth    ! cloud top height [m]
+    REAL(DP), DIMENSION(kproma)      :: zcbh    ! cloud bottom height [m]
+! depth of cloud above 0 degC level (i.e., T < 0 degC) [m]
+    REAL(DP), DIMENSION(kproma)      :: zczh
+    INTEGER,  DIMENSION(kproma)      :: npcdh    ! level (index) of 0 degC
+    LOGICAL,  DIMENSION(kproma)      :: lconvect ! deep cloud?/active conv.?
+    LOGICAL,  DIMENSION(kproma)      :: lcutoff  ! low flash density?
+!
+    REAL(DP), DIMENSION(kproma)      :: zpg  ! fraction of CG flashes
+    REAL(DP), DIMENSION(kproma)      :: zzpg ! clipped fraction of CG flashes
+!
+    REAL(DP), DIMENSION(kproma)      :: zff  ! flash frequency [1/s]
+!
+    INTEGER,  DIMENSION(kproma)      :: kref ! reference level (index)
+!
+! VERTICAL SHAPE
+! w is the "weight" in [mol(N)/mol(air) / kg(N)], i.e.
+! multiplied with kg(N)/dtime it yields the tendency in [mol/mol/s]
+! _l: land, _s: sea/ice, cg: cloud-to-ground, ic: intra-cloud
+    REAL(DP), DIMENSION(kproma,nlev) :: wcg_l, wcg_s, wic_l, wic_s
+!
+    INTEGER                          :: ji, ind, jp, jt, idt
+
+    IF (i_ffcalc == IPARAM_DahlC) RETURN
+
+! UPDATE TEMPERATURE AND HUMIDITY
+    temp(:,:) = tm1_3d(1:kproma,:,jrow) + tte_3d(1:kproma,:,jrow) &
+         * time_step_len
+    q(:,:) = qm1_3d(1:kproma,:,jrow) + qte_3d(1:kproma,:,jrow) &
+         * time_step_len
+! VIRTUAL TEMPERATURE [K]
+    tvirt(:,:) = temp(:,:) * ( 1._dp + 0.607717_dp * q(:,:) )
+! AIR DENSITY [kg/m^3]
+    prhoa(:,:) = press_3d(1:kproma,:,jrow) * M_air * 1.0E-3_dp / &
+         (tvirt(:,:) * R_gas)
+    
+! cloud bottom level (index)
+    npcbot(:) = INT(cu_jkb(1:kproma,jrow))
+! cloud top level (index)
+    npctop(:) = INT(cu_jkt(1:kproma,jrow))
+
+! calculate cloud properties
+    CALL cloud_heights(kproma, nlev             &  ! IN
+         , deltaz(1:kproma,:,jrow)         &  ! IN
+         , altitude_gnd(1:kproma,:,jrow)   &  ! IN
+         , temp, npcbot, npctop                 &  ! IN
+         , zcth, zcbh, zczh, npcdh, lconvect)      ! OUT
+
+! calculate fraction of cloud-to-ground flashes
+    CALL cg_fraction(zpg, zczh)
+
+! CALCULATE WEIGHTS FOR VERTICAL DISTRIBUTION OF NOx
+    SELECT CASE(i_shape)
+    CASE(1)
+! FLAT
+! LAND
+       CALL shape_flat(kproma, nlev, grmass(1:kproma,:,jrow) & ! IN
+            , npctop(:), npcbot(:), npcdh(:)                  & ! IN
+            , .TRUE.                                          & ! IN
+            , wcg_l(:,:), wic_l(:,:))
+   
+! SEA/ICE
+       CALL shape_flat(kproma, nlev, grmass(1:kproma,:,jrow) & ! IN
+            , npctop(:), npcbot(:), npcdh(:)                  & ! IN
+            , .FALSE.                                         & ! IN
+            , wcg_s(:,:), wic_s(:,:))
+
+    CASE(2)
+! C-shape
+! LAND
+       CALL shape_C(kproma, nlev, grmass(1:kproma,:,jrow) & ! IN
+            , grvol(1:kproma,:,jrow)                      & ! IN
+            , npctop(:), npcbot(:)                         & ! IN
+            , .TRUE.                                       & ! IN
+            , wcg_l(:,:))
+       wic_l(:,:) = wcg_l(:,:)
+
+! SEA/ICE
+       CALL shape_C(kproma, nlev, grmass(1:kproma,:,jrow) & ! IN
+            , grvol(1:kproma,:,jrow)                      & ! IN
+            , npctop(:), npcbot(:)                         & ! IN
+            , .FALSE.                                      & ! IN
+            , wcg_s(:,:))
+       wic_s(:,:) = wcg_s(:,:)            
+         
+    CASE DEFAULT
+! NOT REACHED (see lnox_read_nml_ctrl)
+    END SELECT
+
+    parameterisation_loop: DO ji = 1, numbers
+       IF (numbers == 1) THEN
+          ind = i_ffcalc
+       ELSE
+          ind = ji
+       ENDIF
+
+! SET POINTER TO ACTUAL CHANNEL OBJECTS
+       IF (l_mode_scal) THEN
+          ff           => lnox(ji)%ff(1:kproma, jrow)
+          pg           => lnox(ji)%pg(1:kproma, jrow)
+       ELSE
+          NULLIFY(ff)
+          NULLIFY(pg)
+       END IF
+!
+       cth       => lnox(ji)%cth(1:kproma, jrow)
+       cbh       => lnox(ji)%cbh(1:kproma, jrow)
+       czh       => lnox(ji)%czh(1:kproma, jrow)
+!
+       fpscg     => lnox(ji)%fpscg(1:kproma, jrow)
+       fpsic     => lnox(ji)%fpsic(1:kproma, jrow)
+       fpsm2cg   => lnox(ji)%fpsm2cg(1:kproma, jrow)
+       fpsm2ic   => lnox(ji)%fpsm2ic(1:kproma, jrow)
+       npcanz    => lnox(ji)%npcanz(1:kproma, jrow)
+!
+       NOxcg     => lnox(ji)%NOxcg(1:kproma, jrow)
+       NOxic     => lnox(ji)%NOxic(1:kproma, jrow)
+       xnox_gp   => lnox(ji)%xnox_gp(1:kproma,:,jrow)
+       telnox_gp => lnox(ji)%telnox_gp(1:kproma,:,jrow)
+
+       zff(:) = 0.0_dp
+
+       SELECT CASE (ind)
+
+       CASE(IPARAM_PaR_T)
+
+          CALL ff_PaR_cth(zff, zcth, slf(1:kproma,jrow))
+
+       CASE(IPARAM_Grewe)
+
+         CALL mean_updraft_vel(kproma, nlev  & ! IN
+               , deltaz(1:kproma,:,jrow) & ! IN
+               , umassf(1:kproma,:,jrow)     & ! IN
+               , prhoa(:,:)                   & ! IN
+               , npcbot(:), npctop(:)         & ! IN
+               , muv(1:kproma,jrow) )           ! OUT
+
+          CALL ff_Grewe_muv(zff, zcth, zcbh, muv(1:kproma,jrow) )
+
+       CASE(IPARAM_AaP_M)
+
+          CALL search_level_index(kref(:)   & ! OUT
+               , kproma, nlev, 0.44_dp      & ! IN   ! sigma = 0.44
+               , press_3d(1:kproma,:,jrow) & ! IN
+               , aps(1:kproma,jrow) )         ! IN
+
+          DO jp=1, kproma
+             jk = kref(jp)
+             IF (jk > 0) THEN
+                umf(jp,jrow) = umassf(jp,jk,jrow)
+             ELSE
+                umf(jp,jrow) = 0.0_dp
+             END IF
+          END DO
+
+          CALL ffcg_AaP_umf(fpscg(:)          & ! OUT
+               , umf(1:kproma,jrow)           & ! IN
+               , gboxarea_2d(1:kproma,jrow) )   ! IN
+
+       CASE(IPARAM_AaP_P)
+
+          precon(1:kproma,jrow) = precflx_cv(1:kproma,nlev,jrow)      
+
+          CALL ffcg_AaP_precip(fpscg(:)       & ! OUT
+               , precon(1:kproma,jrow)        & ! IN
+               , slf(1:kproma,jrow)           & ! IN
+               , gboxarea_2d(1:kproma,jrow) )   ! IN
+
+       CASE(IPARAM_FinIF)
+
+          CALL search_level_index(kref(:)     & ! OUT
+               , kproma, nlev, 44000.0_dp     & ! IN   ! p = 440 hPa
+               , press_3d(1:kproma,:,jrow) )   ! IN
+
+          DO jp=1, kproma
+             jk = kref(jp)
+             IF ( (jk > 0) .AND. &
+                  (aclc(jp,jk,jrow) >= 0.01_dp) ) THEN
+                phiice(jp,jrow) = &
+                     ( xim1_3d(jp,jk,jrow) + &
+                     xite_3d(jp,jk,jrow) * time_step_len ) &
+                     * umassf(jp,jk,jrow) &
+                     / aclc(jp,jk,jrow)
+             ELSE
+                phiice(jp,jrow) = 0.0_dp
+             END IF
+          END DO
+
+          CALL ff_Finney_cif(zff(:)           & ! OUT
+               , phiice(1:kproma,jrow)        & ! IN
+               , slf(1:kproma,jrow)           & ! IN
+               , gboxarea_2d(1:kproma,jrow)   & ! IN
+               , ind)                           ! IN
+
+       CASE(IPARAM_extIF)
+
+          DO jp=1, kproma
+             jk = NINT(fice_i(jp,jrow))
+             IF ( (jk > 0) .AND. &
+                  (aclc(jp,jk,jrow) >= 0.01_dp) ) THEN
+                phiice_ext(jp,jrow) = &
+                     ( xim1_3d(jp,jk,jrow) + &
+                     xite_3d(jp,jk,jrow) * time_step_len ) &
+                     * umassf(jp,jk,jrow) &
+                     / aclc(jp,jk,jrow)
+             ELSE
+                phiice_ext(jp,jrow) = 0.0_dp
+             END IF
+          END DO
+
+          CALL ff_Finney_cif(zff(:)           & ! OUT
+               , phiice_ext(1:kproma,jrow)    & ! IN
+               , slf(1:kproma,jrow)           & ! IN
+               , gboxarea_2d(1:kproma,jrow)   & ! IN
+               , ind)                           ! IN
+
+       END SELECT
+
+! calculate CG and IC flash frequency <-> total flash frequency
+       CALL ffs(ind, zpg(:), zff(:), fpscg(:), fpsic(:))
+
+! APPLY CUT-OFF CRITERIA
+! 1st criterion: lconvect -> cloud at least 3000m thick (see above)
+! 2nd criterion: lflash   -> cut-off low flash densities,
+!                            if not in scaling-mode
+       lcutoff(:) = lflash(zff           &
+            , gboxarea_2d(1:kproma,jrow) &
+            , coslat_2d(1:kproma,jrow) )
+!
+       DO jp=1, kproma
+          IF (lconvect(jp) .AND. lcutoff(jp) ) THEN
+             npcanz(jp) = 1.0_dp
+          ELSE
+             npcanz(jp) = 0.0_dp
+          ENDIF
+       END DO
+!
+       zff(:)   = zff(:)   * npcanz(:)
+       zzpg(:)  = zpg(:)   * npcanz(:)
+       fpscg(:) = fpscg(:) * npcanz(:)
+       fpsic(:) = fpsic(:) * npcanz(:)
+
+! SAVE CLOUD PROPERTIES, WHERE CONDITIONS ABOVE ARE FULFILLED
+       cth(:) = zcth(:) * npcanz(:)
+       cbh(:) = zcbh(:) * npcanz(:)
+       czh(:) = zczh(:) * npcanz(:)
+
+! SAVE UNSCALED (!) FLASH FREQUENCY AND CG FRACTION
+! IN SCALING MODE; NOTE: lcutoff = .TRUE. for l_mode_scal = .TRUE.
+       IF (ASSOCIATED(ff)) ff(:) = zff(:)  ! copy result from above
+       IF (ASSOCIATED(pg)) pg(:) = zzpg(:) ! copy result from above
+
+! flash densities [1/m^2/s]
+       fpsm2cg(:) = fpscg(:)/gboxarea_2d(1:kproma,jrow)
+       fpsm2ic(:) = fpsic(:)/gboxarea_2d(1:kproma,jrow)
+
+       SELECT CASE(ind)
+!
+       CASE(IPARAM_PaR_T)
+! NOTING TO DO
+       CASE(IPARAM_Grewe)
+          muv(1:kproma,jrow) = muv(1:kproma,jrow) * npcanz(:)
+       CASE(IPARAM_AaP_M)
+          umf(1:kproma,jrow) = umf(1:kproma,jrow) * npcanz(:)
+       CASE(IPARAM_AaP_P)
+          precon(1:kproma,jrow) = precon(1:kproma,jrow) * npcanz(:)
+       CASE(IPARAM_FinIF)
+          phiice(1:kproma,jrow) = phiice(1:kproma,jrow) * npcanz(:)
+       CASE(IPARAM_extIF)
+          phiice_ext(1:kproma,jrow) = phiice_ext(1:kproma,jrow) * npcanz(:)
+!
+       END SELECT
+
+! CALCULATE total, vertically integrated NOx production
+! [kg(N)] for current time step in actual column
+       CALL nox_prod(ind, delta_time & ! IN
+            , fpscg(:), fpsic(:)     & ! IN
+            , NOxcg(:), NOxic(:) )     ! OUT
+
+! CALCULATE LIGHTNING NOX TENDENCY [mol/mol/s]
+       DO jp=1,kproma
+          telnox_gp(jp,:) = ( &
+               NOxcg(jp) * wcg_l(jp,:) * slf(jp,jrow)            +   &
+               NOxcg(jp) * wcg_s(jp,:) * (1.0_dp - slf(jp,jrow)) +   &
+               NOxic(jp) * wic_l(jp,:) * slf(jp,jrow)            +   &
+               NOxic(jp) * wic_s(jp,:) * (1.0_dp - slf(jp,jrow))   ) &
+               / delta_time
+               
+       END DO
+
+! CALCULATE LIGHTNING NOX EMISSION [kg(N)/m^3/s]
+! mol(N)/mol(air)/s:  * (k)g(N)/mol(N)      -> (k)g(N)/mol(air)/s
+!                     / (k)g(air)/mol(air)  -> (k)g(N)/(k)g(air)/s
+!                     * kg(air)/m^3         -> kg(N)/m^3/s
+       xnox_gp(:,:) = telnox_gp(:,:) * ( MN / M_air) * prhoa(:,:)
+
+    END DO parameterisation_loop
+
+    ind = 1
+    if (i_ffcalc == IPARAM_ALL) ind = i_ff_cpl
+
+    IF (nlntrac_gp > 0) THEN
+! LOOP OVER ALL NO-TRACERS AND ADD LIGHTNING NOx TO TENDENCY
+       DO jt=1, nlntrac_gp
+          idt = idt_list_gp(jt)
+
+          pxtte(1:kproma,:,idt) = &
+               pxtte(1:kproma,:,idt) + &
+               lnox(ind)%telnox_gp(1:kproma,:,jrow)
+# 1223
+
+       END DO
+    END IF
+
+  END SUBROUTINE lnox_physc
+! ========================================================================
+
+! ========================================================================
+  SUBROUTINE lnox_global_end
+!!#D attila +
+
+    USE messy_main_tracer_mem_bi, ONLY: pxtte_a=>qxtte_a, NCELL 
+    USE messy_attila_tools_e5,    ONLY: gp2lg_e5
+
+    IMPLICIT NONE
+
+    INTEGER :: jt, jn, ind
+
+! Lagrangian calculations
+    IF (l_calc_lg) THEN
+       ind = 1
+       if (i_ffcalc == IPARAM_ALL) ind = i_ff_cpl
+       CALL gp2lg_e5(lnox(ind)%telnox_gp, telnox_lg, lmcons=.FALSE.)
+       CALL gp2lg_e5(lnox(ind)%xnox_gp, xnox_lg, lmcons=.FALSE.)
+! LOOP OVER ALL NO-TRACERS AND ADD LIGHTNING NOx TO TENDENCY
+       IF (nlntrac_lg > 0) THEN
+          DO jt=1, nlntrac_lg
+!#ifndef MESSYTENDENCY ! not yet implemented for LG tracers
+             DO jn=1,NCELL
+                pxtte_a(jn,idt_list_lg(jt)) = pxtte_a(jn,idt_list_lg(jt)) + &
+                     telnox_lg(jn)
+             END DO
+!#else
+!             CALL mtend_add_?(my_handle, mtend_id_tracer &
+!               px=lnox(ind)%telnox_lg(:), idt=idt_list_lg(jt))
+!#endif
+          END DO
+       END IF
+    END IF
+
+!!#D attila -
+
+# 1268
+
+
+  END SUBROUTINE lnox_global_end
+! ========================================================================
+
+! ========================================================================
+  SUBROUTINE lnox_free_memory
+
+! LNOx MODULE ROUTINE (ECHAM-5 INTERFACE)
+!
+! deallocate memory
+!
+! Author: Patrick Joeckel, MPICH, Aug 2003
+
+    IMPLICIT NONE
+    INTRINSIC :: ASSOCIATED
+
+    IF (ASSOCIATED(idt_list_gp)) DEALLOCATE(idt_list_gp)
+    IF (ASSOCIATED(idt_list_lg)) DEALLOCATE(idt_list_lg)
+    IF (ASSOCIATED(lnox))        DEALLOCATE(lnox)
+
+  END SUBROUTINE lnox_free_memory
+! ========================================================================
+
+! ========================================================================
+  SUBROUTINE lnox_read_nml_cpl(status, iou)
+
+! LNOx MODULE ROUTINE (ECHAM-5 INTERFACE, PRIVATE)
+!
+! read namelist for 'coupling' to 1
+!
+! Author: Patrick Joeckel, MPICH, Aug 2003
+
+    USE messy_main_tools, ONLY: read_nml_open, read_nml_check, read_nml_close
+    USE messy_main_tracer_mem_bi, ONLY: NGCELL
+
+    IMPLICIT NONE
+    INTRINSIC :: TRIM
+
+! I/O
+    INTEGER, INTENT(OUT) :: status     ! error status
+    INTEGER, INTENT(IN)  :: iou        ! I/O unit
+! Switch for skipping calculation of Lagrangian rate coefficients.
+! It is local,not broadcasted!
+    LOGICAL                      :: l_skip_lg = .FALSE.
+
+!!$    NAMELIST /CPL/ c_updr, c_top, c_bot, c_freeze &
+!!$         , l_midlevel, c_top_mid, c_bot_mid, c_freeze_mid, l_skip_lg, i_ff_cpl &
+!!$         , c_massfu, c_precflx, c_iif
+    NAMELIST /CPL/ c_top, c_bot &
+         , l_skip_lg, i_ff_cpl &
+         , c_massfu, c_precflx &
+         , c_iif
+
+! LOCAL
+    CHARACTER(LEN=*), PARAMETER :: substr='lnox_read_nml_cpl'
+    LOGICAL              :: lex      ! file exists ?
+    INTEGER              :: fstat    ! file status
+
+    status = 1
+
+    CALL read_nml_open(lex, substr, iou, 'CPL', modstr)
+    IF (.NOT.lex) RETURN    ! <modstr>.nml does not exist
+
+    READ(iou, NML=CPL, IOSTAT=fstat)
+    CALL read_nml_check(fstat, substr, iou, 'CPL', modstr)
+    IF (fstat /= 0) RETURN  ! error while reading namelist
+
+! DIAGNOSE NAMELIST AND SET GLOBAL SWITCHES
+!!$    WRITE(*,*) 'ONLINE UPDRAFT VELOCITY:'
+!!$    WRITE(*,*) '    channel: ',TRIM(c_updr(1))
+!!$    WRITE(*,*) '    object : ',TRIM(c_updr(2))
+
+    WRITE(*,*) 'ONLINE CLOUD BOTTOM LEVEL:'
+    WRITE(*,*) '    channel: ',TRIM(c_bot(1))
+    WRITE(*,*) '    object : ',TRIM(c_bot(2))
+
+    WRITE(*,*) 'ONLINE CLOUD TOP LEVEL:'
+    WRITE(*,*) '    channel: ',TRIM(c_top(1))
+    WRITE(*,*) '    object : ',TRIM(c_top(2))
+
+!!$    WRITE(*,*) 'ONLINE CLOUD FREEZING LEVEL:'
+!!$    WRITE(*,*) '    channel: ',TRIM(c_freeze(1))
+!!$    WRITE(*,*) '    object : ',TRIM(c_freeze(2))
+
+    IF (i_ffcalc /= IPARAM_ALL) THEN
+       IF (i_ff_cpl /= i_ffcalc) WRITE(*,*) &
+            'Coupling adjusted according to available LNOX parameterisation!'
+       i_ff_cpl = i_ffcalc
+    ENDIF
+
+    WRITE(*,*) 'Coupling flash frequency of parameterisation...'
+    SELECT CASE (i_ff_cpl)
+    CASE(IPARAM_PaR_T)
+       WRITE(*,*) '... Price and Rind, 1992'
+    CASE(IPARAM_Grewe)
+       WRITE(*,*) '... Grewe et al., 2001'
+    CASE(IPARAM_AaP_M)
+       WRITE(*,*) '... Allen and Pickering (Massflux), 2002'
+    CASE(IPARAM_AaP_P)
+       WRITE(*,*) '... Allen and Pickering (Precipitation), 2002'
+    CASE(IPARAM_FinIF)
+       WRITE(*,*) '... Finney et al. (Cloud ice flux), 2014'
+    CASE(IPARAM_extIF)
+       WRITE(*,*) '... Finney et al. (Cloud ice flux), 2014, extended'
+    CASE(IPARAM_DahlC)
+# 1379
+
+    CASE DEFAULT
+       WRITE (*,*) 'ERROR: Parameterisation unknown! ', i_ff_cpl
+       RETURN
+    END SELECT
+    WRITE(*,*) '... to NOx emission.'
+
+
+    IF ((.NOT. l_skip_lg) .AND. (NGCELL > 0)) THEN
+       l_calc_lg = .TRUE.
+!!#D attila +
+       WRITE(*,*) 'Lagrangian: ON'
+!!#D attila -
+    ELSE
+       IF (.NOT. l_skip_lg) THEN
+!!#D attila +
+          WRITE(*,*) 'l_skip_lg = T in namelist'
+          WRITE(*,*) 'However no Lagrangian scheme activated ...'
+          WRITE(*,*) ' ... setting l_calc_lg = F'
+!!#D attila -
+       ENDIF
+       l_calc_lg = .FALSE.
+!!#D attila +
+       WRITE(*,*) 'Lagrangian: OFF'
+!!#D attila -
+    ENDIF
+
+
+    CALL read_nml_close(substr, iou, modstr)
+    status = 0 ! NO ERROR
+
+  END SUBROUTINE lnox_read_nml_cpl
+! ========================================================================
+
+
+# 3983
+
+! DAHL2000
+
+! ***********************************************************************
+END MODULE messy_lnox_si
+! ***********************************************************************
+

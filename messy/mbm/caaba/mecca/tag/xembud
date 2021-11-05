@@ -1,0 +1,87 @@
+#! /bin/tcsh -f
+#
+# [Gromov, MPI-C Mainz, 2010-2018]
+#
+# script to perform an extending budgeting of MECCA kinetic chemistry mechanism
+#
+
+# imported from xtag, otherwise defaults
+if (! ${?cfgdir}  ) set cfgdir    = "./cfg"              # directory wuth configurations
+if (! ${?bindir}  ) set bindir    = "../../../../../bin" # binaries location
+if (! ${?toolsdir}) set toolsdir  = "../../../../tools"  # tools location
+if (! ${?fpc_call}) set fpc_call  = "fpc -l -viwnh -B"   # fpc compiler call
+
+echo ""
+echo "[ XEMBUD: script to budget (tagged) MECCA kinetic chemistry mechanism ]"
+echo ""
+
+# checking if embudget tool is available
+source ./xchecktool embudget
+if ("$?" != "0") exit 1
+
+# --------------------------------------------------------------------------
+# SELECTION OF DESIRED CONFIGURATION(S)
+# --------------------------------------------------------------------------
+
+# invoking configuration selection script
+source ./xselectcfg emb\*.cfg
+if ("$?" != "0") exit 1
+
+# --------------------------------------------------------------------------
+# BUDGETING
+# --------------------------------------------------------------------------
+
+
+unlimit        # remedies heap/stack memory problems with fpc sometimes
+set nonomatch  # when empty tagging cfg. is used, no tex/tbl files may be produced
+# expecting chemprop is defined in xtag script
+if (${?chemprop}) then
+  # assembling all chemprop/process .tbl (xmecca plus created in imtag)
+  cat ${xmecca_gastblfile} ./${pfx}*_process.tbl > ${pfx}_embudget_process.tbl.in
+  cat ${chempropfile}     ./${pfx}*_chemprop.tbl > ${pfx}_embudget_chemprop.tbl.in
+  # calling extended budgeting
+ ./embudget.exe mecca.spc:mecca.eqn ${pfx}_embudget_chemprop.tbl.in:${pfx}_embudget_process.tbl.in ${cfglist} >&! embudget.log
+  set exitstatus = "${status}"
+else
+  # assembling all .tex (xmecca plus created in imtag) into one
+  cat ${xmecca_gastexfile} ./${pfx}*.tex > ${pfx}_embudget.tex.in
+  # calling extended budgeting
+  ./embudget.exe mecca.spc:mecca.eqn ${pfx}_embudget.tex.in ${cfglist} >&! embudget.log
+  set exitstatus = "${status}"
+endif
+unset nonomatch
+
+echo "exit status from embudget is: ${exitstatus}"
+echo ""
+
+echo "----- list of warnings: -----"
+grep '<!>' embudget.log | grep 'warn' | sort -b | uniq
+echo ""
+
+echo "----- list of errors: -----"
+grep '<!>' embudget.log | grep 'err' | sort -b | uniq
+echo ""
+
+if ( "${exitstatus}" != "0" ) then
+  echo "please, see the embudget.log file"
+  exit ${exitstatus}
+endif
+
+# cleanup
+rm imcom.tmp
+if (${?chemprop}) then
+  rm ${pfx}_embudget*.tbl.in
+else
+  rm ${pfx}_embudget.tex.in
+endif
+
+# updating MECCA files
+cp ${pfx}_embudget.eqn ../mecca.eqn
+cp ${pfx}_embudget.spc ../mecca.spc
+
+# --------------------------------------------------------------------------
+# ALL DONE
+# --------------------------------------------------------------------------
+
+unsetenv ${cfglist}
+exit 0

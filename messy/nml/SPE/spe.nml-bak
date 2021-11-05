@@ -1,0 +1,78 @@
+! -*- f90 -*-
+&CPL
+spe_data_ion='import_ts','ionrate',
+spe_data_int='import_ts','pflux',
+AIMOS_channel='import_grid',
+AIMOS_p_object='jmionrates_p_ionratep',
+AIMOS_e_object='jmionrates_e_ionratee',
+AIMOS_a_object='jmionrates_a_ionratea',
+/
+&CTRL
+! region of ionization
+r_lat1      = 60.         ! full ionization for |geomagnlatitude| >= r_lat1 [deg]
+r_lat2      = 60.         ! no   ionization for |geomagnlatitude| <  r_lat2 [deg]
+! IONIZATION RATES
+! 0: internal calculation 
+! 1: use externally calculated ionization rates
+! 2: use Jan Maik Wissings AIMOS ionization rates                                
+spe_method = 2
+!
+!-------- METHOD 0 --------
+! TIME CONTROL FOR INTERNAL CALCULATION OF ION RATES USING PROTON FLUX DATA (select ONE !)
+! SYNTAX:
+!   method, interpolation on(1)/off(0), const, i1, i2, i3
+!   NOTE: currently not implemented in the SPE submodel:
+!         - const / method 'constant' 
+!         - interpolation 
+!   'stationary', 0/1, , month, year
+!   'transient' , 0/1, , offset (in months) to climate model date
+!   'cyclic',     0/1, , start-year, 1st data year, reset after ?? months
+! 
+!time_control_int = 'stationary',  ,  , 10,          1995,   ,
+!time_control_int = 'transient' , 0,  ,  0,              ,   ,
+!time_control_int = 'cyclic'    , 0,  , $START_YEAR, 1995, 48,
+!
+!spe_data_file  = "$INPUTDIR_MESSY/spe/misc/PFLUX198601_200612.TXT",
+! number of bins in interpolated proton flux spectrum
+nbin        = 300
+! determines smallest energy in interpolated spectrum
+minoffs     = 44
+! spectrum interpolation method:
+! 0 : smooth
+! 1 : rough, still experimental
+! 2 : Vitt and Jackman (1996) method, recommended
+spect_interp_method = 2
+! properties for the range-energy relation-ship (Bethe, 1953): range[m]=(E[MeV]/a)^b
+rangerela=12.3
+rangerelb=1.8 ! mz_ab_20091215 previously 1.9 but that was overwritten by default
+!
+!-------- METHOD 1 --------
+! TIME CONTROL FOR EXTERNALLY CALCULATED IONRATES (select ONE !)
+! SYNTAX:
+!   method, interpolation on(1)/off(0), const, i1, i2, i3
+!   NOTE: currently not implemented in the SPE submodel:
+!         - const / method 'constant' 
+!         - interpolation 
+!   'stationary', 0/1, , month, year
+!   'transient' , 0/1, , offset (in months) to climate model date
+!   'cyclic',     0/1, , start-year, 1st data year, reset after ?? months
+! 
+!time_control_ext = 'stationary',  ,  , 10,          1995,   ,
+!time_control_ext = 'transient' , 0,  ,  0,              ,   ,
+!time_control_ext = 'cyclic'    , 0,  , $START_YEAR, 1995, 48,
+!
+!-------- METHOD 2 --------
+! see &CPL
+!
+!-------- GENERAL SETTINGS ------------
+! N/NO production efficiency
+!!$ion_km      = 1.,  43.,  44.,  45.,  46.,  47.,  48.,  49.,  50.,  59.,  59.5,  60.,  60.5, 61.,  62.5, 63.,  63.5, 66.0, 66.5, 67.0
+!!$Nperion_km  = 0.,  0.05, 0.1,  0.16, 0.2,  0.2,  0.2,  0.2,  0.2,  0.19, 0.17,  0.16, 0.12, 0.1,  0.08, 0.06, 0.05, 0.04, 0.03, 0.02
+!!$NOperion_km = 0.9, 0.9,  0.9,  0.9,  0.9,  0.92, 0.95, 0.97, 1.0,  1.0,  1.0,   1.0,  0.82, 0.66, 0.46, 0.3,  0.26, 0.22, 0.18, 0.15
+!ion_km      = 1.,  43.,  44.,  45.,  46.,  47.,  48.,  49.,  50.,  57.,  59.,  60.,  61.,  62.,  63.,  63.5, 66.0, 66.5, 67.0
+!Nperion_km  = 0.,  0.05, 0.1,  0.16, 0.2,  0.2,  0.2,  0.2,  0.2,  0.2,  0.19, 0.16, 0.1,  0.08, 0.06, 0.05, 0.04, 0.03, 0.02
+!NOperion_km = 0.9, 0.9,  0.9,  0.9,  0.9,  0.92, 0.95, 0.97, 1.0,  0.85, 0.8,  0.75, 0.6,  0.4,  0.3,  0.26, 0.20, 0.18, 0.15
+ion_km =      1.000,41.000,42.000,43.000,44.000,45.000,46.000,47.000,48.000,49.000,50.000,51.000,52.000,53.000,54.000,55.000,56.000,57.000,58.000,59.000,60.000,61.000,62.000,63.000,64.000,65.000,66.000,67.000
+Nperion_km  = 0.000, 0.000, 0.000, 0.038, 0.075, 0.113, 0.150, 0.163, 0.175, 0.188, 0.200, 0.213, 0.225, 0.237, 0.250, 0.212, 0.175, 0.138, 0.100, 0.088, 0.075, 0.062, 0.050, 0.038, 0.025, 0.012, 0.000, 0.000
+NOperion_km = 0.700, 0.700, 0.700, 0.762, 0.825, 0.887, 0.950, 1.000, 1.050, 1.100, 1.150, 1.137, 1.125, 1.113, 1.100, 0.888, 0.675, 0.463, 0.250, 0.237, 0.225, 0.213, 0.200, 0.163, 0.125, 0.087, 0.050, 0.050
+/

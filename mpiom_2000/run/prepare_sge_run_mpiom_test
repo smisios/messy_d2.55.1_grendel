@@ -1,0 +1,478 @@
+#!/bin/ksh
+
+set -x
+#set echo
+#set verbose
+
+######################################
+#       PREPARE DIRECTORIES
+#       AND RUN SCRIPT
+######################################       
+# name of the experiment:
+EXPNO=gr30-partest1
+
+# absolute path to work directory:
+EXPDIR=/scratch/work/mh0033/m211054
+
+# absolute path to directory with plenty of space:
+ARCDIR=/scratch/work/mh0033/m211054
+
+# absolute path to model binary, including the executable
+MODDIR=/scratch/work/mh0033/m211054/mpiom-latest/bin
+
+# absolute path to directory with initial data:
+INITIAL_DATA=/pool/data/MPIOM
+
+# the directories for the experiment will be created, if not already there
+WRKDIR=${EXPDIR}/${EXPNO}
+ARCHIVE=${ARCDIR}/${EXPNO}
+
+
+
+if [ ! -d $WRKDIR ]; then
+    mkdir -p ${WRKDIR}
+    cd ${WRKDIR}
+#    cp ${MODEL}/mpiom.x.nompi.noomp ./mpiom.x.nompi.noomp
+#    cp ${MODEL}/mpiom.x ./mpiom.x
+    echo 0 > year.asc
+fi
+if [ ! -d $ARCHIVE ]; then
+    mkdir -p $ARCHIVE/restart
+fi
+
+cat > ${WRKDIR}/run_mpiom_omip_test<<EOF1
+#! /bin/ksh
+#-----------------------------------------------------------------------------
+#
+#PBS -S /bin/ksh
+#-----------------------------------------------------------------------------
+# Version for Sun GridEngine
+#
+#$ -S /bin/ksh
+#$ -N partest
+#$ -o \$JOB_NAME.o\$JOB_ID 
+#$ -j y
+#$ -cwd
+#$ -q cluster
+#$ -pe orte 50
+#-----------------------------------------------------------------------------
+#
+set -ex
+#
+export MPIROOT=/sw/sles9-x64/ofed/openmpi-1.2.2-sun
+export MPI_BIN=/scratch/work/system/sw/sles9-x64/ofed/openmpi-1.2.2-sun/bin
+
+#export MPIROOT=/sw/sles9-x64/ofed/openmpi-1.2.2-nag
+#export MPI_BIN=/scratch/work/system/sw/sles9-x64/ofed/openmpi-1.2.2-nag/bin
+
+
+for no in \`seq 1 1\` ; do
+for nx in \`seq 1 25\` ; do
+for ny in \`seq 1 25\` ; do
+
+np=\`expr \${nx} \\* \${ny}\`
+nn=\`expr \${nx} \\* \${ny} \\* \${no}\`
+
+if [ \${nn} -le 40 ] ; then 
+if [ \`expr \${nn} % 4\` -eq 0 ] ; then
+
+OMP_NUM_THREADS=1 ; export OMP_NUM_THREADS
+MPIOM_THREADS=\${no} ; export MPIOM_THREADS
+MPIEXPORT="MPIOM_THREADS" ; export MPIEXPORT
+
+#
+#-----------------------------------------------------------------------------
+#
+# Version for shell script running on workstation
+#
+#-----------------------------------------------------------------------------
+#
+#                  Job file to run MPIOM with OMIP forcing
+#
+#-----------------------------------------------------------------------------
+#
+# If a command has a non-zero exit status, execute ERR trap, if set, and exit
+#
+set -ex
+#
+
+
+    EXPNO=${EXPNO}
+    echo "Experiment: ${EXPNO}"
+    ncpus=\${np}
+    nprocx=\${nx}
+    nprocy=\${ny}
+
+    echo "   CPUs: \${nn} (nprocx: \${nprocx}, nprocy: \${nprocy})  using each  \${MPIOM_THREADS} omp threads" 
+
+
+
+    WRKDIR=${EXPDIR}/\${EXPNO}
+
+    MODEL=${MODDIR}
+    HAMOCC=no
+
+# absolute path to directory with plenty of space:
+    ARCHIVE=${ARCDIR}/\${EXPNO}
+
+# absolute path to directory with initial data:
+    INITIAL_DATA=${INITIAL_DATA}
+
+# horizontal and vertical resolution
+    GRID=GR30
+    LEV=L40
+
+#-----------------------------------------------------------------------------
+    if [ "\${GRID}" = "GR60" ] ; then 
+	II=60
+	JJ=50
+	DT=10800
+    fi
+
+
+
+    if [ "\${GRID}" = "GR30" ] ; then 
+	II=122
+	JJ=101
+	DT=8640
+   fi
+
+    if [ "\${GRID}" = "GR15" ] ; then 
+	II=256
+	JJ=220
+	DT=4800
+    fi
+
+    if [ "\${LEV}" = "L40" ] ; then 
+	KK=40
+    fi
+    
+    if [ "\${LEV}" = "L20" ] ; then 
+	KK=20
+    fi
+
+#-----------------------------------------------------------------------------
+#
+    cd \${WRKDIR}           #  output and rerun files are written into \$ARCHIVE
+#
+    pwd
+#-----------------------------------------------------------------------------
+#
+# specification of files
+#
+#-----------------------------------------------------------------------------
+#
+    ln -sf \${INITIAL_DATA}/\${GRID}/\${GRID}_arcgri             arcgri
+    ln -sf \${INITIAL_DATA}/\${GRID}/\${GRID}_topo_jj              topo
+    ln -sf \${INITIAL_DATA}/\${GRID}/\${GRID}_anta               anta
+    cp \${INITIAL_DATA}/\${GRID}/\${GRID}_BEK                   BEK
+    chmod 755 BEK
+
+    ln -sf \${INITIAL_DATA}/\${GRID}/\${GRID}_GIWIX_OMIP365      GIWIX   
+    ln -sf \${INITIAL_DATA}/\${GRID}/\${GRID}_GIWIY_OMIP365      GIWIY   
+    ln -sf \${INITIAL_DATA}/\${GRID}/\${GRID}_GITEM_OMIP365      GITEM   
+    ln -sf \${INITIAL_DATA}/\${GRID}/\${GRID}_GIPREC_OMIP365     GIPREC  
+    ln -sf \${INITIAL_DATA}/\${GRID}/\${GRID}_GISWRAD_OMIP365    GISWRAD 
+    ln -sf \${INITIAL_DATA}/\${GRID}/\${GRID}_GITDEW_OMIP365     GITDEW  
+    ln -sf \${INITIAL_DATA}/\${GRID}/\${GRID}_GIU10_OMIP365      GIU10   
+    ln -sf \${INITIAL_DATA}/\${GRID}/\${GRID}_GICLOUD_OMIP365    GICLOUD
+    ln -sf \${INITIAL_DATA}/\${GRID}/\${GRID}_GIRIV_OMIP365    GIRIV
+    
+    ln -sf \${INITIAL_DATA}/\${GRID}/\${GRID}\${LEV}_INITEM_PHC  INITEM
+    ln -sf \${INITIAL_DATA}/\${GRID}/\${GRID}\${LEV}_INISAL_PHC  INISAL
+    ln -sf \${INITIAL_DATA}/\${GRID}/\${GRID}\${LEV}_SURSAL_PHC  SURSAL
+
+    ln -sf \${INITIAL_DATA}/runoff_obs                         runoff_obs
+    ln -sf \${INITIAL_DATA}/runoff_pos                         runoff_pos
+
+
+#-----------------------------------------------------------------------------
+    if [ "\${HAMOCC}" = "yes"  ] ; then
+# monthly mean dust field for hamocc
+     ln -sf \${INITIAL_DATA}/\${GRID}/\${GRID}_INPDUST.nc      INPDUST.nc
+#-----------------------------------------------------------------------------
+    fi
+
+    echo 0 > year.asc
+
+
+    YEAR=\`cat year.asc\` ; export YEAR
+    echo \$YEAR
+    STA=3 ; export STA
+    RES=0 ; export RES
+
+    if [ \${YEAR} -eq 0 ] ; then
+	STA=2 ; export STA
+	RES=1 ; export RES
+    fi
+
+#
+# istart=0 >NEWSTART USE ONLY FOR COMPLETELY NEW SETUP (new topography etc!!!)
+# istart=1 start from horizonally uniform t,s profiles
+# istart=2 start from levitus
+# istart=3 start from existing restart files Z37000, Z38000 (default)
+#
+# i3drest=0 NO 3d-restoring (default)
+# i3drest=1 restoring to annual mean t,s
+# i3drest=2 restoring to monthluy mean t,s
+#
+# Advection schemes
+# iocad=3 ADPO (default)
+# iocad=4 obsolete, use iocad=1 and ibbl_transport=1
+# iocad=5 ADFS
+#
+# BBL transport (slope convection)
+# ibbl_transport=1 (default)
+#
+# imean=1 daily average of output fields
+# imean=2 monthly average of output fields (default)
+# imean=3 yearly average of output fields
+#
+# nyears: number of years to be simulated (default=0)
+# nmonths: number of months to be simulated (default=1)
+#
+cat > OCECTL  <<EOF
+ &ocedim
+ ie_g = \${II}
+ je_g = \${JJ}
+ ke = \${KK}
+ /
+ &nprocs
+ nprocx=\${nprocx}
+ nprocy=\${nprocy}
+ /
+ &ocectl
+ dt      = \${DT}
+ caulapts= 0.
+ caulapuv= 0.005
+ aus     = 0.
+ cah00   = 1000.
+ dv0     = 1.e-2
+ av0     = 1.e-2
+ cwt     = 4.e-4
+ cstabeps= 0.03
+ dback   = 1.e-5
+ aback   = 1.e-4
+ crelsal = 5.e-8
+ creltem = 0.
+ cdvocon = 0.05
+ cavocon = 0.0
+ ndays  = 1
+ imean   = 0
+ istart  = \${STA}
+ i3drest = \${RES}
+ /
+EOF
+if [ "\${KK}" = "20" ] ; then
+cat >> OCECTL  << EOF2
+&ocedzw
+cdzw = 20.,20., 20., 30.,40.,
+50.,70.,90.,120.,150.,180.,210.,250.,300.
+,400.,500.,600.,700.,900.,1400.
+/
+EOF2
+fi
+    
+if [ "\${KK}" = "40" ] ; then
+cat >> OCECTL  << EOF2
+&ocedzw
+cdzw     = 12.,10.,10.,10.,10.,10.,13.,15.,20.,25.,
+30.,35.,40.,45.,50.,55.,60.,70.,80.,90.,
+100.,110.,120.,130.,140.,150.,170.,180.,190.,200.,
+220.,250.,270.,300.,350.,400.,450.,500.,500.,600./
+/
+EOF2
+fi
+#-----------------------------------------------------------------------------
+
+    if [ "\${HAMOCC}" = "yes"  ] ; then
+# hamocc
+#-----------------------------------------------------------------------------
+# mean_2D_day=1 daily average of 2-D output fields
+# mean_2D_day=2 monthly average of 2-D output fields (default)
+# mean_3D_month=1 monthly average of 3-D output fields
+# mean_3D_month=2 yearly average of 3-D output fields (default)
+
+cat > NAMELIST_BGC  << EOF3
+&BGCCTL
+io_stdo_bgc =  6,
+kchck       =  0,
+isac        =  1,
+mean_2D_freq =  1,
+mean_3D_freq = 1,
+rmasko = -9.e33
+nfreqts1    =  10,
+rlonts1     = -20.0,60.0,65.0,-64.0,-175.0,-145.0,-25.0,-140.0
+rlatts1     = 47.0,17.0,10.0,32.0,-53.0,50.0,64.0,5.0
+rdep1ts1    = 80.0, 80.0,80.0,80.0,80.0,80.0,80.0,80.0
+rdep2ts1    = 1000.0,1000.0,1000.0,200.0,1000.0,1000.0,1000.0,1000.0
+rdep3ts1    = 3000.0,3000.0,3000.0,300.0,2000.0,2000.0,2000.0,2000.0
+/
+EOF3
+fi
+
+
+
+#cluster
+
+if [ ! -s Z37000_\${nn}_\${nx}_\${ny}_\${no} ] ; then
+
+\`( ( time \${MPI_BIN}/mpiexec --prefix \${MPIROOT} -display-map -x MPIOM_THREADS -np \${ncpus} -bynode \${MODEL}/mpiom.x  2>&1 1>&3 | tee err.txt ) 3>&1 1>&2 | tee out.txt ) > mix.txt 2>&1\`
+
+grep -v '(user)' mix.txt | grep user > usertime_\${nn}_\${nx}_\${ny}_\${no}
+grep -v '(real)' mix.txt | grep real > realtime_\${nn}_\${nx}_\${ny}_\${no}
+
+\mv Z37000 Z37000_\${nn}_\${nx}_\${ny}_\${no} 
+\rm Z38000
+
+if [ "\${HAMOCC}" = "yes"  ] ; then
+    \mv restartw_bgc.nc restartr_bgc.nc_\${nn}_\${nx}_\${ny}_\${no} 
+fi
+
+fi
+fi
+fi
+
+    
+done
+done
+done
+
+#run reference experiment (nompi noomp)
+\rm Z37000 Z38000
+cat > OCECTL  << EOF
+&ocedim
+ ie_g = \${II}
+ je_g = \${JJ}
+ ke = \${KK}
+/
+&nprocs
+ nprocx=1
+ nprocy=1
+/
+ &ocectl
+ dt      = \${DT}
+ caulapts= 0.
+ caulapuv= 0.005
+ aus     = 0.
+ cah00   = 1000.
+ dv0     = 1.e-2
+ av0     = 1.e-2
+ cwt     = 4.e-4
+ cstabeps= 0.03
+ dback   = 1.e-5
+ aback   = 1.e-4
+ crelsal = 5.e-8
+ creltem = 0.
+ cdvocon = 0.05
+ cavocon = 0.0
+ ndays  = 1
+ imean   = 0
+ istart  = \${STA}
+ i3drest = \${RES}
+ /
+EOF
+if [ "\${KK}" = "20" ] ; then
+cat >> OCECTL  << EOF2
+ &ocedzw
+  cdzw = 20.,20., 20., 30.,40.,50.,70.
+        ,90.,120.,150.,180.,210.,250.,300.
+        ,400.,500.,600.,700.,900.,1400.
+ /
+EOF2
+fi
+
+if [ "\${KK}" = "40" ] ; then
+cat >> OCECTL  << EOF2
+&ocedzw
+ cdzw     = 12.,10.,10.,10.,10.,10.,13.,15.,20.,25.,
+           30.,35.,40.,45.,50.,55.,60.,70.,80.,90.,
+           100.,110.,120.,130.,140.,150.,170.,180.,190.,200.,
+           220.,250.,270.,300.,350.,400.,450.,500.,500.,600./
+ /
+EOF2
+fi
+\${MODEL}/mpiom.x.nompi.noomp
+\mv Z37000 Z37000.nompi.noomp
+\mv  restartw_bgc.nc  restartr_bgc.nc.nompi.noomp 
+
+for no in \`seq 1 1\` ; do
+for nx in \`seq 1 25\` ; do
+for ny in \`seq 1 25\` ; do
+
+np=\`expr \${nx} \\* \${ny}\`
+
+nn=\`expr \${nx} \\* \${ny}  \\* \${no}\`
+
+if [ \${nn} -le 40 ] ; then
+if [ \`expr \${nn} \% 4\` -eq 0 ] ; then
+
+if [ ! -s Z37000_\${nn}_\${nx}_\${ny}_\${no} ] ; then
+  echo "| mpiom:  CPUs: \${nn} | (nprocx: \${nx}, nprocy: \${ny})  using each  \${no} omp threads | not tested |        |        |"
+else
+
+testok=\`diff Z37000.nompi.noomp Z37000_\${nn}_\${nx}_\${ny}_\${no}\`
+
+if [ "\${testok}" = "" ] ; then
+
+    user=\`cut -c6-16 usertime_\${nn}_\${nx}_\${ny}_\${no}\`
+    real=\`cut -c6-16 realtime_\${nn}_\${nx}_\${ny}_\${no}\`
+
+  echo "| mpiom:  CPUs: \${nn} | (nprocx: \${nx}, nprocy: \${ny})  using each  \${no} omp threads | ok         | \$user | \$real |"  
+else
+  echo "| mpiom:  CPUs: \${nn} | (nprocx: \${nx}, nprocy: \${ny})  using each  \${no} omp threads | not ok     | \$user | \$real |"  
+fi
+
+fi
+fi
+fi
+done
+done
+done
+
+if [ "\${HAMOCC}" = "yes"  ] ; then
+for no in \`seq 1 1\` ; do
+for nx in \`seq 1 25\` ; do
+for ny in \`seq 1 25\` ; do
+
+np=\`expr \${nx} \\* \${ny}\`
+nn=\`expr \${nx} \\* \${ny}  \\* \${no}\`
+
+if [ \${nn} -le 40 ] ; then
+if [ \`expr \${nn} \% 4\` -eq 0 ] ; then
+if [ ! -s restartr_bgc.nc_\${nn}_\${nx}_\${ny}_\${no} ] ; then
+  echo "| hamocc: CPUs: \${nn} | (nprocx: \${nx}, nprocy: \${ny})  using each  \${no} omp threads | not tested |        |        |"
+else
+
+testok=\`diff restartr_bgc.nc.nompi.noomp restartr_bgc.nc_\${nn}_\${nx}_\${ny}_\${no}\`
+
+if [ "\${testok}" = "" ] ; then
+
+    user=\`cut -c6-16 usertime_\${nn}_\${nx}_\${ny}_\${no}\`
+    real=\`cut -c6-16 realtime_\${nn}_\${nx}_\${ny}_\${no}\`
+
+  echo "| hamocc: CPUs: \${nn} | (nprocx: \${nx}, nprocy: \${ny})  using each  \${no} omp threads | ok         | \$user | \$real |"  
+else
+  echo "| hamocc: CPUs: \${nn} | (nprocx: \${nx}, nprocy: \${ny})  using each  \${no} omp threads | not ok     | \$user | \$real |"  
+fi
+
+fi
+fi
+fi
+
+
+done
+done
+done
+
+fi
+
+\exit
+EOF1
+
+chmod 755 ${WRKDIR}/run_mpiom_omip_test
+echo "cd ${WRKDIR} and qsub run_mpiom_omip_test" 
+#-----------------------------------------------------------------------------
+exit
+
+

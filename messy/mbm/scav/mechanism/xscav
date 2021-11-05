@@ -1,0 +1,80 @@
+#! /bin/tcsh -f
+# Author: Holger Tost, Max-Planck-Institute, Mainz, Germany, 2007
+# Time-stamp: <2007-09-25 16:06:38 tost>
+
+set hline = "---------------------------------------"
+set hline = "$hline$hline"
+
+echo "xscav = eXecute kpp on equations for scavenging / multiphase chemistry "
+echo "        The chemical equations used are from SCAV (ice.eqn)"
+echo ""
+
+echo "Create chemical mechanisms with xscav ? [y/n/l/i/2/q, default=n]"
+echo "y = yes for liquid phase chemistry (with xscav_l)"
+echo "n = no"
+echo "l = liquid phase (xscav_l)"
+echo "i = ice phase (xscav_i)"
+echo "2 = both phases (first xscav_l, then xscav_i)"
+echo "q = quit"
+set inputstring = "$<"
+
+if ( "$inputstring" == "q" ) exit
+if ( "$inputstring" == "y" ) set inputstring = "l"
+
+if ( "$inputstring" == "l" ) then
+    set xscav_l
+    echo "" ; echo "starting xscav_l"
+
+    (pwd; ./xscav_l)
+    set exitstatus = "$status"
+    if ( $exitstatus == '0' ) then
+      echo "" ; echo "'xscav_l' finished successfully"
+    else
+      echo "" ; echo "ERROR: Exit status from 'xscav_l' is: $exitstatus"
+      exit 1
+    endif
+  echo "" ; echo "$hline"
+endif
+
+if ( "$inputstring" == "i" ) then
+    set xscav_i
+    echo "" ; echo "starting xscav_i"
+
+    (pwd ; ./xscav_i)
+    set exitstatus = "$status"
+    if ( $exitstatus == '0' ) then
+      echo "" ; echo "'xscav_i' finished successfully"
+    else
+      echo "" ; echo "ERROR: Exit status from 'xscav_i' is: $exitstatus"
+      exit 1
+    endif
+  echo "" ; echo "$hline"
+endif
+
+if ( "$inputstring" == "2" ) then
+    set xscav_l
+    echo "" ; echo "starting xscav_l"
+
+    (pwd ; ./xscav_l)
+    set exitstatus = "$status"
+    if ( $exitstatus == '0' ) then
+      echo "" ; echo "'xscav_l' finished successfully"
+    else
+      echo "" ; echo "ERROR: Exit status from 'xscav_l' is: $exitstatus"
+      exit 1
+    endif
+    echo "" ; echo "$hline"
+
+    set xscav_i
+    echo "" ; echo "starting xscav_i"
+
+    (pwd ; ./xscav_i)
+    set exitstatus = "$status"
+    if ( $exitstatus == '0' ) then
+      echo "" ; echo "'xscav_i' finished successfully"
+    else
+      echo "" ; echo "ERROR: Exit status from 'xscav_i' is: $exitstatus"
+      exit 1
+    endif
+    echo "" ; echo "$hline"
+endif

@@ -1,0 +1,118 @@
+! -*- f90 -*-
+&CPL
+!#####################################
+!# A. DEFINITION OF VERTICAL AXES
+!#####################################
+!# SYNTAX:
+!# - axis(dimension) name, channel, object, scaling (default=1.0), unit,
+!#   positive_down (T,F), logarithmic (T) default: F, 
+!#   dimension length, axes values (max. 100)
+!
+! PRESSURE
+!!$VAX(1) = 'pax','ECHAM5','press',0.01,'hPa',T, F, 16, 1000.0, 900.0, 800.0, 700.0, 600.0, 500.0, 400.0, 300.0, 200.0, 100.0, 90.0, 80.0, 70.0, 60.0, 50.0, 25.0, 84*0.0,
+!
+VAX(2) = 'pax_19','ECHAM5','press',1.0,'Pa',T, F, 19,100000.0, 92500.0, 85000.0, 70000.0, 60000.0, 50000.0, 40000.0, 30000.0, 25000.0, 20000.0, 15000.0, 10000.0, 7000.0, 5000.0, 3000.0, 2000.0, 1000.0, 500.0, 100.0 , 81*0.0,  
+!
+VAX(3) = 'pax_3','ECHAM5','press',1.0,'Pa',T, F, 3, 85000.0, 50000.0, 25000.0, 97*0.0, 
+!
+VAX(4) = 'pax_8','ECHAM5','press',1.0,'Pa',T, F,8, 100000.0, 85000.0, 70000.0, 50000.0, 25000.0, 10000.0, 5000.0, 1000.0, 92*0.0,  
+!
+VAX(5) = 'pax_39','ECHAM5','press',1.0,'Pa',T, F,39, 100000.0, 92500.0, 85000.0, 70000.0, 60000.0, 50000.0, 40000.0, 30000.0, 25000.0, 20000.0, 17000.0, 15000.0, 13000.0, 11500.0, 10000.0, 9000.0, 8000.0, 7000.0, 5000.0, 3000.0, 2000.0, 1500.0, 1000.0, 700.0, 500.0, 300.0, 200.0, 150.0, 100.0, 70.0, 50.0, 40.0, 30.0, 20.0, 15.0, 10.0, 7.0, 5.0, 3.0, 61*0.0,
+
+!!$VAX(5) = 'logpax','ECHAM5','press',0.01,'hPa',T, T, 16, 1000.0, 900.0, 800.0, 700.0, 600.0, 500.0, 400.0, 300.0, 200.0, 100.0, 90.0, 80.0, 70.0, 60.0, 50.0, 25.0, 84*0.0,
+!
+! ALTITUDE (geopot / g=9.81 m/s)
+!!$VAX(6) = 'zax','ECHAM5','geopot',0.101936799185,'m', F, F, 17, 0.0, 2.0, 10.0, 100.0, 500.0, 1000.0, 2000.0, 3000.0, 4000.0, 5000.0, 6000.0, 7000.0, 8000.0, 9000.0, 10000.0, 20000.0, 25000.0, 83*0.0,
+!
+! POTENTIAL TEMPERATURE
+!!$VAX(7) = 'thax', 'ECHAM5','tpot', ,'K', F, F, 18, 340.0, 360.0, 380.0, 390.0, 400.0, 420.0, 430.0, 440.0, 500.0, 550.0, 600.0, 625.0, 700.0, 775.0, 800.0, 850.0, 900.0, 1000.0, 82*0.0,
+!
+!#
+!#########################################
+!# B. FIELDS TRANSFORMED TO VERTICAL AXES
+!#########################################
+!# SYNTAX:
+!# - name, channel, object, axis, missing value (default: -1.0E+34)
+!
+! TEST SUITE: TRANSFORM THE AXIS DEFINING FIELDS:
+!
+!TRA(1) = 'press',    'ECHAM5', 'press',   'pax',    ,
+!TRA(2) = 'lgpress',  'ECHAM5', 'press',   'logpax', ,
+!TRA(3) = 'geopot',   'ECHAM5', 'geopot',  'zax',    ,
+!TRA(4) = 'tpot',     'ECHAM5', 'tpot',    'thax',   ,
+!
+! A MORE REALISTIC CASE
+!!$TRA(1) = 'geopot_p', 'ECHAM5', 'geopot',  'pax',    ,
+!
+!CMIP6 Data Request
+! 3 vertical levels
+TRA(2) = 'tm1_p3', 'ECHAM5', 'tm1',  'pax_3',    ,
+TRA(3) = 'um1_p3', 'ECHAM5', 'um1',  'pax_3',    ,
+TRA(4) = 'vm1_p3', 'ECHAM5', 'vm1',  'pax_3',    ,
+!
+! 8 vertical levels
+TRA( 5) = 'tm1_p8',    'ECHAM5',     'tm1',     'pax_8',    ,
+TRA( 6) = 'um1_p8',    'ECHAM5',     'um1',     'pax_8',    ,
+TRA( 7) = 'vm1_p8',    'ECHAM5',     'vm1',     'pax_8',    ,
+TRA( 8) = 'qm1_p8',    'ECHAM5',     'qm1',     'pax_8',    ,
+TRA( 9) = 'rhum_p8',   'ECHAM5',     'rhum',    'pax_8',    ,
+TRA(10) = 'geopot_p8', 'ECHAM5',     'geopot',  'pax_8',    ,
+TRA(11) = 'vervel_p8', 'scnbuf',     'vervel',  'pax_8',    ,
+!
+! 19 vertical levels
+TRA(12) = 'tm1_p19',      'ECHAM5',      'tm1',      'pax_19',    ,
+TRA(13) = 'um1_p19',      'ECHAM5',      'um1',      'pax_19',    ,
+TRA(14) = 'vm1_p19',      'ECHAM5',      'vm1',      'pax_19',    ,
+TRA(15) = 'qm1_p19',      'ECHAM5',      'qm1',      'pax_19',    ,
+TRA(16) = 'rhum_p19',     'ECHAM5',      'rhum',     'pax_19',    ,
+TRA(17) = 'geopot_p19',   'ECHAM5',      'geopot',   'pax_19',    ,
+TRA(18) = 'vervel_p19',   'scnbuf',      'vervel',   'pax_19',    ,
+TRA(19) = 'O3_p19',       'import_grid', 'RADO3_O3', 'pax_19',    ,
+TRA(20) = 'CO2_p19',      'tracer_gp',   'CO2',      'pax_19',    ,
+TRA(21) = 'CH4_p19',      'tracer_gp',   'CH4_fx',   'pax_19',    ,
+TRA(22) = 'N2O_p19',      'tracer_gp',   'N2O',      'pax_19',    ,
+TRA(23) = 'gwflux_u_p19', 'gwave',       'gwflux_u', 'pax_19',    ,
+TRA(24) = 'gwflux_v_p19', 'gwave',       'gwflux_v', 'pax_19',    ,
+TRA(25) = 'gwdrag_u_p19', 'gwave',       'gwdrag_u', 'pax_19',    ,
+TRA(26) = 'gwdrag_v_p19', 'gwave',       'gwdrag_v', 'pax_19',    ,
+!!$TRA(27) = 'gwheat_p19',   'gwave',     'gwheat',   'pax_19',    ,
+TRA(28) = 'gworo_du_p19', 'orogw',       'gworo_du', 'pax_19',    ,
+TRA(29) = 'gworo_dv_p19', 'orogw',       'gworo_dv', 'pax_19',    ,
+!
+! 39 vertical levels
+TRA(30) = 'CH4_p39',      'tracer_gp',    'CH4_fx',   'pax_39',    ,
+!!$TRA(31) = 'NOy_p39',      'tracer_gp',    'NOy',      'pax_39',    ,
+TRA(32) = 'O3_p39',       'import_grid',  'RADO3_O3', 'pax_39',    ,
+!!$TRA(33) = 'O3P_p39',      'tracer_gp',    'O3P',      'pax_39',    ,
+!!$TRA(34) = 'O1D_p39',      'tracer_gp',    'O1D',      'pax_39',    ,
+!!$TRA(35) = 'Bry_p39',      'tracer_gp',    'Bry',      'pax_39',    ,
+!!$TRA(36) = 'HO2_p39',      'tracer_gp',    'HO2',      'pax_39',    ,
+TRA(37) = 'N2O_p39',      'tracer_gp',    'N2O',      'pax_39',    ,
+!!$TRA(38) = 'Cly_p39',      'tracer_gp',    'Cly',      'pax_39',    ,
+!!$TRA(39) = 'H2O_p39',      'tracer_gp',    'H2O',      'pax_39',    ,
+!!$TRA(40) = 'HCl_p39',      'tracer_gp',    'HCl',      'pax_39',    ,
+!!$TRA(41) = 'HNO3_p39',     'tracer_gp',    'HNO3',     'pax_39',    ,
+!!$TRA(42) = 'OH_p39',       'tracer_gp',    'OH',       'pax_39',    ,
+!!$TRA(43) = 'J_O3P_p39',    'jval_gp',      'J_O3P',    'pax_39',    ,
+!!$TRA(44) = 'J_O1D_p39',    'jval_gp',      'J_O1D',    'pax_39',    ,
+!!$TRA(45) = 'J_O2_p39',     'jval_gp',      'J_O2',     'pax_39',    ,
+TRA(46) = 'tm1_p39',      'ECHAM5',       'tm1',      'pax_39',    ,
+TRA(47) = 'um1_p39',      'ECHAM5',       'um1',      'pax_39',    ,
+TRA(48) = 'vm1_p39',      'ECHAM5',       'vm1',      'pax_39',    ,
+TRA(49) = 'geopot_p39',   'ECHAM5',       'geopot',   'pax_39',    ,
+TRA(50) = 'gworo_dt_p39', 'orogw',        'gworo_dt', 'pax_39',    ,
+TRA(51) = 'gworo_du_p39', 'orogw',        'gworo_du', 'pax_39',    ,
+TRA(52) = 'gwflux_u_p39', 'gwave',        'gwflux_u', 'pax_39',    ,
+TRA(53) = 'gwflux_v_p39', 'gwave',        'gwflux_v', 'pax_39',    ,
+TRA(54) = 'gwdrag_u_p39', 'gwave',        'gwdrag_u', 'pax_39',    ,
+TRA(55) = 'gwdrag_v_p39', 'gwave',        'gwdrag_v', 'pax_39',    ,
+!!$TRA(56) = 'gwheat_p39',   'gwave',        'gwheat',   'pax_39',    ,
+TRA(57) = 'dtdt_lw_p39',  'rad01',        'dtdt_lw',  'pax_39',    ,
+TRA(58) = 'heatsw_p39',   'rad01_fubrad', 'heatsw',   'pax_39',    ,
+TRA(59) = 'conv_tte_p39', 'convect',      'conv_tte', 'pax_39',    ,
+
+!
+!
+!
+!
+/

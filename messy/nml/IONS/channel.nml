@@ -1,0 +1,125 @@
+! -*- f90 -*-
+&CTRL
+! ---------------------------------------------------------------------
+! EXPERIMENT NAME
+! ---------------------------------------------------------------------
+EXP_NAME='$EXP_NAME',
+! ---------------------------------------------------------------------
+! # FLUSH I/O BUFFER IN EVERY TIME STEP (DEFAULT: T (true))
+! # NOTE: F (false) might increase the overall performance
+!L_FLUSH_IOBUFFER = F,
+! ---------------------------------------------------------------------
+! # ADD NEW OUTPUT CHANNELS (MAX. 50)
+! ---------------------------------------------------------------------
+ADD_CHANNEL( 1)    =  'ions_out'
+ADD_CHANNEL( 2)    =  'atmel'
+ADD_CHANNEL( 3)    = 'echam5_out'
+!!
+!! ---------------------------------------------------------------------
+! # ADD NEW CHANNEL OBJECT REFERENCES (MAX. 500)
+! # NOTES: 
+! #  - SOURCE OBJECT NAME MAY CONTAIN WILDCARDS '?' AND '*'
+! #    (in this case, target object name is ignored)
+! #  - TARGET CHANNEL NAME MAY CONTAIN WILDCARDS '?' AND '*'
+! #  - TARGET OBJECT NAME SET TO SOURCE OBJECT NAME, IF ''
+! ---------------------------------------------------------------------
+!
+ADD_REF(1)         = 'ions',          '*',     'ions_out',         '',
+ADD_REF(2)         = 'tracer_gp',     'Rn222',     'ions_out',         '',
+ADD_REF(3)         = 'tracer_gp',     'Po218',     'ions_out',         '',
+ADD_REF(4)         = 'gec',           '*',               'atmel',         '',
+ADD_REF(5)         = 'ECHAM5',        '*',         'echam5_out',         '',
+ADD_REF(6)         = 'ions_2d',       '*',      'ions_out',         '',
+!
+! ---------------------------------------------------------------------
+! # SET DEFAULT OUTPUT AND RESTART HANDLING
+!      - ''
+!      - OUTPUT-FILETYPE, RERUN-FILETYPE, NO. OF STEPS PER OUTPUT-FILE,
+!      - RERUN, IGNORE, INST, AVE, STD, MIN, MAX, CNT, CAV, RANGE(2)
+! # NOTES:
+! #    IGNORE = T  FORCES THE MODEL TO IGNORE POTENTIAL lrestreq FLAGS
+! #                FOR PSEUDO-INITIAL RUNS FROM RESTART FILES
+! ---------------------------------------------------------------------
+OUT_DEFAULT     = '', $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+! ---------------------------------------------------------------------
+! # OUTPUT PRECISION (ASCII, (P)NETCDF, (P)NETCDF, GRIB, HDF4, HDF5)
+! # NOTES: - ONLY (P)NETCDF CURRENTLY IMPLEMENTED;
+! #        - (P)NETCDF: 1=NF(90)_FLOAT; 2=NF(90)_DOUBLE
+OUT_PREC = 1, 1, 1, 1, 1, 1,   ! for production
+!OUT_PREC = 1, 2, 2, 1, 1, 1,   ! for tests
+! ---------------------------------------------------------------------
+! # SET CHANNEL SPECIFIC DEFAULT OUTPUT AND RESTART HANDLING (MAX. 500)
+!      - channel-name
+!      - OUTPUT-FILETYPE, RERUN-FILETYPE, NO. OF STEPS PER OUTPUT-FILE,
+!      - RERUN, IGNORE, INST, AVE, STD, MIN, MAX, CNT, CAV, RANGE(2)
+! # NOTE: IF NO. OF STEPS PER OUTPUT-FILE <= 0, THE EVENT TRIGGER
+!         (CPL-NAMELIST, TIMER_TNF BELOW) CONTROLS THE FILE CONTENT
+! ---------------------------------------------------------------------
+! ECHAM5 STANDARD
+! - NO OUTPUT
+OUT_CHANNEL(  1)   = 'ions_out',        $OFT, $OFT, -1, F,F, F,T,F,F,F, F,F, , ,
+OUT_CHANNEL(  2)   = 'atmel',        $OFT, $OFT, -1, F,F, F,T,F,F,F, F,F, , ,
+OUT_CHANNEL(  3)   = 'echam5_out',        $OFT, $OFT, -1, F,F, F,T,F,F,F, F,F, , ,
+! ---------------------------------------------------------------------
+! # SET CHANNEL OBJECT SPECIFIC OUTPUT AND RESTART HANDLING (MAX. 1000)
+!      - channel-name
+!      - object-name
+!      - RERUN, IGNORE, INST, AVE, STD, MIN, MAX, CNT, CAV, RANGE(2)
+! ---------------------------------------------------------------------
+! ECHAM5 STANDARD
+! - NO OUTPUT
+!OUT_OBJECT(  1)  = 'g3b','qtnew',               F,F, F,F,F,F,F, F,F, , ,
+/
+! #########################################################################
+&CPL
+! --------------------------------------------------------------------------
+! ENABLE ADDITIONAL ECHAM5 STANDARD STREAM OUTPUT ?
+! (e.g, needed for GRIB-template generation)
+! -> OUTPUT TIME INTERVAL => PUTDATA in ECHAM5.nml
+L_BM_ORIG_OUTPUT = F,
+! --------------------------------------------------------------------------
+!===========================================================================
+! --------------------------------------------------------------------------
+! SET OUTPUT INTERVALS FOR ALL CHANNELS (DEFAULT + INDIVIDUAL)
+! NOTE: CHANNEL OUTPUT OF tdiag, tdiag_gp, nudg, nudg_gp
+!       WILL BE SYNCHRONIZED TO THE SHORTEST OUTPUT INTERVAL (IF PRESENT !)
+! NOTE: First match (wildcard) counts 
+! --------------------------------------------------------------------------
+TIMER_DEFAULT    = '',     1, 'months', 'last', 0, 
+!TIMER_DEFAULT    = '',     1, 'years', 'last', 0,
+!TIMER_DEFAULT    = '',     6, 'hours',  'first', 0,
+!TIMER_DEFAULT    = '',     1, 'steps',  'first', 0,
+!TIMER_DEFAULT    = '',     1, 'days',  'first', 0,
+!TIMER_DEFAULT    = '',     1, 'days',  'last', 0,
+! --------------------------------------------------------------------------
+!TIMER_CHANNEL(  2) = 'aer_aeropt_1hr',      1, 'hours', 'last', 0,
+!TIMER_CHANNEL(  2) = 'lnox*',      1, 'months', 'first', 0,
+!TIMER_CHANNEL(  3) = 'qtimer',     1, 'steps',   'first', 0,
+!TIMER_CHANNEL(  4) = 'import_ts', 1, 'steps',   'first', 0,
+!TIMER_CHANNEL(  8) = 'scout*', 1, 'days',   'first', 0,
+!---------------------------------------------------------------------------
+!===========================================================================
+!---------------------------------------------------------------------------
+! SET TIMER EVENTS FOR NEW FILENAMES
+! (IF NO. OF STEPS PER OUTPUT-FILE <= 0 ABOVE !!!)
+! NOTE: First match (wildcard) counts 
+!---------------------------------------------------------------------------
+! TIMER_TNF_DEFAULT = '', 1, 'months', 'first', 0,
+! !---------------------------------------------------------------------------
+! TIMER_TNF_CHANNEL( 1) = 'qtimer', 1, 'months',   'first', 0
+! TIMER_TNF_CHANNEL( 2) = 'scout*', 1, 'months', 'first', 0
+!---------------------------------------------------------------------------
+TIMER_TNF_DEFAULT = '', 1, 'steps', 'first', 0,
+!---------------------------------------------------------------------------
+TIMER_TNF_CHANNEL( 1) = 'qtimer', 1, 'hours',   'first', 0
+TIMER_TNF_CHANNEL( 2) = 'scout*', 1, 'hours', 'first', 0
+!
+/
+
+&CTRL_PNETCDF
+!---------------------------------------------------------------------------
+!MPI_IO_HINT(1) = 'IBM_largeblock_io','true',
+!MPI_IO_HINT(2) = 'IBM_io_buffer_size','2949120',
+!MPI_IO_HINT(3) = 'IBM_sparse_access','true',
+!---------------------------------------------------------------------------
+/

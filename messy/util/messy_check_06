@@ -1,0 +1,58 @@
+#! /bin/tcsh -f
+
+### CHECK f90 FILES FOR MESSy-CONFORMITY:
+### 06: new channel names must start with the submodel name
+###
+### Author: Rolf Sander, MPICH, Mainz, Germany, Sep 2004
+
+if ($# != 2) then
+   echo "USAGE: `basename $0` <BASEMODEL> <submodel>"
+   exit 1
+endif
+
+set BASEMODEL = $1
+set submodel = $2
+set checkid = 06
+
+### BASEMODEL SETTINGS
+if ( -r messy/$BASEMODEL/messy_setup != 0 ) then
+   source messy/$BASEMODEL/messy_setup
+else
+   echo "ERROR: MESSY SETUP messy/$BASEMODEL/messy_setup IS UNREADABLE\!"
+   exit 1
+endif
+
+set tmpfile  = tmpfile-`date +"%y%m%d%H%M%S"`
+
+# check if main core file has modstr defined as a PARAMETER
+grep -iE 'parameter.*modstr' messy/smcl/messy_$submodel.f90 > $tmpfile
+if ( -s $tmpfile == 0 ) then
+  echo '-----------------------------------------------------'
+  echo 'SUBMODEL: '$submodel
+  echo 'CHECK-ID: '$checkid
+  echo 'FILE    : 'messy_$submodel.f90
+  echo '  modstr IS NOT DEFINED AS A FORTRAN PARAMETER!'
+  echo '-----------------------------------------------------'
+endif
+
+# check if names of new channels start with modstr
+
+set f90filelist = (`find messy/$BASEDIR/* -name "messy_$submodel*.f90" -print`)
+if (${#f90filelist} > 0) then
+foreach f90file (messy/$BASEDIR/*/messy_$submodel*.f90)
+  grep -iE 'call +new_channel+\(' $f90file | grep -iEv "modstr" > $tmpfile
+  if ( -s $tmpfile != 0 ) then
+    echo '-----------------------------------------------------'
+    echo 'SUBMODEL: '$submodel
+    echo 'CHECK-ID: '$checkid
+    echo 'FILE    : '$f90file
+    echo '  modstr IS NOT USED FOR THE CHANNEL NAME:'
+    cat $tmpfile
+    echo '-----------------------------------------------------'
+  endif
+end
+endif
+
+rm $tmpfile
+
+exit 0

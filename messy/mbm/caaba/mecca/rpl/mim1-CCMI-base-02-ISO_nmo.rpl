@@ -1,0 +1,35 @@
+// -*- kpp -*- kpp mode for emacs
+// see example.rpl for details about replacement files
+
+// Author: Patrick Joeckel (for RC1-base-02 and subsequent)
+
+// replace the comprehensive organic chemistry by mim1:
+#include mim1
+
+// modifications for stratospheric H2O+H isotopes runs of F.Frank (DLR):
+#include mim1-H2O_fix
+
+// modifications for the ESCiMo base run:
+#include ESCiMo
+
+// modifications for stratospheric H2O+H isotopes runs of F.Frank (DLR):
+#include nmo
+
+// O3s diagnostic
+#REPLACE <>
+<G01Diag> O3s            = LO3s        : {%StTrG} k_O3s; {&1714}
+#ENDREPLACE
+
+// Replacement of G4118 for correct isotope branching in nmo
+#REPLACE <G4118*>
+// <G4118>  CH3O     {+ O2}     = HO2 + HCHO         : {%StTrG} 1.3E-14{§}*exp(-663./temp)*c(ind_O2); {&3043}
+// doubled for parameterising the variable H isotope branching ( IB ratio equals ib_D_G4118
+// test set-up for prodloss
+// <G4118a>  CH3O {+ O2} = HO2 + HCHO                : {%StTrG} 4.0E-13; {&3043}
+//<G4118b>  CH3O {+ O2} = HO2 + HCHO + Dummy        : {%StTrG} 4.0E-13; {&3043}
+// else:
+//! mz_sg_20200714(@tonnerre): commented out - reactions <G4118a/b> are added by tagging routines directly, we just need to remove G4118
+//!<G4118a>  CH3O {+ O2} = HO2 + HCHO                : {%StTrG} (   if_D_G4118_HCHO)*k_G4118; {&3043}
+//!<G4118b>  CH3O {+ O2} = HO2 + HCHO + Dummy        : {%StTrG} (1.-if_D_G4118_HCHO)*k_G4118; {&3043}
+//
+#ENDREPLACE

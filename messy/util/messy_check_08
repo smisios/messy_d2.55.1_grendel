@@ -1,0 +1,72 @@
+#! /bin/tcsh -f
+
+### CHECK f90 FILES FOR MESSy-CONFORMITY:
+### 08: non-generic SMIL-files MUST NOT USE 
+###       - BML   (mo_*)
+###     - MODULES
+###
+### Author: Patrick Jöckel, MPICH, Mainz, Germany, Mar 2004
+
+if ($# != 2) then
+   echo "USAGE: `basename $0` <BASEMODEL> <f90-file>"
+   exit 1
+endif
+
+set BASEMODEL = $1
+set file = $2
+set checkid = 08
+
+### BASEMODEL SETTINGS
+if ( -r messy/$BASEMODEL/messy_setup != 0 ) then
+   source messy/$BASEMODEL/messy_setup
+else
+   echo "ERROR: MESSY SETUP messy/$BASEMODEL/messy_setup IS UNREADABLE\!"
+   exit 1
+endif
+
+# SET SUBMODEL
+set smodel = `echo $file | awk -F '_' '{print tolower($2)}' | sed 's|\.f90||g'`
+
+# LIST OF MODULES IN USE STATEMENTS
+set q_use = `grep -iE "^ *USE " $file  | sed 's|\,| |g' | awk '{print tolower($2)}'`
+# NUMBER OF USE STATEMENTS
+set n = ${#q_use}
+
+#######################################
+set wrong = ()
+@ count = 1
+while($count <= $n)
+# echo $q_use[$count]
+
+  # CHECK FOR BMIL, BML: "mo_*"
+  set sf = `echo $q_use[$count] | awk '{sf=substr($0,1,3); if (sf=="mo_") print}' `
+  set wrong = ($wrong $sf)
+
+@ count++
+end
+#######################################
+
+#######################################
+switch ($smodel)
+   ### EXCLUDE INFRASTRUCTURE
+   case "ncregrid":
+   case "main":
+	breaksw
+    ### EXCLUDE EXCEPTIONS
+   case "advect"
+	breaksw
+   default:
+        if (${#wrong} > 0) then
+            echo '-----------------------------------------------------'
+            echo 'SUBMODEL: '$smodel
+	    echo 'CHECK-ID: '$checkid
+            echo 'FILE    : '$file
+            echo ${#wrong}' NON-MESSy-CONFORM USE-STATEMENT(S) FOUND: '
+            echo ${wrong} | tr ' ' '\n'
+            echo '-----------------------------------------------------'
+        endif
+        breaksw
+endsw
+#######################################
+
+exit 0

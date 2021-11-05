@@ -1,0 +1,867 @@
+// based on jam002b_20170510mgs
+#INLINE F90_GLOBAL
+  REAL(DP) :: kHO2_HO2
+  REAL(DP) :: kNO2NO3, kN2O5
+  REAL(DP) :: kHNO3_OH
+  REAL(DP) :: kNO2HO2, kHNO4
+  REAL(DP) :: kCO_OH, kCO_OH_inf, kCO_OH_o, kCO_OH_term1, kCO_OH_term2
+  REAL(DP) :: kNO2CH3O2, kCH3O2NO2
+  REAL(DP) :: k_CH3CO3_NO2, kPAN
+  REAL(DP) :: k_MACO3_NO2, kMPAN
+  REAL(DP) :: kClOClO, kCl2O2
+#ENDINLINE {above lines go to messy_mecca_kpp_global}
+
+#INLINE F90_RCONST
+  ! start of executable statements
+  ! define some rate constants here if the expressions are too long
+  ! for kpp or if they are used more than once
+  kHO2_HO2     = (3.0E-13*EXP(460./temp)+2.1E-33*EXP(920./temp)*cair)* &
+                 (1.+1.4E-21*EXP(2200./temp)*C(ind_H2O))
+  kNO2NO3      = k_3rd(TEMP,cair,2.000e-30,4.4,1.400e-12,0.7,0.6)
+  kN2O5        = kNO2NO3 * 3.333e26 * EXP(-10991./TEMP)
+  kHNO3_OH     = 2.4E-14*EXP(460./temp) + 1./ &
+                 ( 1./(6.5E-34*EXP(1335./temp)*cair) + &
+                 1./(2.7E-17*EXP(2199./temp)) )
+  kNO2HO2      = k_3rd(TEMP,cair,2.000e-31,3.4,2.900e-12,1.1,0.6)
+  kHNO4        = kNO2HO2 * EXP(-10900./TEMP) / 2.1e-27
+  ! CO + OH start
+  kCO_OH_inf   = 2.1e+09 * (TEMP/ 300.)**(6.1)
+  kCO_OH_o     = 1.5e-13 * (TEMP/ 300.)**(0.6)
+  kCO_OH_term1 = kCO_OH_o / ( (kCO_OH_inf / cair) )
+  kCO_OH_term2 = kCO_OH_o / (1. + kCO_OH_term1)
+  kCO_OH_term1 = LOG10( kCO_OH_term1 )
+  kCO_OH_term1 = 1. / (1. + kCO_OH_term1*kCO_OH_term1)
+  kCO_OH       = kCO_OH_term2 * (0.6)**kCO_OH_term1
+  ! CO + OH end
+  kNO2CH3O2    = k_3rd(TEMP,cair,1.000e-30,4.8,7.200e-12,2.1,0.6)
+  kCH3O2NO2    = kNO2CH3O2 * EXP(-11234./TEMP) / 9.5e-29
+  k_CH3CO3_NO2 = k_3rd(TEMP,cair,2.700e-28,7.1,1.200e-11,0.9,0.6)
+  kPAN         = k_CH3CO3_NO2 * 1.111e28 * EXP(-14000./TEMP)
+  k_MACO3_NO2  = k_3rd(TEMP,cair,2.700e-28,7.1,1.200e-11,0.9,0.3)
+  kMPAN        = k_MACO3_NO2 * 1.111e28 * EXP(-14000./TEMP)
+  kClOClO      = k_3rd(TEMP,cair,1.600e-32,4.5,3.000e-12,2.,0.6)
+  kCl2O2       = kClOClO / (1.3e-27 * EXP(8744./TEMP))
+#ENDINLINE {above lines go into the SUBROUTINES UPDATE_RCONST and UPDATE_PHOTO}
+
+#EQUATIONS
+
+// --------------------------------------------------------------------------------
+// SECTION  (Tropospheric) Ox Reactions
+// --------------------------------------------------------------------------------
+
+<G0O3P_O2>       O3P + O2 {+M} = {M+} O3                       : {%StTrG} 6.e-34*(300./TEMP)**2.4*cair;
+<G0O3P_O3>       O3P + O3 = 2 O2                             : {%StTrG} 8.000e-12*EXP(-2060./TEMP);  {JPL(2011)}
+<G0O3P_O3P>      O3P + O3P {+M} = {M+} O2                      : {%StTrG} 4.23e-28*(TEMP)**(-2)*cair;
+<G0O1D_N2>       O1D + N2 = N2 + O3P                         : {%StTrG} 2.150e-11*EXP(110./TEMP);
+<G0O1D_O2_ab>    O1D + O2 = O2 + O3P                         : {%StTrG} 3.135e-11*EXP(55./TEMP)+1.650e-12*EXP(55./TEMP);
+<G0O1D_H2O>      O1D + H2O = 2 OH                            : {%StTrG} 1.630e-10*EXP(60./TEMP);  {JPL(2011)}
+
+// --------------------------------------------------------------------------------
+// SECTION  (Tropospheric) HOx Reactions
+// --------------------------------------------------------------------------------
+
+<G0H_O2>         H + O2 {+M} = HO2 {+M}                        : {%StTrG} k_3rd(TEMP,cair,4.400e-32,1.3,7.500e-11,-0.2,0.6);  {JPL(2011)}
+<G0H_O3>         H + O3 = O2 + OH                            : {%StTrG} 1.400e-10*EXP(-470./TEMP);  {JPL(2011)}
+<G0H_HO2_a>      H + HO2 = 2 OH                              : {%StTrG} 7.200e-11;  {JPL(2011)}
+<G0H_HO2_b>      H + HO2 = H2O + O3P                         : {%StTrG} 1.600e-12;  {JPL(2011)}
+<G0H_HO2_c>      H + HO2 = H2 + O2                           : {%StTrG} 6.900e-12;  {JPL(2011)}
+<G0H2_O3P>       H2 + O3P = H + OH                           : {%StTrG} 1.600e-11*EXP(-4570./TEMP);
+<G0H2_OH>        H2 + OH = H + H2O                           : {%StTrG} 2.800e-12*EXP(-1800./TEMP);  {JPL(2011)}
+<G0OH_O3P>       OH + O3P = H + O2                           : {%StTrG} 1.800e-11*EXP(180./TEMP);  {JPL(2011)}
+<G0OH_OH_a>      OH + OH = H2O + O3P                         : {%StTrG} 1.800e-12;  {JPL(2011)}
+<G0OH_OH_b>      OH + OH {+M} = H2O2 {+M}                      : {%StTrG} k_3rd(TEMP,cair,6.900e-31,1.,2.600e-11,0.,0.6);  {JPL(2011)}
+<G0OH_O3>        OH + O3 = HO2 + O2                          : {%StTrG} 1.700e-12*EXP(-940./TEMP);  {JPL(2011)}
+<G0HO2_O3P>      HO2 + O3P = O2 + OH                         : {%StTrG} 3.000e-11*EXP(200./TEMP);  {JPL(2011)}
+<G0HO2_OH>       HO2 + OH = H2O + O2                         : {%StTrG} 4.800e-11*EXP(250./TEMP);  {JPL(2011)}
+<G0HO2_O3>       HO2 + O3 = OH + 2 O2                        : {%StTrG} 2.03e-16*EXP(693.0/TEMP)*(TEMP/300.0)**4.57;
+<G0HO2_HO2>      HO2 + HO2 = H2O2 + O2                       : {%StTrG} kHO2_HO2;
+<G0H2O2_O3P>     H2O2 + O3P = HO2 + OH                       : {%StTrG} 1.400e-12*EXP(-2000./TEMP);  {JPL(2011)}
+<G0H2O2_OH>      H2O2 + OH = H2O + HO2                       : {%StTrG} 1.800e-12;  {JPL(2011)}
+
+// --------------------------------------------------------------------------------
+// SECTION  NOx Reactions
+// --------------------------------------------------------------------------------
+
+<G0N_OH>         N + OH = H + NO                             : {%StTrG} 5.000e-11;
+<G0N_O2>         N + O2 = NO + O3P                           : {%StTrG} 1.500e-11*EXP(-3600./TEMP);  {JPL(2011)}
+<G0N_NO>         N + NO = N2 + O3P                           : {%StTrG} 2.100e-11*EXP(100./TEMP);  {JPL(2011)}
+<G0N_NO2>        N + NO2 = 0.5 N2O + 0.5 O3P + 0.5 NO + 0.25 N2 + 0.25 O2 : {%StTrG} 5.800e-12*EXP(220./TEMP);  {JPL(2011), products: Kinnison (p.c.)}
+<G0NO_O3P>       NO + O3P {+M} = {M+} NO2                      : {%StTrG} k_3rd(TEMP,cair,9.000e-32,1.5,3.000e-11,0.,0.6);  {JPL(2011)}
+<G0NO_O3>        NO + O3 = NO2 + O2                          : {%StTrG} 3.000e-12*EXP(-1500./TEMP);  {JPL(2011)}
+<G0NO_HO2>       NO + HO2 = NO2 + OH                         : {%StTrG} 3.300e-12*EXP(270./TEMP);  {JPL(2011)}
+<G0NO2_O3P_a>    NO2 + O3P = NO + O2                         : {%StTrG} 5.100e-12*EXP(210./TEMP);  {ref?}
+<G0NO2_O3P_b>    NO2 + O3P {+M} = {M+} NO3                     : {%StTrG} k_3rd(TEMP,cair,2.500e-31,1.8,2.200e-11,0.7,0.6);  {JPL(2011)}
+<G0NO2_O3>       NO2 + O3 = NO3 + O2                         : {%StTrG} 1.200e-13*EXP(-2450./TEMP);  {JPL(2011)}
+<G0NO2_H>        NO2 + H = NO + OH                           : {%StTrG} 4.000e-10*EXP(-340./TEMP);  {JPL(2011)}
+<G0NO2_OH>       NO2 + OH {+M} = HNO3 {+M}                     : {%StTrG} k_3rd(TEMP,cair,1.800e-30,3.,2.800e-11,0.,0.6);  {JPL(2011); there is a second channel ->HOONO}
+<G0NO3_O3P>      NO3 + O3P = NO2 + O2                        : {%StTrG} 1.000e-11;  {JPL(2011)}
+<G0NO3_OH>       NO3 + OH = HO2 + NO2                        : {%StTrG} 2.200e-11;  {JPL(2011)}
+<G0NO3_HO2>      NO3 + HO2 = NO2 + OH + O2                   : {%StTrG} 3.500e-12;  {JPL(2011)}
+<G0NO3_NO>       NO3 + NO = 2 NO2                            : {%StTrG} 1.500e-11*EXP(170./TEMP);  {JPL(2011)}
+<G0HNO3_OH>      HNO3 + OH = H2O + NO3                       : {%StTrG} kHNO3_OH;  {usrrxt: X=M6.5e-34*EXP(1335/TEMP); X/(1+X/(2.7e-17*EXP(2199/TEMP)))+2.4e-14*EXP(460/TEMP) - JPL(2011)}
+<G0NO_OH>        NO + OH = HONO                              : {%StTrG} k_3rd(TEMP,cair,7.000e-31,2.6,3.600e-11,0.1,0.6);  {JPL(2011)}
+<G0HONO_OH>      HONO + OH = H2O + NO2                       : {%StTrG} 1.800e-11*EXP(-390./TEMP);  {JPL(2011)}
+<G0NO2_HO2>      NO2 + HO2 {+M} = HNO4 {+M}                    : {%StTrG} kNO2HO2;  {JPL(2011)}
+<G0HNO4_OH>      HNO4 + OH = H2O + NO2 + O2                  : {%StTrG} 1.300e-12*EXP(380./TEMP);  {JPL(2011)}
+<G0HNO4>         HNO4 {+M} = HO2 + NO2 {+M}                    : {%StTrG} kHNO4;  {user defined; usrrxt: [NO2_NO3]*EXP(-10900./TEMP)/2.1e-27  JPL(2011)}
+<G0NO2_NO3>      NO2 + NO3 {+M} = {M+} N2O5                    : {%StTrG} kNO2NO3;  {JPL(2011)}
+<G0N2O5_a>       N2O5 {+M} = NO2 + NO3 {+M}                    : {%StTrG} kN2O5;  {user defined; usrrxt: [NO2_NO3]*EXP(-11000/TEMP)/2.7e-27  JPL(2011)}
+<G0NH3_OH>       NH3 + OH = PRODUCTS                         : {%StTrG} 1.700e-12*EXP(-710./TEMP);  {JPL(2011)}
+
+// --------------------------------------------------------------------------------
+// SECTION  C1 oxidation
+// --------------------------------------------------------------------------------
+
+<G0CO_OH_a>      CO + OH = CO2 + H                           : {%StTrG} kCO_OH;  {usrrxt: JPL(2011), Table 2-1}
+<G0CO_OH_b>      CO + OH {+M} = CO2 + HO2 {+M}                 : {%StTrG} k_3rd(TEMP,cair,5.900e-33,1.4,1.100e-12,-1.3,0.6);
+<G0CH4_OH>       CH4 + OH = CH3O2 + H2O                      : {%StTrG} 2.450e-12*EXP(-1775./TEMP);  {JPL(2011)}
+<G0CH3OH_OH>     CH3OH + OH = HCHO + HO2 + H2O               : {%StTrG} 2.900e-12*EXP(-345./TEMP);  {JPL(2011)}
+<G0CH3O2_NO>     CH3O2 + NO = HCHO + NO2 + HO2               : {%StTrG} 1.960e-12*EXP(403./TEMP);  {Orlando&Tyndall (2012)}
+<G0CH3O2_HO2>    CH3O2 + HO2 = CH3OOH + O2                   : {%StTrG} 3.800e-13*EXP(730./TEMP);  {Orlando&Tyndall (2012)}
+<G0CH3O2_CH3O2_a> CH3O2 + CH3O2 = 2 HCHO + 2 HO2             : {%StTrG} 7.400e-13*EXP(-520./TEMP);  {Atkinson et al.(2006)}
+<G0CH3O2_CH3O2_b> CH3O2 + CH3O2 = CH3OH + HCHO               : {%StTrG} 2.330e-14*EXP(678./TEMP);  {own fit for T=240-300K}
+<G0HCHO_O3P>     HCHO + O3P = HO2 + OH + CO                  : {%StTrG} 3.400e-11*EXP(-1600./TEMP);  {JPL(2011)}
+<G0HCHO_OH>      HCHO + OH = CO + H2O + H                    : {%StTrG} 5.500e-12*EXP(125./TEMP);  {JPL(2011)}
+<G0HCHO_HO2>     HCHO + HO2 = HOCH2OO                        : {%StTrG} 9.700e-15*EXP(625./TEMP);  {IUPAC(2012), JPL(2011) is 30% lower}
+<G0HCHO_NO3>     HCHO + NO3 = CO + HO2 + HNO3                : {%StTrG} 6.000e-13*EXP(-2058./TEMP);  {ref?}
+<G0CH3OOH_OH>    CH3OOH + OH = 0.7 CH3O2 + 0.3 OH + 0.3 HCHO + H2O : {%StTrG} 3.800e-12*EXP(200./TEMP);  {JPL(2011)}
+<G0HCOOH_OH>     HCOOH + OH = CO2 + HO2 + H2O                : {%StTrG} 4.000e-13;  {JPL(2011)}
+<G0HOCH2OO>      HOCH2OO = HCHO + HO2                        : {%StTrG} 2.400e+12*EXP(-7000./TEMP);  {CAM-CHEM (ref?)}
+<G0HOCH2OO_NO>   HOCH2OO + NO = HCOOH + NO2 + HO2            : {%StTrG} 2.600e-12*EXP(265./TEMP);  {CAM-CHEM (ref?)}
+<G0HOCH2OO_HO2>  HOCH2OO + HO2 = H2O + HCOOH                 : {%StTrG} 7.500e-13*EXP(700./TEMP);  {CAM-CHEM (ref?)}
+<G0HCN_OH>       HCN + OH = CO + NO + H2O                    : {%StTrG} 1.200e-13*EXP(-400./TEMP);  {JPL(2011), products: Tyndall}
+<G0CH3O2_NO2>    CH3O2 + NO2 {+M} = CH3O2NO2 {+M}              : {%StTrG} kNO2CH3O2;
+<G0CH3O2NO2>     CH3O2NO2 {+M} = CH3O2 + NO2 {+M}              : {%StTrG} kCH3O2NO2;  {user defined}
+
+// --------------------------------------------------------------------------------
+// SECTION  C2 oxidation
+// --------------------------------------------------------------------------------
+
+<G0C2H2_OH>      C2H2 + OH {+M} = 0.65 GLYOX + 0.65 OH + 0.35 HCOOH + 0.35 HO2 + 0.35 CO {+M} : {%StTrG} k_3rd(TEMP,cair,5.500e-30,0.,8.300e-13,-2.,0.6);  {JPL(2011)}
+<G0C2H4_OH>      C2H4 + OH {+M} = HOCH2CH2O2 {+M}              : {%StTrG} k_3rd(TEMP,cair,1.000e-28,4.5,7.500e-12,0.85,0.6);  {JPL(2011)}
+<G0C2H4_O3>      C2H4 + O3 = HCHO + 0.65 CO + 0.15 OH + 0.15 HO2 + 0.5 H2O + 0.35 HCOOH : {%StTrG} 9.100e-15*EXP(-2580./TEMP);  {IUPAC(2012)}
+<G0C2H6_OH>      C2H6 + OH = C2H5O2 + H2O                    : {%StTrG} 7.660e-12*EXP(-1020./TEMP);  {JPL(2011)}
+<G0C2H5OH_OH>    C2H5OH + OH = CH3CHO + HO2 + H2O            : {%StTrG} 3.350e-12*EXP(0./TEMP);  {JPL(2011)}
+<G0CH3CHO_OH>    CH3CHO + OH = CH3CO3 + H2O                  : {%StTrG} 4.630e-12*EXP(350./TEMP);  {JPL(2011)}
+<G0CH3CHO_NO3>   CH3CHO + NO3 = CH3CO3 + HNO3                : {%StTrG} 1.400e-12*EXP(-1900./TEMP);  {JPL(2011)}
+<G0CH3CO3H_OH>   CH3CO3H + OH = 0.5 CH3CO3 + H2O + 0.5 HCHO + 0.5 CO2 + 0.5 OH : {%StTrG} 1.000e-12;  {Orlando (p.c.) cacm: added OH in second channel 20140613}
+<G0C2H5O2_NO>    C2H5O2 + NO = CH3CHO + HO2 + NO2            : {%StTrG} 2.620e-12*EXP(373./TEMP);  {Orlando&Tyndall (2012)}
+<G0C2H5O2_HO2>   C2H5O2 + HO2 = C2H5OOH + O2                 : {%StTrG} 7.400e-13*EXP(700./TEMP);  {Orlando&Tyndall (2012)}
+<G0C2H5O2_CH3O2> C2H5O2 + CH3O2 = 0.7 HCHO + 0.8 CH3CHO + HO2 + 0.3 CH3OH + 0.2 C2H5OH : {%StTrG} 2.000e-13;  {Orlando (p.c.), products: Tyndall (p.c.)}
+<G0C2H5O2_CH3CO3> C2H5O2 + CH3CO3 = CH3CHO + HO2 + CH3O2 + CO2 : {%StTrG} 1.800e-12*EXP(500./TEMP);  {10% lower than CH3O2 + CH3CO3; Orlando&Tyndall (2012) only give k@298K}
+<G0C2H5O2_C2H5O2> C2H5O2 + C2H5O2 = 1.6 CH3CHO + 1.2 HO2 + 0.4 C2H5OH : {%StTrG} 7.600e-14;  {Orlando&Tyndall (2012)}
+<G0C2H5OOH_OH>   C2H5OOH + OH = 0.5 C2H5O2 + 0.5 CH3CHO + 0.5 OH + H2O : {%StTrG} 3.800e-12*EXP(200./TEMP);  {no data, analog to CH3OOH+OH}
+<G0CH3CO3_NO>    CH3CO3 + NO = CH3O2 + CO2 + NO2             : {%StTrG} 7.500e-12*EXP(290./TEMP);  {Orlando&Tyndall (2012)}
+<G0CH3CO3_NO2>   CH3CO3 + NO2 {+M} = {M+} PAN                  : {%StTrG} k_CH3CO3_NO2;
+<G0CH3CO3_HO2>   CH3CO3 + HO2 = 0.4 CH3CO3H + 0.2 CH3CO2H + 0.2 O3 + 0.4 CH3O2 + 0.4 OH + 0.4 CO2 : {%StTrG} 5.200e-13*EXP(980./TEMP);  {Orlando&Tyndall (2012)}
+<G0CH3CO3_CH3O2> CH3CO3 + CH3O2 = HCHO + 0.9 CH3O2 + 0.9 HO2 + 0.9 CO2 + 0.1 CH3CO2H : {%StTrG} 2.000e-12*EXP(500./TEMP);  {Orlando&Tyndall (2012)}
+<G0CH3CO3_CH3CO3> CH3CO3 + CH3CO3 = 2 CH3O2 + 2 CO2          : {%StTrG} 2.900e-12*EXP(500./TEMP);  {Orlando&Tyndall (2012)}
+<G0CH3CO2H_OH>   CH3CO2H + OH = CH3O2 + CO2 + H2O            : {%StTrG} 3.150e-14*EXP(920./TEMP);  {JPL(2011)}
+<G0PAN>          PAN {+M} = CH3CO3 + NO2 {+M}                  : {%StTrG} kPAN;  {user defined}
+<G0PAN_OH>       PAN + OH = CO2 + HCHO + NO3                 : {%StTrG} 4.000e-14;  {JPL(2011), includes implicit NO->NO2 conversion}
+<G0HOCH2CH2O2_NO> HOCH2CH2O2 + NO = 0.75 HOCH2CH2O + NO2 + 0.5 HCHO + 0.25 HO2 : {%StTrG} 4.200e-12*EXP(180./TEMP);  {CAM-CHEM  cacm: changed 20140613}
+<G0HOCH2CH2O2_HO2> HOCH2CH2O2 + HO2 = EOOH                   : {%StTrG} 7.500e-13*EXP(700./TEMP);
+<G0HOCH2CH2O2_CH3O2> HOCH2CH2O2 + CH3O2 = 0.5 HOCH2CH2O + 0.5 O2 + 0.5 HCHO + 0.5 HO2 + 0.5 CH3OH + 0.5 HOCH2CHO : {%StTrG} 4.000e-12*EXP(1000./TEMP);  {Tyndall (p.c.) cacm: There is a 2nd molecular channel in the EO2+CH3O2 reaction, giving HOCH2-CH2OH + CH2O, but I am happy to ignore (JO).}
+<G0HOCH2CH2O2_CH3CO3> HOCH2CH2O2 + CH3CO3 = CH3O2 + HOCH2CH2O + CO2 : {%StTrG} 1.000e-11;
+<G0HOCH2CH2O_O2> HOCH2CH2O + O2 = HO2 + HOCH2CHO             : {%StTrG} 1.000e-14;  {CAM-CHEM}
+<G0HOCH2CH2O>    HOCH2CH2O = 2 HCHO + HO2                    : {%StTrG} 1.600e+11*EXP(-4150./TEMP);  {CAM-CHEM}
+<G0GLYOX_OH>     GLYOX + OH = 0.6 HO2 + 1.2 CO + H2O + 0.4 HCOCO3 : {%StTrG} 3.100e-12*EXP(340./TEMP);  {MCM}
+<G0GLYOX_NO3>    GLYOX + NO3 = 0.6 HO2 + 1.2 CO + 0.4 HCOCO3 + HNO3 : {%StTrG} 2.500e-12;  {MIM2}
+<G0HOCH2CHO_OH>  HOCH2CHO + OH = 0.2 GLYOX + 0.2 HO2 + 0.8 HOCH2CO3 + H2O : {%StTrG} 1.000e-11;  {MIM2}
+<G0HOCH2CHO_NO3> HOCH2CHO + NO3 = HNO3 + HOCH2CO3            : {%StTrG} 1.440e-12*EXP(-1862./TEMP);  {MIM2}
+<G0HOCH2CO3_NO2> HOCH2CO3 + NO2 {+M} = CO2 + HCHO + HNO3 {+M}  : {%StTrG} k_3rd(TEMP,cair,2.700e-28,7.1,1.200e-11,0.9,0.6);  {Orlando&Tyndall (2012)}
+<G0HOCH2CO3_HO2> HOCH2CO3 + HO2 = 0.4 HOCH2CO3H + 0.2 HOCH2CO2H + 0.2 O3 + 0.4 CO2 + 0.4 OH + 0.4 HO2 + 0.4 HCHO : {%StTrG} 4.300e-13*EXP(1040./TEMP);  {J.O. cacm: changed 20140613}
+<G0HOCH2CO3_CH3O2> HOCH2CO3 + CH3O2 = 2 HCHO + CO2 + 2 HO2   : {%StTrG} 1.000e-11;  {MIM2}
+<G0HOCH2CO3_CH3CO3> HOCH2CO3 + CH3CO3 = CH3O2 + 2 CO2 + HO2 + HCHO : {%StTrG} 1.000e-11;  {MIM2}
+<G0HOCH2CO3_NO>  HOCH2CO3 + NO = HO2 + NO2 + HCHO + CO2      : {%StTrG} 8.100e-12*EXP(270./TEMP);  {MIM2}
+<G0HOCH2CO3_NO3> HOCH2CO3 + NO3 = HO2 + NO2 + HCHO + CO2     : {%StTrG} 4.000e-12;  {MIM2}
+<G0HOCH2CO2H_OH> HOCH2CO2H + OH = HCHO + HO2 + CO2 + H2O     : {%StTrG} 2.730e-12;  {MIM2}
+<G0HOCH2CO3H_OH> HOCH2CO3H + OH = H2O + HOCH2CO3             : {%StTrG} 6.190e-12;  {MIM2}
+<G0HCOCO3_CH3O2> HCOCO3 + CH3O2 = CO + 2 HO2 + CO2 + HCHO    : {%StTrG} 1.000e-11;  {MIM2}
+<G0HCOCO3_CH3CO3> HCOCO3 + CH3CO3 = CO + HO2 + CH3O2 + 2 CO2 : {%StTrG} 1.000e-11;  {MIM2}
+<G0HCOCO3_HO2>   HCOCO3 + HO2 = 0.7 HCOCO3H + 0.7 O2 + 0.3 HCOCO2H + 0.3 O3 : {%StTrG} 4.300e-13*EXP(1040./TEMP);  {MIM2}
+<G0HCOCO3_NO>    HCOCO3 + NO = CO + HO2 + NO2 + CO2          : {%StTrG} 8.100e-12*EXP(270./TEMP);  {MIM2}
+<G0HCOCO3_NO3>   HCOCO3 + NO3 = CO + HO2 + NO2 + CO2         : {%StTrG} 4.000e-12;  {MIM2}
+<G0HCOCO2H_OH>   HCOCO2H + OH = CO + HO2 + CO2 + H2O         : {%StTrG} 1.230e-11;  {MIM2}
+<G0HCOCO3H_OH>   HCOCO3H + OH = H2O + HCOCO3                 : {%StTrG} 1.580e-11;  {MIM2}
+<G0CH3CN_OH>     CH3CN + OH = H2O + HCHO + CO + NO2          : {%StTrG} 7.800e-13*EXP(-1050./TEMP);  {products: Tyndall}
+
+// --------------------------------------------------------------------------------
+// SECTION  C3 oxidation
+// --------------------------------------------------------------------------------
+
+<G0C3H6_OH>      C3H6 + OH {+M} = HYPROPO2 {+M}                : {%StTrG} k_3rd(TEMP,cair,8.000e-27,3.5,3.000e-11,0.,0.5);  {IUPAC 2006}
+<G0C3H6_O3>      C3H6 + O3 = 0.28 CH3O2 + 0.1 CH4 + 0.075 CH3CO2H + 0.56 CO + 0.075 HCOOH + 0.09 H2O2 + 0.28 HO2 + 0.2 CO2 + 0.545 CH3CHO + 0.545 HCHO + 0.36 OH : {%StTrG} 5.500e-15*EXP(-1880./TEMP);  {IUPAC 2006}
+<G0C3H6_NO3>     C3H6 + NO3 = PRONO3BO2                      : {%StTrG} 4.600e-13*EXP(-1156./TEMP);  {IUPAC 2006}
+<G0C3H8_OH>      C3H8 + OH = C3H7O2 + H2O                    : {%StTrG} 7.600e-12*EXP(-585./TEMP);  {IUPAC 2006}
+<G0CH3COCH3_OH>  CH3COCH3 + OH = CH3COCH2O2 + H2O            : {%StTrG} 1.33e-13+3.82e-11*EXP(-2000./TEMP);
+<G0C3H7O2_NO>    C3H7O2 + NO = 0.82 CH3COCH3 + NO2 + HO2 + 0.27 CH3CHO : {%StTrG} 2.900e-12*EXP(350./TEMP);  {Orlando&Tyndall, 2012, 0.27*CH3CHO for 0.18*CH3CH2CHO}
+<G0C3H7O2_HO2>   C3H7O2 + HO2 = C3H7OOH + O2                 : {%StTrG} 7.500e-13*EXP(700./TEMP);  {CAM-CHEM}
+<G0C3H7O2_CH3O2> C3H7O2 + CH3O2 = HCHO + 2 HO2 + 0.82 CH3COCH3 + 0.27 CH3CHO : {%StTrG} 3.750e-13*EXP(-40./TEMP);  {CAM-CHEM}
+<G0C3H7O2_CH3CO3> C3H7O2 + CH3CO3 = 0.82 CH3COCH3 + HO2 + 0.27 CH3CHO + CO2 + CH3O2 : {%StTrG} 1.000e-11;  {0.27*CH3CHO for 0.18*CH3CH2CHO}
+<G0C3H7OOH_OH>   C3H7OOH + OH = 0.41 CH3COCH3 + 0.5 OH + 0.5 C3H7O2 + 0.5 H2O + 0.135 CH3CHO : {%StTrG} 3.800e-12*EXP(200./TEMP);  {CAM-CHEM; J.O.: 1.5*CH3CHO as surrogate for propanal}
+<G0HYPROPO2_NO>  HYPROPO2 + NO = CH3CHO + HCHO + HO2 + NO2   : {%StTrG} 4.200e-12*EXP(180./TEMP);  {CAM-CHEM}
+<G0HYPROPO2_NO3> HYPROPO2 + NO3 = CH3CHO + HCHO + HO2 + NO2  : {%StTrG} 2.500e-12;  {MIM2}
+<G0HYPROPO2_HO2> HYPROPO2 + HO2 = HYPROPO2H + O2             : {%StTrG} 7.500e-13*EXP(700./TEMP);  {CAM-CHEM}
+<G0HYPROPO2_CH3O2> HYPROPO2 + CH3O2 = 0.5 CH3CHO + 1.25 HCHO + HO2 + 0.5 ACETOL + 0.25 CH3OH : {%StTrG} 8.300e-13;  {products: Tyndall (p.c.), CH3CH(OH)CH2OH goes to HYAC cacm: added CH2O 20140613}
+<G0HYPROPO2_CH3CO3> HYPROPO2 + CH3CO3 = CH3CHO + HCHO + HO2 + CH3O2 + CO2 : {%StTrG} 1.000e-11;
+<G0HYPROPO2H_OH> HYPROPO2H + OH = 0.5 HYPROPO2 + 0.5 ACETOL + 0.5 OH + H2O : {%StTrG} 3.800e-12*EXP(200./TEMP);  {CAM-CHEM}
+<G0ACETOL_OH>    ACETOL + OH = HO2 + MGLYOX + H2O            : {%StTrG} 3.000e-12;  {IUPAC 2006}
+<G0MGLYOX_OH>    MGLYOX + OH = CH3CO3 + CO + H2O             : {%StTrG} 8.400e-13*EXP(830./TEMP);  {CAM-CHEM}
+<G0MGLYOX_NO3>   MGLYOX + NO3 = CO + HNO3 + CH3CO3           : {%StTrG} 1.400e-12*EXP(-1860./TEMP);  {CAM-CHEM}
+<G0CH3COCH2O2_NO> CH3COCH2O2 + NO = CH3CO3 + HCHO + NO2      : {%StTrG} 2.900e-12*EXP(300./TEMP);  {CAM-CHEM}
+<G0CH3COCH2O2_HO2> CH3COCH2O2 + HO2 = 0.85 O2 + 0.85 HYPERACET + 0.15 HCHO + 0.15 CH3CO3 + 0.15 OH + 0.15 H2O : {%StTrG} 8.600e-13*EXP(700./TEMP);  {CAM-CHEM + MCM}
+<G0CH3COCH2O2_CH3O2> CH3COCH2O2 + CH3O2 = 0.3 CH3CO3 + 0.8 HCHO + 0.3 HO2 + 0.2 ACETOL + 0.5 MGLYOX + 0.5 CH3OH : {%StTrG} 7.100e-13*EXP(500./TEMP);  {CAM-CHEM}
+<G0CH3COCH2O2_CH3CO3> CH3COCH2O2 + CH3CO3 = CH3CO3 + HCHO + CH3O2 + CO2 : {%StTrG} 1.000e-11;
+<G0HYPERACET_OH> HYPERACET + OH = CH3COCH2O2 + H2O           : {%StTrG} 3.800e-12*EXP(200./TEMP);  {CAM-CHEM}
+<G0PRONO3BO2_NO> PRONO3BO2 + NO = 0.83 HO2 + 0.83 NOA + 0.17 HCHO + 0.17 CH3CHO + 1.17 NO2 : {%StTrG} 2.540e-12*EXP(360./TEMP);  {MIM2 + MCM3.2}
+<G0PRONO3BO2_NO3> PRONO3BO2 + NO3 = 0.83 HO2 + 0.83 NOA + 0.17 HCHO + 0.17 CH3CHO + 1.17 NO2 : {%StTrG} 2.500e-12;  {MIM2 + MCM3.2}
+<G0PRONO3BO2_HO2> PRONO3BO2 + HO2 = PR2O2HNO3                : {%StTrG} 1.320e-12*EXP(360./TEMP);  {MIM2}
+<G0PRONO3BO2_CH3O2> PRONO3BO2 + CH3O2 = 0.915 HO2 + 0.915 NOA + 0.835 HCHO + 0.085 CH3CHO + 0.25 CH3OH : {%StTrG} 1.000e-12;
+<G0PRONO3BO2_CH3CO3> PRONO3BO2 + CH3CO3 = 0.83 HO2 + 0.83 NOA + 0.17 HCHO + 0.17 CH3CHO + CH3O2 + CO2 : {%StTrG} 1.000e-11;
+<G0PR2O2HNO3_OH> PR2O2HNO3 + OH = 0.5 PRONO3BO2 + 0.5 NOA + 0.5 OH + H2O : {%StTrG} 7.000e-12;  {MIM2 (combined)}
+<G0NOA_OH>       NOA + OH = MGLYOX + NO2 + H2O               : {%StTrG} 1.300e-13;  {MIM2}
+
+// --------------------------------------------------------------------------------
+// SECTION  C4 oxidation
+// --------------------------------------------------------------------------------
+
+<G0BIGENE_OH>    BIGENE + OH = ENEO2                         : {%StTrG} 5.400e-11;  {CAM-CHEM}
+<G0MEK_OH>       MEK + OH = H2O + LMEKO2                     : {%StTrG} 2.300e-12*EXP(-170./TEMP);  {CAM-CHEM}
+<G0LMEKO2_NO_a>  LMEKO2 + NO = CH3CHO + CH3CO3 + NO2         : {%StTrG} 4.032e-12*EXP(180./TEMP);  {treated like MEKBO2 from MCM; A=4.200e-12*0.96 <-  4% nitrate yield as for MVKN}
+<G0LMEKO2_NO_b>  LMEKO2 + NO = MEKNO3                        : {%StTrG} 1.680e-13*EXP(180./TEMP);  {A=4.200e-12*0.04 <-  4% nitrate yield as for MVKN}
+<G0LMEKO2_HO2>   LMEKO2 + HO2 = LMEKOOH                      : {%StTrG} 7.500e-13*EXP(700./TEMP);  {CAM-CHEM}
+<G0LMEKO2_CH3O2> LMEKO2 + CH3O2 = 0.3 CH3CHO + 0.3 CH3CO3 + HCHO + 0.3 HO2 + 0.3 O2 + 0.5 BIACETOH + 0.5 CH3OH + 0.266 ACETOL : {%StTrG} 1.000e-12;  {Tyndall (p.c.) cacm: added CH2O to first and third channel 20140613}
+<G0LMEKO2_CH3CO3> LMEKO2 + CH3CO3 = CH3CHO + CH3CO3 + CH3O2 + CO2 : {%StTrG} 1.000e-11;
+<G0LMEKOOH_OH>   LMEKOOH + OH = H2O + LMEKO2                 : {%StTrG} 3.800e-12*EXP(200./TEMP);  {CAM-CHEM}
+<G0ENEO2_NO>     ENEO2 + NO = CH3CHO + 0.5 HCHO + 0.5 CH3COCH3 + HO2 + NO2 : {%StTrG} 4.200e-12*EXP(180./TEMP);  {CAM-CHEM}
+<G0ENEO2_HO2>    ENEO2 + HO2 = 1.333 HYPROPO2H + O2          : {%StTrG} 7.500e-13*EXP(700./TEMP);  {factor 4/3 to preserve carbon}
+<G0ENEO2_CH3O2>  ENEO2 + CH3O2 = 0.665 ACETOL + 0.5 CH3OH + 0.5 CH3CHO + 0.25 CH3COCH3 + 0.75 HCHO + HO2 : {%StTrG} 1.000e-12;  {products: Tyndall (p.c.)}
+<G0ENEO2_CH3CO3> ENEO2 + CH3CO3 = CH3CHO + 0.5 HCHO + 0.5 CH3COCH3 + HO2 + CH3O2 + CO2 : {%StTrG} 1.000e-11;
+<G0MACR_OH>      MACR + OH = 0.45 MACO3 + 0.55 MACRO2        : {%StTrG} 1.860e-11*EXP(175./TEMP);  {Tnydall (p.c.)}
+<G0MACR_O3>      MACR + O3 = 0.59 MGLYOX + 0.41 CH3CO3 + 0.82 CO + 0.41 HO2 + 0.82 OH + 0.033750 HCOOH + 0.556250 HCHO + 0.123750 H2O2 : {%StTrG} 1.360e-15*EXP(-2112./TEMP);
+<G0MACR_NO3>     MACR + NO3 = HNO3 + MACO3                   : {%StTrG} 2.880e-12*EXP(-1862./TEMP);
+<G0MACO3_CH3O2>  MACO3 + CH3O2 = 0.315 CH3CO3 + 0.585 CH3O2 + 0.585 CO + 1.9 HCHO + 0.9 CO2 + 0.9 HO2 + 0.1 MACO2H : {%StTrG} 1.000e-11;  {MCO3 is an acyl radical, therefore kRO2_CH3CO3}
+<G0MACO3_CH3CO3> MACO3 + CH3CO3 = HCHO + 0.35 CH3CO3 + 1.65 CH3O2 + 0.65 CO + 2 CO2 : {%StTrG} 1.000e-11;
+<G0MACO3_HO2>    MACO3 + HO2 = 0.44 OH + 0.154 CH3CO3 + 0.286 CH3O2 + 0.286 CO + 0.44 HCHO + 0.44 CO2 + 0.15 MACO2H + 0.15 O3 + 0.41 MACO3H + 0.41 O2 : {%StTrG} 4.300e-13*EXP(1040./TEMP);
+<G0MACO3_NO>     MACO3 + NO = HCHO + 0.35 CH3CO3 + 0.65 CH3O2 + 0.65 CO + NO2 + CO2 : {%StTrG} 8.700e-12*EXP(290./TEMP);
+<G0MACO3_NO3>    MACO3 + NO3 = HCHO + 0.35 CH3CO3 + 0.65 CH3O2 + 0.65 CO + NO2 + CO2 : {%StTrG} 4.000e-12;
+<G0MACO3_NO2>    MACO3 + NO2 {+M} = {M+} MPAN                  : {%StTrG} k_MACO3_NO2;
+<G0MACRO2_CH3O2> MACRO2 + CH3O2 = 0.75 CO + 0.75 ACETOL + HCHO + 1.5 HO2 + 0.25 MACROH + 0.25 O2 : {%StTrG} 9.200e-14;  {products: Tyndall (p.c.)}
+<G0MACRO2_CH3CO3> MACRO2 + CH3CO3 = 0.85 CO + 0.85 ACETOL + 0.15 HCHO + 0.15 MGLYOX + HO2 + CH3O2 + CO2 : {%StTrG} 1.000e-11;
+<G0MACRO2_NO_a>  MACRO2 + NO = NO2 + 0.85 CO + 0.85 ACETOL + HO2 + 0.15 HCHO + 0.15 MGLYOX : {%StTrG} 2.464e-12*EXP(360./TEMP);  {A=2.54e-12*0.97 <- 3% MACRNO3-yield inferred from HYAC 42% yield at high-NO from Crounse et al. 2011 Tyndall (p.c.)}
+<G0MACRO2_NO_b>  MACRO2 + NO = MACRNO3                         : {%StTrG} 7.620e-14*EXP(360./TEMP);  {A=2.54e-12*0.03 <- 3% MACRNO3-yield inferred from HYAC 42% yield at high-NO from Crounse et al. 2011 Tyndall (p.c.)}
+<G0MACRO2_NO3>   MACRO2 + NO3 = 0.85 CO + 0.85 ACETOL + 0.15 HCHO + 0.15 MGLYOX + HO2 + NO2 : {%StTrG} 2.500e-12;
+<G0MACRO2_HO2>   MACRO2 + HO2 = 0.6 MACROOH + 0.4 CO + 0.4 ACETOL + 0.4 HO2 + 0.4 OH : {%StTrG} 1.820e-13*EXP(1300./TEMP);
+<G0MACRO2>       MACRO2 = ACETOL + CO + OH                   : {%StTrG} 2.900e+07*EXP(-5297./TEMP);  {Isomerisation according to Crounse et al., 2012}
+<G0MACROOH_OH>   MACROOH + OH = ACETOL + CO + OH + H2O       : {%StTrG} 1.800e-11;
+<G0MACROH_OH>    MACROH + OH = ACETOL + CO2 + HO2 + H2O      : {%StTrG} 1.800e-11;
+<G0MPAN>         MPAN {+M} = MACO3 + NO2 {+M}                  : {%StTrG} kMPAN;  {usrrxt as in MOZ}
+<G0MPAN_OH>      MPAN + OH = ACETOL + CO + NO2               : {%StTrG} 3.200e-11;  {rate: Orlando et al.(2002)}
+<G0MACO2H_OH>    MACO2H + OH = CH3CO3 + HCHO + CO2 + H2O     : {%StTrG} 1.510e-11;  {products should be pyruvic acid+CH2O+HO2}
+<G0MACO3H_OH>    MACO3H + OH = H2O + MACO3                   : {%StTrG} 1.870e-11;
+<G0MVK_OH>       MVK + OH = LHMVKABO2                        : {%StTrG} 4.130e-12*EXP(452./TEMP);
+<G0MVK_O3>       MVK + O3 = 0.85 MGLYOX + 0.85 HCOOH + 0.15 CH3CO3 + 0.15 OH + 0.15 CO + 0.15 HCHO : {%StTrG} 7.510e-16*EXP(-1521./TEMP);  {products according to IUPAC(2012)}
+<G0LHMVKABO2_CH3O2> LHMVKABO2 + CH3O2 = 0.9 HCHO + 0.35 HOCH2CHO + 0.65 HO2 + 0.35 CH3CO3 + 0.175 BIACETOH + 0.25 CH3OH + 0.25 MACROH + 0.15 MGLYOX + 0.075 CO2H3CHO : {%StTrG} 1.000e-12;  {products: Tyndall (p.c.)}
+<G0LHMVKABO2_CH3CO3> LHMVKABO2 + CH3CO3 = 0.3 MGLYOX + 0.7 HOCH2CHO + 0.7 CH3CO3 + 0.3 HCHO + 0.3 HO2 + CH3O2 + CO2 : {%StTrG} 1.000e-11;
+<G0LHMVKABO2_HO2> LHMVKABO2 + HO2 = 0.34 LHMVKABOOH + 0.66 CH3CO3 + 0.66 OH + 0.66 HOCH2CHO : {%StTrG} 1.820e-13*EXP(1300./TEMP);  {Praske et al. J. Phys. Chem. A 2015}
+<G0LHMVKABO2_NO_a> LHMVKABO2 + NO = NO2 + 0.3 HCHO + 0.3 MGLYOX + 0.3 HO2 + 0.7 CH3CO3 + 0.7 HOCH2CHO : {%StTrG} 2.438e-12*EXP(360./TEMP);  {A=2.54e-12*0.96 <- 4% nitrate yield Praske et al. J. Phys. Chem. A 2015}
+<G0LHMVKABO2_NO_b> LHMVKABO2 + NO = MVKN                     : {%StTrG} 1.020e-13*EXP(360./TEMP);  {A=2.54e-12*0.04 <- 4% nitrate yield Praske et al. J. Phys. Chem. A 2015}
+<G0LHMVKABO2_NO3> LHMVKABO2 + NO3 = 0.3 MGLYOX + 0.7 HOCH2CHO + 0.7 CH3CO3 + 0.3 HCHO + 0.3 HO2 + NO2 : {%StTrG} 2.500e-12;
+<G0MVKN_OH>      MVKN + OH = HO2 + MGLYOX + CO2 + NO2 + H2O  : {%StTrG} 5.600e-12;  {k from Paulot et al.2009; simplified products}
+<G0MACRNO3_OH>     MACRNO3 + OH = ACETOL + CO2 + NO2 + H2O       : {%StTrG} 5.000e-11;  {k from Paulot et al.2009; simplified products}
+<G0LHMVKABOOH_OH> LHMVKABOOH + OH = 0.3 CO2H3CHO + OH + H2O + 0.7 BIACETOH : {%StTrG} 4.500e-12;
+<G0CO2H3CHO_OH>  CO2H3CHO + OH = CO2H3CO3 + H2O              : {%StTrG} 2.450e-11;
+<G0CO2H3CHO_NO3> CO2H3CHO + NO3 = CO2H3CO3 + HNO3            : {%StTrG} 5.760e-12*EXP(-1862./TEMP);
+<G0CO2H3CO3_CH3O2> CO2H3CO3 + CH3O2 = MGLYOX + 2 HO2 + CO2 + HCHO : {%StTrG} 1.000e-11;  {products: Tyndall (p.c.)}
+<G0CO2H3CO3_CH3CO3> CO2H3CO3 + CH3CO3 = HO2 + MGLYOX + CH3O2 + 2 CO2 : {%StTrG} 1.000e-11;
+<G0CO2H3CO3_HO2> CO2H3CO3 + HO2 = 0.6 CO2H3CO3H + 0.4 CO2 + 0.4 OH + 0.4 HO2 + 0.4 MGLYOX : {%StTrG} 4.300e-13*EXP(1040./TEMP);
+<G0CO2H3CO3_NO>  CO2H3CO3 + NO = HO2 + MGLYOX + NO2 + CO2    : {%StTrG} 8.100e-12*EXP(270./TEMP);
+<G0CO2H3CO3_NO3> CO2H3CO3 + NO3 = HO2 + MGLYOX + NO2 + CO2   : {%StTrG} 4.000e-12;
+<G0CO2H3CO3H_OH> CO2H3CO3H + OH = CO2H3CO3 + H2O             : {%StTrG} 1.000e-12;  {Orlando (p.c.)}
+<G0MALO2_NO2>    MALO2 + NO2 {+M} = 0.8 LC5PAN1719 {+M}        : {%StTrG} k_3rd(TEMP,cair,2.700e-28,7.1,1.200e-11,0.9,0.6);  {Orlando&Tyndall (2012) - Same as k(CH3CO3 + NO2); LC5PAN as a surrogate}
+<G0MALO2_NO>     MALO2 + NO = 0.4 GLYOX + HO2 + 0.4 CO + 0.4 CO2 + NO2 + 0.6 CO2H3CHO : {%StTrG} 7.500e-12*EXP(290./TEMP);  {products: Tyndall (p.c.), use CO2H3CHO in lieu of GUNK}
+<G0MALO2_HO2>    MALO2 + HO2 = 0.16 GLYOX + HO2 + 0.16 CO + 0.16 CO2 + 0.16 OH + 0.84 CO2H3CHO : {%StTrG} 4.300e-13*EXP(1040./TEMP);
+<G0MALO2_CH3O2>  MALO2 + CH3O2 = 0.4 GLYOX + 2 HO2 + 0.4 CO + 0.4 CO2 + 0.6 CO2H3CHO + HCHO : {%StTrG} 1.000e-12;  {products: Tyndall (p.c.)}
+<G0MALO2_CH3CO3> MALO2 + CH3CO3 = 0.4 GLYOX + HO2 + 0.4 CO + 1.4 CO2 + 0.6 CO2H3CHO + CH3O2 : {%StTrG} 1.000e-11;
+<G0MDIALO2_HO2>  MDIALO2 + HO2 = 0.4 OH + 0.332 HO2 + 0.068 MGLYOX + 0.136 CO + 0.068 CH3O2 + 0.068 GLYOX : {%StTrG} 4.300e-13*EXP(1040./TEMP);
+<G0MDIALO2_NO>   MDIALO2 + NO = NO2 + 0.83 HO2 + 0.17 MGLYOX + 0.34 CO + 0.17 CH3O2 + 0.17 GLYOX : {%StTrG} 7.500e-12*EXP(290./TEMP);
+<G0MDIALO2_NO2>  MDIALO2 + NO2 {+M} = M                       : {%StTrG} k_3rd(TEMP,cair,2.700e-28,7.1,1.200e-11,0.9,0.6);  {Orlando&Tyndall (2012) - Same as k(CH3CO3 + NO2)}
+<G0MDIALO2_CH3O2> MDIALO2 + CH3O2 = 1.83 HO2 + 0.17 MGLYOX + 0.34 CO + 0.17 CH3O2 + 0.17 GLYOX + HCHO : {%StTrG} 1.000e-12;
+<G0MDIALO2_CH3CO3> MDIALO2 + CH3CO3 = 0.83 HO2 + 0.17 MGLYOX + 0.34 CO + 1.17 CH3O2 + 0.17 GLYOX + CO2 : {%StTrG} 1.000e-11;
+
+// --------------------------------------------------------------------------------
+// SECTION  C5 oxidation
+// --------------------------------------------------------------------------------
+
+<G0BIGALKANE_OH> BIGALKANE + OH = ALKO2 + H2O                : {%StTrG} 3.500e-12;
+<G0C5H8_OH>      C5H8 + OH = 0.4 LISOPACO2 + 0.35 ISOPBO2 + 0.25 ISOPDO2 : {%StTrG} 2.700e-11*EXP(390./TEMP);  {Tyndall (p.c.); MCM3.2 has yields .25, .5, .25}
+<G0C5H8_O3>      C5H8 + O3 = 0.051 CH3O2 + 0.1575 CH3CO3 + 0.054 LHMVKABO2 + 0.522 CO + 0.068750 HCOOH + 0.11 H2O2 + 0.324750 MACR + 0.1275 C3H6 + 0.2625 HO2 + 0.255 CO2 + 0.749750 HCHO + 0.041250 MACO2H + 0.27 OH + 0.244 MVK : {%StTrG} 7.860e-15*EXP(-1913./TEMP);
+<G0C5H8_NO3>     C5H8 + NO3 = NISOPO2                        : {%StTrG} 3.030e-12*EXP(-446./TEMP);
+<G0MBO_OH>       MBO + OH = MBOO2                            : {%StTrG} 8.100e-12*EXP(610./TEMP);
+<G0MBO_O3>       MBO + O3 = 0.35 CO + 0.5 HCHO + 0.1 CH3COCH3 + 0.9 IBUTALOH + 0.25 HCOOH + 0.06 HO2 + 0.06 OH : {%StTrG} 1.000e-17;
+<G0MBO_NO3>      MBO + NO3 = MBONO3O2                        : {%StTrG} 4.600e-14*EXP(-400./TEMP);
+<G0ALKO2_NO_a>   ALKO2 + NO = 0.4 CH3CHO + 0.25 HCHO + 0.25 CH3COCH3 + HO2 + 0.8 MEK + NO2 : {%StTrG} 3.780e-12*EXP(180./TEMP);  {A=4.200e-12*0.9 <- 10% ALKNO3-yield,  products ???}
+<G0ALKO2_NO_b>   ALKO2 + NO = ALKNO3                         : {%StTrG} 4.200e-13*EXP(180./TEMP);  {10% ALKNO3-yield, products ???}
+<G0ALKO2_HO2>    ALKO2 + HO2 = ALKOOH                        : {%StTrG} 7.500e-13*EXP(700./TEMP);
+<G0ALKO2_CH3O2>  ALKO2 + CH3O2 = 0.3 CH3CHO + 1.1875 HCHO + 0.1875 CH3COCH3 + 0.75 HO2 + 0.6 MEK + 0.25 ALKOH : {%StTrG} 1.000e-12;  {products ???}
+<G0ALKO2_CH3CO3> ALKO2 + CH3CO3 = 0.4 CH3CHO + 0.25 HCHO + 0.25 CH3COCH3 + HO2 + 0.8 MEK + CH3O2 + CO2 : {%StTrG} 1.000e-11;
+<G0ALKOOH_OH>    ALKOOH + OH = ALKO2 + H2O                   : {%StTrG} 3.800e-12*EXP(200./TEMP);
+<G0ALKOH_OH>     ALKOH + OH = 1.25 MEK + HO2 + H2O           : {%StTrG} 5.000e-12;  {Tyndall (p.c.), MEK yield to account for C}
+<G0ALKNO3_OH>    ALKNO3 + OH = 0.4 CH3CHO + 0.25 HCHO + 0.25 CH3COCH3 + HO2 + 0.8 MEK + NO2 : {%StTrG} 2.000e-12;
+<G0LISOPACO2_HO2> LISOPACO2 + HO2 = LISOPACOOH               : {%StTrG} 2.050e-13*EXP(1300./TEMP);  {add OH channel}
+<G0LISOPACO2_NO_a> LISOPACO2 + NO = HO2 + 0.977 LHC4ACCHO + NO2 + 0.0277 MGLYOX + 0.0277 GLYOX + 0.0277 ACETOL + 0.0277 HOCH2CHO : {%StTrG} 2.235e-12*EXP(360./TEMP);  {A=2.54e-12*0.88 <- average 12% nitrate yield from Paulot et al. 2009;  Tyndall (p.c.); direct GLYOXAL channel from lab meas. 2% over total -> 0.02/0.88 = 0.0227}
+<G0LISOPACO2_NO_b> LISOPACO2 + NO = LISOPACNO3               : {%StTrG} 3.050e-13*EXP(360./TEMP);  {A=2.54e-12*0.12 <- average 12% nitrate yield from Paulot et al. 2009;}
+<G0LISOPACO2_NO3> LISOPACO2 + NO3 = HO2 + LHC4ACCHO + NO2    : {%StTrG} 2.500e-12;
+<G0LISOPACO2_CH3O2> LISOPACO2 + CH3O2 = 0.75 HCHO + 0.75 LHC4ACCHO + 0.25 CH3OH + 0.25 ISOPAOH + HO2 : {%StTrG} 2.400e-12;  {products: Tyndall (p.c.)}
+<G0LISOPACO2_CH3CO3> LISOPACO2 + CH3CO3 = HO2 + LHC4ACCHO + CH3O2 + CO2 : {%StTrG} 1.000e-11;
+<G0LISOPACO2>    LISOPACO2 = HO2 + HPALD                     : {%StTrG} 4.100e+08*EXP(-7700./TEMP);  {Bulk isomerization rate constant for all ISOPO2 by Crounse et al. (2011) given as k(ISOPO2 + HO2)*2E21*EXP(-9000/temp) => k = 2.05e-13*EXP(1300./temp)*2E21*EXP(-9000/temp) = 4.1e8*EXP(-7700./temp) cacm: equivalent to 12 ppt NO at 298K}
+<G0ISOPBO2>      ISOPBO2 = HO2 + HPALD                       : {%StTrG} 4.100e+08*EXP(-7700./TEMP);  {see note of [LISOPACO2]}
+<G0ISOPDO2>      ISOPDO2 = HO2 + HPALD                       : {%StTrG} 4.100e+08*EXP(-7700./TEMP);  {see note of [LISOPACO2]}
+<G0LISOPACOOH_OH> LISOPACOOH + OH = 0.415 LIEPOX + 0.415 OH + 0.415 LISOPOOHO2 + 0.14 LHC4ACCHO + 0.03 H2O + 0.03 LISOPACO2 : {%StTrG} 1.540e-10;  {k from MCMv3.3.1 and OH-addition branching ratios estimated with site-specific SAR by Peeters et al. J. Phys. Chem. A (2007) and H-abstraction channel assumed to be like the one for CH3OOH + OH reaction and abstraction from the alpha-hydroperoxyl allyl hydrogen estimated by SAR of MOM (Taraborrelli in prep.) being 2.12E-11}
+<G0ISOPAOH_OH>   ISOPAOH + OH = LISOPOOHO2                   : {%StTrG} 9.300e-11;  {OH-addition to double bond and products approximated with the one from ISOPOOH + OH reaction leading to similar SOA precursors.}
+<G0LISOPACNO3_OH> LISOPACNO3 + OH = LISOPNO3O2               : {%StTrG} 6.000e-11;
+<G0LIEPOX_OH>    LIEPOX + OH = 0.29 IEC1O2 + 0.71 LIECHO + 0.71 HO2 + H2O : {%StTrG} 1.500e-11;  {MCM3.2}
+<G0LIECHO_OH>    LIECHO + OH = H2O + LIECO3                  : {%StTrG} 1.760e-11;  {MCM3.2}
+<G0LIECHO_NO3>   LIECHO + NO3 = HNO3 + LIECO3                : {%StTrG} 1.050e-11*EXP(-1860./TEMP);  {MCM3.2}
+<G0LIECO3_HO2>   LIECO3 + HO2 = 0.6 LIECO3H + 0.4 CO2 + 0.4 OH + 0.25 LHMVKABO2 + 0.15 MACRO2 : {%StTrG} 5.200e-13*EXP(980./TEMP);  {MCM3.2}
+<G0LIECO3_NO>    LIECO3 + NO = 0.6 LHMVKABO2 + 0.4 MACRO2 + NO2 + CO2 : {%StTrG} 7.500e-12*EXP(290./TEMP);  {MCM3.2}
+<G0LIECO3_NO3>   LIECO3 + NO3 = 0.6 LHMVKABO2 + 0.4 MACRO2 + NO2 + CO2 : {%StTrG} 4.000e-12;  {MCM3.2}
+<G0LIECO3H_OH>   LIECO3H + OH = H2O + LIECO3                 : {%StTrG} 1.040e-11;  {MCM3.2}
+<G0IEC1O2_HO2>   IEC1O2 + HO2 = LIECO3H                      : {%StTrG} 2.050e-13*EXP(1300./TEMP);  {MCM3.2 plus shortcut}
+<G0IEC1O2_NO>    IEC1O2 + NO = BIACETOH + NO2 + HCHO + HO2   : {%StTrG} 2.700e-12*EXP(360./TEMP);  {MCM3.2}
+<G0IEC1O2_NO3>   IEC1O2 + NO3 = BIACETOH + NO2 + HCHO + HO2  : {%StTrG} 2.300e-12;  {MCM3.2}
+<G0ISOPBO2_HO2>  ISOPBO2 + HO2 = ISOPBOOH                    : {%StTrG} 2.050e-13*EXP(1300./TEMP);
+<G0ISOPBO2_NO_a> ISOPBO2 + NO = HCHO + MVK + HO2 + NO2       : {%StTrG} 2.235e-12*EXP(360./TEMP);  {A=2.54e-12*0.88 <- average 12% nitrate yield from Paulot et al. 2009;}
+<G0ISOPBO2_NO_b> ISOPBO2 + NO = ISOPBNO3                     : {%StTrG} 3.050e-13*EXP(360./TEMP);  {A=2.54e-12*0.12 <- average 12% nitrate yield from Paulot et al. 2009;}
+<G0ISOPBO2_NO3>  ISOPBO2 + NO3 = HCHO + MVK + HO2 + NO2      : {%StTrG} 2.500e-12;
+<G0ISOPBO2_CH3O2> ISOPBO2 + CH3O2 = 0.75 MVK + 1.75 HCHO + 1.5 HO2 + 0.25 ISOPBOH : {%StTrG} 8.000e-13;  {products: Tyndall (p.c.)}
+<G0ISOPBO2_CH3CO3> ISOPBO2 + CH3CO3 = HCHO + MVK + HO2 + CH3O2 + CO2 : {%StTrG} 1.000e-11;
+<G0ISOPBOOH_OH>  ISOPBOOH + OH = 0.63 LIEPOX + 0.63 OH + 0.12 LISOPOOHO2 + 0.15 H2O + 0.15 ISOPBO2 : {%StTrG} 7.500e-11;  {St. Clair et al. 2015}
+<G0ISOPBOH_OH>   ISOPBOH + OH = LISOPOOHO2                   : {%StTrG} 3.850e-11;  {OH-addition to double bond and products approximated with the one from ISOPOOH + OH reaction leading to similar SOA precursors.}
+<G0ISOPBNO3_OH>  ISOPBNO3 + OH = LISOPNO3O2                  : {%StTrG} 1.360e-11;  {products changed 20140617}
+<G0ISOPDO2_HO2>  ISOPDO2 + HO2 = ISOPDOOH                    : {%StTrG} 2.050e-13*EXP(1300./TEMP);
+<G0ISOPDO2_NO_a> ISOPDO2 + NO = HCHO + MACR + HO2 + NO2      : {%StTrG} 2.235e-12*EXP(360./TEMP);  {A=2.54e-12*0.88 <- average 12% nitrate yield from Paulot et al. 2009;}
+<G0ISOPDO2_NO_b> ISOPDO2 + NO = ISOPDNO3                     : {%StTrG} 3.050e-13*EXP(360./TEMP);  {A=2.54e-12*0.12 <- average 12% nitrate yield from Paulot et al. 2009;}
+<G0ISOPDO2_NO3>  ISOPDO2 + NO3 = HCHO + MACR + HO2 + NO2     : {%StTrG} 2.500e-12;
+<G0ISOPDO2_CH3O2> ISOPDO2 + CH3O2 = 0.5 MACR + 1.25 HCHO + HO2 + 0.25 CH3OH + 0.25 HCOC5 + 0.25 ISOPDOH : {%StTrG} 2.900e-12;  {products: Tyndall (p.c.)}
+<G0ISOPDO2_CH3CO3> ISOPDO2 + CH3CO3 = HCHO + MACR + HO2 + CH3O2 + CO2 : {%StTrG} 1.000e-11;
+<G0ISOPDOOH_OH>  ISOPDOOH + OH = 0.79 LIEPOX + 0.79 OH + 0.14 LISOPOOHO2 + 0.07 H2O + 0.07 ISOPDO2 : {%StTrG} 1.180e-10;  {St. Clair et al. 2015}
+<G0ISOPDOH_OH>   ISOPDOH + OH = LISOPOOHO2                   : {%StTrG} 7.380e-11;  {OH-addition to double bond and products approximated with the one from ISOPOOH + OH reaction leading to similar SOA precursors.}
+<G0ISOPDNO3_OH>  ISOPDNO3 + OH = LISOPNO3O2                  : {%StTrG} 6.100e-11;  {OH-addition to double bond}
+<G0NISOPO2_HO2>  NISOPO2 + HO2 = NISOPOOH                    : {%StTrG} 2.050e-13*EXP(1300./TEMP);
+<G0NISOPO2_NO>   NISOPO2 + NO = HO2 + NC4CHO + NO2           : {%StTrG} 2.540e-12*EXP(360./TEMP);
+<G0NISOPO2_NO3>  NISOPO2 + NO3 = HO2 + NC4CHO + NO2          : {%StTrG} 2.500e-12;
+<G0NISOPO2_CH3O2> NISOPO2 + CH3O2 = 0.75 HCHO + 0.75 NC4CHO + HO2 + 0.25 CH3OH + 0.25 LISOPACNO3 : {%StTrG} 1.300e-12;  {products: Tyndall (p.c.)}
+<G0NISOPO2_CH3CO3> NISOPO2 + CH3CO3 = HO2 + NC4CHO + CH3O2 + CO2 : {%StTrG} 1.000e-11;
+<G0NISOPOOH_OH>  NISOPOOH + OH = NC4CHO + OH + H2O           : {%StTrG} 1.030e-10;
+<G0NC4CHO_OH>    NC4CHO + OH = H2O + LNISO3                  : {%StTrG} 4.160e-11;
+<G0NC4CHO_O3>    NC4CHO + O3 = 0.445 NO2 + 0.89 CO + 0.075625 H2O2 + 0.034375 HCOCO2H + 0.555 NOA + 0.445 HO2 + 0.520625 GLYOX + 0.89 OH + 0.445 MGLYOX : {%StTrG} 2.400e-17;
+<G0NC4CHO_NO3>   NC4CHO + NO3 = HNO3 + LNISO3                : {%StTrG} 6.120e-12*EXP(-1862./TEMP);
+<G0LNISO3_HO2>   LNISO3 + HO2 = 0.8 LNISOOH + 0.2 NOA + 0.2 OH + 0.2 CO2 + 0.2 CO + 0.2 HO2 : {%StTrG} 1.930e-13*EXP(1300./TEMP);  {products: Tyndall (p.c.)}
+<G0LNISO3_NO>    LNISO3 + NO = NOA + 0.5 GLYOX + 0.5 CO + HO2 + NO2 + 0.5 CO2 : {%StTrG} 4.270e-12*EXP(360./TEMP);
+<G0LNISO3_NO3>   LNISO3 + NO3 = NOA + 0.5 GLYOX + 0.5 CO + HO2 + NO2 + 0.5 CO2 : {%StTrG} 3.302e-12*EXP(360./TEMP);
+<G0LNISO3_CH3O2> LNISO3 + CH3O2 = 0.375 GLYOX + 0.875 NOA + HCHO + 1.75 HO2 + 0.625 CO2 + 0.0625 MACRNO3 + 0.0625 MVKN + 0.5 CO : {%StTrG} 1.000e-12;  {products: Tyndall (p.c.); previous RONO2 split into 50% MACRNO3 + 50% MVKN}
+<G0LNISO3_CH3CO3> LNISO3 + CH3CO3 = NOA + 0.5 GLYOX + 0.5 CO + HO2 + CH3O2 + 1.5 CO2 : {%StTrG} 1.000e-11;
+<G0LNISOOH_OH>   LNISOOH + OH = H2O + LNISO3                 : {%StTrG} 2.650e-11;
+<G0LHC4ACCHO_OH> LHC4ACCHO + OH = 0.52 LC578O2 + 0.48 LHC4ACCO3 + H2O : {%StTrG} 4.520e-11;
+<G0LHC4ACCHO_O3> LHC4ACCHO + O3 = 0.2225 CH3CO3 + 0.89 CO + 0.017188 HOCH2CO2H + 0.075625 H2O2 + 0.017188 HCOCO2H + 0.2775 ACETOL + 0.6675 HO2 + 0.260313 GLYOX + 0.2225 HCHO + 0.89 OH + 0.260313 HOCH2CHO + 0.5 MGLYOX : {%StTrG} 2.400e-17;
+<G0LHC4ACCHO_NO3> LHC4ACCHO + NO3 = HNO3 + LHC4ACCO3         : {%StTrG} 6.120e-12*EXP(-1862./TEMP);
+<G0LC578O2_NO>   LC578O2 + NO = 0.25 MGLYOX + 0.25 HOCH2CHO + 0.25 GLYOX + 0.25 ACETOL + 0.25 CO + 0.25 MACROH + 0.25 HCHO + 0.25 CO2H3CHO + HO2 + NO2 : {%StTrG} 2.540e-12*EXP(360./TEMP);  {products: Tyndall (p.c.)}
+<G0LC578O2_NO3>  LC578O2 + NO3 = 0.25 MGLYOX + 0.25 HOCH2CHO + 0.25 GLYOX + 0.25 ACETOL + 0.25 CO + 0.25 MACROH + 0.25 HCHO + 0.25 CO2H3CHO + HO2 + NO2 : {%StTrG} 2.500e-12;  {products: Tyndall (p.c.)}
+<G0LC578O2_HO2>  LC578O2 + HO2 = LC578OOH                    : {%StTrG} 2.050e-13*EXP(1300./TEMP);  {add OH channel}
+<G0LC578O2_CH3O2> LC578O2 + CH3O2 = 0.156250 MGLYOX + 0.156250 HOCH2CHO + 0.156250 GLYOX + 0.156250 ACETOL + 0.156250 CO + 0.468750 MACROH + 1.031250 HCHO + 0.3125 CO2H3CHO + 1.25 HO2 + 0.125 CH3OH : {%StTrG} 1.000e-12;  {products: Tyndall (p.c.)}
+<G0LC578O2_CH3CO3> LC578O2 + CH3CO3 = 0.25 MGLYOX + 0.25 HOCH2CHO + 0.25 GLYOX + 0.25 ACETOL + 0.25 CO + 0.25 MACROH + 0.25 HCHO + 0.25 CO2H3CHO + CH3O2 + CO2 : {%StTrG} 1.000e-11;
+<G0LC578OOH_OH>  LC578OOH + OH = H2O + LC578O2               : {%StTrG} 3.160e-11;
+<G0LHC4ACCO3>    LHC4ACCO3 = HO2 + PACALD                    : {%StTrG} 4.100e+08*EXP(-7700./TEMP);  {see note of [LISOPACO2]}
+<G0LHC4ACCO3_CH3O2> LHC4ACCO3 + CH3O2 = HCHO + 0.1 LHC4ACCO2H + 0.45 HOCH2CHO + 0.45 ACETOL + 0.45 CH3CO3 + 0.45 CO + 0.45 HO2 + 0.9 CO2 : {%StTrG} 1.000e-11;  {products: Tyndall (p.c.)}
+<G0LHC4ACCO3_CH3CO3> LHC4ACCO3 + CH3CO3 = 0.5 ACETOL + 0.5 HOCH2CHO + 0.5 CH3CO3 + 0.5 CO + 0.5 HO2 + CH3O2 + 2 CO2 : {%StTrG} 1.000e-11;
+<G0LHC4ACCO3_HO2> LHC4ACCO3 + HO2 = 0.4 LHC4ACCO3H + 0.2 LHC4ACCO2H + 0.2 O3 + 0.4 CO2 + 0.4 OH + 0.2 ACETOL + 0.2 HOCH2CHO + 0.2 CH3CO3 + 0.2 CO + 0.2 HO2 : {%StTrG} 4.300e-13*EXP(1040./TEMP);
+<G0LHC4ACCO3_NO> LHC4ACCO3 + NO = 0.5 ACETOL + 0.5 HOCH2CHO + 0.5 CH3CO3 + 0.5 CO + 0.5 HO2 + NO2 + CO2 : {%StTrG} 8.100e-12*EXP(270./TEMP);
+<G0LHC4ACCO3_NO3> LHC4ACCO3 + NO3 = 0.5 ACETOL + 0.5 HOCH2CHO + 0.5 CH3CO3 + 0.5 CO + 0.5 HO2 + NO2 + CO2 : {%StTrG} 4.000e-12;
+<G0LHC4ACCO3_NO2> LHC4ACCO3 + NO2 {+M} = LC5PAN1719 {+M}       : {%StTrG} k_3rd(TEMP,cair,2.700e-28,7.1,1.200e-11,0.9,0.3);
+<G0LHC4ACCO2H_OH> LHC4ACCO2H + OH = 0.5 ACETOL + 0.5 HOCH2CHO + 0.5 CH3CO3 + 0.5 CO + 0.5 HO2 + CO2 + H2O : {%StTrG} 2.520e-11;
+<G0LHC4ACCO3H_OH> LHC4ACCO3H + OH = H2O + LHC4ACCO3          : {%StTrG} 2.880e-11;
+<G0LC5PAN1719>   LC5PAN1719 {+M} = LHC4ACCO3 + NO2 {+M}        : {%StTrG} kPAN;
+<G0LC5PAN1719_OH> LC5PAN1719 + OH = CO + MACROH + NO2        : {%StTrG} 2.520e-11;
+<G0HCOC5_OH>     HCOC5 + OH = C59O2                          : {%StTrG} 3.810e-11;
+<G0C59O2_CH3O2>  C59O2 + CH3O2 = 0.75 HOCH2CO3 + 0.75 ACETOL + HCHO + 0.75 HO2 + 0.3125 MACROH : {%StTrG} 1.000e-12;  {Tyndall (p.c.)}
+<G0C59O2_CH3CO3> C59O2 + CH3CO3 = ACETOL + HOCH2CO3 + CH3O2 + CO2 : {%StTrG} 1.000e-11;
+<G0C59O2_NO>     C59O2 + NO = ACETOL + HOCH2CO3 + NO2        : {%StTrG} 2.540e-12*EXP(360./TEMP);
+<G0C59O2_NO3>    C59O2 + NO3 = ACETOL + HOCH2CO3 + NO2       : {%StTrG} 2.500e-12;
+<G0C59O2_HO2>    C59O2 + HO2 = C59OOH                        : {%StTrG} 2.050e-13*EXP(1300./TEMP);
+<G0C59OOH_OH>    C59OOH + OH = C59O2 + H2O                   : {%StTrG} 9.700e-12;
+<G0MBOO2_NO>     MBOO2 + NO = HO2 + 0.67 CH3COCH3 + 0.67 HOCH2CHO + 0.33 HCHO + 0.33 IBUTALOH + NO2 : {%StTrG} 2.600e-12*EXP(365./TEMP);
+<G0MBOO2_CH3O2>  MBOO2 + CH3O2 = 0.9165 HCHO + 0.625 MACROH + 0.25 CH3OH + HO2 + 0.3335 CH3COCH3 + 0.3335 HOCH2CHO + 0.1665 IBUTALOH : {%StTrG} 3.750e-13*EXP(-40./TEMP);
+<G0MBOO2_CH3CO3> MBOO2 + CH3CO3 = 0.67 CH3COCH3 + 0.67 HOCH2CHO + 0.33 HCHO + 0.33 IBUTALOH + HO2 + CH3O2 + CO2 : {%StTrG} 1.000e-11;
+<G0MBOO2_HO2>    MBOO2 + HO2 = MBOOOH                        : {%StTrG} 7.500e-13*EXP(700./TEMP);
+<G0MBOOOH_OH>    MBOOOH + OH = 0.5 MBOO2 + 0.625 MACROH + 0.5 OH + H2O : {%StTrG} 3.800e-12*EXP(200./TEMP);  {other products are very sticky}
+<G0IBUTALOH_OH>  IBUTALOH + OH = H2O + IPRHOCO3              : {%StTrG} 1.400e-11;
+<G0IPRHOCO3_NO>  IPRHOCO3 + NO = CO2 + NO2 + HO2 + CH3COCH3  : {%StTrG} 2.600e-12*EXP(365./TEMP);
+<G0IPRHOCO3_HO2> IPRHOCO3 + HO2 = 0.6 IPRHOCO3H + 0.4 HO2 + 0.4 OH + 0.4 CH3COCH3 + 0.4 CO2 : {%StTrG} 4.300e-13*EXP(1040./TEMP);
+<G0IPRHOCO3_CH3O2> IPRHOCO3 + CH3O2 = CH3COCH3 + 2 HO2 + CO2 + HCHO : {%StTrG} 1.000e-12;  {products: Tyndall (p.c.)}
+<G0IPRHOCO3_CH3CO3> IPRHOCO3 + CH3CO3 = CH3COCH3 + HO2 + CH3O2 + 2 CO2 : {%StTrG} 1.000e-11;
+<G0IPRHOCO3H_OH> IPRHOCO3H + OH = H2O + IPRHOCO3             : {%StTrG} 1.000e-12;  {Tyndall (p.c.)}
+<G0MBONO3O2_HO2> MBONO3O2 + HO2 = PRODUCTS                   : {%StTrG} 4.300e-13*EXP(1040./TEMP);  {products extremely sticky}
+<G0MBONO3O2_NO>  MBONO3O2 + NO = 0.25 HCHO + 0.25 IBUTALOH + 1.25 NO2 + 0.500250 NOA + 0.75 CH3COCH3 + 0.75 HO2 : {%StTrG} 2.600e-12*EXP(365./TEMP);
+<G0MBONO3O2_NO3> MBONO3O2 + NO3 = 0.25 HCHO + 0.25 IBUTALOH + 1.25 NO2 + 0.500250 NOA + 0.75 CH3COCH3 + 0.75 HO2 : {%StTrG} 2.400e-12;
+<G0MBONO3O2_CH3O2> MBONO3O2 + CH3O2 = 0.875 HCHO + 0.125 IBUTALOH + 0.125 NO2 + 0.250125 NOA + 0.375 CH3COCH3 + 0.875 HO2 + 0.25 CH3OH + 0.625 MACROH : {%StTrG} 1.000e-12;  {Tyndall (p.c.), molecular products extremely sticky(?)}
+<G0MBONO3O2_CH3CO3> MBONO3O2 + CH3CO3 = 0.25 HCHO + 0.25 IBUTALOH + 0.25 NO2 + 0.500250 NOA + 0.75 CH3COCH3 + 0.75 HO2 + CH3O2 + CO2 : {%StTrG} 1.000e-11;
+<G0DICARBO2_HO2> DICARBO2 + HO2 = 0.4 OH + 0.068 MGLYOX + 0.068 HO2 + 0.068 CO + 0.4 CO2 + 0.332 CH3CO3 + 0.332 GLYOX : {%StTrG} 4.300e-13*EXP(1040./TEMP);  {60% sticky products}
+<G0DICARBO2_NO>  DICARBO2 + NO = 0.17 MGLYOX + 0.17 HO2 + 0.17 CO + CO2 + 0.83 CH3CO3 + 0.83 GLYOX + NO2 : {%StTrG} 7.500e-12*EXP(290./TEMP);
+<G0DICARBO2_NO2> DICARBO2 + NO2 {+M} = M                      : {%StTrG} k_3rd(TEMP,cair,2.700e-28,7.1,1.200e-11,0.9,0.6);  {Orlando&Tyndall (2012), Same as k(CH3CO3 + NO2), sticky nitrate}
+<G0DICARBO2_CH3O2> DICARBO2 + CH3O2 = 0.17 MGLYOX + 1.17 HO2 + 0.17 CO + CO2 + 0.83 CH3CO3 + 0.83 GLYOX + HCHO : {%StTrG} 1.000e-12;
+<G0DICARBO2_CH3CO3> DICARBO2 + CH3CO3 = 0.17 MGLYOX + 0.17 HO2 + 0.17 CO + 2 CO2 + 0.83 CH3CO3 + 0.83 GLYOX + CH3O2 : {%StTrG} 1.000e-11;
+<G0HPALD_OH>     HPALD + OH = 0.641 OH + 0.385 PACALD + 0.256 BIGALD3 + 0.359 MGLYOX + 0.359 GLYOX + 0.359 HO2 : {%StTrG} 5.200e-11;  {simplification of chemistry in MCMv3.3.1}
+<G0PACALD_OH>    PACALD + OH = HCOCO3H + MGLYOX + HO2        : {%StTrG} 4.720e-11;  {k and products for C5PACALD2 from MCMv3.3.1 assuming an implict RO2->RO conversion}
+<G0LISOPOOHO2_HO2> LISOPOOHO2 + HO2 = LISOPOOHOOH            : {%StTrG} 2.050e-13*EXP(1300./TEMP);
+<G0LISOPOOHO2_NO_a> LISOPOOHO2 + NO = HCHO + HO2 + 0.5 MACROOH + 0.5 LHMVKABOOH + NO2 : {%StTrG} 2.540e-12*EXP(360./TEMP);  {A=2.54e-12*0.12 <- average 12% nitrate yield from Paulot et al. 2009; nitrate yield left for the moment equal to the one of the simple ISOPO2 (it should be higher)}
+<G0LISOPOOHO2_NO_b> LISOPOOHO2 + NO = LISOPNO3OOH            : {%StTrG} 3.050e-13*EXP(360./TEMP);  {A=2.54e-12*0.12 <- average 12% nitrate yield from Paulot et al. 2009; nitrate yield left for the moment equal to the one of the simple ISOPO2 (it should be higher)}
+<G0LISOPOOHO2_NO3> LISOPOOHO2 + NO3 = HCHO + HO2 + 0.5 MACROOH + 0.5 LHMVKABOOH + NO2 : {%StTrG} 2.500e-12;
+<G0LISOPOOHO2_CH3O2> LISOPOOHO2 + CH3O2 = 1.5 HCHO + 0.75 HO2 + 0.375 MACROOH + 0.375 LHMVKABOOH + 0.25 LISOPOOHOOH : {%StTrG} 8.000e-13;
+<G0LISOPOOHO2_CH3CO3> LISOPOOHO2 + CH3CO3 = HCHO + HO2 + 0.5 MACROOH + 0.5 LHMVKABOOH + CH3O2 + CO2 : {%StTrG} 1.000e-11;
+<G0LISOPNO3O2_HO2> LISOPNO3O2 + HO2 = LISOPNO3OOH            : {%StTrG} 2.050e-13*EXP(1300./TEMP);
+<G0LISOPNO3O2_NO_a> LISOPNO3O2 + NO = HCHO + 0.5 MACRNO3 + 0.5 MVKN + HO2 + NO2 : {%StTrG} 2.235e-12*EXP(360./TEMP);  {A=2.54e-12*0.88 <- average 12% nitrate yield from Paulot et al. 2009; nitrate yield left for the moment equal to the one of the simple ISOPO2 (it should be higher); previous RONO2 split into 50% MACRNO3 + 50% MVKN}
+<G0LISOPNO3O2_NO_b> LISOPNO3O2 + NO = LISOPNO3NO3            : {%StTrG} 3.050e-13*EXP(360./TEMP);  {A=2.54e-12*0.12 <- average 12% nitrate yield from Paulot et al. 2009; nitrate yield left for the moment equal to the one of the simple ISOPO2 (it should be higher)}
+<G0LISOPNO3O2_NO3> LISOPNO3O2 + NO3 = HCHO + 0.5 MACRNO3 + 0.5 MVKN + HO2 + NO2 : {%StTrG} 2.500e-12;  {previous RONO2 split into 50% MACRNO3 + 50% MVKN}
+<G0LISOPNO3O2_CH3O2> LISOPNO3O2 + CH3O2 = 0.3525 MACRNO3 + 0.3525 MVKN + 1.75 HCHO + 1.5 HO2 + 0.25 LISOPNO3OOH : {%StTrG} 8.000e-13;  {previous RONO2 split into 50% MACRNO3 + 50% MVKN}
+<G0LISOPNO3O2_CH3CO3> LISOPNO3O2 + CH3CO3 = HCHO + 0.5 MACRNO3 + 0.5 MVKN + HO2 + CH3O2 + CO2 : {%StTrG} 1.000e-11;  {previous RONO2 split into 50% MACRNO3 + 50% MVKN}
+<G0LISOPOOHOOH_OH_a> LISOPOOHOOH + OH = H2O + LISOPOOHO2     : {%StTrG} 7.600e-12*EXP(200./TEMP);  {twice the k (CH3OOH + OH -> CH3O2)}
+<G0LISOPOOHOOH_OH_b> LISOPOOHOOH + OH = LC578OOH + OH        : {%StTrG} 2.104e-11;  {k for H-abstractions from SAR in MOM by a secondary carbon bearing a -OH group and a secondary and a tertiary carbon atoms bearing an -OOH group: 8.42E-13*3.44+(8.42E-13+1.75E-12)*7}
+<G0LISOPNO3OOH_OH_a> LISOPNO3OOH + OH = H2O + LISOPNO3O2     : {%StTrG} 3.800e-12*EXP(200./TEMP);
+<G0LISOPNO3OOH_OH_b> LISOPNO3OOH + OH = C59OOH + OH          : {%StTrG} 1.515e-11;  {k for H-abstractions from SAR in MOM by a secondary carbon bearing a -OH group and a tertiary carbon atom bearing an -OOH group: 8.42E-13*3.44+1.75E-12*7}
+<G0LISOPNO3NO3_OH> LISOPNO3NO3 + OH = 0.5 MACRNO3 + 0.5 MVKN + NO2 + HCHO + HO2 : {%StTrG} 8.916e-12;  {k for H-abstractions from SAR in MOM by a secondary and a tertiary carbon bearing a -OH group: (8.42E-13+1.75E-12)*3.44 ; previous RONO2 split into 50% MACRNO3 + 50% MVKN}
+
+// --------------------------------------------------------------------------------
+// SECTION  C6 oxidation
+// --------------------------------------------------------------------------------
+
+<G0BENZENE_OH>   BENZENE + OH = 0.53 PHENOL + 0.12 BEPOMUC + 0.65 HO2 + 0.35 BENZO2 : {%StTrG} 2.300e-12*EXP(-193./TEMP);
+<G0PHENOL_OH>    PHENOL + OH = 0.14 PHENO2 + 0.8 HO2 + 0.8 CATECHOL + 0.06 C6H5O : {%StTrG} 4.700e-13*EXP(1220./TEMP);
+<G0PHENOL_NO3>   PHENOL + NO3 = 0.26 PHENO2 + 0.74 C6H5O + 0.74 HNO3 : {%StTrG} 3.800e-12;  {NPHENO2 approximated with PHENO2}
+<G0PHENO2_NO>    PHENO2 + NO = HO2 + 0.7 GLYOX + NO2         : {%StTrG} 2.600e-12*EXP(365./TEMP);
+<G0PHENO2_HO2>   PHENO2 + HO2 = PHENOOH                      : {%StTrG} 7.500e-13*EXP(700./TEMP);
+<G0PHENO2_CH3O2> PHENO2 + CH3O2 = 2 HO2 + 0.7 GLYOX + HCHO   : {%StTrG} 1.000e-12;
+<G0PHENO2_CH3CO3> PHENO2 + CH3CO3 = HO2 + 0.7 GLYOX + CH3O2 + CO2 : {%StTrG} 1.000e-11;
+<G0PHENOOH_OH>   PHENOOH + OH = H2O + PHENO2                 : {%StTrG} 3.800e-12*EXP(200./TEMP);
+<G0C6H5O_NO2>    C6H5O + NO2 = PRODUCTS                      : {%StTrG} 2.100e-12;  {yields sticky nitrate}
+<G0C6H5O_O3>     C6H5O + O3 = C6H5O2                         : {%StTrG} 2.800e-13;
+<G0C6H5O2_NO>    C6H5O2 + NO = C6H5O + NO2                   : {%StTrG} 2.600e-12*EXP(365./TEMP);
+<G0C6H5O2_NO3>   C6H5O2 + NO3 = C6H5O + NO2                  : {%StTrG} 2.300e-12;  {MCM3.2}
+<G0C6H5O2_HO2>   C6H5O2 + HO2 = C6H5OOH                      : {%StTrG} 7.500e-13*EXP(700./TEMP);
+<G0C6H5O2_CH3O2> C6H5O2 + CH3O2 = C6H5O + HCHO + HO2         : {%StTrG} 1.000e-12;
+<G0C6H5O2_CH3CO3> C6H5O2 + CH3CO3 = C6H5O + CH3O2 + CO2      : {%StTrG} 1.000e-11;
+<G0C6H5OOH_OH>   C6H5OOH + OH = C6H5O2                       : {%StTrG} 3.800e-12*EXP(200./TEMP);
+<G0BENZO2_NO>    BENZO2 + NO = GLYOX + NO2 + 0.5 BIGALD1 + HO2 : {%StTrG} 2.600e-12*EXP(365./TEMP);  {according to MCM, 8% sticky nitrate yield and 0.5*BZFUONE}
+<G0BENZO2_HO2>   BENZO2 + HO2 = BENZOOH                      : {%StTrG} 7.500e-13*EXP(700./TEMP);
+<G0BENZO2_CH3O2> BENZO2 + CH3O2 = GLYOX + 0.5 BIGALD1 + 2 HO2 + HCHO : {%StTrG} 1.000e-12;
+<G0BENZO2_CH3CO3> BENZO2 + CH3CO3 = GLYOX + 0.5 BIGALD1 + HO2 + CH3O2 + CO2 : {%StTrG} 1.000e-11;
+<G0BENZOOH_OH>   BENZOOH + OH = BENZO2                       : {%StTrG} 3.800e-12*EXP(200./TEMP);
+<G0CATECHOL_OH>  CATECHOL + OH = CATEC1O                     : {%StTrG} 1.000e-10;
+<G0CATECHOL_NO3> CATECHOL + NO3 = CATEC1O + HNO3             : {%StTrG} 9.900e-11;
+<G0CATEC1O_NO2>  CATEC1O + NO2 = PRODUCTS                    : {%StTrG} 2.100e-12;  {yields sticky nitrate}
+<G0CATEC1O_O3>   CATEC1O + O3 = CATEC1O2                     : {%StTrG} 2.800e-13;
+<G0CATEC1O2_HO2> CATEC1O2 + HO2 = CATEC1OOH                  : {%StTrG} 7.500e-13*EXP(700./TEMP);
+<G0CATEC1O2_NO>  CATEC1O2 + NO = CATEC1O + NO2               : {%StTrG} 2.600e-12*EXP(365./TEMP);
+<G0CATEC1O2_NO3> CATEC1O2 + NO3 = CATEC1O + NO2              : {%StTrG} 2.300e-12;  {MCM3.2}
+<G0CATEC1O2_CH3O2> CATEC1O2 + CH3O2 = CATEC1O + HCHO + HO2   : {%StTrG} 1.000e-12;
+<G0CATEC1O2_CH3CO3> CATEC1O2 + CH3CO3 = CATEC1O + CH3O2 + CO2 : {%StTrG} 1.000e-11;
+<G0CATEC1OOH_OH> CATEC1OOH + OH = CATEC1O2                   : {%StTrG} 1.900e-12*EXP(190./TEMP);
+
+// --------------------------------------------------------------------------------
+// SECTION  C7 oxidation
+// --------------------------------------------------------------------------------
+
+<G0TOLUENE_OH>   TOLUENE + OH = 0.18 CRESOL + 0.1 TEPOMUC + 0.07 BZOO + 0.65 TOLO2 + 0.28 HO2 : {%StTrG} 1.700e-12*EXP(352./TEMP);
+<G0CRESOL_OH>    CRESOL + OH = 0.2 PHENO2 + 0.73 HO2 + 0.73 CATECHOL + 0.07 C6H5O : {%StTrG} 4.700e-11;  {CATECHOL and PHENO2 omits one CH3 group of MCATECHOL and CRESO2}
+<G0CRESOL_NO3>   CRESOL + NO3 = 0.61 PHENO2 + 0.39 C6H5O + 0.49 HNO3 : {%StTrG} 1.400e-11;  {CRESO2 and NCRESO2 approximated with PHENO2; TOL1O with C6H5O (see MCM for details)}
+<G0TOLO2_HO2>    TOLO2 + HO2 = TOLOOH                        : {%StTrG} 7.500e-13*EXP(700./TEMP);
+<G0TOLO2_NO>     TOLO2 + NO = NO2 + 0.6 GLYOX + 0.4 MGLYOX + HO2 + 0.2 BIGALD1 + 0.2 BIGALD2 + 0.2 BIGALD3 : {%StTrG} 2.600e-12*EXP(365./TEMP);
+<G0TOLO2_CH3O2>  TOLO2 + CH3O2 = 0.6 GLYOX + 0.4 MGLYOX + 2 HO2 + HCHO : {%StTrG} 1.000e-12;
+<G0TOLO2_CH3CO3> TOLO2 + CH3CO3 = 0.6 GLYOX + 0.4 MGLYOX + HO2 + CH3O2 + CO2 + 0.2 BIGALD1 + 0.2 BIGALD2 + 0.2 BIGALD3 : {%StTrG} 1.000e-11;
+<G0TOLOOH_OH>    TOLOOH + OH = TOLO2                         : {%StTrG} 3.800e-12*EXP(200./TEMP);
+<G0BZOO_HO2>     BZOO + HO2 = BZOOH                          : {%StTrG} 7.500e-13*EXP(700./TEMP);
+<G0BZOO_NO>      BZOO + NO = BZALD + NO2 + HO2               : {%StTrG} 2.600e-12*EXP(365./TEMP);  {MCM forms 10% nitrate}
+<G0BZOO_CH3O2>   BZOO + CH3O2 = BZALD + 2 HO2 + HCHO         : {%StTrG} 1.000e-12;
+<G0BZOO_CH3CO3>  BZOO + CH3CO3 = BZALD + HO2 + CH3O2 + CO2   : {%StTrG} 1.000e-11;
+<G0BZOOH_OH>     BZOOH + OH = BZOO                           : {%StTrG} 3.800e-12*EXP(200./TEMP);
+<G0BZALD_OH>     BZALD + OH = ACBZO2                         : {%StTrG} 5.900e-12*EXP(225./TEMP);
+<G0ACBZO2_NO2>   ACBZO2 + NO2 {+M} = {M+} PBZNIT               : {%StTrG} k_3rd(TEMP,cair,2.700e-28,7.1,1.200e-11,0.9,0.6);  {Orlando&Tyndall (2012) - Same as k(CH3CO3 + NO2)}
+<G0PBZNIT>       PBZNIT {+M} = ACBZO2 + NO2 {+M}               : {%StTrG} kPAN;
+<G0ACBZO2_NO>    ACBZO2 + NO = C6H5O2 + NO2                  : {%StTrG} 7.500e-12*EXP(290./TEMP);
+<G0ACBZO2_HO2>   ACBZO2 + HO2 = 0.4 C6H5O2 + 0.4 OH          : {%StTrG} 4.300e-13*EXP(1040./TEMP);
+<G0ACBZO2_CH3O2> ACBZO2 + CH3O2 = C6H5O2 + HCHO + HO2        : {%StTrG} 1.000e-12;
+<G0ACBZO2_CH3CO3> ACBZO2 + CH3CO3 = C6H5O2 + CH3O2 + CO2     : {%StTrG} 1.000e-11;
+
+// --------------------------------------------------------------------------------
+// SECTION  C8 oxidation
+// --------------------------------------------------------------------------------
+
+<G0LXYL_OH>       LXYL + OH = 0.15 XYLOL + 0.23 TEPOMUC + 0.06 BZOO + 0.56 XYLENO2 + 0.38 HO2 : {%StTrG} 1.700e-11;
+<G0XYLOL_OH>     XYLOL + OH = 0.3 XYLOLO2 + 0.63 HO2 + 0.63 CATECHOL + 0.07 C6H5O : {%StTrG} 8.400e-11;  {CATECHOL omits two CH3 groups of O-, M- and P-XYCATECH}
+<G0XYLOL_NO3>    XYLOL + NO3 = 0.61 PHENO2 + 0.39 C6H5O + 0.49 HNO3 : {%StTrG} 3.200e-11;  {XYLOLO2 and NXYLOLO2 approximated with PHENO2; XY1O with C6H5O (see MCM for details)}
+<G0XYLOLO2_NO>   XYLOLO2 + NO = HO2 + NO2 + 0.17 GLYOX + 0.51 MGLYOX : {%StTrG} 2.600e-12*EXP(365./TEMP);
+<G0XYLOLO2_HO2>  XYLOLO2 + HO2 = XYLOLOOH                    : {%StTrG} 7.500e-13*EXP(700./TEMP);
+<G0XYLOLO2_CH3O2> XYLOLO2 + CH3O2 = 0.17 GLYOX + 0.51 MGLYOX + 2 HO2 + HCHO : {%StTrG} 1.000e-12;
+<G0XYLOLO2_CH3CO3> XYLOLO2 + CH3CO3 = HO2 + 0.17 GLYOX + 0.51 MGLYOX + CH3O2 + CO2 : {%StTrG} 1.000e-11;
+<G0XYLOLOOH_OH>  XYLOLOOH + OH = XYLOLO2                     : {%StTrG} 3.800e-12*EXP(200./TEMP);
+<G0XYLENO2_HO2>  XYLENO2 + HO2 = XYLENOOH                    : {%StTrG} 7.500e-13*EXP(700./TEMP);
+<G0XYLENO2_NO>   XYLENO2 + NO = HO2 + NO2 + 0.34 GLYOX + 0.54 MGLYOX + 0.06 BIGALD1 + 0.2 BIGALD2 + 0.15 BIGALD3 + 0.21 BIGALD4 : {%StTrG} 2.600e-12*EXP(365./TEMP);
+<G0XYLENO2_CH3O2> XYLENO2 + CH3O2 = 0.34 GLYOX + 0.54 MGLYOX + 2 HO2 + HCHO + 0.06 BIGALD1 + 0.2 BIGALD2 + 0.15 BIGALD3 + 0.21 BIGALD4 : {%StTrG} 1.000e-12;  {cacm: added BIGALDs 20140617}
+<G0XYLENO2_CH3CO3> XYLENO2 + CH3CO3 = HO2 + 0.34 GLYOX + 0.54 MGLYOX + 0.06 BIGALD1 + 0.2 BIGALD2 + 0.15 BIGALD3 + 0.21 BIGALD4 + CH3O2 + CO2 : {%StTrG} 1.000e-11;
+<G0XYLENOOH_OH>  XYLENOOH + OH = XYLENO2                     : {%StTrG} 3.800e-12*EXP(200./TEMP);
+
+// --------------------------------------------------------------------------------
+// SECTION  C10/C15 oxidation (terpenes, sesqui-terpenes)
+// --------------------------------------------------------------------------------
+
+<G0APINENE_OH>   APINENE + OH = TERPO2                       : {%StTrG} 1.200e-11*EXP(440./TEMP);
+<G0BPINENE_OH>   BPINENE + OH = TERPO2                       : {%StTrG} 1.600e-11*EXP(470./TEMP);
+<G0LIMON_OH>     LIMON + OH = TERPO2                         : {%StTrG} 4.200e-11*EXP(400./TEMP);
+<G0MYRC_OH>      MYRC + OH = TERPO2                          : {%StTrG} 2.100e-10;
+<G0BCARY_OH>     BCARY + OH = TERPO2                         : {%StTrG} 2.000e-10;
+<G0APINENE_O3>      APINENE + O3 = 0.07 ELVOC + 0.39 TERPROD1 + 0.27 TERPROD2 + 0.63 OH + 0.57 HO2 + 0.23 CO + 0.27 CO2 + 0.52 CH3COCH3 + 0.34 HCHO + 0.05 HCOOH + 0.05 BIGALKANE + 0.06 CH3CO3 + 0.06 CH3COCH2O2 : {%StTrG} 6.300e-16*EXP(-580./TEMP);  {7% ELVOC-yield according to Ehn et al. 2014 for endocyclic alkenes}
+<G0BPINENE_O3>      BPINENE + O3 = 0.43 TERPROD1 + 0.3 TERPROD2 + 0.63 OH + 0.57 HO2 + 0.23 CO + 0.27 CO2 + 0.52 CH3COCH3 + 0.34 HCHO + 0.05 HCOOH + 0.05 BIGALKANE + 0.06 CH3CO3 + 0.06 CH3COCH2O2 : {%StTrG} 1.700e-15*EXP(-1300./TEMP);
+<G0LIMON_O3>     LIMON + O3 = 0.07 ELVOC + 0.39 TERPROD1 + 0.27 TERPROD2 + 0.63 OH + 0.57 HO2 + 0.23 CO + 0.27 CO2 + 0.52 CH3COCH3 + 0.34 HCHO + 0.05 HCOOH + 0.05 BIGALKANE + 0.06 CH3CO3 + 0.06 CH3COCH2O2 : {%StTrG} 3.000e-15*EXP(-780./TEMP);  {7% ELVOC-yield according to Ehn et al. 2014 for endocyclic alkenes}
+<G0MYRC_O3>      MYRC + O3 = 0.43 TERPROD1 + 0.3 TERPROD2 + 0.63 OH + 0.57 HO2 + 0.23 CO + 0.27 CO2 + 0.52 CH3COCH3 + 0.34 HCHO + 0.05 HCOOH + 0.05 BIGALKANE + 0.06 CH3CO3 + 0.06 CH3COCH2O2 : {%StTrG} 4.700e-16;
+<G0BCARY_O3>     BCARY + O3 = 0.645 TERPROD1 + 0.45 TERPROD2 + 0.63 OH + 0.57 HO2 + 0.23 CO + 0.27 CO2 + 0.52 CH3COCH3 + 0.34 HCHO + 0.05 HCOOH + 0.05 BIGALKANE + 0.06 CH3CO3 + 0.06 CH3COCH2O2 : {%StTrG} 1.200e-14;
+<G0APINENE_NO3>  APINENE + NO3 = NTERPO2                     : {%StTrG} 1.200e-12*EXP(490./TEMP);
+<G0BPINENE_NO3>  BPINENE + NO3 = NTERPO2                     : {%StTrG} 2.500e-12;
+<G0LIMON_NO3>    LIMON + NO3 = NTERPO2                       : {%StTrG} 1.100e-11;
+<G0MYRC_NO3>     MYRC + NO3 = NTERPO2                        : {%StTrG} 1.200e-11;
+<G0BCARY_NO3>    BCARY + NO3 = NTERPO2 + 0.5 TERPROD1        : {%StTrG} 1.900e-11;
+<G0TERPO2_NO>    TERPO2 + NO = 0.26 TERPNO3 + 0.74 NO2 + 0.36 HCHO + 0.045 CH3COCH3 + 0.695 TERPROD1 + 0.74 HO2 : {%StTrG} 4.200e-12*EXP(180./TEMP);  {alkyl nitrate yield according to Rindelaub et al. Atmos. Environ. 2015 for alpha-pinene}
+<G0TERPO2_HO2>   TERPO2 + HO2 = TERPOOH                      : {%StTrG} 7.500e-13*EXP(700./TEMP);
+<G0TERPO2_CH3O2> TERPO2 + CH3O2 = 1.15 HCHO + 0.05 CH3COCH3 + 0.945 TERPROD1 + HO2 + 0.25 CH3OH : {%StTrG} 2.000e-12*EXP(500./TEMP);
+<G0TERPO2_CH3CO3> TERPO2 + CH3CO3 = 0.4 HCHO + 0.05 CH3COCH3 + 0.945 TERPROD1 + HO2 + CH3O2 + CO2 : {%StTrG} 1.000e-11;
+<G0TERPOOH_OH>   TERPOOH + OH = H2O + TERPO2                 : {%StTrG} 3.300e-11;
+<G0TERPROD1_OH>  TERPROD1 + OH = TERP2O2                     : {%StTrG} 5.700e-11;
+<G0TERPROD1_NO3> TERPROD1 + NO3 = 0.5 TERP2O2 + 0.5 NTERPO2 + 0.5 NO2 : {%StTrG} 1.000e-12;
+<G0TERPNO3_OH>   TERPNO3 + OH = NO2 + TERPROD1 + H2O         : {%StTrG} 3.500e-12;
+<G0TERP2O2_NO>   TERP2O2 + NO = 0.1 TERPNO3 + 0.9 NO2 + 0.34 HCHO + 0.27 CH3COCH3 + 0.225 CO + 0.9 CO2 + 0.9 TERPROD2 + 0.9 HO2 + 0.225 HOCH2CHO : {%StTrG} 4.200e-12*EXP(180./TEMP);
+<G0TERP2O2_HO2>  TERP2O2 + HO2 = TERP2OOH                    : {%StTrG} 7.500e-13*EXP(700./TEMP);
+<G0TERP2O2_CH3O2> TERP2O2 + CH3O2 = TERPROD2 + 0.93 HCHO + 0.25 CH3OH + HO2 + 0.5 CO2 + 0.125 CO + 0.125 HOCH2CHO + 0.15 CH3COCH3 : {%StTrG} 2.000e-12*EXP(500./TEMP);
+<G0TERP2O2_CH3CO3> TERP2O2 + CH3CO3 = 0.34 HCHO + 0.27 CH3COCH3 + 0.225 CO + 2 CO2 + TERPROD2 + HO2 + 0.225 HOCH2CHO + CH3O2 : {%StTrG} 1.000e-11;
+<G0TERP2OOH_OH>  TERP2OOH + OH = H2O + TERP2O2               : {%StTrG} 2.300e-11;
+<G0TERPROD2_OH>  TERPROD2 + OH = 0.15 CH3COCH2O2 + 0.68 HCHO + 1.8 CO2 + 0.5 CH3COCH3 + 0.65 CH3CO3 + 0.2 HO2 + 0.7 CO : {%StTrG} 3.400e-11;
+<G0NTERPO2_NO>   NTERPO2 + NO = 0.26 NTERPNO3 + 1.48 NO2 + 0.74 TERPROD1 : {%StTrG} 4.200e-12*EXP(180./TEMP);  {alkyl nitrate yield according to Rindelaub et al. Atmos. Environ. 2015 for alpha-pinene}
+<G0NTERPO2_HO2>  NTERPO2 + HO2 = NTERPNO3                    : {%StTrG} 7.500e-13*EXP(700./TEMP);
+<G0NTERPO2_CH3O2> NTERPO2 + CH3O2 = 0.5 NTERPNO3 + 0.75 HCHO + 0.25 CH3OH + 0.5 HO2 + 0.5 TERPROD1 + 0.5 NO2 : {%StTrG} 2.000e-12*EXP(500./TEMP);
+<G0NTERPO2_CH3CO3> NTERPO2 + CH3CO3 = CH3O2 + TERPROD1 + CO2 + NO2 : {%StTrG} 1.000e-11;
+<G0NTERPO2_NO3>  NTERPO2 + NO3 = 2 NO2 + TERPROD1            : {%StTrG} 2.400e-12;
+<G0NTERPNO3_OH>  NTERPNO3 + OH = NO2 + TERPROD1 + H2O        : {%StTrG} 3.500e-12;
+<G0ELVOC_OH>     ELVOC + OH = HO2 + TERPROD1                 : {%StTrG} 1.000e-11;  {a general rate coefficient for oxygenated VOC}
+
+// --------------------------------------------------------------------------------
+// SECTION  (Stratospheric) O1D reactions
+// --------------------------------------------------------------------------------
+
+<G0O1D_N2O_a>    O1D + N2O = 2 NO                            : {%StTrG} 7.250e-11*EXP(20./TEMP);
+<G0O1D_N2O_b>    O1D + N2O = N2 + O2                         : {%StTrG} 4.630e-11*EXP(20./TEMP);
+<G0O1D_O3>       O1D + O3 = 2 O2                             : {%StTrG} 1.200e-10;
+<G0O1D_CFCl3>    O1D + CFCl3 = 2 Cl + COFCL                  : {%StTrG} 2.020e-10;
+<G0O1D_CF2Cl2>   O1D + CF2Cl2 = 2 Cl + COF2                  : {%StTrG} 1.204e-10;
+<G0O1D_CFC113>   O1D + CFC113 = 2 Cl + COFCL + COF2          : {%StTrG} 1.500e-10;
+<G0O1D_CFC114>   O1D + CFC114 = 2 Cl + 2 COF2                : {%StTrG} 9.750e-11;
+<G0O1D_CFC115>   O1D + CFC115 = Cl + F + 2 COF2              : {%StTrG} 1.500e-11;
+<G0O1D_HCFC22>   O1D + HCFC22 = COF2 + Cl                    : {%StTrG} 7.200e-11;
+<G0O1D_HCFC141B> O1D + HCFC141B = COFCL + Cl                 : {%StTrG} 1.794e-10;
+<G0O1D_HCFC142B> O1D + HCFC142B = COF2 + Cl                  : {%StTrG} 1.628e-10;
+<G0O1D_CCl4>     O1D + CCl4 = 4 Cl                           : {%StTrG} 2.840e-10;
+<G0O1D_CH3Br>    O1D + CH3Br = Br                            : {%StTrG} 1.674e-10;
+<G0O1D_CF2ClBr>  O1D + CF2ClBr = Br + Cl + COF2              : {%StTrG} 9.600e-11;
+<G0O1D_CF3Br>    O1D + CF3Br = Br + F + COF2                 : {%StTrG} 4.100e-11;
+<G0O1D_H1202>    O1D + H1202 = 2 Br + COF2                   : {%StTrG} 1.012e-10;
+<G0O1D_H2402>    O1D + H2402 = 2 Br + 2 COF2                 : {%StTrG} 1.200e-10;
+<G0O1D_CHBr3>    O1D + CHBr3 = 3 Br                          : {%StTrG} 4.490e-10;
+<G0O1D_CH2Br2>   O1D + CH2Br2 = 2 Br                         : {%StTrG} 2.570e-10;
+<G0O1D_COF2>     O1D + COF2 = 2 F                            : {%StTrG} 2.140e-11;
+<G0O1D_COFCL>    O1D + COFCL = Cl + F                        : {%StTrG} 1.900e-10;
+<G0O1D_CH4_a>    O1D + CH4 = CH3O2 + OH                      : {%StTrG} 1.310e-10;
+<G0O1D_CH4_b>    O1D + CH4 = H + HCHO + HO2                  : {%StTrG} 3.500e-11;
+<G0O1D_CH4_c>    O1D + CH4 = H2 + HCHO                       : {%StTrG} 9.000e-12;
+<G0O1D_H2>       O1D + H2 = H + OH                           : {%StTrG} 1.200e-10;
+<G0O1D_HCl>      O1D + HCl = Cl + OH                         : {%StTrG} 1.500e-10;
+<G0O1D_HBr>      O1D + HBr = Br + OH                         : {%StTrG} 1.200e-10;
+<G0O1D_HCN>      O1D + HCN = CO + OH + NO                    : {%StTrG} 7.700e-11*EXP(100./TEMP);  {Strekowski, 2001, products: Tyndall}
+
+// --------------------------------------------------------------------------------
+// SECTION  (Stratospheric) inorganic halogen reactions
+// --------------------------------------------------------------------------------
+
+<G0Cl_O3>        Cl + O3 = ClO + O2                          : {%StTrG} 2.300e-11*EXP(-200./TEMP);
+<G0Cl_H2>        Cl + H2 = H + HCl                           : {%StTrG} 3.050e-11*EXP(-2270./TEMP);
+<G0Cl_H2O2>      Cl + H2O2 = HCl + HO2                       : {%StTrG} 1.100e-11*EXP(-980./TEMP);
+<G0Cl_HO2_a>     Cl + HO2 = HCl + O2                         : {%StTrG} 1.400e-11*EXP(270./TEMP);
+<G0Cl_HO2_b>     Cl + HO2 = ClO + OH                         : {%StTrG} 3.600e-11*EXP(-375./TEMP);
+<G0Cl2O2>        Cl2O2 {+M} = 2 ClO {+M}                       : {%StTrG} kCl2O2;
+<G0ClO_O3P>      ClO + O3P = Cl + O2                         : {%StTrG} 2.800e-11*EXP(85./TEMP);
+<G0ClO_OH_a>     ClO + OH = Cl + HO2                         : {%StTrG} 7.400e-12*EXP(270./TEMP);
+<G0ClO_OH_b>     ClO + OH = HCl + O2                         : {%StTrG} 6.000e-13*EXP(230./TEMP);
+<G0ClO_HO2>      ClO + HO2 = HOCl + O2                       : {%StTrG} 2.600e-12*EXP(290./TEMP);
+<G0ClO_NO>       ClO + NO = Cl + NO2                         : {%StTrG} 6.400e-12*EXP(290./TEMP);
+<G0ClO_NO2>      ClO + NO2 {+M} = ClNO3 {+M}                   : {%StTrG} k_3rd(TEMP,cair,1.800e-31,3.4,1.500e-11,1.9,0.6);
+<G0ClO_ClO_a>    ClO + ClO = 2 Cl + O2                       : {%StTrG} 3.000e-11*EXP(-2450./TEMP);
+<G0ClO_ClO_b>    ClO + ClO = Cl2 + O2                        : {%StTrG} 1.000e-12*EXP(-1590./TEMP);
+<G0ClO_ClO_c>    ClO + ClO = Cl + OClO                       : {%StTrG} 3.500e-13*EXP(-1370./TEMP);
+<G0ClO_ClO_d>    ClO + ClO {+M} = Cl2O2 {+M}                   : {%StTrG} kClOClO;
+<G0HCl_OH>       HCl + OH = Cl + H2O                         : {%StTrG} 1.800e-12*EXP(-250./TEMP);
+<G0HCl_O3P>      HCl + O3P = Cl + OH                         : {%StTrG} 1.000e-11*EXP(-3300./TEMP);
+<G0HOCl_O3P>     HOCl + O3P = ClO + OH                       : {%StTrG} 1.700e-13;
+<G0HOCl_Cl>      HOCl + Cl = ClO + HCl                       : {%StTrG} 3.400e-12*EXP(-130./TEMP);
+<G0HOCl_OH>      HOCl + OH = ClO + H2O                       : {%StTrG} 3.000e-12*EXP(-500./TEMP);
+<G0ClNO3_O3P>    ClNO3 + O3P = ClO + NO3                     : {%StTrG} 3.600e-12*EXP(-840./TEMP);
+<G0ClNO3_OH>     ClNO3 + OH = HOCl + NO3                     : {%StTrG} 1.200e-12*EXP(-330./TEMP);
+<G0ClNO3_Cl>     ClNO3 + Cl = Cl2 + NO3                      : {%StTrG} 6.500e-12*EXP(135./TEMP);
+<G0Br_O3>        Br + O3 = BrO + O2                          : {%StTrG} 1.600e-11*EXP(-780./TEMP);
+<G0Br_HO2>       Br + HO2 = HBr + O2                         : {%StTrG} 4.800e-12*EXP(-310./TEMP);
+<G0Br_NO2>       Br + NO2 {+M} = 0.85 BrONO + 0.15 BrNO2 {+M}  : {%StTrG} k_3rd(TEMP,cair,4.200e-31,2.4,2.700e-11,0.,0.6);
+<G0BrONO>        BrONO {+M} = Br + NO2 {+M}                    : {%StTrG} 1.648e+11*EXP(-7399./TEMP);  {fit to upper limit by Wine et al. NATO ASI series 1993 and scaled 1.5 factor to match data by Orlando and Burkholder (2000)}
+<G0BrO_O3P>      BrO + O3P = Br + O2                         : {%StTrG} 1.900e-11*EXP(230./TEMP);
+<G0BrO_OH>       BrO + OH = Br + HO2                         : {%StTrG} 1.700e-11*EXP(250./TEMP);
+<G0BrO_HO2>      BrO + HO2 = HOBr + O2                       : {%StTrG} 4.500e-12*EXP(460./TEMP);
+<G0BrO_NO>       BrO + NO = Br + NO2                         : {%StTrG} 8.800e-12*EXP(260./TEMP);
+<G0BrO_NO2>      BrO + NO2 {+M} = BrNO3 {+M}                   : {%StTrG} k_3rd(TEMP,cair,5.200e-31,3.2,6.900e-12,2.9,0.6);
+<G0BrO_ClO_a>    BrO + ClO = Br + OClO                       : {%StTrG} 9.500e-13*EXP(550./TEMP);
+<G0BrO_ClO_b>    BrO + ClO = Br + Cl + O2                    : {%StTrG} 2.300e-12*EXP(260./TEMP);
+<G0BrO_ClO_c>    BrO + ClO = BrCl + O2                       : {%StTrG} 4.100e-13*EXP(290./TEMP);
+<G0BrO_BrO_a>    BrO + BrO = 2 Br + O2                       : {%StTrG} 2.400e-12*EXP(40./TEMP);
+<G0BrO_BrO_b>    BrO + BrO = Br2 + O2                        : {%StTrG} 2.800e-14*EXP(860./TEMP);
+<G0HBr_OH>       HBr + OH = Br + H2O                         : {%StTrG} 5.500e-12*EXP(200./TEMP);
+<G0HBr_O3P>      HBr + O3P = Br + OH                         : {%StTrG} 5.800e-12*EXP(-1500./TEMP);
+<G0HOBr_O3P>     HOBr + O3P = BrO + OH                       : {%StTrG} 1.200e-10*EXP(-430./TEMP);
+<G0BrNO3_O3P>    BrNO3 + O3P = BrO + NO3                     : {%StTrG} 1.900e-11*EXP(215./TEMP);
+<G0BrNO3_Br>     BrNO3 + Br = Br2 + NO3                      : {%StTrG} 5.805e-11;  {Average of k at 298K by Orlando and Tyndall (1996) and Harwood et al. (1998)}
+<G0Br2_OH>       Br2 + OH = Br + HOBr                        : {%StTrG} 2.100e-11*EXP(240./TEMP);
+<G0F_H2O>        F + H2O = HF + OH                           : {%StTrG} 1.400e-11;
+<G0F_H2>         F + H2 = H + HF                             : {%StTrG} 1.400e-10*EXP(-500./TEMP);
+<G0F_CH4>        F + CH4 = CH3O2 + HF                        : {%StTrG} 1.600e-10*EXP(-260./TEMP);
+<G0F_HNO3>       F + HNO3 = HF + NO3                         : {%StTrG} 6.000e-12*EXP(400./TEMP);
+
+// --------------------------------------------------------------------------------
+// SECTION  (Tropospheric) halogen + organics reactions
+// --------------------------------------------------------------------------------
+
+<G0Cl_HCHO>      Cl + HCHO = HCl + HO2 + CO                  : {%StTrG} 8.100e-11*EXP(-30./TEMP);
+<G0Cl_CH4>       Cl + CH4 = CH3O2 + HCl                      : {%StTrG} 7.300e-12*EXP(-1280./TEMP);
+<G0Cl_CH3CN>     Cl + CH3CN = HCHO + HCl + CO + NO           : {%StTrG} 1.600e-11*EXP(-2140./TEMP);  {JPL(2011), products: Tyndall}
+<G0Cl_C2H2>      Cl + C2H2 {+M} = 0.1 Cl + 0.1 GLYOX + 0.9 HCl + 0.9 HO2 + 1.8 CO {+M} : {%StTrG} k_3rd(TEMP,cair,5.200e-30,2.4,2.200e-10,0.7,0.6);
+<G0Cl_C2H4>      Cl + C2H4 {+M} = HO2 + 2 CO + HCl {+M}        : {%StTrG} k_3rd(TEMP,cair,1.600e-29,3.3,3.100e-10,1.,0.6);
+<G0Cl_C2H6>      Cl + C2H6 = C2H5O2 + HCl                    : {%StTrG} 7.200e-11*EXP(-70./TEMP);
+<G0Cl_CH3O2>     Cl + CH3O2 = 0.5 ClO + 0.5 HCHO + 0.5 HCl + 0.5 OH + 0.5 CO + HO2 : {%StTrG} 1.600e-10;  {50% CH2OO is produced and assumed to be produced mostly in dry environments and thus decomposing}
+<G0Cl_CH3OH>     Cl + CH3OH = HCHO + HO2 + HCl               : {%StTrG} 7.100e-11*EXP(-75./TEMP);  {IUPAC}
+<G0Cl_CH3OOH>    Cl + CH3OOH = HCHO + OH + HCl               : {%StTrG} 5.900e-11;  {IUPAC}
+<G0Cl_CH3CHO>    Cl + CH3CHO = CH3CO3 + HCl                  : {%StTrG} 8.000e-11;  {IUPAC}
+<G0Cl_HOCH2CHO>  Cl + HOCH2CHO = 0.35 GLYOX + 0.35 HO2 + 0.65 HOCH2CO3 + HCl : {%StTrG} 7.600e-11;  {k by Bacher et al., J. Atmos. Chem. (2001); products by Niki et al., J. Phys. Chem. (1987)}
+<G0Cl_GLYOX>     Cl + GLYOX = HCOCO3 + HCl                   : {%StTrG} 3.441e-11;  {k(298K) from Niki et al. 1985 k(CH2O + Cl) has been adjusted for the k(CH2O + Cl) by JPL used here}
+<G0Cl_C3H8>      Cl + C3H8 = C3H7O2 + HCl                    : {%StTrG} 1.400e-10;  {IUPAC}
+<G0Cl_CH3COCH3>  Cl + CH3COCH3 = CH3COCH2O2 + HCl            : {%StTrG} 1.500e-11*EXP(-590./TEMP);  {IUPAC}
+<G0Cl_ACETOL>    Cl + ACETOL = HO2 + MGLYOX + HCl            : {%StTrG} 5.400e-11;  {Calvert et al.(2008)}
+<G0Cl_BIGALKANE> Cl + BIGALKANE = ALKO2 + HCl                : {%StTrG}  1.935e- 10;  {from the reaction with OH, BIGALKANE seems to be methyl-butane whose k is an average of k given by Qian et al. Int. J. Chem. Kin. (2002) and Anderson et al., J. Phys. Chem. A (2007)}
+<G0Cl_MEK>       Cl + MEK = HCl + LMEKO2                     : {%StTrG} 3.800e-11*EXP(16./TEMP);  {Calvert et al. (2011)}
+<G0ClO_CH3O2>    ClO + CH3O2 = Cl + HO2 + HCHO               : {%StTrG} 3.300e-12*EXP(-115./TEMP);
+<G0Br_HCHO>      Br + HCHO = HBr + HO2 + CO                  : {%StTrG} 1.700e-11*EXP(-800./TEMP);
+<G0Br_CH3CHO>    Br + CH3CHO = CH3CO3 + HBr                  : {%StTrG} 1.800e-11*EXP(-460./TEMP);  {IUPAC}
+<G0BrO_CH3O2>    BrO + CH3O2 = HOBr + OH + HO2 + CO          : {%StTrG} 2.420e-14*EXP(1617./TEMP);  {Shallcross et al. 2015 DOI: 10.1021/jp5108203, CH2OO assumed to be produced mostly in dry environments and thus decomposing}
+
+// --------------------------------------------------------------------------------
+// SECTION  sulfur reactions
+// --------------------------------------------------------------------------------
+
+<G0SO2_OH>       SO2 + OH {+M} = H2SO4 + HO2                  : {%StTrG} k_3rd(TEMP,cair,3.300e-31,4.3,1.600e-12,0.,0.6);  {JPL(2011)}
+<G0DMS_OH_a>     DMS + OH = CH3SO2 + HCHO                    : {%StTrG} 1.130e-11*EXP(-253./TEMP);
+<G0DMS_OH_b>     DMS + OH = DMSO + HO2                       : {%StTrG} 8.2e-39*EXP(5376./TEMP)*0.21*cair/(1.+1.05e-5*EXP(3644./TEMP)*0.21);
+<G0DMS_NO3>      DMS + NO3 = CH3SO2 + HNO3 + HCHO            : {%StTrG} 1.900e-13*EXP(520./TEMP);
+<G0DMS_Cl>       DMS + Cl = CH3SO2 + HCl + HCHO              : {%StTrG} 3.300e-10;
+<G0DMS_Br>       DMS + Br = CH3SO2 + HBr + HCHO              : {%StTrG} 9.000e-11*EXP(-2386./TEMP);
+<G0DMS_BrO>      DMS + BrO = Br + DMSO                       : {%StTrG} 4.400e-13;
+<G0DMSO_OH>      DMSO + OH = 0.6 SO2 + HCHO + 0.6 CH3O2 + 0.4 HO2 + 0.4 CH3SO3H : {%StTrG} 1.000e-10;
+<G0CH3SO2>       CH3SO2 = CH3O2 + SO2                        : {%StTrG} 1.800e+13*EXP(-8661./TEMP);
+<G0CH3SO2_O3>    CH3SO2 + O3 = CH3SO3                        : {%StTrG} 3.000e-13;
+<G0CH3SO3_HO2>   CH3SO3 + HO2 = CH3SO3H                      : {%StTrG} 5.000e-11;
+
+// --------------------------------------------------------------------------------
+// SECTION  (Stratospheric) organic halogen reactions
+// --------------------------------------------------------------------------------
+
+<G0CH3Br_OH>     CH3Br + OH = Br + H2O + HO2                 : {%StTrG} 2.350e-12*EXP(-1300./TEMP);
+<G0CH3Br_Cl>     CH3Br + Cl = HCl + HO2 + Br                 : {%StTrG} 1.400e-11*EXP(-1030./TEMP);
+<G0CH2Br2_OH>    CH2Br2 + OH = 2 Br + H2O                    : {%StTrG} 2.000e-12*EXP(-840./TEMP);
+<G0CHBr3_OH>     CHBr3 + OH = 3 Br                           : {%StTrG} 1.350e-12*EXP(-600./TEMP);
+<G0CH2Br2_Cl>    CH2Br2 + Cl = 2 Br + HCl                    : {%StTrG} 6.300e-12*EXP(-800./TEMP);
+<G0CHBr3_Cl>     CHBr3 + Cl = 3 Br + HCl                     : {%StTrG} 4.850e-12*EXP(-850./TEMP);
+<G0CH3Cl_Cl>     CH3Cl + Cl = CO + HO2 + 2 HCl               : {%StTrG} 2.170e-11*EXP(-1130./TEMP);
+<G0CH3Cl_OH>     CH3Cl + OH = CO + HO2 + HCl + H2O           : {%StTrG} 2.400e-12*EXP(-1250./TEMP);  {products: Tyndall(p.c.), implicitly includes NO->NO2 conversion with CH2ClO2}
+<G0CH3CCl3_OH>   CH3CCl3 + OH = H2O + 3 Cl                   : {%StTrG} 1.640e-12*EXP(-1520./TEMP);
+<G0HCFC22_OH>    HCFC22 + OH = Cl + H2O + COF2               : {%StTrG} 1.050e-12*EXP(-1600./TEMP);
+<G0HCFC141B_OH>  HCFC141B + OH = COFCL + Cl                  : {%StTrG} 1.250e-12*EXP(-1600./TEMP);
+<G0HCFC142B_OH>  HCFC142B + OH = COF2 + Cl                   : {%StTrG} 1.300e-12*EXP(-1770./TEMP);
+
+// --------------------------------------------------------------------------------
+// SECTION  (Tropospheric) heterogeneous reactions
+// --------------------------------------------------------------------------------
+
+// these heterogeneous reactions are not defined in MECCA:
+// <G0O3>           O3 = HO2                                    : {%StTrG} ; {O2_aer}
+// <G0HO2>          HO2 = 0.5 H2O2                              : {%StTrG} ; {HO2_aer}
+// <G0NO3>          NO3 = PRODUCTS                              : {%StTrG} ; {NO3_aer}
+// <G0NO2>          NO2 = 0.5 HONO                              : {%StTrG} ; {NO2_aer}
+<G0HNO3>         HNO3 = PRODUCTS                             : {%StTrG} khet_Tr(iht_HNO3); {HNO3_aer}
+<G0N2O5_b>       N2O5 = PRODUCTS                             : {%StTrG} khet_Tr(iht_N2O5); {N2O5_aer}
+
+// --------------------------------------------------------------------------------
+// SECTION  (Stratospheric) heterogeneous reactions
+// --------------------------------------------------------------------------------
+
+<G0N2O5_cde>      N2O5 = 2 HNO3                               : {%StTrG} khet_St(ihs_N2O5_H2O); {het12}
+<G0ClNO3_abc>     ClNO3 = HNO3 + HOCl                         : {%StTrG} khet_St(ihs_ClNO3_H2O); {het13}
+<G0BrNO3_abc>     BrNO3 = HNO3 + HOBr                         : {%StTrG} khet_St(ihs_BrNO3_H2O); {het14}
+<G0ClNO3_HCl_abc> ClNO3 + HCl = Cl2 + HNO3                    : {%StTrG} khet_St(ihs_ClNO3_HCl); {het15}
+<G0HOCl_HCl_abc>  HOCl + HCl = Cl2 + H2O                      : {%StTrG} khet_St(ihs_HOCl_HCl); {het16}
+<G0HOBr_HCl_ab>   HOBr + HCl = BrCl + H2O                     : {%StTrG} khet_St(ihs_HOBr_HCl); {het17}
+
+// --------------------------------------------------------------------------------
+// Photolysis reactions
+// --------------------------------------------------------------------------------
+
+<J0O3_a>         O3 + hv = O1D + O2                          : {%StTrG} jx(ip_O1D);
+<J0O3_b>         O3 + hv = O2 + O3P                          : {%StTrG} jx(ip_O3P);
+<J0H2O2>         H2O2 + hv = 2 OH                            : {%StTrG} jx(ip_H2O2);
+<J0N2O>          N2O + hv = N2 + O1D                         : {%StTrG} jx(ip_N2O);
+<J0NO>           NO + hv = N + O3P                           : {%juser1} jx(ip_NO);
+<J0NO2>          NO2 + hv = NO + O3P                         : {%StTrG} jx(ip_NO2);
+<J0NO3_a>        NO3 + hv = NO2 + O3P                        : {%StTrG} jx(ip_NO2O);
+<J0NO3_b>        NO3 + hv = NO + O2                          : {%StTrG} jx(ip_NOO2);
+<J0HNO3>         HNO3 + hv = NO2 + OH                        : {%StTrG} jx(ip_HNO3);
+<J0HONO>         HONO + hv = NO + OH                         : {%StTrG} jx(ip_HONO);
+<J0HO2NO2_a>     HNO4 + hv = NO3 + OH                        : {%StTrG} .333*jx(ip_HNO4);
+<J0HO2NO2_b>     HNO4 + hv = HO2 + NO2                       : {%StTrG} .667*jx(ip_HNO4);
+<J0N2O5_a>       N2O5 + hv = NO2 + NO3                       : {%StTrG} jx(ip_N2O5);
+//<J0N2O5_b>       N2O5 + hv = NO + O3P + NO3                  : {%StTrG} jx(ip_N2O5_B);
+<J0CO2>          CO2 + hv = CO + O3P                         : {%StTrG} jx(ip_CO2);
+<J0CH4_a>        CH4 + hv = CH3O2 + H                        : {%StTrG} 0.42*jx(ip_CH4);
+<J0CH4_b>        CH4 + hv = 1.44 H2 + 0.18 HCHO + 0.18 O3P + 0.66 OH + 0.44 CO2 + 0.38 CO + 0.05 H2O : {%StTrG} 0.48*jx(ip_CH4);
+<J0CH2O_a>       HCHO + hv = CO + 2 H                        : {%StTrG} jx(ip_CHOH);
+<J0CH2O_b>       HCHO + hv = CO + H2                         : {%StTrG} jx(ip_COH2);
+<J0CH3OOH>       CH3OOH + hv = H + HCHO + OH                 : {%StTrG} jx(ip_CH3OOH);
+<J0CH3O2NO2_a>   CH3O2NO2 + hv = HO2 + NO3 + HCHO            : {%StTrG} .333*jx(ip_CH3O2NO2);
+<J0CH3O2NO2_b>   CH3O2NO2 + hv = CH3O2 + NO2                 : {%StTrG} .667*jx(ip_CH3O2NO2);
+<J0CH3CHO>       CH3CHO + hv = CH3O2 + CO + HO2              : {%StTrG} jx(ip_CH3CHO);
+<J0CH3COOOH>     CH3CO3H + hv = CH3O2 + OH + CO2             : {%StTrG} .28*jx(ip_H2O2);
+<J0C2H5OOH>      C2H5OOH + hv = CH3CHO + HO2 + OH            : {%StTrG} jx(ip_CH3OOH);
+<J0PAN>          PAN + hv = 0.6 CH3CO3 + 0.6 NO2 + 0.4 CH3O2 + 0.4 NO3 + 0.4 CO2 : {%StTrG} jx(ip_PAN);
+<J0EOOH>         EOOH + hv = HOCH2CH2O + OH                  : {%StTrG} jx(ip_CH3OOH);
+<J0GLYOXAL>      GLYOX + hv = 2 CO + 2 HO2                   : {%StTrG} jx(ip_GLYOX);  {jglyoxal at 30° SZA and 300DU O3 ~ 1E-4 s-1}
+<J0GLYALD>       HOCH2CHO + hv = 2 HO2 + CO + HCHO           : {%StTrG} jx(ip_HOCH2CHO);
+<J0HOCH2CO3H>    HOCH2CO3H + hv = HCHO + HO2 + OH + CO2      : {%StTrG} 0.28*jx(ip_H2O2);
+<J0HCOCO2H>      HCOCO2H + hv = 2 HO2 + CO + CO2             : {%StTrG} jx(ip_GLYOX);
+<J0HCOCO3H>      HCOCO3H + hv = CO + HO2 + OH + CO2          : {%StTrG} 2.*jx(ip_CH3OOH);
+<J0CH3COCH3>     CH3COCH3 + hv = CH3CO3 + CH3O2              : {%StTrG} jx(ip_CH3COCH3);
+<J0C3H7OOH>      C3H7OOH + hv = 0.82 CH3COCH3 + OH + HO2 + 0.27 CH3CHO : {%StTrG} jx(ip_CH3OOH);
+<J0POOH>         HYPROPO2H + hv = CH3CHO + HCHO + HO2 + OH   : {%StTrG} jx(ip_CH3OOH);
+<J0HYAC>         ACETOL + hv = CH3CO3 + HO2 + HCHO           : {%StTrG} 0.65*0.11*jx(ip_CHOH);
+<J0CH3COCHO>     MGLYOX + hv = CH3CO3 + CO + HO2             : {%StTrG} jx(ip_GLYOX);
+<J0ROOH>         HYPERACET + hv = CH3CO3 + HCHO + OH         : {%StTrG} jx(ip_CH3OOH);
+<J0PR2O2HNO3>    PR2O2HNO3 + hv = 0.83 HO2 + 0.83 NOA + 0.17 HCHO + 0.17 CH3CHO + OH : {%StTrG} jx(ip_CH3OOH);
+<J0NOA>          NOA + hv = CH3CO3 + HCHO + NO2              : {%StTrG} 0.33*jx(ip_GLYOX);  {at 30° SZA and 300DU O3 J(NOA) = 3.5E-5 s-1 ~ 1/3 J(GLYOXAL) Müller et al. 2014}
+<J0MEK>          MEK + hv = C2H5O2 + CH3CO3                  : {%StTrG} jx(ip_CH3COCH3);
+<J0MEKOOH>       LMEKOOH + hv = CH3CO3 + OH + CH3CHO         : {%StTrG} jx(ip_CH3OOH);
+<J0MEKNO3>       MEKNO3 + hv = CH3CHO + CH3CO3 + NO2         : {%StTrG} 0.33*jx(ip_GLYOX);  {at 30° SZA and 300DU O3 J(MEKNO3) ~ J(NOA) = 3.5E-5 s-1 ~ 1/3 J(GLYOXAL) Müller et al. 2014}
+<J0MACR_a>       MACR + hv = HO2 + 0.5 MACO3 + 0.5 HCHO + 0.5 CH3CO3 + 0.5 CO : {%StTrG} jx(ip_MACR);
+<J0MACROOH>      MACROOH + hv = ACETOL + HO2 + OH + CO       : {%StTrG} jx(ip_CH3OOH);
+<J0MACROH>       MACROH + hv = ACETOL + CO + 2 HO2 + H2O     : {%StTrG} 0.65*0.11*jx(ip_CHOH);
+<J0MPAN>         MPAN + hv = MACO3 + NO2                     : {%StTrG} jx(ip_PAN);
+<J0MACO3H>       MACO3H + hv = CH3CO3 + HCHO + OH + CO2      : {%StTrG} jx(ip_CH3OOH);
+<J0MVK>          MVK + hv = 0.5 C3H6 + 0.5 CH3CO3 + 0.5 HCHO + CO + 0.5 HO2 : {%StTrG} jx(ip_MVK);
+<J0LHMVKABOOH>   LHMVKABOOH + hv = 0.3 MGLYOX + OH + 0.3 HCHO + 0.3 HO2 + 0.7 CH3CO3 + 0.7 HOCH2CHO : {%StTrG} jx(ip_CH3OOH);
+<J0MVKN>         MVKN + hv = CH3CO3 + HOCH2CHO + NO2         : {%StTrG} 0.5*jx(ip_GLYOX);  {at 30° SZA and 300DU O3 J(MVKN) = 5.6E-5 s-1 ~ 1/2 J(GLYOXAL) Müller et al. 2014}
+<J0MACRNO3>      MACRNO3 + hv = ACETOL + CO + HO2 + NO2        : {%StTrG} 3.5*jx(ip_GLYOX);  {at 30° SZA and 300DU O3 J(MACRNO3) = 3.5E-4 s-1 ~ 3.5 J(GLYOXAL) Müller et al. 2014}
+<J0CO2H3CHO>     CO2H3CHO + hv = CO + MGLYOX + 2 HO2         : {%StTrG} 2.*0.65*0.11*jx(ip_CHOH);
+<J0CO2H3CO3H>    CO2H3CO3H + hv = HO2 + MGLYOX + OH + CO2    : {%StTrG} 2.*0.65*0.11*jx(ip_CHOH);  {MIM2: 2 channels}
+<J0BIACETOH>     BIACETOH + hv = CH3CO3 + HOCH2CO3           : {%StTrG} jx(ip_GLYOX);
+<J0ALKOOH>       ALKOOH + hv = 0.4 CH3CHO + 0.25 HCHO + 0.25 CH3COCH3 + HO2 + 0.8 MEK + OH : {%StTrG} jx(ip_CH3OOH);
+<J0ALKNO3>       ALKNO3 + hv = 0.4 CH3CHO + 0.25 HCHO + 0.25 CH3COCH3 + HO2 + 0.8 MEK + NO2 : {%StTrG} jx(ip_HNO3);
+<J0LISOPACOOH>   LISOPACOOH + hv = HO2 + LHC4ACCHO + OH      : {%StTrG} jx(ip_CH3OOH);
+<J0LISOPACNO3>   LISOPACNO3 + hv = HO2 + LHC4ACCHO + NO2     : {%StTrG} jx(ip_HNO3);
+<J0HPALD>        HPALD + hv = LHC4ACCO3 + OH                 : {%StTrG} 500.*jx(ip_MACR);  {D. Taraborrelli: J(MACR)/phi(MACR)=2.*jmacr_a/0.004 = 500.*jmacr_a}
+<J0PACALD>       PACALD + hv = OH + 0.5 HO2 + 0.5 CO + 0.5 MGLYOX + 0.5 GLYOX + 0.5 CH3CO3 : {%StTrG} 1000.*jx(ip_MACR);  {D. Taraborrelli: average of product yields of C5PACALD 1 and 2 in MCMv3.3.1, 2*J(MACR)/phi(MACR)=2.*jhpald = 1000.*jmacr_a}
+<J0LIECHO>       LIECHO + hv = CO + HO2 + 0.6 LHMVKABO2 + 0.4 MACRO2 : {%StTrG} jx(ip_GLYOX);
+<J0LIECO3H>      LIECO3H + hv = 0.6 LHMVKABO2 + 0.4 MACRO2 + CO2 + OH : {%StTrG} jx(ip_CH3OOH);
+<J0ISOPBOOH>     ISOPBOOH + hv = HCHO + MVK + HO2 + OH       : {%StTrG} jx(ip_CH3OOH);
+<J0ISOPBNO3_a>   ISOPBNO3 + hv = HCHO + MVK + HO2 + NO2      : {%StTrG} jx(ip_PAN);
+<J0ISOPDOOH>     ISOPDOOH + hv = HCHO + MACR + HO2 + OH      : {%StTrG} jx(ip_CH3OOH);
+<J0ISOPDNO3>     ISOPDNO3 + hv = HCHO + MACR + HO2 + NO2     : {%StTrG} jx(ip_PAN);
+<J0NISOPOOH>     NISOPOOH + hv = HO2 + NC4CHO + OH           : {%StTrG} jx(ip_CH3OOH);
+<J0NC4CHO>       NC4CHO + hv = LHC4ACCO3 + NO2               : {%StTrG} 5.6*jx(ip_GLYOX);  {at 30° SZA and 300DU O3 J(NC4CHO) = 5.6E-4 s-1 ~ 5.6 J(GLYOXAL) Müller et al. 2014}
+<J0LNISOOH>      LNISOOH + hv = NOA + OH + 0.5 GLYOX + 0.5 CO + HO2 + 0.5 CO2 : {%StTrG} jx(ip_CH3OOH);
+<J0LHC4ACCHO>    LHC4ACCHO + hv = 0.5 LHC4ACCO3 + 0.25 ACETOL + 0.25 HOCH2CHO + 0.25 CH3CO3 + 0.75 CO + 1.25 HO2 : {%StTrG} jx(ip_GLYOX);
+<J0LC578OOH>     LC578OOH + hv = 0.5 ACETOL + 0.5 MGLYOX + 0.5 GLYOX + 0.5 HOCH2CHO + HO2 + OH : {%StTrG} 2.*jx(ip_CH3OOH);
+<J0LHC4ACCO3H>   LHC4ACCO3H + hv = 0.5 ACETOL + 0.5 HOCH2CHO + 0.5 CH3CO3 + 0.5 CO + 0.5 HO2 + OH + CO2 : {%StTrG} 2.*jx(ip_CH3OOH);
+<J0HCOC5>        HCOC5 + hv = CH3CO3 + HCHO + HOCH2CO3       : {%StTrG} jx(ip_GLYOX);
+<J0C59OOH>       C59OOH + hv = ACETOL + HOCH2CO3 + NO2 + OH  : {%StTrG} 2.*jx(ip_CH3OOH);  {NO2 added}
+<J0LISOPOOHOOH>  LISOPOOHOOH + hv = 0.25 MGLYOX + 0.25 HOCH2CHO + 0.25 GLYOX + 0.25 ACETOL + 0.25 CO + 0.25 MACROH + 0.25 HCHO + 0.25 CO2H3CHO + HO2 : {%StTrG} 2.*jx(ip_CH3OOH);  {products of LC578O2 + NO}
+<J0LISOPNO3OOH>  LISOPNO3OOH + hv = ACETOL + HOCH2CO3 + NO2 + OH : {%StTrG} jx(ip_CH3OOH);  {like for C59OOH}
+<J0LISOPNO3NO3>  LISOPNO3NO3 + hv = ACETOL + HOCH2CO3 + 2 NO2 : {%StTrG} 2.*jx(ip_PAN);  {like for C59OOH but with NO2 instead of OH}
+<J0MBOOOH>       MBOOOH + hv = HO2 + OH + 0.67 HOCH2CHO + 0.67 CH3COCH3 + 0.33 IBUTALOH + 0.33 HCHO : {%StTrG} jx(ip_CH3OOH);
+<J0IBUTALOH>     IBUTALOH + hv = 2 HO2 + CO + CH3COCH3       : {%StTrG} jx(ip_HOCH2CHO);
+<J0IBUTALOHOOH>  IPRHOCO3H + hv = CH3COCH3 + OH + CO2 + HO2  : {%StTrG} 0.28*jx(ip_H2O2);  {Tyndall (p.c.)}
+<J0BEPOMUC>      BEPOMUC + hv = BIGALD1 + 1.5 HO2 + 1.5 CO   : {%StTrG} 4.*jx(ip_MACR);
+<J0BIGALD1>      BIGALD1 + hv = 0.6 MALO2 + HO2              : {%StTrG} .14*jx(ip_NO2);
+<J0TOLOOH>       TOLOOH + hv = OH + 0.6 GLYOX + 0.4 MGLYOX + HO2 + 0.2 BIGALD1 + 0.2 BIGALD2 + 0.2 BIGALD3 : {%StTrG} jx(ip_CH3OOH);
+<J0TEPOMUC>      TEPOMUC + hv = 0.5 CH3CO3 + HO2 + 1.5 CO    : {%StTrG} 4.*jx(ip_MACR);  {MCM also has reactions with OH, O3, NO3}
+<J0CATEC1OOH>    CATEC1OOH + hv = CATEC1O + OH               : {%StTrG} jx(ip_CH3OOH);
+<J0BIGALD2>      BIGALD2 + hv = 0.6 DICARBO2 + 0.6 HO2       : {%StTrG} .20*jx(ip_NO2);
+<J0BIGALD3>      BIGALD3 + hv = 0.6 CO + 0.6 HO2 + 0.6 MDIALO2 : {%StTrG} .20*jx(ip_NO2);
+<J0BIGALD4>      BIGALD4 + hv = CO + HO2 + MGLYOX + CH3CO3   : {%StTrG} .006*jx(ip_NO2);
+<J0TERPOOH>      TERPOOH + hv = 0.4 HCHO + 0.05 CH3COCH3 + 0.945 TERPROD1 + HO2 + OH : {%StTrG} jx(ip_CH3OOH);
+<J0TERPROD1>     TERPROD1 + hv = CO + HO2 + TERPROD2         : {%StTrG} jx(ip_CH3CHO);
+<J0TERP2OOH>     TERP2OOH + hv = OH + 0.372 HCHO + 0.3 CH3COCH3 + 0.25 CO + CO2 + TERPROD2 + HO2 + 0.25 HOCH2CHO : {%StTrG} jx(ip_CH3OOH);
+<J0TERPROD2>     TERPROD2 + hv = 0.15 CH3COCH2O2 + 0.68 HCHO + 0.8 CO2 + 0.5 CH3COCH3 + 1.2 HO2 + 1.7 CO : {%StTrG} jx(ip_CH3CHO);
+<J0ISOPBNO3_b>   ISOPBNO3 + hv = HO2 + NO2 + TERPROD1        : {%StTrG} jx(ip_PAN);
+<J0NTERPNO3>     NTERPNO3 + hv = NO2 + OH + TERPROD1         : {%StTrG} jx(ip_CH3OOH);
+<J0ELVOC>        ELVOC + hv = HO2 + OH + TERPROD2            : {%StTrG} 3.*jx(ip_CH3OOH);
+<J0O2_a>         O2 + hv = O1D + O3P                         : {%juser1} jx(ip_O3PO1D);
+<J0O2_b>         O2 + hv = 2 O3P                             : {%juser1} jx(ip_O2);
+<J0H2O_a>        H2O + hv = H + OH                           : {%StTrG} jx(ip_H2O);
+<J0H2O_b>        H2O + hv = H2 + O1D                         : {%StTrG} jx(ip_H2O1D);
+//<J0H2O_c>        H2O + hv = 2 H + O3P                        : {%StTrG} jx(ip_H2O_C);
+<J0CL2>          Cl2 + hv = 2 Cl                             : {%StTrG} jx(ip_Cl2);
+<J0CL2O2>        Cl2O2 + hv = 2 Cl                           : {%StTrG} jx(ip_Cl2O2);
+//<J0CLO>          ClO + hv = Cl + O3P                         : {%StTrG} jx(ip_ClO);
+<J0HCL>          HCl + hv = Cl + H                           : {%StTrG} jx(ip_HCl);
+<J0HOCL>         HOCl + hv = Cl + OH                         : {%StTrG} jx(ip_HOCl);
+<J0CLONO2_a>     ClNO3 + hv = Cl + NO3                       : {%StTrG} jx(ip_ClNO3);
+<J0CLONO2_b>     ClNO3 + hv = ClO + NO2                      : {%StTrG} jx(ip_ClONO2);
+<J0OCLO>         OClO + hv = ClO + O3P                       : {%StTrG} jx(ip_OClO);
+<J0BrO>          BrO + hv = Br + O3P                         : {%StTrG} jx(ip_BrO);
+//<J0HBr>          HBr + hv = Br + H                           : {%StTrG} jx(ip_HBr);
+<J0HOBr>         HOBr + hv = Br + OH                         : {%StTrG} jx(ip_HOBr);
+<J0BrONO_a>      BrONO + hv = Br + NO2                       : {%StTrG} 0.5*jx(ip_BrNO2);  {50% branching ratio assigned to both possible channels.}
+<J0BrONO_b>      BrONO + hv = BrO + NO                       : {%StTrG} 0.5*jx(ip_BrNO2);  {50% branching ratio assigned to both possible channels.}
+<J0BrNO2>        BrNO2 + hv = Br + NO2                       : {%StTrG} 0.15*jx(ip_BrNO2);
+<J0BrONO2_a>     BrNO3 + hv = Br + NO3                       : {%StTrG} 0.85*jx(ip_BrNO3);
+<J0BrONO2_b>     BrNO3 + hv = BrO + NO2                      : {%StTrG} 0.15*jx(ip_BrNO3);
+<J0Br2>          Br2 + hv = 2 Br                             : {%StTrG} jx(ip_BrO);
+<J0BrCL>         BrCl + hv = Br + Cl                         : {%StTrG} jx(ip_BrCl);
+//<J0HF>           HF + hv = F + H                             : {%StTrG} jx(ip_HF);
+<J0SF6>          SF6 + hv = PRODUCTS                         : {%StTrG} jx(ip_SF6);
+<J0CH3Br>        CH3Br + hv = Br + CH3O2                     : {%StTrG} jx(ip_CH3Br);
+<J0CH2Br2>       CH2Br2 + hv = 2 Br                          : {%StTrG} jx(ip_CH2Br2);
+<J0CHBr3>        CHBr3 + hv = 3 Br                           : {%StTrG} jx(ip_CHBr3);
+<J0CH3CL>        CH3Cl + hv = CH3O2 + Cl                     : {%StTrG} jx(ip_CH3Cl);
+<J0CH3CCL3>      CH3CCl3 + hv = 3 Cl                         : {%StTrG} jx(ip_CH3CCl3);
+<J0CF3Br>        CF3Br + hv = Br + F + COF2                  : {%StTrG} jx(ip_CF3Br);
+<J0CF2CLBr>      CF2ClBr + hv = Br + Cl + COF2               : {%StTrG} jx(ip_CF2ClBr);
+<J0CCL4>         CCl4 + hv = 4 Cl + CO2                      : {%StTrG} jx(ip_CCl4);  {mgs: added CO2}
+<J0CFCl3>        CFCl3 + hv = 2 Cl + COFCL                   : {%StTrG} jx(ip_CFCl3);
+<J0CF2Cl2>        CF2Cl2 + hv = 2 Cl + COF2                    : {%StTrG} jx(ip_CF2Cl2);
+<J0CFC113>       CFC113 + hv = 2 Cl + COFCL + COF2           : {%StTrG} jx(ip_F113);
+//<J0CFC114>       CFC114 + hv = 2 Cl + 2 COF2                 : {%StTrG} jx(ip_CFC114);
+//<J0CFC115>       CFC115 + hv = Cl + F + 2 COF2               : {%StTrG} jx(ip_CFC115);
+//<J0HCFC22>       HCFC22 + hv = COF2 + Cl                     : {%StTrG} jx(ip_HCFC22);
+//<J0HCFC141B>     HCFC141B + hv = COFCL + Cl                  : {%StTrG} jx(ip_HCFC141B);
+//<J0HCFC142B>     HCFC142B + hv = COF2 + Cl                   : {%StTrG} jx(ip_HCFC142B);
+//<J0H1202>        H1202 + hv = 2 Br + COF2                    : {%StTrG} jx(ip_H1202);
+//<J0H2402>        H2402 + hv = 2 Br + 2 COF2                  : {%StTrG} jx(ip_H2402);
+//<J0COF2>         COF2 + hv = 2 F                             : {%StTrG} jx(ip_COF2);
+//<J0COFCL>        COFCL + hv = Cl + F                         : {%StTrG} jx(ip_COFCl);

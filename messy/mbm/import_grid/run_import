@@ -1,0 +1,102 @@
+#!/bin/sh -e
+
+########## USER SETTINGS ##############
+# SET BASEDIR TO THE MAIN DIRECTORY of IMPORT_GRID
+BASEDIR=/scratch/b/b302010/MESSY/import_grid
+
+# SET WORKDIR TO THE WORKING DIRECTORY
+WORKDIR=
+
+#SET NAMELIST TO BE USED
+NML=test_3d_ab_xy.nml
+
+# SET PATH OF IMPORT_GRID DATA FILES
+INPUTDIR_MESSY=/scratch/b/b302010/MESSY/import_grid/data
+
+########################################
+########################################
+#    DO NOT CHANGE ANYTHING BELOW      #  
+########################################
+########################################
+
+### *************************************************************************
+### COPY NAMELIST (REMOVE F90 COMMENTS, SUBSTITUTE SHELL VARIABLES)
+### *************************************************************************
+f_copynml( )
+{
+### .............................................
+### $1 <- .TRUE. / .FALSE.
+### $2 <- namelist file (original)
+### $3 <- namelist file (copied)
+### $4 <- stop, if not available ?
+### .............................................
+  if test "$1" = ".TRUE." ; then
+        echo "using namelist file $2 as $3"
+        if test ! -r ${NML_DIR0}/$2 ; then
+           echo '... namelist file missing'
+           if test "$4" = ".TRUE." ; then
+              exit 1
+           else
+              return 0
+           fi
+        fi
+
+        echo 'cat > $3 << EOF' >  temporaryfile
+      echo '! This file was created automatically by $MSH_QNAME, do not edit' \
+                                                    >> temporaryfile
+        if test "${USE_PREREGRID_MESSY:=.FALSE.}" = ".TRUE." ; then
+           ### MANIPULATE REGRID-NAMELISTS IN CASE OF PRE-REGRIDDED INPUT DATA
+           cat ${NML_DIR0}/$2 | sed 's|i_latr|!i_latr|g' \
+                          | sed 's|i_lonr|!i_lonr|g' \
+                          | sed 's|:IXF|:INT|g'      \
+                          | awk '{if (toupper($1) == "&REGRID") \
+                                  { print "&regrid \n i_latr = -90.0,90.0,"} \
+                                  else {print} }'\
+                          | sed 's|!.*||g' \
+                          | sed 's|( *\([0-9]*\) *)|(\1)|g' \
+                          | grep -Ev '^ *$' >> temporaryfile
+        else
+           cat ${NML_DIR0}/$2 | sed 's|!.*||g' \
+                          | sed 's|( *\([0-9]*\) *)|(\1)|g' \
+                          | grep -Ev '^ *$' >> temporaryfile
+        fi
+        echo 'EOF'                                     >> temporaryfile
+        # "." = "source"
+        . ./temporaryfile
+        rm -f temporaryfile
+        echo '................................................................'
+        cat  $3
+        echo '................................................................'
+  fi
+}
+
+######## set BASEDIR  ##################
+if test "${BASEDIR:-set}" = set ; then
+   BASEDIR=`pwd`		  
+fi
+
+######## set WORKDIR  ##################
+if test "${WORKDIR:-set}" = set ; then
+    WORKDIR=$BASEDIR/workdir
+fi
+
+######## set NAMELIST  ##################
+if test "${NMLDIR:-set}" = set ; then
+    NMLDIR=$BASEDIR/nml
+fi
+echo $NMLDIR
+if test "${NML:-set}" = set ; then
+   echo 'ERROR: NML must be set'
+    exit 1
+else
+   NAMELIST=$NMLDIR/$NML
+fi
+
+echo $NAMELIST
+
+cd $WORKDIR
+f_copynml .TRUE. ${NAMELIST} $NML   .TRUE.
+
+
+$BASEDIR/bin/import_grid.exe $NML
+

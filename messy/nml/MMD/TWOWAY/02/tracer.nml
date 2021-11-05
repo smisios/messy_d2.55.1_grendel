@@ -1,0 +1,98 @@
+! -*- f90 -*-
+&CTRL
+L_FAMILY     = F, !# USE TRACER FAMILIES (SEE CTRL_FAMILY BELOW)
+L_PDEF       = T, !# SWITCH TRACER SUB-SUBMODEL PDEF (SEE CPL/CTRL_PDEF BELOW)
+/
+
+&CPL
+L_TRACER_INIT = T, !# SWITCH ON(T)/OFF(F) TRACER INITIALISATION
+L_CONV_LG2GP  = F, !# ONLY IF LAGRANGIAN TRACERS PRESENT 
+/
+
+&CTRL_FAMILY
+l_verbose = F,   !# diagnostic output
+i_diag_pe = 0,   !# ... for this p_pe
+i_diag_jrow = 1, !# ... and this jrow
+!#
+!# NOTES:
+!#    - MAX. NUMBER OF FAMILIES: 50
+!#    - FAMILY-TYPE = 1: FAMILY = SUM OF TRACERS, TRACER = FRACTION OF FAMILY
+!#                                - TRACER FRACTIONS NOT TRANSPORTED
+!#                                - PROCESS SPECIFIC CONVERSION
+!#                                - switch is meaningless for type 1
+!#    -             = 2: FAMILY = SUM OF TRACERS, TRACER REMAINS
+!#                                - TRACER TRANSPORTED
+!#                                - RESCALED TO SUM AFTER TRANSPORT
+!#                                - switch = .FALSE.: no re-scaling,
+!#                                                    only summation
+!#                                -        = .TRUE. (default): re-scaling ON
+!#    - FAMILY TRACER MUST NOT EXIST
+!#    - FIRST VALID TRACER IN FAMILY SPECIFIES ATTRIBUTES OF TRACER FAMILY
+!#    - nadvect=nconvect=nvdiff = ON FOR FAMILIES WITH FAMILY-TYPE = 1
+!#    - EACH TRACER CAN BE MEMBER OF ZERO OR ONE TRACER FAMILY
+!#    - THE DEFAULT WEIGHT FOR EACH TRACER IS 1.0
+!# SYNTAX:
+!#    tracer-set, family-type, switch, family-name, family-subname,
+!#    LIST OF TRACERS ...
+!#    ... ('name' OR 'name_subname' OR 'name:weight' OR 'name_subname:weight')
+!TF(1) = 'gp',1, ,'ClOX','','Cl','ClO','HOCl','OClO','Cl2O2:2.0','Cl2:2.0',!94*''
+!TF(2) = 'gp',1, ,'BrOX','','Br','BrO','HOBr','BrCl','Br2:2.0',!95*''
+!TF(3) = 'gp',1, ,'NOX','','N','NO','NO2','NO3','N2O5:2.0',!95*''
+!TF(4) = 'gp',1, ,'HOx','','H','OH','HO2',!97*''
+!TF(5) = 'gp',1, ,'Ox','','O1D','O3P','O3',!97*''
+!
+!TF(10) = 's1', 1,  , 'F1', '', 'NH', 'SH',
+!TF(11) = 's1', 1,  , 'F2', '', 'TR', 'ST:2.0',
+!TF(12) = 's1', 2, T, 'F3', '', 'V1', 'V2',
+!
+!TF(13) = 'gp', 1,  , 'F1', '', 'NH', 'SH',
+!TF(14) = 'gp', 1,  , 'F2', '', 'TR', 'ST:2.0',
+!TF(15) = 'gp', 2, T, 'F3', '', 'V1', 'V2',
+!
+!TF(16) = 'lg', 1,  , 'F1', '', 'NH', 'SH',
+!TF(17) = 'lg', 1,  , 'F2', '', 'TR', 'ST:2.0',
+!TF(18) = 'lg', 2, T, 'F3', '', 'V1', 'V2',
+!
+!TF(20) = 'gp',2, ,'AERO','ns','SO4_ns'!,'N_ns'
+!TF(21) = 'gp',2, ,'AERO','ks','SO4_ks','OC_ks','BC_ks'!,'N_ks'
+!TF(22) = 'gp',2, ,'AERO','as','SO4_as','OC_as','BC_as','SS_as','DU_as'!,'N_as'
+!TF(23) = 'gp',2, ,'AERO','cs','SO4_cs','OC_cs','BC_cs','SS_cs','DU_cs'!,'N_cs'
+!TF(24) = 'gp',2, ,'AERO','ki','OC_ki','BC_ki'!,'N_ks'
+!TF(25) = 'gp',2, ,'AERO','ai','DU_ai'!,'N_as'
+!TF(26) = 'gp',2,, 'AERO','ci','DU_ci'!,'N_cs'
+/
+
+
+&CTRL_PDEF
+!# diagnostic output ?
+L_DIAGOUT = F,
+!# SYNTAX: set-name, tracer-name, subname,
+!#         reset to zero?, stop on exceed?, relative tolerance
+TPD_DEFAULT(1) = 'gp',   '',     '',    T, F, 0.01,
+TPD_DEFAULT(2) = 'lg',   '',     '',    T, F, 0.01,
+TPD_DEFAULT(3) = 'lggp', '',     '',    F, F, 0.01,
+!
+TPD(1)         = 'gp',   'HNO3', 'nat', T, F,     ,
+TPD(2)         = 'gp',   'N',    '',    T, F,     ,
+!
+/
+
+!!! #####################################################################
+!!! ### TRACER INITIALISATION
+!!! #####################################################################
+!!$
+!!$&regrid
+!!$!outfile  =           "ncrg_${HRES}_ptrac.nc",
+!!$infile    = "$INPUTDIR_MESSY/ptrac/DLR_1.0_X_init_MISC_X-X.nc",
+!!$i_latm    = "LAT",          ! name of latitude axis in input file
+!!$i_latr    = -90.0,90.0,     ! range of latitude axis in input file
+!!$i_lonm    = "LON",          ! name of longitude axis in input file
+!!$i_lonr    = -180., 180.,    ! range of longitude axis in input file
+!!$i_timem   = "MONTH_REG",    ! name of time axis in input file
+!!$i_hyam    = "PRESS",        ! name of hybrid A coefficients in input file
+!!$i_p0      = "100.0 Pa",
+!!$i_hyar    = 0.0,1030.,
+!!$!var       = "Ha=H",
+!!$var       = "O3=V2",
+!!$i_t       = 1,
+!!$/

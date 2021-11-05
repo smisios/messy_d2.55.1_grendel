@@ -1,0 +1,334 @@
+#! /bin/tcsh -f
+#
+# [Gromov, MPI-C Mainz, 2007-2018]
+#
+# script to tag MECCA kinetic chemistry mechanism
+#
+# steps:
+# initialize (zero-setup)
+# choose desired configuration(s)
+# tag using imtag
+# link generated modules to the corresponding dirs
+
+# --------------------------------------------------------------------------
+# VARIABLES
+# --------------------------------------------------------------------------
+
+# paths are relative
+#set batchdir     = "../batch"          # batch files location
+ set batchdir     = ""                  # batch files location
+ set meccadir     = ".."                # where MECCA + equation/species files are located
+ set f90smcl      = "../smcl"           # where f90-files should go to
+ set f90box       = "../.."             #                        -- BOX ONLY
+ set f90smil      = "../../../../smil"  #                        -- SI ONLY
+ set box2tag      = "mecca/tag"         # relative path from box to tag
+ set smcl2tag     = "../tag"            #        - " -       smcl to tag
+ set si2tag       = "../mbm/caaba/mecca/tag" #   - " -       si to tag
+
+ set bindir       = "../../../../../bin" # binaries location
+ set toolsdir     = "../../../../tools" # tools location
+ set cfgdir       = "./cfg"             # directory with configuration files
+ set fpc_call     = "fpc -l -viwnh -B"  # fpc compiler call
+ set do_recompile = "false"             # set to "true" to recompile the executable(s)
+ set pfx          = "messy_mecca_tag"   # prefix for tag files produced
+
+# enable for debug
+##set verbose
+
+# detecting ECHAM5/MESSy
+if ( -d ../../../../echam5 ) then
+  set bm3d
+endif
+
+# detecting CHEMPROP facility
+if ( -d ${meccadir}/tracer/chemprop ) then
+  set chemprop = ${meccadir}/tracer/chemprop
+  set chempropfile = "${chemprop}/messy_main_tracer_chemprop.tbl" # link to chemprop file
+  echo "CHEMPROP detected"
+endif
+
+# just to initialize to zero configuration and exit
+if ( "$1" == "zero" ) goto setzero
+
+# --------------------------------------------------------------------------
+# BATCH INFO TO BE READ HERE
+# --------------------------------------------------------------------------
+
+if ( "$2" != "" ) then
+  # type batchfile with or without extension .bat
+  # Rolf, with new "user_contributed" directory, `basename` does not function 
+  # properly anymore, it removes all preceding paths!
+  # also, one cannot start xmecca with the batchfile name as a parameter :(
+  set batchfile = ${2:r}.bat
+  if ( -f ${batchdir}/${batchfile} ) then
+    echo "\nusing batchfile: ${batchfile}" # | tee -a ../${logfile}
+    set batch
+    source ${batchdir}/${batchfile}
+  else
+    echo "ERROR: ${batchfile} does not exist"
+    exit 1
+  endif
+endif
+
+# --------------------------------------------------------------------------
+# BEGINNING, LINKING FILES, INITIALIZING CONFs
+# --------------------------------------------------------------------------
+
+setzero:
+
+# --------------------------------------------------------------------------
+#echo "initializing configuration(s) setup..."
+
+# removing linked configuration files
+rm -f *.cfg *.kie *.src
+
+# cleaning up sources + other input/output files
+rm -f *.log
+rm -f ${pfx}*.f90 ${pfx}*.inc ${pfx}*.spc ${pfx}*.eqn ${pfx}*.tex ${pfx}*.tbl ${pfx}*.dot
+rm -f ${f90box}/${pfx}*.f90 ${f90box}/${pfx}*.inc
+rm -f ${f90smcl}/${pfx}*.f90 ${f90smcl}/${pfx}*.inc
+
+# remove compilation flag (cond. def. MECCA_TAG)
+rm -f f90defs0_mecca_tag.mk
+
+# # default empty "zero" configuration
+# cp -f ${pfx}_box.f90-zero ${f90box}/${pfx}_box.f90
+# cp -f ${pfx}_parameters.inc-zero ${pfx}_parameters.inc
+# cd ${f90smcl}; ln -fs ${smcl2tag}/${pfx}_parameters.inc .; cd -
+# cd ${f90box};  ln -fs ${box2tag}/${pfx}_parameters.inc .;  cd -
+
+# in ECHAM5/MESSy setup
+if (${?bm3d}) then
+  rm -f ${f90smil}/${pfx}*.f90 ${f90smil}/${pfx}*.inc
+#   cp -f ${pfx}_si.f90-zero ${f90smil}/${pfx}_si.f90
+#   cd ${f90smil}; ln -fs ${si2tag}/${pfx}_parameters.inc .; cd -
+endif
+
+#echo "done"
+#echo ""
+
+# just to initialize to zero configuration and exit
+if ( "$1" == "zero" ) exit 0
+
+# checking if imtag tool is available
+source ./xchecktool imtag
+if ("$?" != "0") exit 1
+
+# linking mecca.eqn & mecca.spc to current folder
+ln -fs ${meccadir}/mecca.eqn ./mecca.eqn
+ln -fs ${meccadir}/mecca.spc ./mecca.spc
+
+# specifying tracer definitions file
+if (${?chemprop}) then
+  # (if none provided, assuming gas.tbl by default)
+  if (! ${?xmecca_gastblfile}) then
+    set xmecca_gastblfile = ${meccadir}/gas.tbl
+  else
+    set xmecca_gastblfile = ${meccadir}/${xmecca_gastblfile}
+  endif
+else
+  # (if none provided, assuming gas.tex by default)
+  if (! ${?xmecca_gastexfile}) then
+    set xmecca_gastexfile = ${meccadir}/gas.tex
+  else
+    set xmecca_gastexfile = ${meccadir}/${xmecca_gastexfile}
+  endif
+endif
+
+# --------------------------------------------------------------------------
+# SELECTION OF DESIRED CONFIGURATION(S)
+# --------------------------------------------------------------------------
+
+echo ""
+echo "[ XTAG: script to tag selected MECCA kinetic chemistry mechanism ]"
+echo "  (note: no aerosol-phase chemistry supported so far)"
+echo ""
+
+# temporarily linking configuration files from cfgdir
+cd ${cfgdir}
+set cfgfiles = (*.cfg *.kie *.src)
+cd -
+foreach cfgfile (${cfgfiles})
+  ln -fs ${cfgdir}/${cfgfile} .
+end
+
+# invoking configuration selection script
+source ./xselectcfg tag\*.cfg
+if ("$?" != "0") then
+  # if nothing selected, clean-up and exit
+  rm -f *.cfg *.kie *.src
+  exit 1
+endif
+
+# --------------------------------------------------------------------------
+# TAGGING
+# --------------------------------------------------------------------------
+
+# these params left from older versions, keeping so far
+set do_tag = "true"
+set do_expl = "false"
+
+if ("${do_tag}" == "true") then
+
+  # ----------------------------------------------------------------------------
+  # run imtag
+
+  echo ">>> tagging with imtag >>>"
+  echo ""
+
+  unlimit  # sometimes dot-files creation fails because of limited stack/heap size
+  if (${?chemprop}) then
+    ./imtag.exe mecca.spc:mecca.eqn ${chempropfile}:${xmecca_gastblfile} ${cfglist} > imtag.log   # >&! imtag.log
+  else
+    ./imtag.exe mecca.spc:mecca.eqn ${xmecca_gastexfile} ${cfglist} > imtag.log    #>&! imtag.log
+  endif
+  set exitstatus = "${status}"
+
+  echo "exit status from imtag is: ${exitstatus}"
+  echo ""
+
+  echo "----- list of warnings: -----"
+  grep '<!>' imtag.log | grep 'warn' | sort -b | uniq
+  echo ""
+
+  echo "----- list of errors: -----"
+  grep '<!>' imtag.log | grep 'error' | sort -b | uniq
+  echo ""
+
+  if ( "${exitstatus}" != "0" ) then
+    echo "please, see the imtag.log file"
+    exit ${exitstatus}
+  endif
+
+  # cleanup
+  rm imcom.tmp
+
+
+  # ----- distributing sources to the directories --------------------------------
+
+  # decapitalizing names of all produced files
+  set tagfiles = (${pfx}*)
+  foreach tagfile (${tagfiles})
+    mv -f ${tagfile} `echo ${tagfile} | gawk '{print tolower($0)}'` >&! /dev/null
+  end
+
+  # applying changes to mecca.eqn & .spc
+  cat ${pfx}.eqn > ${meccadir}/mecca.eqn
+  cat ${pfx}.spc > ${meccadir}/mecca.spc
+
+  # linking generated code to smcl/xbox directories
+  set tagfiles = (${pfx}*.f90 ${pfx}*.inc)
+  foreach tagfile (${tagfiles})
+
+    set base = `basename ${tagfile} .f90`
+   #set isbox = `echo ${base} | awk '{print substr($1,length($1)-2,3)}'`
+
+    set isbox = `echo ${tagfile} "_box." | awk '{print index($1,$2)}'`
+    set issi = `echo ${tagfile} "_si." | awk '{print index($1,$2)}'`
+   #set fext = ${tagfile}:e
+    set fext = `echo ${tagfile} | gawk -F '.' '{print $2}'`
+
+    # default directory (smcl), or dedicated box/si
+    set destdir = ${f90smcl}
+    if ( "${isbox}" != "0" ) set destdir = ${f90box}
+    if ( "${issi}" != "0" ) then
+      if (${?bm3d}) then
+        set destdir = ${f90smil}
+      else
+        set destdir = ""
+      endif
+    endif
+
+    foreach ddir (${destdir})
+      if ( "${fext}" == "inc" ) then
+        # linking include files to all dirs, not copying
+        echo "cd ${f90smcl}; ln -fs ${smcl2tag}/${tagfile} .; cd -"
+        cd ${f90smcl}; ln -fs ${smcl2tag}/${tagfile} .; cd -
+        echo "cd ${f90box};  ln -fs ${box2tag}/${tagfile} .;  cd -"
+        cd ${f90box};  ln -fs ${box2tag}/${tagfile} .;  cd -
+        if (${?bm3d}) then
+          echo "cd ${f90smil}; ln -fs ${si2tag}/${tagfile} .; cd -"
+          cd ${f90smil}; ln -fs ${si2tag}/${tagfile} .; cd -
+        endif
+      else
+        # copying to destination, linking back to tag
+        if ("${destdir}" != "") then
+          if (-e ${ddir}/${tagfile}) rm -f ${ddir}/${tagfile}
+          mv -f ${tagfile} ${ddir}/.
+          ln -fs ${ddir}/${tagfile} .
+          echo linking ${tagfile} from ${ddir}
+        endif
+      endif
+    end
+  end
+
+# CO sink KIE cfg extra (to be implemented later in imtag)
+  if ( -e messy_mecca_tag_cosk.f90 ) then
+  # add CO sink for counterparts to all eqs.
+    sed -i~COSK -E -e 's/\= CO /\= + CO /g' -e 's/(^<[^T].*?=)(.*?)(\+[ 0-9\.]*)( CO )(.*;.*)/\1\2\3\4 \3 E13CO \3 E18CO \3 E17CO \3 E13pCO \3 E18pCO \3 E17pCO \5/g' ${meccadir}/mecca.eqn
+    grep --color -E '( CO .* E17pCO)' ${meccadir}/mecca.eqn
+  endif
+
+# define MECCA_TAG CPP directive:
+  echo "F90DEFS0 += MECCA_TAG" >&! f90defs0_mecca_tag.mk
+
+  echo ""
+  echo "<<< done with tagging <<<"
+
+endif
+
+# --------------------------------------------------------------------------
+# EXTENDED BUDGETING
+# --------------------------------------------------------------------------
+
+if (! ${?batch}) then
+  unset embud
+  echo ""
+  echo "Perform mechanism extended budgeting [y/n/q, default=n]?:"
+  set inputstring = "$<"
+
+  if ( "${inputstring}" == "q" ) exit 1
+  if ( "${inputstring}" == "y" ) set embud = ""
+else
+  if (${?embud}) then
+     set save_tagcfg = ${tagcfg}
+     set tagcfg = ${embud}
+  endif
+endif
+
+if (${?embud}) source ./xembud
+set exitstatus = "${status}"
+if ( "${exitstatus}" != "0" ) then
+  exit ${exitstatus}
+endif
+
+if (${?batch}) then
+  if (${?embud}) then
+     set tagcfg = ${save_tagcfg}
+     unset save_tagcfg
+  endif
+endif
+
+# --------------------------------------------------------------------------
+# FINISH & CLEANUP
+# --------------------------------------------------------------------------
+
+# fixing " = + " in mecca.eqn (for graphviz, temporary)
+sed -i 's/=[ ]\++/=/g' ${meccadir}/mecca.eqn
+
+if (${?chemprop}) then
+  # assembling all *_process.tbl to a common _process.tbl file
+  cat ${pfx}_*_process.tbl > ${pfx}_process.tbl
+  # assembling all *_chemprop.tbl to a common _chemprop.tbl file
+  cat ${pfx}_*_chemprop.tbl > ${pfx}_chemprop.tbl
+endif
+
+# removing linked cfg files
+rm -f *.cfg *.kie *.src
+unsetenv ${cfglist}
+
+
+echo ""
+echo "all done --> returning"
+echo ""
+exit 0

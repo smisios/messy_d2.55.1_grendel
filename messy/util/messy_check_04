@@ -1,0 +1,74 @@
+#! /bin/tcsh -f
+
+### CHECK f90 FILES FOR MESSy-CONFORMITY:
+### 04: non-smil,bmil/smil - FILES
+### MUST NOT RESIDE IN $BASEDIR/smil,bmil messy/smcl
+###
+### Author: Patrick Jöckel, MPICH, Mainz, Germany, Apr 2004
+
+if ($# != 2) then
+   echo "USAGE: `basename $0` <BASEMODEL> <f90-file>"
+   exit 1
+endif
+
+set BASEMODEL = $1
+set file = $2
+set checkid = 04
+
+### BASEMODEL SETTINGS
+if ( -r messy/$BASEMODEL/messy_setup != 0 ) then
+   source messy/$BASEMODEL/messy_setup
+else
+   echo "ERROR: MESSY SETUP messy/$BASEMODEL/messy_setup IS UNREADABLE\!"
+   exit 1
+endif
+
+set messypath = `dirname $file | sed 's|/| |g' | awk '{print $NF}'`
+
+# SET SUBMODEL
+set smodel = `echo $file | awk -F '_' '{print tolower($2)}' | sed 's|\.f90||g'`
+
+# CHECK LAYER ("*.f90" or "*_$SMILEXT.f90")
+set suffix1 = `echo $file | awk '{l=length($0); print substr($0,l-3)}'`
+set sel = `echo $SMILEXT | awk '{print length($0)+4}'`
+set suffix2 = `echo $file | awk '{l=length($0); print substr($0,l-'$sel')}'`
+
+# EXCLUDE MESSy INFRASTRUCTURE
+if ($file == "messy/smil/messy_ncregrid_interface.f90") then
+   exit 0
+endif
+
+# CHECK SUFFIX AND DIRECTORY
+if (($suffix2 != "_$SMILEXT.f90") && ($messypath == "smcl")) then
+   exit 0
+endif
+
+if (($suffix2 == "_$SMILEXT.f90") && ( ($messypath == "smil") \
+                                   ||  ($messypath == "bmil") ) ) then
+   exit 0
+endif
+
+if (($suffix2 == "_$BMILEXT.f90") && ( ($messypath == "bmil") ) ) then
+   exit 0
+endif
+
+#  mz_rs_20150723+
+if ( ($suffix2 == "_si.f90") && ($messypath == "smil") ) then
+   exit 0
+endif
+if ( ($suffix2 == "_si.inc") && ($messypath == "smil") ) then
+   exit 0
+endif
+#  mz_rs_20150723-
+
+#######################################
+    echo '-----------------------------------------------------'
+    echo 'SUBMODEL: '$smodel
+    echo 'CHECK-ID: '$checkid
+    echo 'FILE    : '$file
+    echo '  FILENAME AND MESSy-DIRECTORY INCONSISTENT!'
+    echo 'MESSy-directory: messy/'$messypath
+    echo '-----------------------------------------------------'
+#######################################
+
+exit 0

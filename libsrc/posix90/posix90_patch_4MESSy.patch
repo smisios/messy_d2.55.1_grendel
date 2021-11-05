@@ -1,0 +1,82 @@
+--- /data/joec_pa/Programs/posix90/posix90/src/f90_unix_env_ccode.c	2006-05-31 21:10:37.000000000 +0200
++++ src/f90_unix_env_ccode.c	2019-05-05 20:18:02.000000000 +0200
+@@ -29,7 +29,8 @@
+ #include <sys/utsname.h>
+ 
+ int c_clk_tck_(){
+-    return CLK_TCK;
++    /* return CLK_TCK; */
++    return _SC_CLK_TCK;
+ }
+ 
+ void c_ctermid_(char *s,  int ls){
+--- /data/joec_pa/Programs/posix90/posix90/src/f90_unix_signal_const.c	2006-06-17 23:18:27.000000000 +0200
++++ src/f90_unix_signal_const.c	2019-05-05 20:15:14.000000000 +0200
+@@ -68,7 +68,7 @@
+     printf("integer, parameter :: SIGIO = %d\n", SIGIO);
+     printf("integer, parameter :: SIGPWR = %d\n", SIGPWR);
+     printf("integer, parameter :: SIGSYS = %d\n", SIGSYS);
+-    printf("integer, parameter :: SIGUNUSED = %d\n", SIGUNUSED);
++    /* printf("integer, parameter :: SIGUNUSED = %d\n", SIGUNUSED); */
+     printf("integer, parameter :: NSIG = %d\n", _NSIG);
+     printf("integer, parameter :: SA_NOCLDSTOP = %d\n", SA_NOCLDSTOP);
+     printf("integer, parameter :: SA_NOCLDWAIT = %d\n", SA_NOCLDWAIT);
+--- /data/joec_pa/Programs/posix90/posix90/src/test/f90_unix_io_tst.f90	2006-06-05 17:07:46.000000000 +0200
++++ src/test/f90_unix_io_tst.f90	2019-05-05 20:46:54.000000000 +0200
+@@ -26,7 +26,8 @@
+   
+   type(FILE) :: fp
+   character(len=128) :: line
+-  integer :: linelen, errno, nrec
++  integer :: linelen, errno !, nrec
++  integer(sizet_kind) :: nrec
+ 
+   ! Arrays for fread/fwrite
+   character(len=10) :: strio(2) = (/ "0123456789", "9876543210" /)
+@@ -69,9 +70,9 @@
+   print '(A)', "Fread/fwrite tests:"
+   fp = fopen("testfile", "w", errno)
+   call check_errno(errno, "fopen")
+-  nrec = fwrite("0123456789", 10, fp, errno) ;  if(nrec/=1) go to 8000
++  nrec = fwrite("0123456789", 10_sizet_kind, fp, errno) ;  if(nrec/=1) go to 8000
+   call check_errno(errno, "fwrite-str")
+-  nrec = fwrite(strio, 10, fp, errno) ;  if(nrec/=2) go to 8000
++  nrec = fwrite(strio, 10_sizet_kind, fp, errno) ;  if(nrec/=2) go to 8000
+   call check_errno(errno, "fwrite-str-array")
+   nrec = fwrite(1.0,  fp, errno) ;  if(nrec/=1) go to 8000
+   call check_errno(errno, "fwrite-real")
+@@ -90,11 +91,11 @@
+   fp = fopen("testfile", "r", errno)
+   
+   strio(1)=''
+-  nrec = fread(strio(1), 10, fp, errno) ; if(nrec/=1) go to 8010
++  nrec = fread(strio(1), 10_sizet_kind, fp, errno) ; if(nrec/=1) go to 8010
+   if(strio(1)/="0123456789") go to 8020
+   call check_errno(errno, "fread-str")
+ 
+-  nrec = fread(strio, 10, fp, errno) ; if(nrec/=2) go to 8010
++  nrec = fread(strio, 10_sizet_kind, fp, errno) ; if(nrec/=2) go to 8010
+   if(strio(1)/="0123456789") go to 8020
+   if(strio(2)/="9876543210") go to 8020
+   call check_errno(errno, "fread-str")
+@@ -127,7 +128,7 @@
+   call check_errno(errno, "fread-integer-array")
+   
+   call fseek(fp, 20_long_kind, SEEK_SET)
+-  nrec = fread(strio(1), 10, fp, errno) ; if(nrec/=1) go to 8010
++  nrec = fread(strio(1), 10_sizet_kind, fp, errno) ; if(nrec/=1) go to 8010
+   if(strio(1)/="9876543210") go to 8030
+   call check_errno(errno, "fseek")
+ 
+--- /data/joec_pa/Programs/posix90/posix90/src/f90_unix_regexp_const.c	2006-05-31 21:10:37.000000000 +0200
++++ src/f90_unix_regexp_const.c	2019-05-08 16:46:38.892113000 +0200
+@@ -37,6 +37,9 @@
+     printf("integer, parameter :: REGEX_KIND = %d\n", sizeof(regex_t *));
+     printf("integer, parameter :: REGMATCH_KIND = %d\n", sizeof(regmatch_t *));
+     printf("integer, parameter :: REGOFF_KIND = %d\n", sizeof(regoff_t));
++// mz_sg_20190220+: added REG_NOMATCH from unix regexp implementation
++    printf("integer, parameter :: REG_NOMATCH = %d\n", REG_NOMATCH);
++// mz_sg_20190220-
+     return 0;
+ }
+ 

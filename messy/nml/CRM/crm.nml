@@ -1,0 +1,74 @@
+! -*- f90 -*-
+
+&CTRL
+ngridcells_x  = 64,        ! Number of grid cells in x (DEFAULT = 64)
+
+ngridcells_y  =  1,        ! Number of grid cells in y (DEFAULT = 1 ) -> necessary for 2D-CRM
+
+crm_top       = 5000.,     ! top pressure of highest CRM box in Pascal (DEFAULT = 5000.)
+
+crm_size      = 4000.,     ! CRM grid box size (m)  (DEFAULT = 4000.)
+
+crm_timestep  = 20.,       ! CRM time step (s)      (DEFAULT = 20.)
+
+CRM_3D        = 0,         ! CRM dimensions  => 0 = 2D
+                           !                 => 1 = 3D
+ 
+crm_orient    = 0,         ! CRM orientation => 0 = EAST - WEST
+                           !                 => 1 = NORTH - SOUTH
+                           ! not relevant if CRM_3D = 1
+
+micro_scheme  = 0,         ! 0 -> single-moment microphysics (SAM1MOM)
+                           ! 1 -> double-moment microphysics (MORRISON2005 - has not been thoroughly tested)
+/
+&CTRL_SETPARAM
+   docloud          = T,   ! condensation of cloud water/ice - always TRUE 
+   doprecip         = T,   ! precipitation related processes - always TRUE
+   dosgs            = T,   ! consider subgridscale buoyancy flux (DEFAULT: T)
+   dosmagor         = T,   ! Samgorinsky TKE closure instead of TKE 1.5 order closure (DEFAULT: T)
+
+   dodamping        = T,   ! "sponge"-layer damping at the CRM domain top region (DEFAULT: T)
+   set_damp         = 60., 450., 0.4, ! min. damping time-scale, max. damping time-scale, damp depth as fraction of domain height
+
+   dosurface        = T,   ! toggle surface flux treatment (only in connection with sfc_flx_fxd and sfc_flx_fxd)
+   dosfc_flx_fxd    = F,   ! prescribed surface sensible flux (DEFAULT: F)
+   dosfc_tau_fxd    = F,   ! prescribed surface drag (DEFAULT: F)
+
+   dowallx          = F,   ! use solid walls instead of periodic boundaries in x-direction (DEFAULT: F)
+   dowally          = F,   ! use solid walls instead of periodic boundaries in y-direction (DEFAULT: F)
+   docoriolis       = F,   ! apply coriolis force inside of CRM domain (DEFAULT: F)
+   docolumn         = F,   ! no advection, buoyancy, etc. only CRM single column computations (DEFAULT: F)
+
+   dosgtracer       = 0,   ! 0 = no subgrid tracer transport 
+                           ! 1 = tracer transport with equal CRM cell tracer distribution
+                           ! 2 = tracer transport with individual CRM cell tracer distribution
+                           !!!!!! IF dottrac .NE. 0 then SWITCH OFF CVTRANS !!!!!
+/
+&CTRL_MICRO_SAM1MOM
+   qcw0         = 1.e-3,   ! Threshold for water autoconversion, g/g  
+   qci0         = 1.e-4,   ! Threshold for ice autoconversion, g/g  
+   alphaelq     = 1.e-3,   ! autoconversion of cloud water rate coef
+   betaelq      = 1.e-3,   ! autoconversion of cloud ice rate coef
+   qp_threshold = 1.e-8,   ! minimal rain/snow water content
+/
+! preparations for two_moment microphysics
+&CTRL_MICRO_M2005
+   doicemicro       = T,   ! use ice                                              (DEFAULT: T)
+   dograupel        = T,   ! use graupel                                          (DEFAULT: T)
+   dohail           = F,   ! graupel species has properties of graupel            (DEFAULT: F)
+   dopredictNc      = T,   ! prognostic cloud droplet number                      (DEFAULT: T)
+   dospecifyaerosol = F,   ! use powerlaw CCN relationship or specify aerosols    (DEFAULT: F)
+   dosubgridw       = F,   ! don't bother with estimating w_sgs for now           (DEFAULT: F)
+   dosb_warm_rain   = F,   ! use Seifert & Beheng warm rain param. instead of Khairout. & Kogan (DEFAULT: F)
+   doarcticicenucl  = F,   ! use mid-latitude CCN parameters                      (DEFAULT: F)
+   docloudedgeact   = F,   ! activate droplets at cloud base, not edges           (DEFAULT: F)
+/
+&CPL
+! is not read and used at the moment
+i_do_it = 1,
+/
+
+!!!!!!!!!!!!!!!!!!!!!
+!hardcoded parameters:
+!cwp_threshold= 0.001
+!!!!!!!!!!!!!!!!!!!!!

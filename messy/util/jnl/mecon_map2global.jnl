@@ -1,0 +1,36 @@
+! ----------------------------------------------------------------------
+! FERRET SCRIPT TO CALCULATE 
+! - TRANSFORMATION WEIGHTS (MAP) FOR PROJECTION OF COSMO/MESSy OUTPUT
+!   TO ECHAM/MESSy GRID
+! - A "1 / undefined" FLAG FOR THE COSMO/MESSy REGION ON THE GLOBAL
+!   GRID OF ECHAM/MESSy
+! ----------------------------------------------------------------------
+! Author: Patrick Joeckel, DLR, Nov 2012
+! ----------------------------------------------------------------------
+
+\cancel mode verify
+cancel data/all
+cancel region/all
+cancel variable/all
+cancel symbol/all
+!cancel viewport
+set mode desperate
+
+define symbol inst = $1
+
+set data "01/ECHAM5.mc"
+set data "($inst)/COSMO.mc"
+
+set region/l=1
+
+let map = CURV_TO_RECT_MAP(GEOLON[d=2],GEOLAT[d=2],aps[d=1],1.1)
+save/clobber/file=map_($inst).nc map
+
+set data "map_($inst).nc"
+
+let ps_trafo = CURV_TO_RECT(PS[d=2],map[d=3])
+let flag = IF (ps_trafo GE 0) THEN 1
+
+save/clobber/file=flag_($inst).nc flag
+
+! ----------------------------------------------------------------------

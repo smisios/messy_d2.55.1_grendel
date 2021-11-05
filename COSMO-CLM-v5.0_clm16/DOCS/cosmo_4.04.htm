@@ -1,0 +1,502 @@
+<!DOCTYPE html 
+     PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+     "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xml:lang="en" lang="en">
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="GENERATOR" content="Mozilla/4.7C-SGI [en] (X11; I; IRIX64 6.5 IP27) [Netscape]">
+   <title>New COSMO-Model Version 4.4</title>
+<style type="text/css">
+  body { font-family:       Arial;
+         font-size:         12pt;
+         background-repeat: no-repeat; 
+         margin:            1em; }
+
+  tt   { font-size:         12pt;}
+
+  li   { margin-top:         5pt;
+         margin-bottom:      5pt }
+
+  th   { border:           1px solid black;
+         padding:          3pt;
+         vertical-align:   top;
+         background-color: lightblue;}
+
+  td   { border:           1px solid black;
+         padding:          3pt;
+         vertical-align:   top;}
+
+  td.hilit       { border:           1px solid black;
+                   padding:          1pt;
+                   vertical-align:   top;
+                   background-color: lightblue;}
+
+  td.clean       { padding:          0pt;
+                   border-style:     none;
+                   vertical-align:   top;}
+
+  td.notes       { padding:          3pt;
+                   border-style:     none;
+                   vertical-align:   top;}
+
+  table.note     { border-width:     0pt;
+                   border-style:     none;
+                   margin-left:      5pt;
+                   margin-top:       1pt;
+                   margin-bottom:    1pt;
+                   cell-padding:     5pt;
+                   vertical-align:   top;
+                   text-align:       left;}
+  
+  table.atte     { border-width:     0pt;
+                   border-style:     none;
+                   margin-left:      5pt;
+                   margin-top:       1pt;
+                   margin-bottom:    1pt;
+                   cell-padding:     5pt;
+                   vertical-align:   top;
+                   text-align:       left;
+                   background-color: red;}
+  
+  table.namelist { border-width:  2pt;
+                   border-style:  groove;
+                   border-color:  black;
+                   width:         90%;
+                   text-align:    left;
+                   margin-top:    1pt;
+                   margin-bottom: 1pt;
+                   padding:       3pt;
+                   align:         center;}
+  
+  tr.headings    { text-align:       left;
+                   vertical-align:   top;
+                   border-width:     1pt;
+                   border-style:     groove;
+                   border-color:     grey;
+                   padding:          2pt;
+                   font-weight:      bold;}
+
+</style>
+
+</head>
+  <body text="#000000" bgcolor="#FFFFFF" link="#0000EE" vlink="#551A8B" alink="#FF0000">
+
+<center>
+<h1>
+<a NAME="begin">Documentation of the Changes in COSMO-Model 4.4</a></h1></center>
+
+<p>
+This new version contains changes in the Tiedtke convection scheme (up to now
+only in affect with the Leapfrog scheme), some optimizations in the advection
+of the Runge-Kutta scheme, some optimizations for vector processors and
+(again) technical adaptations and bug fixes.
+</p>
+
+<h4><a NAME="content">Contents:</a></h4>
+
+<ol>
+<li><a href="#changes">Documentation of the Changes</a></li>
+  <ul>
+    <li><a href="#TIE">Tiedtke Convection</a></li>
+    <li><a href="#RKA">Advection in Runge-Kutta Dynamics</a></li>
+    <li><a href="#SSO">Sub-grid Scale Orography Scheme</a></li>
+    <li><a href="#VEC">Vectorization</a></li>
+    <li><a href="#TEC">Technical Adaptations</a></li>
+  </ul>
+<li><a href="#namelis">Summary of new and obsolete Namelist Variables</a></li>
+<li><a href="#results">Changes of Results</a></li>
+</ol>
+<p>
+<hr>
+
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="changes">1. Documentation of the Changes</a></h3>
+
+<!---------------------------------------------------------------------------->
+
+<h4><a NAME="TIE">Tiedtke Convection <i>(by Dmitrii Mironov)</i></a></h4>
+
+<p>
+A number of changes in the Tiedtke cumulus convection scheme, that are related
+to the treatment of convective cloud condensate as a mixed water-ice phase and
+of detrained convective cloud condensate are made. These are:
+</p>
+
+<ul>
+  <li>the relative humidity threshold for the evaporation of convective
+      precipitation in the sub-cloud layer is set to 80%
+      (95% in the previous operational formulation),</li>
+  <li>cloud water-cloud ice mixed phase in convective clouds is allowed over
+      a certain temperature range (in the previous operational formulation,
+      convective cloud condensate is either water or ice, depending upon the
+      air temperature being higher or lower than the water freezing point), and</li>
+  <li>detrained convective cloud condensate is saved as tendencies of the
+      cloud water and of the cloud ice, these tendencies are then passed to
+      the COSMO-model physics and dynamics schemes for further processing
+      (the previous operational formulation assumes instantaneous evaporation
+       of detrained convective cloud condensate).</li>
+</ul>
+
+<p>
+The fraction of cloud ice is computed as a function of temperature. The lower
+and the upper bounds of the temperature range, where convective cloud water
+and convective cloud ice are allowed to co-exist and the form of the
+interpolation function are the same as in the ECMWF IFS (IFS Documentation 2006).
+</p>
+
+<p>
+These changes affect the results of the Leapfrog applications in combination
+with the Tiedtke convection schemes.
+</p>
+
+<p align="right"><a href="#content">Back to Contents</a>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+
+<h4><a NAME="RKA">Advection in Runge-Kutta Dynamics <i>(by Michael Baldauf)</i></a></h4>
+
+<p>
+The structure of the advection routines in the Runge-Kutta dynamics has been
+changed for higher efficiency.
+</p>
+
+<p>
+These changes affect the results of the Runge-Kutta applications.
+</p>
+
+<p align="right"><a href="#content">Back to Contents</a>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+
+<h4><a NAME="SSO">Sub-grid Scale Orography Scheme <i>(by Jan-Peter Schulz)</i></a></h4>
+
+<p>
+The sub-grid scale orography (SSO) scheme by Lott and Miller (1997) has been 
+implemented in the COSMO model. It is also included in the DWD global model 
+and works here well. The scheme deals explicitly with a low-level flow which 
+is blocked when the sub-grid scale orography is sufficiently high. For this 
+blocked flow separation occurs at the mountain flanks, resulting in a form drag. 
+The upper part of the low-level flow goes over the orography and generates 
+gravity waves. 
+</p>
+
+<p>
+Verification at DWD had shown that the forecasted surface pressure 
+in the COSMO-EU model shows a systematic bias. In particular, in wintertime high 
+pressure systems tend to develop a positive pressure bias (by 1-2 hPa after 48h), 
+low pressure systems a negative bias ("highs too high, lows too low"). Assumed 
+causes are an underestimation of the cross-isobar flow in PBL, caused by too 
+little surface drag or too weak blocking at the orography. 
+</p>
+
+<p>
+Tests with an envelope 
+orography which exhibits considerably higher values in the mountains have shown a 
+high sensitivity of the model to this change in orography with respect to blocking 
+(of cyclones). Consequently, low pressure systems were filled more efficiently, 
+the negative pressure bias was reduced. But an obvious disadvantage of the envelope 
+orography is that the precipitation fields are altered in an unfavourable way. 
+An alternative way to increase the surface drag and the blocking while not altering 
+the precipitation fields is the use of a SSO scheme. 
+</p>
+
+<p align="right"><a href="#content">Back to Contents</a>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+
+<h4><a NAME="VEC">Vectorization <i>(by Uli Sch&auml;ttler and Jens-Olaf Beismann)</i></a></h4>
+
+<p>Some more routines have been optimized for vectorization:</p>
+
+<ul>
+ <li>Subroutine <tt>cal_conv_ind</tt> of module <tt>pp_utilities</tt> (for the output of
+    convective indices) has been vectorized.</li>
+
+ <li><tt>src_turbdiff</tt>: Elimination of POINTERS in SR <tt>stab_funct</tt>.</li>
+
+ <li><tt>src_lheat_nudge</tt>: Vectorization of subroutine <tt>horizontal_filtering</tt>
+     by reordering some loops.</li>
+
+ <li><tt>src_lheating</tt>: Introduction of compiler directives.</li>
+
+ <li><tt>src_leapfrog</tt>: Moved a SQRT function outside a loop.</li>
+
+ <li><tt>numeric_utilities</tt>: Vectorization of <tt>mean_over_box</tt> and 
+     <tt>mean_cov_over_box</tt> by loop reordering.
+
+ <li><tt>fast_waves</tt>: Introduction of compiler directives and loop 
+     re-organization.</li>
+</ul>
+
+<p>All these changes do not affect the results at all!</p>
+
+<p align="right"><a href="#content">Back to Contents</a>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+
+<h4><a NAME="TEC">Technical Adaptations</a></h4>
+
+<ul>
+ <li>Reorganization of time_utilities:</ br>
+     <p>
+     The option to calculate the sum of the timings over the whole forecast has
+     been introduced. The Namelist switches <tt>ltime_mean</tt>, <tt>ltime_proc</tt> have
+     been eliminated and <tt>itype_timing</tt> has been introduced instead (see
+     <a href="#namelis">Section 2</a> for a detailed description).
+     </p>
+
+     <p>
+     The search algorithm in subroutine <tt>get_timings</tt> has been eliminated.
+     A direct mapping with fixed integers is used now instead.
+     </p>
+
+     <p>
+     The computation of the forecast time in seconds is done with
+     double precision integers.
+     </p>
+ </li>
+
+ <li>Adaptations for some compiler complaints:</ br>
+     Some compilers are more restrict (or less flexible) regarding syntax.
+     The following 2 issues were changed in several subroutines:
+
+     <p>
+     Declaration of variables in an argument list of a subroutine:
+     The dimensions of fields have to be declared before the field, i.e:
+
+     <table align="center">
+     <tt>
+       <tr><td class="notes">INTEGER</td>
+           <td class="notes">(KIND=iintegers)</td>
+           <td class="notes">::</td>
+           <td class="notes">idim, jdim</td></tr>
+       <tr><td class="notes">REAL   </td>
+           <td class="notes">(KIND=ireals)   </td>
+           <td class="notes">::</td>
+           <td class="notes">field(idim,jdim)</td></tr>
+     </tt>
+     </table>
+
+     and not
+
+     <table align="center">
+     <tt>
+       <tr><td class="notes">REAL   </td>
+           <td class="notes">(KIND=ireals)   </td>
+           <td class="notes">::</td>
+           <td class="notes">field(idim,jdim)</td></tr>
+       <tr><td class="notes">INTEGER</td>
+           <td class="notes">(KIND=iintegers)</td>
+           <td class="notes">::</td>
+           <td class="notes">idim, jdim</td></tr>
+     </tt>
+     </table>
+     </p>
+
+     <p>
+     Some compilers produce a program interuption, if a variable in an
+     argument list is not initialized, even if this variable is not used
+     in a certain application. So these variables are initialized in any
+     case.
+     </p>
+ </li>
+
+ <li>Bug Fixes:</ br>
+
+     <p>
+     Initialization of hd_mask in src_setup:
+     The initialization of the variables i_west, i_east, j_south, j_north
+     was not reproducible. For certain configurations, these values could
+     be different, depending on the special MPI-task. They are now
+     computed by a global operation.
+     </p>
+
+     <p>
+     Fix in the subroutine multiplicative_filling, to avoid negative integrals
+     which could appear in special cases.
+     </p>
+
+     <p>
+     Fix in the initialization of the blacklist field for the latent heat
+     nudging
+     </p>
+
+     <p>
+     Fix in the initialization of nincrad in SR input_phyctl (organize_physics)
+     If hincrad is given in the Namelist input, the variable nincrad was
+     initialized with 0 and not adapted to hincrad. This led to a wrong
+     computation of the solar zenith angle, which should be computed for the
+     middle of the time interval between 2 radiation steps.
+
+     This Bug Fix changes the results of all applications!!
+     </p>
+
+ </li>
+
+ <li>Miscellaneous: </ br>
+
+     <p>
+     Values smaller than E-300 could appear in the subroutine tautsp2D,
+     if the value of Z_VEC is smaller than E-100. To avoid such small
+     values (which lead to underflow on certain machines), values of
+     Z_VEC < 1E-50 are treated as zero.
+     </p>
+
+     <p>
+     Some adaptations to avoid "invalid operations" on the NEC in the
+     module src_mult_local.f90
+     </p>
+
+     <p>
+     Decoding of vertical coordinate parameter nfltvc (for SLEVE) with
+     Grib function REFSTF
+     </p>
+
+     <p>
+     Adaptations for running the Runge-Kutta scheme with DFI
+     (initialization of rho_snow in dfi_initializations, consideration of
+      sign of dt in several RK routines)
+     </p>
+
+     <p>
+     2 new GRIB fields have been introduced for use in Switzerland:
+     Swiss00, Swiss12
+     </p>
+
+ </li>
+
+</ul>
+
+<p align="right"><a href="#content">Back to Contents</a>
+
+<hr>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="namelis">2. Summary of new and obsolete Namelist Variables</a></h3>
+
+<p>There are the following changes in the Namelist variables:</p>
+
+  <table class="namelist">
+    <tr class="headings"> 
+       <th>Group</th> <th>Obsolete</th> <th>New</th> <th>Description</th> <th>Default</th>
+    </tr>
+    <tr>
+     <td class="hilit" rowspan="2"><tt>/RUNCTL/</tt></td>
+     <td><tt>ltime_mean <br> ltime_proc</tt></td>
+     <td><tt>itype_timing</tt></td>
+     <td><table>
+           <tr> <td class="notes">0:</td>
+                <td class="notes">no timings at all</td>                 </tr>
+           <tr> <td class="notes">1:</td>
+                <td class="notes">timings per processor and per hour</td></tr>
+           <tr> <td class="notes">2:</td>
+                <td class="notes">timings per processor and sum over forecast</td></tr>
+           <tr> <td class="notes">3:</td>
+                <td class="notes">hourly mean values of all processors</td></tr>
+           <tr> <td class="notes">4:</td>
+                <td class="notes">sum of mean values of all processors</td></tr>
+         </table></td>
+     <td align="center"><tt>4</tt></td>
+    </tr>
+    <tr><td><tt>lyear_360</tt></td>
+        <td><tt>itype_calendar</tt></td>
+        <td><table>
+           <tr> <td class="notes">0:</td>
+                <td class="notes">gregorian calendar</td>                 </tr>
+           <tr> <td class="notes">1:</td>
+                <td class="notes">a year with 360 days</td></tr>
+           </table></td>
+        <td align="center"><tt>0</tt></td>
+    </tr>
+    <tr>
+     <td class="hilit" rowspan="2"><tt>/TUNING/</tt></td>
+     <td><tt> ---- </tt></td>
+     <td><tt>gkdrag</tt></td>
+     <td>gravity wave drag constant (in the SSO scheme)</td>
+     <td align="center"><tt>0.075</tt></td>
+    </tr>
+    <tr>
+     <td><tt> ---- </tt></td>
+     <td><tt>gkwake</tt></td>
+     <td>low level wake drag constant (in the SSO scheme)</td>
+     <td align="center"><tt>0.5</tt></td>
+    </tr>
+    <tr>
+     <td class="hilit" rowspan="2"><tt>/PHYCTL/</tt></td>
+     <td><tt>ltiedtke<br>lkainfri<br>lbechtol<br>lshallow</tt></td>
+     <td><tt>itype_conv</tt></td>
+     <td><table>
+           <tr> <td class="notes">0:</td>
+                <td class="notes">Tiedtke scheme</td>                 </tr>
+           <tr> <td class="notes">1:</td>
+                <td class="notes">Kain-Fritsch scheme</td></tr>
+           <tr> <td class="notes">2:</td>
+                <td class="notes">Bechtold scheme (not active yet)</td></tr>
+           <tr> <td class="notes">3:</td>
+                <td class="notes">shallow convection scheme</td></tr>
+         </table></td>
+     <td align="center"><tt>0</tt></td>
+    </tr>
+    <tr>
+      <td><tt>----</tt></td>
+      <td><tt>lsso</tt></td>
+      <td>To switch on the sub-grid scale orography scheme</td>
+      <td align="center"><tt>.FALSE.</tt></td>
+    </tr>
+    <tr>
+     <td class="hilit" rowspan="2"><tt>/DIACTL/</tt></td>
+     <td><tt>----</tt></td>
+     <td><tt>itype_diag_t2m</tt></td>
+     <td>To choose the diagnostic T2M scheme (not activated yet)</td>
+     <td align="center"><tt>1</tt></td>
+    </tr>
+    <tr>
+     <td><tt>----</tt></td>
+     <td><tt>itype_diag_gusts</tt></td>
+     <td>To choose the diagnostic gust scheme (not activated yet)</td>
+     <td align="center"><tt>1</tt></td>
+    </tr>
+  </table>
+
+<p align="right"><a href="#content">Back to Contents</a>
+<spacer type=vertical size=10>
+<hr>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="results">3. Changes of Results</a></h3>
+
+<p>There are changes in the results because of the following modifications:</p>
+
+<ul>
+ <li>Bug fix in the initialization of <tt>nincrad</tt>:</ br>
+     With this bug fix the solar zenith angle is computed in the middle between
+     two radiation steps (as it was until Version 3.27) and not at the beginning
+     of an interval between. This affects all applications running the radiation.
+     </li>
+ <li>Optimizations in the Runge-Kutta advection:</ br>
+     Together with these optimizations, a bug in the old scheme was fixed.
+     This leads to different results in the Runge-Kutta applications.
+     </li>
+ <li>Changes in the Tiedtke convection scheme:</ br>
+     These changes are only in affect when running with the Leapfrog dynamical 
+     scheme (up to now) and will lead to different results.
+     </li>
+</ul>
+
+<p align="right"><a href="#content">Back to Contents</a>
+
+</body>
+</html>

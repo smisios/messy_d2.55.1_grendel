@@ -1,0 +1,54 @@
+
+
+
+
+
+
+ca vi
+
+use PM-PI_Tans_____20740228_2350_tracer_gp.nc
+se re/k=39/l=11/y=-60:60
+
+se vi ul
+sca/hlim=7e-7:12e-7/vlim=1.5:5 ch4_ave, (i13ch4_ave/i12ch4_ave/1.12372e-2 - 1)*1e3+50.0
+sca/ov/c=2 ch4t_ave, (i13ch4t_ave/i12ch4t_ave/1.12372e-2 - 1)*1e3+50.0
+sca/ov/c=4 ch4n_ave, (i13ch4n_ave/i12ch4n_ave/1.12372e-2 - 1)*1e3+50.0+2
+sca/ov/c=3 ch4ee_ave, (i13ch4ee_ave/i12ch4ee_ave/1.12372e-2 - 1)*1e3 
+
+se vi ur
+sca/vlog ch4_ave, ch4_ave/(ptloh_ave+ptlcl_ave+ptlo1d_ave)/3600/24/365.25 !, (i13ch4t_ave/i12ch4t_ave/1.12372e-2 - 1)*1e3+50
+sca/ov/c=2 ch4t_ave, ch4t_ave/(ptloht_ave)/3600/24/365.25 !, (i13ch4ee_ave/i12ch4ee_ave/1.12372e-2 - 1)*1e3 
+sca/ov/c=4 ch4n_ave, ch4n_ave/(ptlohn_ave+ptlcln_ave+ptlo1dn_ave)/3600/24/365.25 !, (i13ch4n_ave/i12ch4n_ave/1.12372e-2 - 1)*1e3+50
+sca/ov/c=3 ch4ee_ave, ch4ee_ave/(ptlohee_ave+ptlclee_ave+ptlo1dee_ave)/3600/24/365.25 !, (i13ch4ee_ave/i12ch4ee_ave/1.12372e-2 - 1)*1e3 
+
+se vi ll
+sca/vlim=1.5:5 0*ch4_ave+y, (i13ch4_ave/i12ch4_ave/1.12372e-2 - 1)*1e3+50.0
+sca/ov/c=2 y+0*ch4t_ave, (i13ch4t_ave/i12ch4t_ave/1.12372e-2 - 1)*1e3+50.0
+sca/ov/c=4 y+0*ch4n_ave, (i13ch4n_ave/i12ch4n_ave/1.12372e-2 - 1)*1e3+50.0+2
+sca/ov/c=3 y+0*ch4ee_ave, (i13ch4ee_ave/i12ch4ee_ave/1.12372e-2 - 1)*1e3 
+
+se vi lr
+ca re/l
+let d13ch4t = (i13ch4_ave/i12ch4_ave/1.12372e-2 - 1)*1e3+50.0
+pl d13ch4t[y=80,x=@ave], d13ch4t[y=-80,x=@ave], d13ch4t[y=0:90@ave,x=@ave], d13ch4t[y=0:-90@ave,x=@ave]
+
+stop
+
+!use PM-PI_Tans_____20740225_0000_tracer_pdef_gp.nc
+!ca re/a
+
+!use PM-PI_Tans_____20740101_0000_scout_VOST.nc
+use scout_VOST.des
+
+ca re/a
+se re/k=39
+
+de sy tg = tracer_gp_
+
+se vi ll
+pl/l=1000:1e7 ($tg)ch4_ave, ($tg)ch4t_ave, ($tg)ch4n_ave
+
+se vi lr
+pl/l=1000:1e7 (($tg)i13ch4t_ave/($tg)i12ch4t_ave/1.12372e-2 - 1)*1e3+50, \
+   (($tg)i13ch4ee_ave/($tg)i12ch4ee_ave/1.12372e-2 - 1)*1e3, \
+   (($tg)i13ch4n_ave/($tg)i12ch4n_ave/1.12372e-2 - 1)*1e3+50

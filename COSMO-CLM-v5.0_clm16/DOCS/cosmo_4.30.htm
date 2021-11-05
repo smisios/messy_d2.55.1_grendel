@@ -1,0 +1,471 @@
+<!DOCTYPE html 
+     PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+     "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xml:lang="en" lang="en">
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="GENERATOR" content="Mozilla/4.7C-SGI [en] (X11; I; IRIX64 6.5 IP27) [Netscape]">
+   <title>Changes in the COSMO-Model 4.30</title>
+<style type="text/css">
+  body { font-family:       Arial;
+         font-size:         12pt;
+         background-repeat: no-repeat; 
+         margin:            1em; }
+
+  tt   { font-size:         12pt;}
+
+  li   { margin-top:         5pt;
+         margin-bottom:      5pt }
+
+  th   { border:           1px solid black;
+         padding:          3pt;
+         vertical-align:   top;
+         background-color: lightblue;}
+
+  td   { border:           1px solid black;
+         padding:          3pt;
+         vertical-align:   top;}
+
+  td.middl   { border:           1px solid black;
+               padding:          3pt;
+               vertical-align:   middle;}
+
+  td.hilit       { border:           1px solid black;
+                   padding:          1pt;
+                   vertical-align:   top;
+                   background-color: lightblue;}
+
+  td.clean       { padding:          0pt;
+                   border-style:     none;
+                   vertical-align:   top;}
+
+  td.notes       { padding:          3pt;
+                   border-style:     none;
+                   vertical-align:   top;}
+
+  td.nomid       { padding:          3pt;
+                   border-style:     none;
+                   vertical-align:   middle;}
+
+  table.note     { border-width:     0pt;
+                   border-style:     none;
+                   margin-left:      5pt;
+                   margin-top:       1pt;
+                   margin-bottom:    1pt;
+                   cell-padding:     5pt;
+                   vertical-align:   top;
+                   text-align:       left;}
+  
+  table.atte     { border-width:     0pt;
+                   border-style:     none;
+                   margin-left:      5pt;
+                   margin-top:       1pt;
+                   margin-bottom:    1pt;
+                   cell-padding:     5pt;
+                   vertical-align:   top;
+                   text-align:       left;
+                   background-color: red;}
+  
+  table.namelist { border-width:  2pt;
+                   border-style:  groove;
+                   border-color:  black;
+                   text-align:    left;
+                   margin-top:    1pt;
+                   margin-bottom: 1pt;
+                   padding:       3pt;
+                   align:         center;}
+  
+  tr.headings    { text-align:       left;
+                   vertical-align:   top;
+                   border-width:     1pt;
+                   border-style:     groove;
+                   border-color:     grey;
+                   padding:          2pt;
+                   font-weight:      bold;}
+
+  .rot           { background-color: red;}
+  .blau          { background-color: lightblue;}
+  .hell          { background-color: fuchsia;}
+</style>
+
+</head>
+  <body text="#000000" bgcolor="#FFFFFF" link="#0000EE" vlink="#551A8B" alink="#FF0000">
+
+<center>
+<h1>
+<a NAME="begin">Documentation of the Changes in the COSMO-Model <br /> Version 4.30</a>
+</h1>
+<h3>
+07.11.2013
+</h3>
+</center>
+
+<p>
+This version contains the last technical changes before the next big release.
+</p>
+
+<h4><a NAME="content">Contents:</a></h4>
+
+<ol>
+<li><a href="#bitmaps">Problems when reading boundary files with bitmaps</a></li>
+<li><a href="#flakelv">New GRIB2 level types for FLake variables</a></li>
+<li><a href="#rainini">Initialization of prognostic rain, if no rain data are read from initial files</a></li>
+<li><a href="#bugfixe">Technical Changes and Bug Fixes</a></li>
+<li><a href="#namelis">Changes to the Namelists</a></li>
+<li><a href="#results">Changes of Results</a></li>
+</ol>
+<p>
+<hr>
+
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="bitmaps">1. Problems when reading boundary files with bitmaps</a></h3>
+
+<p>
+Because of the usage of the array <tt>ipds</tt> (for GRIB1 meta data for product 
+definition section) in <tt>src_input</tt> and in <tt>src_output</tt>, a problem 
+occured when running with boundary data defined on frames using a bitmap. 
+After reading such boundary data, the bitmap-flag in <tt>ipds</tt> was set and
+never cleared. Therefore, all output data also had the bitmap-flag set without 
+defining the bitmap-section. 
+</p>
+
+<p>
+Solution: Introduction of two different arrays <tt>ipds_in</tt> for input and 
+<tt>ipds_out</tt> for output<br />
+(routines affected: <tt>data_io.f90</tt>, <tt>io_metadata.f90</tt>, <tt>src_input.f90</tt>, 
+                    <tt>src_output.f90</tt>, <tt>src_sfcana.f90</tt>)
+</p>
+
+<!---------------------------------------------------------------------------->
+<p align="right"><a href="#content">Back to Contents</a>
+<hr>
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="flakelv">2. New GRIB2 level types for FLake variables</a></h3>
+
+<p>
+In GRIB1, all FLake variables were coded with the level type <tt>"surface"</tt>, which (of course)
+is not correct. Therefore, new leveltypes have been introduced for GRIB2, which are now
+officially accepted at WMO and are included in GRIB2, Version 11. The new level types are
+described in Code Table 4.5 and are listed below:
+</p>
+
+<p>
+<center>
+<table border="1" cellspacing="3">
+ <tbody>
+   <tr>
+     <th>Number</th>
+     <th>Name</th>
+     <th>Unit</th>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td>160</td>
+     <td>Depth below sea level</td>
+     <td><tt>m</tt></td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td>161</td>
+     <td>Depth below water surface</td>
+     <td><tt>m</tt></td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td>162</td>
+     <td>Lake or river bottom</td>
+     <td><tt>-</tt></td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td>163</td>
+     <td>Bottom of sediment layer</td>
+     <td><tt>-</tt></td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td>164</td>
+     <td>Bottom of thermally active sediment layer</td>
+     <td><tt>-</tt></td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td>165</td>
+     <td>Bottom of sediment layer penetrated by thermal wave</td>
+     <td><tt>-</tt></td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td>166</td>
+     <td>Mixing layer</td>
+     <td><tt>-</tt></td>
+   </tr>
+<!---------------------------------------------------------------------------->
+ </tbody>
+</table>
+</center>
+</p>
+ 
+<p>
+Because most FLake variables are valid for a layer in the lake, the <tt>typeOfFirstFixedSurface</tt>
+and the <tt>typeOfSecondFixedSurface</tt> are set different. In grib_api there are additional values
+for the coded key <tt>typeOfLevel</tt> (which is derived from the two keys <tt>typeOfFirstFixedSurface</tt> and
+<tt>typeOfSecondFixedSurface)</tt>. The settings for the FLake variables are given below:
+</p>
+
+<p>
+<center>
+<table border="1" cellspacing="3">
+ <tbody>
+   <tr>
+     <th>FLake variable</th>
+     <th>grib_api <tt>typeOfLevel</tt></th>
+     <th><tt>typeOfFirstFixedSurface</tt></th>
+     <th><tt>typeOfSecondFixedSurface</tt></th>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td><tt>DEPTH_LK</tt></td>
+     <td><tt>entireLake</tt></td>
+     <td>1</td>
+     <td>162</td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td><tt>T_MNW_LK</tt></td>
+     <td><tt>entireLake</tt></td>
+     <td>1</td>
+     <td>162</td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td><tt>GAMSO_LK</tt></td>
+     <td><tt>entireLake</tt></td>
+     <td>1</td>
+     <td>162</td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td><tt>FETCH_LK</tt></td>
+     <td><tt>surface</tt></td>
+     <td>1</td>
+     <td>1</td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td><tt>T_WML_LK</tt></td>
+     <td><tt>mixedLayer</tt></td>
+     <td>1</td>
+     <td>166</td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td><tt>H_ML_LK</tt></td>
+     <td><tt>mixedLayer</tt></td>
+     <td>1</td>
+     <td>166</td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td><tt>C_T_LK</tt></td>
+     <td><tt>thermocline</tt></td>
+     <td>166</td>
+     <td>162</td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td><tt>T_BOT_LK</tt></td>
+     <td><tt>lakeBottom</tt></td>
+     <td>162</td>
+     <td>255</td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td><tt>DP_BS_LK</tt></td>
+     <td><tt>sedimentLayerTA</tt></td>
+     <td>162</td>
+     <td>164</td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td><tt>H_B1_LK</tt></td>
+     <td><tt>sedimentLayerTW</tt></td>
+     <td>162</td>
+     <td>165</td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td><tt>T_BL_LK</tt></td>
+     <td><tt>sedimentBottomTA</tt></td>
+     <td>164</td>
+     <td>255</td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td><tt>T_B1_LK</tt></td>
+     <td><tt>sedimentBottomTW</tt></td>
+     <td>165</td>
+     <td>255</td>
+   </tr>
+<!---------------------------------------------------------------------------->
+ </tbody>
+</table>
+</center>
+</p>
+ 
+<p>
+Consequences for the COSMO-Model:<br />
+The check for <tt>typeOfLevel</tt> has been omitted now in the COSMO-Model. Using grib_api this is
+implicitly done by checking the <tt>shortName</tt> (as long as there are not several variables with
+the same GRIB2 triple but different <tt>typeOfLevels</tt>). Also, for output the <tt>typeOfLevel</tt> need not
+be set, because it is again implicitly set by setting the <tt>shortName</tt>.
+</p>
+
+<!---------------------------------------------------------------------------->
+<p align="right"><a href="#content">Back to Contents</a>
+<hr>
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="rainini">3. Initialization of prognostic rain, if no rain data are 
+                         read from initial files</a></h3>
+
+In Version 4.23 the option to run without prognostic precipitation was removed.
+At the same time, initialization of rain and snow was moved from the first time 
+step to the initialization phase of the physics. But at this stage the variable 
+<tt>dt2 (=2*dt)</tt> was not set. This has been added now in subroutine
+<tt>organize_physics.f90</tt>.
+
+<!---------------------------------------------------------------------------->
+<p align="right"><a href="#content">Back to Contents</a>
+<hr>
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="bugfixe">4. Technical Changes and Bug Fixes</a></h3>
+
+<ul>
+ <li><tt>data_io.f90</tt>:<br />
+  Split <tt>ipds</tt> into <tt>ipds_in</tt> and <tt>ipds_out</tt>, to separate for input and output.</li>
+
+ <li><tt>environment.f90</tt>:<br />
+  Corrected usage of uninitialized variable <tt>yzerrmsg</tt> in subroutine <tt>exchg_boundaries</tt>.
+  </li>
+
+ <li><tt>io_metadata.f90</tt>:<br />
+  Renamed <tt>ipds</tt> to <tt>ipds_out</tt> to reflect usage for output.</li>
+
+ <li><tt>io_utilities.f90</tt>:<br />
+  <ul>
+    <li>Corrected usage of uninitialized variable <tt>yzhead</tt> in subroutine <tt>write_ready_final</tt>.</li>
+    <li>Modified check for <tt>pv_in</tt> in subroutine <tt>check_input_grid</tt>: only check vertical
+        coordinate parameters</li>
+  </ul></li>
+
+ <li><tt>lmorg.f90</tt>:<br />
+  <ul>
+   <li>Changed use of datatypes to <tt>FALSE</tt> in <tt>exchange_leapfrog</tt> (had problems on the IBM).</li>
+   <li>Some technical changes for COSMOART and POLLEN.</li>
+  </ul></li>
+
+ <li><tt>organize_data.f90</tt>:<br />
+  Increased <tt>num_gribtabs</tt> to 12 to add table 245 for dust modelling.</li>
+
+ <li><tt>organize_physics.f90</tt>:<br />
+  Initialize variable <tt>dt2</tt> in the initialization step, because it is needed for the 
+  diagnostic initialization calling subroutine <tt>hydci</tt>.</li>
+
+ <li><tt>numeric_utilities.f90</tt>:<br />
+  Removed old CRAY compiler directives, which are not recognized any more.</li>
+
+ <li><tt>src_advection_rk.f90</tt>:<br />
+  <ul>
+    <li>Initialized <tt>izerror</tt> in subroutines <tt>horiz_adv_driver</tt> and 
+     <tt>implicit_sedim</tt></li>
+    <li>Changed <tt>INTENT</tt> attribute of <tt>phi_new</tt> in SR <tt>implicit_sedim</tt> 
+     to <tt>INOUT</tt>, because otherwise it is used before it is defined!</li>
+  </ul>
+</li>
+
+ <li><tt>src_artifdata.f90</tt>:<br />
+  Initialized <tt>izerror</tt> before using in several subroutines.</li>
+
+ <li><tt>src_input.f90</tt>:<br />
+  <ul>
+   <li>Renamed <tt>ipds</tt> to <tt>ipds_in</tt> to reflect usage for input data</li>
+   <li>Do not check the level types for the FLake variables any more</li>
+   <li>Initialized <tt>pv_in</tt> also for pure GRIB2 I/O</li>
+   <li>  Initialized <tt>refatm%refatm_id</tt> also for binary output during restarts</li>
+  </ul></li>
+
+ <li><tt>src_leapfrog.f90</tt>:<br />
+  Added missing argument <tt>kflat</tt> also to <tt>semi-implicit</tt>-call</li>
+
+ <li><tt>src_lheat_nudge.f90</tt>:<br />
+  Modifications to read all input data also in GRIB2.</li>
+
+ <li><tt>src_nudging.f90</tt>:<br />
+  Bug fix, to avoid using de-allocated array <tt>ztcorr</tt> if <tt>ntpscor=1</tt>.</li>
+
+ <li><tt>src_obs_rad.f90</tt>:<br />
+  <ul>
+    <li>Changed <tt>INTENT</tt> attribute of variable <tt>nlev</tt> to <tt>INOUT</tt> in 
+        subroutine <tt>prepare_rttov_input</tt></li>
+    <li>Changed <tt>INTENT</tt> attribute of variable <tt>comm</tt> to <tt>INOUT</tt> in 
+        subroutine <tt>p_bcast_rad_set</tt></li>
+  </ul>
+</li>
+
+ <li><tt>src_output.f90</tt>:<br />
+  Renamed <tt>ipds</tt> to <tt>ipds_out</tt> to reflect usage for output.</li>
+
+ <li><tt>src_sfcana.f90</tt>:<br />
+  Renamed <tt>ipds</tt> to <tt>ipds_out</tt> to reflect usage for output.</li>
+</ul>
+
+<!---------------------------------------------------------------------------->
+<p align="right"><a href="#content">Back to Contents</a>
+<hr>
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="namelis">5. Changes to the Namelists</a></h3>
+
+<p>There were no changes to the Namelists.</p>
+
+<!---------------------------------------------------------------------------->
+<p align="right"><a href="#content">Back to Contents</a>
+<hr>
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="results">6. Changes of Results</a></h3>
+
+<p>
+There are no changes of results!
+</p>
+
+<!---------------------------------------------------------------------------->
+
+<p align="right"><a href="#content">Back to Contents</a>
+<hr>
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<center>
+<h1>This version will be renamed to COSMO-Model 5.0 beginning of November!</h1>
+</center>
+
+</body>
+</html>

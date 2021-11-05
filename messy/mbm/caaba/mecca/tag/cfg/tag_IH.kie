@@ -1,0 +1,98 @@
+->>- +++++ following lines will not be included into eqn/f90 ++++++ {>CASE:REM}
+
+// ----------------------------------------------------------------------------
+// This file contains necessary consts and expressions to be included into
+// - equation file of the MECCA chemistry module tagged by imtag
+// to process kinetic isotope effects for hydrogen isotopes
+//
+// [Gromov, MPICH, 2007-2015]
+// ----------------------------------------------------------------------------
+
+-<<- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ {<CASE:REM}
+->>- +++++ following lines are included in mecca ++++++++ {>CASE:TAG}
+#INLINE F90_GLOBAL
+-<<- ++++++++++++++++++++++++++++++++++++++++++++++++++++ {<CASE:TAG}
+  ! ----- hydrogen KIE declaration part -----
+
+->>- +++++ following lines are included if G4100 is in mech +++++ {>REAC:G4100.*}
+  ! -= G4100 ----- CH4+O1D -----------------------------------------------------
+  ! (R2) in [Zahn et al., ACP6, 2006] <- [Saueressig et al., JGRA106, 2001]
+  ! + trustworthy
+    REAL(dp) :: r_G4100_k1_k2 = 1.060_dp
+  !   entry 1.066+-0.002 in [Roeckmann et al., 2011] is likely a typo
+-<<- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ {<REAC:G4100.*}
+->>- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ {>REAC:G4101.*}
+  ! - G4101 ----- CH4+OH ------------------------------------------------------
+    REAL(dp) :: r_G4101_k1_k2_CH4, r_G4101_k1_k2_OH
+-<<- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ {<REAC:G4101.*}
+->>- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ {>REAC:G6400.*}
+  ! - G6400 ----- CH4+Cl ------------------------------------------------------
+    REAL(dp) :: r_G6400_k1_k2
+-<<- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ {<REAC:G6400.*}
+
+->>- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ {>REAC:G4118.*}
+  ! - CH3O+O2 ----- D/H branching ratio (HCHO:HO2) and HCDO channel fraction --
+    REAL(dp) :: k_G4118, ib_D_G4118, if_D_G4118_HCHO  ! G4118 r-n rate const.,
+-<<- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ {<REAC:G4118.*}
+
+->>- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ {>REAC:Gxxxx}
+  ! - Gxxxx -------------------------------------------------------------------
+  ! others
+-<<- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ {<REAC:Gxxxx}
+->>- +++++ following lines are included in mecca ++++++++ {>CASE:TAG}
+#ENDINLINE {above lines go into MODULE messy_meccr_kpp_Global}
+
+#INLINE F90_RCONST
+! USE messy_main_constants_mem ! atm2Pa, N_A, R_gas
+-<<- ++++++++++++++++++++++++++++++++++++++++++++++++++++ {<CASE:TAG}
+  ! ----- hydrogen KIE calculation part -----
+
+->>- +++++ following lines are included if G4100 is in mech +++++ {>REAC:G4100.*}
+  ! - G4110 ----- CH4+O1D -----------------------------------------------------
+  ! defined constant
+-<<- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ {<REAC:G4100.*}
+->>- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ {>REAC:G4101.*}
+  ! - G4101 ----- CH4+OH ------------------------------------------------------
+  ! T-dependent
+  !
+  ! (R1) in [Zahn et al., ACP6, 2006] <- [Gierczak et al., JCPA101, 1997]
+  ! + needs to be checked against the original work [Gierczak et al., JCPA101, 1997]
+  ! r_G4101_k1_k2_CH4 = (0.605_dp*exp(215_dp/temp)
+  ! r_G4101_k1_k2_OH  = (1.120_dp*exp(-55_dp/temp)
+  !
+  ! recalc. [Saueressig et al., JGRA106, 2001] <- [Gierczak et al., JCPA101, 1997]
+  ! + trustworthy
+    r_G4101_k1_k2_CH4 = 1.097_dp*exp(49.0_dp/temp)
+    r_G4101_k1_k2_OH  = 1.0_dp !!! TODO (recalc Gierczak values in light of Saueressig)
+
+  ! TODO: Franziska, review and add the KIEs!
+-<<- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ {<REAC:G4101.*}
+
+->>- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ {>REAC:G6400.*}
+  ! - G6400 ----- CH4+Cl ------------------------------------------------------
+  ! T-dependent
+  !
+  ! (R3) in [Zahn et al., ACP6, 2006] <- [Saueressig et al., JGRA106, 1996]
+  ! + trustworthy
+    r_G6400_k1_k2 = (1.278_dp*exp(51.31_dp/temp))
+  !
+  ! [2014.JPCx.Sauer,etal]
+  ! r_G6400_k1_k2 = (1.227_dp*exp(43_dp/temp))
+-<<- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ {<REAC:G6400.*}
+
+->>- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ {>REAC:G4118.*}
+  ! - CH3O+O2 ----- D/H branching ratio (HCHO:HO2) and HCDO channel fraction --
+    k_G4118 = 1.3E-14*exp(-663./temp)*c(ind_O2)   ! G4118 r-n rate
+  ! T-dependent D/H branching data from [Hu et al., JPCA116, 2012]
+  ! ib_D_G4118 = exp(416./temp+0.52);             ! k1a/k1b (HCHO:HO2) -- due to kp4 bug, temp does not make it into temp(k) here, TODO !
+    ib_D_G4118 = exp(0.52+416./temp);             ! k1a/k1b (HCHO:HO2)
+    if_D_G4118_HCHO = ib_D_G4118/(1.+ib_D_G4118)  ! k1a/(k1a+k1b)
+-<<- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ {<REAC:G4118.*}
+
+->>- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ {>REAC:Gxxxx}
+  ! - Gxxxx -------------------------------------------------------------------
+  ! others
+-<<- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ {<REAC:Gxxxx}
+->>- +++++ following lines are included in mecca ++++++++ {>CASE:TAG}
+#ENDINLINE {above lines go into the SUBROUTINES UPDATE_RCONST and UPDATE_PHOTO}
+-<<- ++++++++++++++++++++++++++++++++++++++++++++++++++++ {<CASE:TAG}

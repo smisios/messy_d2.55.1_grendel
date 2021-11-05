@@ -1,0 +1,74 @@
+MPIOM (incl. HAMOCC) release_1_3 (beta)
+
+MPIOM can be either run stand alone or coupled to HAMOCC. This tar
+file provides everything needed to run omip type experiments with a 3
+deg. 40 level setup either MPIOM or MPIOM+HAMOCC on the DKRZ SX-6.
+
+Both MPIOM and HAMOCC use MPI2 library for internal communication (see
+http://www-unix.mcs.anl.gov/mpi/mpich2) and are partly doing IO for the 
+initial, restart and output files based on UCAR's netCDF 
+(see http://www.unidata.ucar.edu/packages/netcdf).
+
+ The user has to edit config/mh-xxx for the machine dependent
+settings, e.g. the user has to set the variable NETCDFROOT to the
+netcdf root directory on his machine or specify NETCDF_LIB and
+NETCDF_INCLUDE (see below). The "mh-xxx" files for linux, solaris and
+the DKRZ SX (called mh-nec) are working, the others are copies from
+echam5 and can be used as guide line if the model is ported to one of
+these platforms.
+
+In order to create a Makefile for MPIOM type:
+
+configure 
+
+The location of NetCDF and cdi can be specified via arguments
+--with-netcdf-root=/pathnetcdf, --with-cdi-root=/pathcdi. configure
+will then try to link with the appropriate libraries by emitting
+-L/path{netcdf|cdi}/lib and compile with headers included with
+-I/path{netcdf|cdi}/include. Both flags can be specified if something
+more specific is required by adding --with-{netcdf|cdi}-{lib|include}
+on the command line.
+
+In case --enable-CDI is given but no cdi-library can be found in the
+system, a version of cdi provided with MPIOM will be used as fallback.
+
+Note: MPI can be disabled by typing:
+
+configure --enable-MPI=no
+
+Note: In case MPI2 is not available cpp keyword <use_com_MPI1> can be
+used to force MPI1.
+
+In order to create a Makefile for MPIOM+HAMOCC type
+
+configure --enable-HAMOCC=yes
+
+
+Cross compiling on the DKRZ cross: 
+
+configure --host=sx6 
+
+to build an executable for DKRZ NEC SX6
+
+The automake setup of MPIOM supports multiple configurations in other
+directories than the source tree. I.e. to build mpiom in
+/path/to/mpiom-build when the source tree was unpacked in /path/to/mpiom do:
+
+cd /path/to/mpiom-build
+/path/to/mpiom/configure
+
+Please note that /path/to/mpiom-build cannot be a subdirectory of
+/path/to/mpiom.
+
+In order to compile type:
+
+make
+
+The mpiom binary will then be built in bin/mpiom.x
+
+To install the program in /usr/local/bin run
+
+make install
+
+To choose another a place generally available, i.e. /opt/mpiom, run
+configure with the --prefix=/opt/mpiom argument.

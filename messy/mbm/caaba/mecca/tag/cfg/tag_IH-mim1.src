@@ -1,0 +1,141 @@
+; [Gromov, MPI-C, 2015-2016]
+;
+; tagIH.src
+;
+; ISOTOPIC HYDROGEN SOURCES & TRANSFER INCLUDE FILE
+;
+; reactions with unambiguous H transfer are NOT listed
+;
+; avoid using identical entries on the left side, i.e.
+; G1234 A = 1 C
+; G1234 B = 2 D
+; instead, use:
+; G1234 A = 1 C 2 D
+
+; N.B.: This version is adapted to MIM mechanism !
+
+
+;<G2nnn> ------------------------------- H -------------------------
+; essentially are H isotope exchange r-s...
+
+;<G2105> OH + H2 = H2O + H {+ 62.7 kJmol} : {%UpStTrG} 2.8E-12*EXP(-1800./temp); {&2626}
+  G2105 OH = 1 H2O
+  G2105 H2 = 1 H2O 1 H
+
+;<G2112> H2O2 + OH = H2O + HO2 : {%UpStTrG} tag_kG2112;  {&2626} {?2}
+  G2112      OH = 1 H2O
+  G2112 H2O2    = 1 H2O 1 HO2
+
+
+;<G32nn> ------------------------------- HN -------------------------
+; NH chemistry (H. Tost, may be subject to check)
+
+;<G3209> NH3   + OH      = NH2 + H2O     : {%TrGN}   1.7E-12{§}*EXP(-710./temp); {&2415}
+  G3209  NH3 = NH2 H2O
+  G3209   OH =     H2O
+
+;<G3211> NH2   + HO2     = NH2O + OH     : {%TrGN}   4.8E-07{§}*EXP(-628./temp)*temp**(-1.32); {&2415}
+  G3211  NH2 = NH2O
+  G3211  HO2 = OH
+
+;<G3212> NH2   + HO2     = HNO + H2O     : {%TrGN}   9.4E-09{§}*EXP(-356./temp)*temp**(-1.12); {&2415}
+  G3212  NH2 =     H2O
+  G3212  HO2 = HNO H2O
+
+;<G3222> NHOH  + OH      = HNO + H2O     : {%TrGN}   1.66E-12{§}; {&2415}
+; H-abstraction?
+  G3222  NHOH = HNO H2O
+  G3222    OH =     H2O
+
+;<G3223> NH2OH + OH      = NHOH + H2O    : {%TrGN}   4.13E-11{§}*EXP(-2138./temp); {&2415}
+; H-abstraction?
+  G3223  NH2OH = NHOH H2O
+  G3223     OH =      H2O
+
+
+; - 1C ------------------------------------------------------------
+; MIM chemistry w/NMO
+
+;<G4101> CH4      + OH     = CH3O2 + H2O
+  G4101  CH4 = 1 H2O CH3O2 CH3
+  G4101   OH = 1 H2O
+
+; # MIM1 ver. misses H2O - should be added in rpl
+;<G4102>  CH3OH   + OH      = HCHO + HO2        : {%TrG}    2.9E-12*EXP(-345./temp); {&2626}
+  G4102 CH3OH = HCHO HO2 CH3O 1 H2O
+  G4102    OH =               1 H2O
+
+;<G4107> CH3OOH + OH       = .7 CH3O2 + .3 HCHO + .3 OH + H2O : {%StTrG} k_CH3OOH_OH; {&1207}
+  G4107  CH3OOH = H2O CH3O2 HCHO OH
+  G4107      OH = H2O
+
+;<G4108> HCHO     + OH       = CO + H2O + HO2     : {%StTrG}  9.52E-18{§1.05}*EXP(2.03*log(temp)+636./temp); {&1634}
+  G4108  HCHO = H2O HO2
+  G4108    OH = H2O
+
+;<G4111> HCOOH    + OH {+O2} = CO2 + HO2 + H2O    : {%TrG}    2.94E-14*exp(786./temp)+9.85E-13*EXP(-1036./temp){§}; {&dt-1908}
+  G4111  HCOOH = H2O HO2
+  G4111     OH = H2O
+
+
+;<G6nnn> ------------------------------- Cl -----------------------
+;<G6405> CH3Cl + O1D = ProdLCl + LossO3Cl + LossO3 + LCARBON + OH + Cl : {%StGCl} tag_kG6405;  {&} {?2}
+  G6405  CH3Cl = OH
+
+;<G6406> CH3Cl + OH = ProdLCl + LCARBON + H2O + Cl : {%StGCl} tag_kG6406;  {&2626} {?2}
+  G6406  OH = 1 H2O
+
+;<G6407> CH3CCl3 + O1D = 3 ProdLCl + LossO3Cl + LossO3 + 2 LCARBON + OH + 3 Cl : {%StGCCl} tag_kG6407;  {&} {?2}
+  G6407  CH3CCl3 = 1 OH
+
+;<G6408> CH3CCl3 + OH = 3 ProdLCl + 2 LCARBON + H2O + 3 Cl : {%StTrGCCl} tag_kG6408;  {&2626} {?2}
+  G6408  OH = 1 H2O
+
+
+;<G7nnn> ------------------------------- Br ------------------------
+;<G7403> CH3Br + OH = ProdLBr + LCARBON + H2O + Br : {%StTrGBr} tag_kG7403;  {&2626} {?2}
+  G7403     OH = 1 H2O
+  G7403  CH3Br = 1 H2O
+
+;<G7407> CHBr3 + OH = 3 ProdSBr + LCARBON + H2O + 3 Br : {%TrGBr} tag_kG7407;  {&2626} {?2}
+  G7407     OH = 1 H2O
+  G7407  CHBr3 = 1 H2O
+
+;<G7408> CH2Br2 + OH = 2 ProdSBr + LCARBON + H2O + 2 Br : {%TrGBr} tag_kG7408;  {&2626} {?2}
+  G7408      OH = 1 H2O
+  G7408  CH2Br2 = 1 H2O
+
+;<G7605> CHCl2Br + OH = ProdSBr + LCARBON + 2 LCHLORINE + H2O + Br : {%TrGBrCl} tag_kG7605;  {&} {?2}
+  G7605      OH = 1 H2O
+  G7605 CHCl2Br = 1 H2O
+
+;<G7606> CHClBr2 + OH = 2 ProdSBr + LCARBON + LCHLORINE + H2O + 2 Br : {%TrGBrCl} tag_kG7606;  {&} {?2}
+  G7607       OH = 1 H2O
+  G7607  CHClBr2 = 1 H2O
+
+;<G7607> CH2ClBr + OH = ProdSBr + LCARBON + LCHLORINE + H2O + Br : {%TrGBrCl} tag_kG7607;  {&2626} {?2}
+  G7607      OH = 1 H2O
+  G7607 CH2ClBr = 1 H2O
+
+
+;<G9nnn> ------------------------------- S -------------------------
+;<G9200> SO2 + OH = LossO3 + H2SO4 + HO2 : {%StTrGS} tag_kG9200;  {&2626} {?1}
+  G9200  OH = HO2
+  G9200 H2O = H2SO4
+
+; missing 1 H2O (shold be added via replacement)
+; MIM1 version differs from the later ones!
+;<G9400a> DMS + OH = CH3O2 + HCHO : {%TrGCS} tag_kG9400a;  {&1610} {?2}  # past-MIM1 ver.
+;<G9400a> DMS + OH = CH3SO2 + HCHO : {%TrGCS} tag_kG9400a;  {&1610} {?2} # MIM1 ver.
+  G9400a  OH = 1 H2O
+  G9400a DMS = 1 H2O CH3SO2 HCHO CH3O2
+
+; (R94), second channel in [2004.ACP4.Atkinson,etal]
+;<G9400b> DMS + OH = DMSO + HO2 : {%TrGCS} tag_kG9400b;  {&1610} {?2}
+  G9400b  OH = HO2
+  G9400b DMS = DMSO
+
+; missing 0.6 H2O, DMSO -> CH3O -> HCHO + H2O
+;<G9402> DMSO + OH = 0.6 SO2 + HCHO + 0.6 CH3O2 + 0.4 HO2 + 0.4 CH3SO3H : {%TrGCS} tag_kG9402;  {&746} {?2}
+  G9402 DMSO = CH3O2 HCHO CH3SO3H 0.3 H2O CH3
+  G9402   OH = HO2                0.3 H2O

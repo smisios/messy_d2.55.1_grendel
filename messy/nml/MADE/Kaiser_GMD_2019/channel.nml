@@ -1,0 +1,412 @@
+! -*- f90 -*-
+
+&CTRL
+! ---------------------------------------------------------------------
+! EXPERIMENT NAME
+! ---------------------------------------------------------------------
+EXP_NAME='$EXP_NAME',
+EXEC_CHECKSUM='$EXEC_CHECKSUM',
+! ---------------------------------------------------------------------
+! # FLUSH I/O BUFFER IN EVERY TIME STEP (DEFAULT: T (true))
+! # NOTE: F (false) might increase the overall performance
+!L_FLUSH_IOBUFFER = F,
+! ---------------------------------------------------------------------
+! # OUTPUT TO LOG-FILE
+! #  0: only error
+! #  1: initialze and finalize
+! #  2: 1 and time loop  (default)
+I_VERBOSE_LEVEL = 1
+! ---------------------------------------------------------------------
+! # ADD NEW OUTPUT CHANNELS (MAX. 50)
+! ---------------------------------------------------------------------
+ADD_CHANNEL( 1) = 'cloud_5hr',
+!!$ADD_CHANNEL( 2) = 'vaxtra_5hr',
+!
+! ---------------------------------------------------------------------
+! # ADD NEW CHANNEL OBJECT REFERENCES (MAX. 500)
+! # NOTES: 
+! #  - SOURCE OBJECT NAME MAY CONTAIN WILDCARDS '?' AND '*'
+! #    (in this case, target object name is ignored)
+! #  - TARGET CHANNEL NAME MAY CONTAIN WILDCARDS '?' AND '*'
+! #  - TARGET OBJECT NAME SET TO SOURCE OBJECT NAME, IF ''
+! ---------------------------------------------------------------------
+ADD_REF( 1) = 'g3b',         'aps',        '*',         '',
+ADD_REF( 2) = 'scnbuf',      'vervel',     'g3b',       '',
+ADD_REF( 3) = 'g3b',         'geosp',      'tr_*',      '',
+ADD_REF( 4) = 'geoloc',      'gboxarea',   'tr_*',      '',
+!
+ADD_REF( 5) = 'gl',          'q',          'g3b',       '',
+ADD_REF( 6) = 'gl',          'xl',         'g3b',       '',
+ADD_REF( 7) = 'gl',          'xi',         'g3b',       '',
+!
+ADD_REF( 8) = 'ECHAM5',      'tpot',       'tropop',    '',
+ADD_REF( 9) = 'ECHAM5',      'geopot',     'tropop',    '',
+!
+! For comparison with Karydis et al. (2017) data
+ADD_REF(10) = 'cloud',           'CDNC_acc',      'cloud_5hr',   '',  ! in-cloud CDNC
+ADD_REF(11) = 'cloud_aer_kuebb', 'CDNC_insitu',   'cloud_5hr',   '',  ! in-cloud CDNC (LWC>0.01 g/m3)
+ADD_REF(12) = 'grid_def',        'altitude_msl',  'cloud_5hr',   '',  ! altitude above sea-level (midpoint)
+ADD_REF(13) = 'grid_def',        'altitudei_msl', 'cloud_5hr',   '',  ! altitude above sea-level (interface)
+ADD_REF(14) = 'ECHAM5',          'press',         'cloud_5hr',   '',  ! pressure midpoint
+ADD_REF(15) = 'ECHAM5',          'pressi',        'cloud_5hr',   '',  ! pressure interface
+ADD_REF(16) = 'tropop',          'pblh_i',        'cloud_5hr',   '',  ! PBL height index
+!
+! ---------------------------------------------------------------------
+! # SET DEFAULT OUTPUT AND RESTART HANDLING
+!      - ''
+!      - OUTPUT-FILETYPE, RERUN-FILETYPE, NO. OF STEPS PER OUTPUT-FILE,
+!      - RERUN, IGNORE, INST, AVE, STD, MIN, MAX, CNT, CAV, RANGE(2)
+! # NOTES:
+! #    IGNORE = T  FORCES THE MODEL TO IGNORE POTENTIAL lrestreq FLAGS
+! #                FOR PSEUDO-INITIAL RUNS FROM RESTART FILES
+! ---------------------------------------------------------------------
+! instantaneous output for all objects
+OUT_DEFAULT = '', $OFT, $OFT, -1, F,F, T,F,F,F,F, F,F, , ,
+! ---------------------------------------------------------------------
+! # OUTPUT PRECISION (ASCII, (P)NETCDF, (P)NETCDF, GRIB, HDF4, HDF5)
+! # NOTES: - ONLY (P)NETCDF CURRENTLY IMPLEMENTED;
+! #        - (P)NETCDF: 1=NF(90)_FLOAT; 2=NF(90)_DOUBLE
+OUT_PREC = 1, 1, 1, 1, 1, 1,   ! for production
+!OUT_PREC = 1, 2, 2, 1, 1, 1,   ! for tests
+! ---------------------------------------------------------------------
+! # SET CHANNEL SPECIFIC DEFAULT OUTPUT AND RESTART HANDLING (MAX. 500)
+!      - channel-name
+!      - OUTPUT-FILETYPE, RERUN-FILETYPE, NO. OF STEPS PER OUTPUT-FILE,
+!      - RERUN, IGNORE, INST, AVE, STD, MIN, MAX, CNT, CAV, RANGE(2)
+! # NOTE: IF NO. OF STEPS PER OUTPUT-FILE <= 0, THE EVENT TRIGGER
+!         (CPL-NAMELIST, TIMER_TNF BELOW) CONTROLS THE FILE CONTENT
+! ---------------------------------------------------------------------
+! no or only selected output
+! ... ECHAM5 stuff
+OUT_CHANNEL(  1) = 'geoloc',        $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL(  2) = 'sp',               2,    2, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL(  3) = 'ls',               2,    2, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL(  4) = 'f',                2,    2, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL(  5) = 'g1a',           $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL(  6) = 'g1b',           $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL(  7) = 'g2a',           $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL(  8) = 'g2b',           $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL(  9) = 'gl',            $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL( 10) = 'scnbuf',        $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL( 11) = 'g3b',           $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL( 12) = 'ECHAM5',        $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL( 13) = 'grid_def',      $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL( 14) = 'nudg',             2,    2, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL( 15) = 'nudg_gp',       $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+! ... MESSy submodels
+OUT_CHANNEL( 20) = 'aeropt_TANRE',  $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL( 21) = 'aeropt_MADE3',  $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL( 22) = 'cloud',         $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL( 23) = 'cloud_aer_*',   $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL( 24) = 'cloudopt*',     $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL( 25) = 'convect',       $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL( 26) = 'cvtrans',       $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL( 27) = 'ddep',          $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL( 28) = 'ddep_gp',       $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL( 29) = 'e5vdiff',       $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL( 30) = 'h2o*',          $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL( 31) = 'import_ts',     $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL( 32) = 'jval_aer',      $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL( 33) = 'jval_diag',     $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL( 34) = 'jval_gp',       $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL( 35) = 'jval_lg',       $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL( 36) = 'lnox_lg',       $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL( 37) = 'made3_gp',      $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL( 38) = 'mecca_aero',    $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL( 39) = 'mecca_gp',      $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL( 40) = 'mecca_khet_gp', $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL( 41) = 'mecca_khet_lg', $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL( 42) = 'mecca_lg',      $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL( 43) = 'orbit',         $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL( 44) = 'rad*',          $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL( 45) = 'scav',          $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL( 46) = 'scav_gp',       $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL( 47) = 'scav_lg',       $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL( 48) = 'sedi',          $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL( 49) = 'sedi_gp',       $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL( 50) = 'tnudge_lg',     $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+OUT_CHANNEL( 51) = 'tracer_*',      $OFT, $OFT, -1, F,F, F,F,F,F,F, F,F, , ,
+! (non-default) output for all objects
+! ... MESSy submodels
+OUT_CHANNEL( 52) = 'cloud_cirrus',  $OFT, $OFT, -1, F,F, F,T,F,F,F, F,F, , ,
+OUT_CHANNEL( 53) = 'import_grid',   $OFT, $OFT, -1, F,F, F,T,F,F,F, F,F, , ,
+OUT_CHANNEL( 54) = 'lnox*_gp',      $OFT, $OFT, -1, F,F, F,T,F,F,F, F,F, , ,
+OUT_CHANNEL( 55) = 'offemis',       $OFT, $OFT, -1, F,F, F,T,F,F,F, F,F, , ,
+OUT_CHANNEL( 56) = 'onemis',        $OFT, $OFT, -1, F,F, F,T,F,F,F, F,F, , ,
+OUT_CHANNEL( 57) = 'tendency*',     $OFT, $OFT, -1, F,F, F,T,F,F,F, F,F, , ,
+OUT_CHANNEL( 58) = 'tracer_gp',     $OFT, $OFT, -1, F,F, T,F,F,F,F, F,F, , ,
+OUT_CHANNEL( 59) = 'tracer_pdef_gp',$OFT, $OFT, -1, F,F, F,T,F,F,F, F,F, , ,
+!!$OUT_CHANNEL( 60) = 'vaxtra',        $OFT, $OFT, -1, F,F, F,F,F,F,F, F,T,1.e-30,1.e+30, ! exclude zeros (out-of-cloud)
+!!$OUT_CHANNEL( 61) = 'vaxtra_5hr',    $OFT, $OFT, -1, F,F, T,F,F,F,F, F,F, , ,
+!!$OUT_CHANNEL( 62) = 'viso',          $OFT, $OFT, -1, F,F, F,F,F,F,F, F,T,1.e-30,1.e+30, ! exclude zeros (out-of-cloud)
+!
+! ADDITIONAL CHANNELS WITH REFERENCES
+!!$OUT_CHANNEL(100) = 'tr_O3_tbud',    $OFT, $OFT, -1, F,F, T,F,F,F,F, F,F, , ,
+!
+! ---------------------------------------------------------------------
+! # SET CHANNEL OBJECT SPECIFIC OUTPUT AND RESTART HANDLING (MAX. 1000)
+!      - channel-name
+!      - object-name
+!      - RERUN, IGNORE, INST, AVE, STD, MIN, MAX, CNT, CAV, RANGE(2)
+! ---------------------------------------------------------------------
+
+! --- g3b --------------------------------------------------------------
+! surface pressure
+OUT_OBJECT(  1) = 'g3b','aps',                     F,F, T,F,F,F,F, F,F, , ,
+! specific humidity
+OUT_OBJECT(  2) = 'g3b','q',                       F,F, T,F,F,F,F, F,F, , ,
+OUT_OBJECT(  3) = 'g3b','qvi',                     F,F, T,F,F,F,F, F,F, , ,
+! cloud water
+OUT_OBJECT(  4) = 'g3b','xl*',                     F,F, T,T,F,F,F, F,F, , ,
+! cloud ice
+OUT_OBJECT(  5) = 'g3b','xi*',                     F,F, T,T,F,F,F, F,F, , ,
+! WMO defined tropopause height
+OUT_OBJECT(  6) = 'g3b','tropo',                   F,F, T,F,F,F,F, F,F, , ,
+! 2 m air and dew point temperature
+OUT_OBJECT(  7) = 'g3b','*2',                      F,F, T,F,F,F,F, F,F, , ,
+! relative humidity
+OUT_OBJECT(  8) = 'g3b','relhum',                  F,F, T,F,F,F,F, F,F, , ,
+! vertically integrated water vapor, cloud water, and cloud ice
+OUT_OBJECT(  9) = 'g3b','*vi',                     F,F, T,T,F,F,F, F,F, , ,
+! large scale precip., convective precip., and snow fall
+OUT_OBJECT( 10) = 'g3b','apr?',                    F,F, F,T,F,F,F, F,F, , ,
+! vertically integrated tendencies of water
+OUT_OBJECT( 11) = 'g3b','apmeb',                   F,F, F,T,F,F,F, F,F, , ,
+! minimum and maximum 2 m temperature
+OUT_OBJECT( 12) = 'g3b','t2*',                     F,F, T,F,F,F,F, F,F, , ,
+! zonal wind stress
+OUT_OBJECT( 13) = 'g3b','ustr*',                   F,F, T,F,F,F,F, F,F, , ,
+! meridional wind stress
+OUT_OBJECT( 14) = 'g3b','vstr*',                   F,F, T,F,F,F,F, F,F, , ,
+! cloud cover
+OUT_OBJECT( 15) = 'g3b','aclcac',                  F,F, T,T,F,F,F, F,F, , ,
+OUT_OBJECT( 16) = 'g3b','aclcov',                  F,F, T,T,F,F,F, F,F, , ,
+! turbulent kinetic energy
+OUT_OBJECT( 17) = 'g3b','tke',                     F,F, T,F,F,F,F, F,F, , ,
+! vertical velocity
+OUT_OBJECT( 18) = 'g3b','vervel',                  F,F, T,F,F,F,F, F,F, , ,
+
+! --- echam5 ----------------------------------------------------------------
+! surface pressure
+OUT_OBJECT( 30) = 'ECHAM5','aps',                  F,F, T,F,F,F,F, F,F, , ,
+! 10 m u- and v-velocity
+OUT_OBJECT( 31) = 'ECHAM5','?10',                  F,F, T,F,F,F,F, F,F, , ,
+! 10 m wind speed
+OUT_OBJECT( 32) = 'ECHAM5','wind10',               F,F, F,T,F,F,F, F,F, , ,
+! surface geopotential
+OUT_OBJECT( 33) = 'ECHAM5','geosp',                F,F, T,F,F,F,F, F,F, , ,
+! land-sea mask
+OUT_OBJECT( 34) = 'ECHAM5','slm',                  F,F, T,F,F,F,F, F,F, , ,
+! land fraction and land mask
+OUT_OBJECT( 35) = 'ECHAM5','sl*',                  F,F, T,F,F,F,F, F,F, , ,
+! sea and ice cover fraction
+OUT_OBJECT( 36) = 'ECHAM5','???cov',               F,F, T,F,F,F,F, F,F, , ,
+! specific humidity (= qm1), cloud water (= xlm1), cloud ice (= xim1)
+OUT_OBJECT( 37) = 'ECHAM5','*m1',                  F,F, T,T,F,F,F, F,F, , ,
+! relative humidity
+OUT_OBJECT( 38) = 'ECHAM5','rhum',                 F,F, T,F,F,F,F, F,F, , ,
+! full-level and interface pressure
+OUT_OBJECT( 39) = 'ECHAM5','press*',               F,F, T,T,F,F,F, F,F, , ,
+! tendencies: dry air temperature (= tte), specific humidity (= qte),
+! cloud water (= xlte), cloud ice (= xite)
+OUT_OBJECT( 40) = 'ECHAM5','*te',                  F,F, T,F,F,F,F, F,F, , ,
+! geopotential and geopotential at interfaces
+OUT_OBJECT( 41) = 'ECHAM5','geopot*',              F,F, T,F,F,F,F, F,F, , ,
+! virtual temperature: surface, land surface, water surface, ice surface, 3D
+OUT_OBJECT( 42) = 'ECHAM5','tv*',                  F,F, T,F,F,F,F, F,F, , ,
+! grid volume
+OUT_OBJECT( 43) = 'grid_def','grvol',              F,F, T,T,F,F,F, F,F, , ,
+! grid mass
+OUT_OBJECT( 44) = 'grid_def','grmass',             F,F, T,T,F,F,F, F,F, , ,
+! grid mass (dry)
+OUT_OBJECT( 45) = 'grid_def','grmassdry',          F,F, T,T,F,F,F, F,F, , ,
+! grid box surface area
+OUT_OBJECT( 46) = 'grid_def','gboxarea',           F,F, T,F,F,F,F, F,F, , ,
+! altitude (above sea-level) at midpoint and interface
+OUT_OBJECT( 47) = 'grid_def','altitude_msl',       F,F, T,F,F,F,F, F,F, , ,
+OUT_OBJECT( 48) = 'grid_def','altitudei_msl',      F,F, T,F,F,F,F, F,F, , ,
+
+! --- aeropt ---------------------------------------------------------------
+! surface pressure
+OUT_OBJECT( 60) = 'aeropt_MADE3','aps',            F,F, T,F,F,F,F, F,F, , ,
+! aerosol optical thickness
+OUT_OBJECT( 61) = 'aeropt_MADE3','aot_opt_TOT_*',  F,F, F,T,F,F,F, F,F, , ,
+! NOTE: aerosol extinction coefficient is currently not available from AEROPT
+! shortwave aerosol single scattering albedo
+OUT_OBJECT( 62) = 'aeropt_MADE3','omega_sw_B*',    F,F, F,T,F,F,F, F,F, , ,
+! shortwave aerosol asymmetry factor
+OUT_OBJECT( 63) = 'aeropt_MADE3','gamma_sw_B*',    F,F, F,T,F,F,F, F,F, , ,
+
+! --- cloud ----------------------------------------------------------------
+! surface pressure
+OUT_OBJECT( 70) = 'cloud','aps',                   F,F, T,F,F,F,F, F,F, , ,
+OUT_OBJECT( 71) = 'cloud','rainflux'               F,F, T,F,F,F,F, F,F, , ,
+OUT_OBJECT( 72) = 'cloud','snowflux',              F,F, T,F,F,F,F, F,F, , ,
+!!$OUT_OBJECT( 73) = 'cloud','acdnc',                 F,F, T,F,F,F,F, F,F, , ,
+!!$OUT_OBJECT( 74) = 'cloud','CDN5',                  F,F, T,T,F,F,F, F,F, , ,
+!!$OUT_OBJECT( 75) = 'cloud','ARG*',                  F,F, T,T,F,F,F, F,F, , ,
+! lwc, iwc
+!!$OUT_OBJECT( 76) = 'cloud','*wc',                   F,F, T,T,F,F,F, F,F, , ,
+OUT_OBJECT( 77) = 'cloud','CDNC',                  F,F, T,F,F,F,F, F,F, , ,
+OUT_OBJECT( 78) = 'cloud','ICNC',                  F,F, T,F,F,F,F, F,F, , ,
+! cdnc, icnc (exclude out-of-cloud values, i.e. cdnc, icnc = 0)
+OUT_OBJECT( 79) = 'cloud','CDNC_acc',              F,F, T,F,F,F,F, F,F, , ,
+OUT_OBJECT( 80) = 'cloud','ICNC_acc',              F,F, T,F,F,F,F, F,F, , ,
+! cdnc and icnc burdens
+OUT_OBJECT( 81) = 'cloud','CDNC_burden*',          F,F, T,F,F,F,F, F,F, , ,
+OUT_OBJECT( 82) = 'cloud','ICNC_burden*',          F,F, T,F,F,F,F, F,F, , ,
+! cloud droplets effective radius (valid range 4 < REFFL < 40)
+OUT_OBJECT( 83) = 'cloud','REFFL',                 F,F, T,T,F,F,F, F,T,4.0001,39.9999,
+! ice crystals effective radius (valid range 10 < REFFI < 150)
+OUT_OBJECT( 84) = 'cloud','REFFI',                 F,F, T,T,F,F,F, F,T,10.0001,149.9999,
+! critical supersaturation
+!!$OUT_OBJECT( 85) = 'cloud','Scrit',                 F,F, T,F,F,F,F, F,F, , ,
+!!$OUT_OBJECT( 86) = 'cloud','random_2d',             F,F, T,F,F,F,F, F,F, , ,
+
+! --- cloud_aer_* ----------------------------------------------------------
+! surface pressure
+OUT_OBJECT( 90) = 'cloud_aer_*','aps',             F,F, T,F,F,F,F, F,F, , ,
+! INP concentration
+OUT_OBJECT( 91) = 'cloud_aer_*','*sol*',           F,F, T,F,F,F,F, F,F, , ,
+! vertical velocities
+OUT_OBJECT( 92) = 'cloud_aer_*','vervel_*',        F,F, T,F,F,F,F, F,F, , ,
+! IC concentration
+OUT_OBJECT( 93) = 'cloud_aer_*','Nice_*',          F,F, T,F,F,F,F, F,F, , ,
+! CDNC diagnostic
+OUT_OBJECT( 94) = 'cloud_aer_*','CDNC_*',          F,F, T,F,F,F,F, F,F, , ,
+
+! --- cloudopt*-- ----------------------------------------------------------
+! surface pressure
+OUT_OBJECT(100) = 'cloudopt*','aps',               F,F, T,F,F,F,F, F,F, , ,
+! cloud optical properties
+OUT_OBJECT(101) = 'cloudopt*','isccp*',            F,F, T,F,F,F,F, F,F, , ,
+
+! --- convect --------------------------------------------------------------
+! surface pressure
+OUT_OBJECT(110) = 'convect','aps',                 F,F, T,F,F,F,F, F,F, , ,
+! convective precipitation and snow fluxes, and their freshly formed forms
+OUT_OBJECT(111) = 'convect','cv_prec*',            F,F, T,T,F,F,F, F,F, , ,
+OUT_OBJECT(112) = 'convect','cv_snow*',            F,F, T,T,F,F,F, F,F, , ,
+! estimated convective cloud cover
+OUT_OBJECT(113) = 'convect','cv_cover',            F,F, T,F,F,F,F, F,F, , ,
+! lwc, iwc (conditional average required to exclude out-of-cloud values)
+OUT_OBJECT(114) = 'convect','cv_lwc',              F,F, T,T,F,F,F, F,T,1.E-10,1.E+20,
+OUT_OBJECT(115) = 'convect','cv_iwc',              F,F, T,T,F,F,F, F,T,1.E-10,1.E+20,
+
+! --- ddep -----------------------------------------------------------------
+! surface pressure
+!!$OUT_OBJECT(120) = 'ddep_gp','aps',                 F,F, T,F,F,F,F, F,F, , ,
+! deposition fluxes
+!!$OUT_OBJECT(121) = 'ddep_gp','ddepflux*',           F,F, F,T,F,F,F, F,F, , ,
+
+! --- jval -----------------------------------------------------------------
+! surface pressure
+!!$OUT_OBJECT(130) = 'jval_gp','aps',                 F,F, T,F,F,F,F, F,F, , ,
+! rates
+!!$OUT_OBJECT(131) = 'jval_gp','J_O2',                F,F, T,F,F,F,F, F,F, , ,
+!!$OUT_OBJECT(132) = 'jval_gp','J_O1D',               F,F, T,F,F,F,F, F,F, , ,
+!!$OUT_OBJECT(133) = 'jval_gp','J_NO2',               F,F, T,F,F,F,F, F,F, , ,
+!!$OUT_OBJECT(134) = 'jval_gp','J_CHOH',              F,F, T,F,F,F,F, F,F, , ,
+
+! --- made3 ----------------------------------------------------------------
+! surface pressure
+OUT_OBJECT(140) = 'made3_gp','aps',                F,F, T,F,F,F,F, F,F, , ,
+! aerosol densities
+OUT_OBJECT(141) = 'made3_gp','densaer_*',          F,F, T,F,F,F,F, F,F, , ,
+! hydrophilic fractions
+!!$OUT_OBJECT(142) = 'made3_gp','philfrac_*',         F,F, T,F,F,F,F, F,F, , ,
+! dry radii
+OUT_OBJECT(143) = 'made3_gp','dryrad_*',           F,F, T,F,F,F,F, F,F, , ,
+! wet radii
+OUT_OBJECT(144) = 'made3_gp','wetrad_*',           F,F, T,F,F,F,F, F,F, , ,
+! dust emission fluxes (for on-line schemes)
+OUT_OBJECT(145) = 'made3_gp','DU_emflux_*',        F,F, F,T,F,F,F, F,F, , ,
+
+! --- rad ------------------------------------------------------------------
+! surface pressure
+OUT_OBJECT(150) = 'rad*','aps',                    F,F, T,F,F,F,F, F,F, , ,
+! radiation fluxes (shortwave, longwave, all-sky, clear-sky)
+OUT_OBJECT(151) = 'rad*','srad*',                  F,F, F,T,F,F,F, F,F, , ,
+OUT_OBJECT(152) = 'rad*','sraf*',                  F,F, F,T,F,F,F, F,F, , ,
+OUT_OBJECT(153) = 'rad*','trad*',                  F,F, F,T,F,F,F, F,F, , ,
+OUT_OBJECT(154) = 'rad*','traf*',                  F,F, F,T,F,F,F, F,F, , ,
+OUT_OBJECT(155) = 'rad*','flx?',                   F,F, F,T,F,F,F, F,F, , ,
+OUT_OBJECT(156) = 'rad*','flx?f',                  F,F, F,T,F,F,F, F,F, , ,
+! surfacce albedo
+!!$OUT_OBJECT(157) = 'rad*','albedo',                 F,F, T,F,F,F,F, F,F, , ,
+! albedo over land, water, ice
+!!$OUT_OBJECT(158) = 'rad*','also*',                  F,F, T,F,F,F,F, F,F, , ,
+! shortwave and longwave heating rates
+!!$OUT_OBJECT(159) = 'rad*','dtdt_*',                 F,F, F,T,F,F,F, F,F, , ,
+
+! --- scav -----------------------------------------------------------------
+! surface pressure
+!!$OUT_OBJECT(170) = 'scav_gp','aps',                 F,F, T,F,F,F,F, F,F, , ,
+! wet deposition fluxes
+!!$OUT_OBJECT(171) = 'scav_gp','wetflx*',             F,F, F,T,F,F,F, F,F, , ,
+! evaporation fractions
+!!$OUT_OBJECT(172) = 'scav_gp','frac_*',              F,F, T,F,F,F,F, F,F, , ,
+
+! --- sedi------------------------------------------------------------------
+! surface pressure
+!!$OUT_OBJECT(180) = 'sedi_gp','aps',                 F,F, T,F,F,F,F, F,F, , ,
+! sedimentation fluxes
+!!$OUT_OBJECT(181) = 'sedi_gp', 'sediflux*',          F,F, F,T,F,F,F, F,F, , ,
+/
+
+&CPL
+! --------------------------------------------------------------------------
+! ENABLE ADDITIONAL ECHAM5 STANDARD STREAM OUTPUT ?
+! (e.g, needed for GRIB-template generation)
+! -> OUTPUT TIME INTERVAL => PUTDATA in ECHAM5.nml
+L_BM_ORIG_OUTPUT = F,
+! --------------------------------------------------------------------------
+!===========================================================================
+! --------------------------------------------------------------------------
+! SET OUTPUT INTERVALS FOR ALL CHANNELS (DEFAULT + INDIVIDUAL)
+! NOTE: CHANNEL OUTPUT OF tdiag, tdiag_gp, nudg, nudg_gp
+!       WILL BE SYNCHRONIZED TO THE SHORTEST OUTPUT INTERVAL (IF PRESENT !)
+! NOTE: First match (wildcard) counts 
+! --------------------------------------------------------------------------
+!TIMER_DEFAULT = '',     1, 'months', 'last',  0, 
+!TIMER_DEFAULT = '',     6, 'hours',  'first', 0,
+TIMER_DEFAULT = '',     11, 'hours',  'first', 0,
+!TIMER_DEFAULT = '',     1, 'steps',  'first', 0,
+! --------------------------------------------------------------------------
+!!$TIMER_CHANNEL( 1) = 'qtimer',         1, 'steps', 'first', 0,
+TIMER_CHANNEL( 2) = 'cloud_5hr',      5, 'hours', 'first', 0,
+TIMER_CHANNEL( 3) = 'cloud_cirrus',   1, 'months','last',  0,
+!!$TIMER_CHANNEL( 4) = 'ddep_gp',        1, 'days',  'first', 0,
+!!$TIMER_CHANNEL( 5) = 'scav_gp',        1, 'days',  'first', 0,
+!!$TIMER_CHANNEL( 6) = 'sedi_gp',        1, 'days',  'first', 0,
+TIMER_CHANNEL( 7) = 'import_grid',    1, 'days',  'first', 0,
+TIMER_CHANNEL( 8) = 'offemis',        1, 'days',  'first', 0,
+TIMER_CHANNEL( 9) = 'onemis',         1, 'days',  'first', 0,
+!!$TIMER_CHANNEL(10) = 'tendency*'       1, 'days',  'first', 0,
+TIMER_CHANNEL(11) = 'tracer_pdef_gp'  1, 'days',  'first', 0,
+!!$TIMER_CHANNEL(12) = 'viso',           1, 'months','last',  0,
+!!$TIMER_CHANNEL(13) = 'vaxtra',         1, 'months','last',  0,
+!!$TIMER_CHANNEL(14) = 'vaxtra_5hr',     6, 'hours', 'first', 0,
+
+!---------------------------------------------------------------------------
+!===========================================================================
+!---------------------------------------------------------------------------
+! SET TIMER EVENTS FOR NEW FILENAMES
+! (IF NO. OF STEPS PER OUTPUT-FILE <= 0 ABOVE !!!)
+! NOTE: First match (wildcard) counts 
+!---------------------------------------------------------------------------
+TIMER_TNF_DEFAULT = '', 1, 'months', 'first', 0,
+!TIMER_TNF_DEFAULT = '', 1, 'days',   'first', 0,
+!TIMER_TNF_DEFAULT = '', 1, 'steps',  'first', 0,   ! for testing
+!---------------------------------------------------------------------------
+!!$TIMER_TNF_CHANNEL( 1) = 'qtimer', 1, 'days',   'first', 0
+!---------------------------------------------------------------------------
+/
+
+&CTRL_PNETCDF
+!---------------------------------------------------------------------------
+!MPI_IO_HINT(1) = 'IBM_largeblock_io','true',
+!MPI_IO_HINT(2) = 'IBM_io_buffer_size','2949120',
+!MPI_IO_HINT(3) = 'IBM_sparse_access','true',
+!---------------------------------------------------------------------------
+/

@@ -1,0 +1,635 @@
+<!DOCTYPE html 
+     PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+     "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xml:lang="en" lang="en">
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="GENERATOR" content="Mozilla/4.7C-SGI [en] (X11; I; IRIX64 6.5 IP27) [Netscape]">
+   <title>Changes in the COSMO-Model 4.28</title>
+<style type="text/css">
+  body { font-family:       Arial;
+         font-size:         12pt;
+         background-repeat: no-repeat; 
+         margin:            1em; }
+
+  tt   { font-size:         12pt;}
+
+  li   { margin-top:         5pt;
+         margin-bottom:      5pt }
+
+  th   { border:           1px solid black;
+         padding:          3pt;
+         vertical-align:   top;
+         background-color: lightblue;}
+
+  td   { border:           1px solid black;
+         padding:          3pt;
+         vertical-align:   top;}
+
+  td.middl   { border:           1px solid black;
+               padding:          3pt;
+               vertical-align:   middle;}
+
+  td.hilit       { border:           1px solid black;
+                   padding:          1pt;
+                   vertical-align:   top;
+                   background-color: lightblue;}
+
+  td.clean       { padding:          0pt;
+                   border-style:     none;
+                   vertical-align:   top;}
+
+  td.notes       { padding:          3pt;
+                   border-style:     none;
+                   vertical-align:   top;}
+
+  td.nomid       { padding:          3pt;
+                   border-style:     none;
+                   vertical-align:   middle;}
+
+  table.note     { border-width:     0pt;
+                   border-style:     none;
+                   margin-left:      5pt;
+                   margin-top:       1pt;
+                   margin-bottom:    1pt;
+                   cell-padding:     5pt;
+                   vertical-align:   top;
+                   text-align:       left;}
+  
+  table.atte     { border-width:     0pt;
+                   border-style:     none;
+                   margin-left:      5pt;
+                   margin-top:       1pt;
+                   margin-bottom:    1pt;
+                   cell-padding:     5pt;
+                   vertical-align:   top;
+                   text-align:       left;
+                   background-color: red;}
+  
+  table.namelist { border-width:  2pt;
+                   border-style:  groove;
+                   border-color:  black;
+                   text-align:    left;
+                   margin-top:    1pt;
+                   margin-bottom: 1pt;
+                   padding:       3pt;
+                   align:         center;}
+  
+  tr.headings    { text-align:       left;
+                   vertical-align:   top;
+                   border-width:     1pt;
+                   border-style:     groove;
+                   border-color:     grey;
+                   padding:          2pt;
+                   font-weight:      bold;}
+
+  .rot           { background-color: red;}
+  .blau          { background-color: lightblue;}
+  .hell          { background-color: fuchsia;}
+</style>
+
+</head>
+  <body text="#000000" bgcolor="#FFFFFF" link="#0000EE" vlink="#551A8B" alink="#FF0000">
+
+<center>
+<h1>
+<a NAME="begin">Documentation of the Changes in the COSMO-Model <br /> Version 4.29</a>
+</h1>
+<h3>
+02.10.2013
+</h3>
+</center>
+
+<p>
+This version now consolidates the developments for COSMO-Model 5.0. It only contains
+technical changes and does not modify the results of the operational configurations.
+It is the release candidate for Version 5.0
+</p>
+
+<h4><a NAME="content">Contents:</a></h4>
+
+<ol>
+<li><a href="#unimess">Unification of COSMO and MESSy Tracer Structure</a></li>
+<li><a href="#lan_wso">Added field W_SO to list of fields for possible external analysis</a></li>
+<li><a href="#keingds">Using of Namelist variable: <tt>l_ke_in_gds</tt></a></li>
+<li><a href="#vercoor">Using of names: vcoord, refatm</a></li>
+<li><a href="#bugfixe">Technical Changes and (minor) Bug Fixes</a></li>
+<li><a href="#namelis">Changes to the Namelists</a></li>
+<li><a href="#results">Changes of Results</a></li>
+</ol>
+<p>
+<hr>
+
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="unimess">1. Unification of COSMO and MESSy Tracer Structure</a></h3>
+  <h4>(by Astrid Kerkweg, Oliver Fuhrer, Anne Roches, Ulrich Sch&auml;ttler)</h4>
+
+<p>
+To avoid too many ifdefs in the computational modules and subroutines, the COSMO and the
+MESSy tracer structure have been adapted. Now many ifdefs are in the COSMO tracer source
+files, but could be avoided in the computational routines.
+</p>
+
+<p>
+<ul>
+  <li>MESSY and data assimilation / digital filter initialization:<br />
+  Moreover, the MESSY ifdefs have been eliminated in the data assimilation and the 
+  digital filtering initialization. These components cannot be used, if the model is
+  compiled for MESSY.</li>
+
+  <li>MESSY and long term storage<br />
+  Some fields from the soil model and the synthetic satellite images have been put
+  to the long term storage instead of being local storage. This also allows easier
+  coupling to external modules.</li>
+  
+  <center>
+  <table border="1" cellspacing="3" class="namelist">
+   <tbody>
+   <tr>
+     <th>Component</th>
+     <th>Global name</th>
+     <th>Former local name</th>
+     <th>Meaning</th>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td class="hilit" rowspan="3"><tt>Soil Model</tt></td>
+     <td><tt>fr_snow</tt></td>
+     <td><tt>zf_snow</tt></td>
+     <td class="middl">Surface fraction covered by snow</td>
+   </tr>
+   <tr>
+     <td><tt>fr_wi  </tt></td>
+     <td><tt>zf_wi  </tt></td>
+     <td class="middl">Surface fraction covered by interception water</td>
+   </tr>
+   <tr>
+     <td><tt>ustar_fv</tt></td>
+     <td><tt>---</tt></td>
+     <td class="middl">Friction velocity</td>
+   </tr>
+   <tr>
+     <td class="hilit" rowspan="2"><tt>SynSat</tt></td>
+     <td><tt>synme7</tt></td>
+     <td><tt>synme7</tt></td>
+     <td class="middl">SynSats for Meteosat 7</td>
+   </tr>
+   <tr>
+     <td><tt>synmsg</tt></td>
+     <td><tt>synmsg</tt></td>
+     <td class="middl">SynSats for Meteosat Second Generation</td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   </tbody>
+  </table>
+  </center>
+  </li>
+      
+  <li>Allocation of <tt>tkvm</tt>, <tt>tkvh</tt>, <tt>tkhm</tt>, <tt>tkhh</tt>:
+  These fields have now been allocated from <tt>1:ke1</tt> in the vertical 
+  (instead of 2:ke1 before), to avoid different treatment of such fields</li>
+</ul>
+</p>
+
+
+<!---------------------------------------------------------------------------->
+<p align="right"><a href="#content">Back to Contents</a>
+<hr>
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="lan_wso">2. Added field W_SO to list of fields for possible external analysis</a></h3>
+  <h4>(by Ulrich Sch&auml;ttler)</h4>
+
+<p>
+<tt>W_SO</tt> has been added to the list of fields for which it can be chosen, whether they are
+taken from the assimilation cycle (with <tt>tri=13</tt>) or from external analysis or other external
+programs (<tt>tri=0</tt>). The reason is to introduce some perturbations for <tt>W_SO</tt> for the
+ensembles. A new namelist switch <tt>lan_w_so</tt> has been introduced in the group <tt>/GRIBIN/</tt> for
+choosing the correct field (similar to <tt>lan_t_so0</tt>, etc.)
+</p>
+
+<center>
+<table border="1" cellspacing="3" class="namelist">
+ <tbody>
+   <tr>
+     <th>Group</th>
+     <th>Name</th>
+     <th>Meaning</th>
+     <th align="center", width="5%">Default</th>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td class="hilit"><tt>/GRIBIN/</tt></td>
+     <td><tt>lan_w_so</tt></td>
+     <td class="middl">Selection of soil moisture fields: whether from
+         an external program (INT2LM) or an analysis (<tt>.TRUE.</tt>) or from the 
+         Nudging cycle (<tt>.FALSE.</tt>)</td>
+     <td class="middl" align="center" rowspan="1"><tt>.FALSE.</tt></td>
+   </tr>
+<!---------------------------------------------------------------------------->
+ </tbody>
+</table>
+</center>
+
+<p>
+Explanation: the usage is similar to <tt>lan_t_so0</tt> and such switches:
+ <ul>
+  <li><tt>lan_w_so = .TRUE.</tt>:<br />
+      take a field which comes from an external program: 
+      this could be an external analyses or the INT2LM.<br />
+      This field then has time range indicator (<tt>tri</tt>) 0 (or at least a values /= 13).
+      <br /><br />
+      In this case also the additional element number of the input field is checked, 
+      whether it corresponds to the one specified by the namelist variable <tt>nsma_stat</tt>
+      (used for soil moisture analysis).</li>
+ 
+  <li><tt>lan_w_so = .FALSE.</tt>:<br />
+      take a field which comes from the Nudging cycle (and has <tt>tri=13</tt>).</li>
+ </ul>
+</p>
+   
+<p>
+The consequence is, that all applications starting from interpolated analysis data,
+which are coming from the INT2LM, have to adapt their settings!
+
+<ul>
+ <li>Settings, if <tt>W_SO</tt> shall be taken from INT2LM:            <tt>lan_w_so = .TRUE.</tt></li>
+ <li>Settings, if <tt>W_SO</tt> shall be taken from the Nudging Cycle: <tt>lan_w_so = .FALSE.</tt></li>
+</ul>
+</p>
+
+<!---------------------------------------------------------------------------->
+<p align="right"><a href="#content">Back to Contents</a>
+<hr>
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="keingds">3. Using of Namelist variable: <tt>l_ke_in_gds</tt></a></h3>
+  <h4>(by Ulrich Sch&auml;ttler)</h4>
+
+<p>
+There are two different ways of coding vertical coordinate parameters (and some 
+additional parameters for the reference atmosphere and the vertical coordinate type). 
+Which way is chosen in INT2LM and the COSMO-Model can be specified by the 
+Namelist variable <tt>l_ke_in_gds</tt>: 
+
+<ul>
+  <li><tt>= .FALSE.</tt>gives the old way of coding</li>
+  <li><tt>= .TRUE.</tt>gives the new way of coding</li>
+</ul>
+</p>
+
+<p>
+The following table shows the vertical coordinate parameters for both types.
+The name <tt>pv</tt> is taken from the <tt>grib_api</tt> convention for the vertical
+coordinate parameters and is now also used in the COSMO-Model.
+
+<center>
+<table border="1" cellspacing="3">
+ <tbody>
+   <tr>
+     <th>Entry in <tt>pv</tt>          </th>
+     <th>Old specifications</th>
+     <th>New specifications</th>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td><tt>pv( 1) </tt></td>
+     <td><tt>p0sl   </tt></td>
+     <td><tt>ivctype</tt></td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td><tt>pv( 2) </tt></td>
+     <td><tt>t0sl   </tt></td>
+     <td><tt>ke     </tt></td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td><tt>pv( 3) </tt></td>
+     <td><tt>dt0lp  </tt></td>
+     <td><tt>p0sl   </tt></td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td><tt>pv( 4) </tt></td>
+     <td><tt>vcflat </tt></td>
+     <td><tt>t0sl   </tt></td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td><tt>pv( 5) </tt></td>
+     <td><tt>vcoords(1)</tt></td>
+     <td><tt>dt0lp  </tt></td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td><tt>pv( 6) </tt></td>
+     <td><tt>vcoords(2)</tt></td>
+     <td><tt>vcflat </tt></td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td><tt>pv( 7) </tt></td>
+     <td><tt>vcoords(3)</tt></td>
+     <td><tt>vcoords(1)</tt></td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td><tt>pv( 8) </tt></td>
+     <td><tt>vcoords(4)</tt></td>
+     <td><tt>vcoords(2)</tt></td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td colspan="3">etc.</td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td><tt>pv( 3+ke1) </tt></td>
+     <td><tt>vcoords(ke1-1)</tt></td>
+     <td><tt>vcoords(ke1-3)</tt></td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td><tt>pv( 4+ke1) </tt></td>
+     <td><tt>vcoords(ke1)</tt></td>
+     <td><tt>vcoords(ke1-2)</tt></td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td><tt>pv( 4+ke1+1) </tt></td>
+     <td><tt>ivctype     </tt></td>
+     <td><tt>vcoords(ke1-1)</tt></td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td><tt>pv( 4+ke1+2) </tt></td>
+     <td><tt>svc1        </tt></td>
+     <td><tt>vcoords(ke1)</tt></td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td><tt>pv( 4+ke1+3) </tt></td>
+     <td><tt>svc2        </tt></td>
+     <td><tt>svc1        </tt></td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td><tt>pv( 4+ke1+4) </tt></td>
+     <td><tt>nfltvc      </tt></td>
+     <td><tt>svc2        </tt></td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td><tt>pv( 4+ke1+5) </tt></td>
+     <td><tt>delta_t     </tt></td>
+     <td><tt>nfltvc      </tt></td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td><tt>pv( 4+ke1+6) </tt></td>
+     <td><tt>h_scal      </tt></td>
+     <td><tt>delta_t     </tt></td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td><tt>pv( 4+ke1+7) </tt></td>
+     <td><tt>  ----      </tt></td>
+     <td><tt>h_scal      </tt></td>
+   </tr>
+<!---------------------------------------------------------------------------->
+ </tbody>
+</table>
+</center>
+</p>
+
+<p>
+The default for this namelist variable has been changed to:  <tt>.TRUE.</tt>
+Therefore all GRIB1 vertical coordinate parameters are now coded in the new way.
+Note that the values after the <tt>vcoords</tt> depend on other namelist settings 
+for the reference atmosphere and the vertical coordinate type.
+</p>
+
+<p>
+If the old way of coding should be used, <tt>l_ke_in_gds</tt> has to be set to 
+<tt>.FALSE.</tt> explicitely.
+</p>
+
+
+<!---------------------------------------------------------------------------->
+
+<p align="right"><a href="#content">Back to Contents</a>
+<hr>
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="vercoor">4. Using of names: vcoord, refatm</a></h3>
+  <h4>(by Ulrich Sch&auml;ttler)</h4>
+
+<p>
+In version 4.28, new types were used to hold all vertical coordinate parameters and also
+parameters of the reference atmosphere. While names with suffixes <tt>_in</tt> and <tt>_out</tt> were used
+then in INT2LM and also in the COSMO-Model, it was decided to use <tt>_in</tt> in the INT2LM for
+the incoming fields from coarse grid models and the names without suffix for the
+corresponding variables of the COSMO grid and also throughout the whole COSMO-model.
+</p>
+
+<!---------------------------------------------------------------------------->
+
+<p align="right"><a href="#content">Back to Contents</a>
+<hr>
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="bugfixe">5. Technical Changes and (minor) Bug Fixes</a></h3>
+
+<ul>
+ <li><tt>data_io.f90</tt>:<br />
+  Introduced new parameter <tt>clen</tt>, to specify length of shortnames</li>
+
+ <li><tt>fast_waves_sc.f90</tt>:<br />
+  Initialize izerror in all subroutines</li>
+
+ <li><tt>io_metadata.f90</tt>:<br />
+  <ul>
+   <li>Subroutine <tt>make_grib_product</tt>: move block to set <tt>productDefinitionTemplateNumber</tt>
+   downwards to properly code the ensembles in GRIB2</li>
+   <li>GRIB2: Adaptations to write <tt>endStep</tt> correct for quarterly output
+     and also set <tt>stepUnits</tt> for <tt>nunit_of_time=0</tt> (Minutes in GRIB2)</li>
+   <li>Correct transformation from old to new style of coding GRIB1 gds (UB)</li>
+  </ul></li>
+
+ <li><tt>io_utilities.f90</tt>:<br />
+   Subroutine <tt>check_input_grid</tt>: Before decoding vertical coordinate parameters with 
+   <tt>REFSTF</tt>, check the value of the corresponding gds-entry, because some were not 
+   really coded.</li>
+
+ <li><tt>lmorg.f90</tt>:<br />
+   <ul>
+     <li>Moved call to <tt>trcr_alloc</tt> at the end of the allocation block</li>
+     <li>Added some missing initializations for leapfrog integration for <tt>lartif_data</tt> and
+         the 2-moment-scheme (UB)</li>
+   </ul></li>
+
+ <li><tt>organize_assimilation.f90</tt>:<br />
+   Corrected a <tt>"!defined"</tt> statement for GRIBDWD/GRIBAPI:
+   replaced <tt>"||"</tt> by correct <tt>"&amp;&amp;"</tt>)
+  </li>
+
+ <li><tt>organize_data.f90</tt>:<br />
+   Allocate <tt>pv_in</tt> only in case of real data input (not for <tt>lartif_data</tt>)
+   Check that value for <tt>ke_tot</tt> is less than <tt>khmax - 20</tt>
+   Convert Grib1-<tt>unitOfTimeRange</tt> to Grib2-value, if necessary.
+  </li>
+
+ <li><tt>src_artifdata.f90</tt>:<br />
+   <ul>
+    <li>Corrections for proper use of the new vertical coordinate and reference
+        atmospheres data types</li>
+    <li>Fixed computation of <tt>seed(i)</tt> in function <tt>seed_random_number()</tt>, because
+        the old method lead to a floating point exception with the gfortran compiler</li>
+    <li>Initialization of <tt>t_so</tt>, <tt>w_so</tt>, <tt>t_snow_mult</tt>, <tt>t_snow</tt> 
+        now only for land points (SR <tt>init_tw_soil_snow_c()</tt>).</li>
+    <li>New namelist parameter <tt>t_surf_c</tt> for baseline initialization of surface 
+        temperature <tt>t_s</tt>.</li>
+   </ul></li>
+
+ <li><tt>src_input.f90</tt>:<br />
+   <ul>
+    <li>Corrections for NetCDF: 
+      <ul>
+        <li>put vertical coordinate parameters to <tt>pv_in</tt> for later use in the model</li>
+        <li>allocate <tt>zvc_params</tt> in subroutine <tt>read_nc_gdefs</tt> in all tasks</li>
+      </ul></li>
+    <li>Corrections for GRIB (setting <tt>.NOT. l_ke_in_gds</tt>):
+      <ul>
+        <li>compute the correct value of <tt>ivctype</tt> in subroutine <tt>get_vertcoord</tt></li>
+        <li>if GRIB1 data are read and GRIB2 data written, a HHL-file need not be read</li>
+      </ul></li>
+    <li>Bug fix when running with more tasks than GRIB records in input file:<br />
+        not all tasks called the global communication then</li>
+   </ul></li>
+
+ <li><tt>src_lheat_nudge.f90</tt>:<br />
+   Error and EOF check in <tt>lhn_obs_read</tt> after calling subroutine <tt>cuegin</tt>:<br />
+   if EOF (<tt>ilen=0</tt>), then do not check the error code
+      (otherwise it could go in an endless CYCLE loop).
+  </li>
+
+ <li><tt>src_output.f90</tt>:<br />
+   Corrected placement of <tt>ifdef GRIBAPI</tt> for <tt>gribinit_loop</tt>
+   Added check for upper bound of <tt>zlev</tt> resp. <tt>plev</tt> in <tt>z_int()</tt> 
+   and <tt>p_int()</tt>
+  </li>
+
+ <li><tt>src_runge_kutta.f90</tt>:<br />
+   Call to subroutine <tt>finalize_runge_kutta</tt> only for <tt>l2tls</tt>
+   (otherwise it could crash during Leapfrog-runs)
+  </li>
+
+ <li><tt>src_slow_tendencies.f90</tt>:<br />
+   Bugfixes in subroutine <tt>explicit_horizontal_diffusion</tt> (3D-Turbulence):
+   <ul>
+    <li>some loop index bounds were too small by 1 gridpoint</li>
+    <li>corrected wrong metrical term in <tt>ztaud23</tt></li>
+   </ul>
+   (This will change results only if <tt>l3dturb=.TRUE.</tt> and <tt>l3dturb_metr=.TRUE.</tt>)
+  </li>
+
+ <li><tt>src_soil_multlay.f90</tt>:<br />
+   Bug fixes for the multi-layer snow model (does not change operational configurations)
+  </li>
+
+ <li><tt>src_turbulence.f90</tt>:<br />
+   Bugfixes in subroutine <tt>prankolmo_rk</tt>:
+   (for <tt>itype_turb = 5..8</tt>; does not change operational configurations)
+   <ul>
+     <li><tt>zlen</tt> has to be a 3D field instead of a scalar
+     because it is carried from one loop to a subsequent loop.</li>
+     <li><tt>zsgesh</tt> and <tt>zsgesv</tt> are already the horizontal and vertical
+     components of the squared deformation. Therefore remove
+     the square operator from calculations of <tt>ztpm</tt> and <tt>ztpm_v</tt>.
+   </ul>
+  </li>
+
+ <li><tt>src_obs_cdfout_feedobs.f90</tt>:<br />
+   Bug fix for allocation/deallocation of some arrays (<tt>ssgbdy</tt>, etc):
+     The allocation has been made unconditional
+  </li>
+</ul>
+
+<!---------------------------------------------------------------------------->
+<p align="right"><a href="#content">Back to Contents</a>
+<hr>
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="namelis">6. Changes to the Namelists</a></h3>
+
+<center>
+<table border="1" cellspacing="3" class="namelist">
+<tbody>
+   <tr>
+     <th>Group</th>
+     <th colspan="2">Name</th>
+     <th>Meaning</th>
+     <th align="center", width="5%">Default</th>
+   </tr>
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td class="hilit" rowspan="1"><tt>/IOCTL/</tt></td>
+     <td><tt>l_ke_in_gds</tt></td>
+     <td align="center"><span class="hell">new default</span></td>
+     <td class="middl" rowspan="1">explicit GDS entry for number of model levels</td>
+     <td class="middl" align="center" rowspan="1"><tt>.TRUE.</tt></td>
+   </tr>
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td class="hilit" rowspan="1"><tt>/GRIBIN/</tt></td>
+     <td><tt>lan_w_so</tt></td>
+     <td align="center"><span class="blau">NEW</span></td>
+     <td class="middl" rowspan="1">switch for selection of external (tri=0) <tt>W_SO</tt></td>
+     <td class="middl" align="center" rowspan="1"><tt>' '</tt></td>
+   </tr>
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+ </tbody>
+</table>
+</center>
+
+
+
+<!---------------------------------------------------------------------------->
+<p align="right"><a href="#content">Back to Contents</a>
+<hr>
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="results">7. Changes of Results</a></h3>
+
+<p>
+Most changes are pure technical. Results of operational applications are not changed.
+</p>
+
+<!---------------------------------------------------------------------------->
+
+<p align="right"><a href="#content">Back to Contents</a>
+<hr>
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+</body>
+</html>

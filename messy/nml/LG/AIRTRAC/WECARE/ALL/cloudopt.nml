@@ -1,0 +1,56 @@
+! -*- f90 -*-
+&CTRL
+!### parameter for model tuning  ##############################
+!
+!fb_mk_20120116+
+! asic: correction for asymmetry factor of ice clouds 0.8 <= asic < 1
+! asic = 0.85 -> default value
+! asic = 1: no correction -> ice clouds are too dark
+! asic < 1: larger backward scattering (clouds become brighter)
+rset_asic = F, 0.80,
+!
+! zinhomi: cloud inhomogeneity factor (ice), considers the subgrid
+!          structure of ice clouds. 0.7 <= zinhomi <= 1
+! zinhomi: clouds become darker with decreasing zinihomi
+! Note:
+! zinhomi: the parameter depends on horizontal and vertical resolution,
+!          reset only after comparing with default values
+rset_zinhomi = F, 0.96,
+!
+! zinhoml: cloud inhomogeneity factor (liquid), considers the subgrid
+!          structure of liquid clouds. 0.7 <= zinhoml <= 1
+! zinhoml: clouds become darker with decreasing zinihoml
+! Note:
+! zinhoml: the parameter depends on the gridpoint, where it is set
+!          according to the liquid water path,
+!          reset only if you want to overwrite the model value.
+!          The parameter can also be influenced with zinpar, which is some
+!          cases is used as an exponent to the liquid water path.
+rset_zinhoml = F, 0.7,
+!
+! zinpar:  the parameter can be set to influence zinhoml. It is in some
+!          cases used as an exponent to the liquid water path.
+! Note:
+! zinpar:  the parameter depends on horizontal and vertical resolution,
+!          reset only after comparing with default values
+rset_zinpar = F, 0.96,
+! fb_mk_20120116-
+! op_pj_20160603+
+! Note: loice=T (default): ice cloud emissivity after Ebert and Curry (1992)
+!       loice=F          : ice cloud emissivity after Rockel et al. (1991)
+loice = F
+! op_pj_20160603-
+/
+
+&CPL
+NCALL             = 1    ! 
+! 1. call always required ---------------------------------------
+!
+cld_inp(1,1)='ECHAM5','aclc',    ! 
+cld_inp(2,1)='ECHAM5','xlm1',    !
+cld_inp(3,1)='ECHAM5','xim1',    !
+cld_inp(4,1)='ECHAM5','acdnc',   ! cloud condensation nuclei
+cld_inp(5,1)='#std',  'radlp',   ! effective radii for liquid droplets
+cld_inp(6,1)='#std',  'radip',   ! effective radii for ice particles
+!
+/

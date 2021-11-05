@@ -1,0 +1,904 @@
+<!DOCTYPE html 
+     PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+     "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xml:lang="en" lang="en">
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="GENERATOR" content="Mozilla/4.7C-SGI [en] (X11; I; IRIX64 6.5 IP27) [Netscape]">
+   <title>Changes in the COSMO-Model 4.17</title>
+<style type="text/css">
+  body { font-family:       Arial;
+         font-size:         12pt;
+         background-repeat: no-repeat; 
+         margin:            1em; }
+
+  tt   { font-size:         12pt;}
+
+  li   { margin-top:         5pt;
+         margin-bottom:      5pt }
+
+  th   { border:           1px solid black;
+         padding:          3pt;
+         vertical-align:   top;
+         background-color: lightblue;}
+
+  td   { border:           1px solid black;
+         padding:          3pt;
+         vertical-align:   top;}
+
+  td.middl   { border:           1px solid black;
+               padding:          3pt;
+               vertical-align:   middle;}
+
+  td.hilit       { border:           1px solid black;
+                   padding:          1pt;
+                   vertical-align:   top;
+                   background-color: lightblue;}
+
+  td.clean       { padding:          0pt;
+                   border-style:     none;
+                   vertical-align:   top;}
+
+  td.notes       { padding:          3pt;
+                   border-style:     none;
+                   vertical-align:   top;}
+
+  td.nomid       { padding:          3pt;
+                   border-style:     none;
+                   vertical-align:   middle;}
+
+  table.note     { border-width:     0pt;
+                   border-style:     none;
+                   margin-left:      5pt;
+                   margin-top:       1pt;
+                   margin-bottom:    1pt;
+                   cell-padding:     5pt;
+                   vertical-align:   top;
+                   text-align:       left;}
+  
+  table.atte     { border-width:     0pt;
+                   border-style:     none;
+                   margin-left:      5pt;
+                   margin-top:       1pt;
+                   margin-bottom:    1pt;
+                   cell-padding:     5pt;
+                   vertical-align:   top;
+                   text-align:       left;
+                   background-color: red;}
+  
+  table.namelist { border-width:  2pt;
+                   border-style:  groove;
+                   border-color:  black;
+                   width:         90%;
+                   text-align:    left;
+                   margin-top:    1pt;
+                   margin-bottom: 1pt;
+                   padding:       3pt;
+                   align:         center;}
+  
+  tr.headings    { text-align:       left;
+                   vertical-align:   top;
+                   border-width:     1pt;
+                   border-style:     groove;
+                   border-color:     grey;
+                   padding:          2pt;
+                   font-weight:      bold;}
+
+</style>
+
+</head>
+  <body text="#000000" bgcolor="#FFFFFF" link="#0000EE" vlink="#551A8B" alink="#FF0000">
+
+<center>
+<h1>
+<a NAME="begin">Documentation of the Changes in the COSMO-Model <br /> Version 4.18</a>
+</h1>
+<h3>
+24.05.2011
+</h3>
+</center>
+
+<p>
+There have been several changes for this new version, but most of them are pure technical
+and do not change the results.</p>
+
+<h4><a NAME="content">Contents:</a></h4>
+
+<ol>
+<li><a href="#chanart">COSMO-ART Interfaces for Runge-Kutta Dynamical Core</a></li>
+<li><a href="#chanadv">Changes in the Horizontal Advection</a></li>
+<li><a href="#chanrtt">Introduction of Interface for RTTOV9</a></li>
+<li><a href="#chancon">Conditional Compilation</a></li>
+<li><a href="#chandfi">Changes in the Digital Filtering Initialization</a></li>
+<li><a href="#chanout">Changes to some diagnostic variables variables</a></li>
+<li><a href="#channcf">Extensions to NetCDF I/O</a></li>
+<li><a href="#chantec">Technical Changes</a></li>
+<li><a href="#chanbug">Bug Fixes</a></li>
+<li><a href="#namelis">Summary of Namelist Variables Changes</a></li>
+<li><a href="#results">Changes of Results</a></li>
+</ol>
+<p>
+<hr>
+
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="chanart">1. COSMO-ART Interfaces for Runge-Kutta Dynamical Core</a></h3>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+
+<p>
+The interfaces to use COSMO-ART have been implemented now also in the
+Runge-Kutta dynamical core. The modules affected are 
+<ul>
+ <li><tt>src_runge_kutta.f90</tt></li>
+ <li><tt>src_advection_rk.f90</tt></li>
+ <li><tt>src_slow_tendencies_rk.f90</tt></li>
+ <li><tt>src_relaxation.f90</tt></li>
+ <li><tt>lmorg.f90</tt></li>
+</ul>
+
+There have also been some additional modifications:
+
+<ul>
+ <li><tt>src_input.f90, src_setup_vartab.f90, organize_data.f90</tt>:<br />
+      The variable tables for COSMO_ART and POLLEN have been eliminated in the
+      model part, and own modules have been introduced for that in the ART part.
+     </li>
+ <li><tt>slow_tendencies.f90</tt>:<br />
+      Unified the treatment of deposition; added surface concentration
+     </li>
+ <li><tt>src_leapfrog.f90</tt>:<br />
+      Introduced convective tendencies for COSMOART and POLLEN
+     </li>
+ <li><tt>src_conv_tiedtke.f90</tt>:<br />
+      introduced additional fields for COSMO-ART. Because these fields are used
+      in the argument lists, they are allocated in any case, but only computed,
+      if COSMOART or POLLEN is activated.
+     </li>
+</ul>
+</p>
+
+<p align="right"><a href="#content">Back to Contents</a>
+
+<hr>
+
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="chanadv">2. Changes in the Horizontal Advection</a><br />
+     (by Michael Baldauf, Guy DeMorsier)</h3>
+
+<!---------------------------------------------------------------------------->
+
+<ul>
+ <li>
+  The full Strang splitting has been implemented by Guy DeMorsier in 
+  <tt>src_advection_rk.f90</tt>. New subroutines <tt>advection_ef_zyxyz</tt> and
+  <tt>exchange_runge_kutta_3dstrang</tt> have been introduced for that.
+  In these new subroutines, also the interfaces for COSMO-ART have been introduced.
+ </li>
+ <li>
+  New (optional) selective filling diffusion for the Semi-Lagrange advection
+      (by Michael Baldauf)<br />
+  In <tt>src_advection_rk.f90</tt> a New subroutine <tt>advection_semi_lagrange_init</tt> 
+  has been added and the subroutine <tt>advection_semi_lagrange</tt> has been modified.
+  In <tt>numeric_utilities_rk.f90</tt> new subroutines have been added:
+  <tt>remove_negative_values</tt>, <tt>diffusion</tt>, <tt>diffusion_x</tt>, 
+  <tt>diffusion_y</tt>, <tt>diffusion_z</tt>
+ </li>
+ <li>
+  Technical modifications for controlling horizontal advection
+      (by Michael Baldauf)<br />
+  The 2 namelist switches <tt>lsl_adv_qx</tt> and <tt>yef_adv_qx</tt> have been replaced by
+  one switch <tt>y_scalar_advect</tt> now (in <tt>/DYNCTL/</tt>).
+  This is valid only for the Runge-Kutta dynamical core. The following table
+  shows the available options and how the old settings can be replaced.
+
+<p>
+<center>
+<table border="1" cellspacing="3" class="namelist">
+ <tbody>
+   <tr>
+     <th><tt>y_scalar_advect</tt></th>
+     <th>Description</th>
+     <th><tt>lsl_adv_qx</tt></th>
+     <th><tt>yef_adv_qx</tt></th>
+   </tr>
+   <tr>
+     <td class="middl" align="left" rowspan="1"><tt>'SL3_MF'</tt></td>
+     <td>SL-Advection with tricubic interpolation, multiplicative filling-option</td>
+     <td class="middl" align="center"><tt>.TRUE.</tt></td>
+     <td class="middl" align="center"><tt>  --- </tt></td>
+   </tr>
+   <tr>
+     <td class="middl" align="left" rowspan="1"><tt>'SL3_SFD'</tt></td>
+     <td>SL-Advection with tricubic interpolation, selective filling diffusion-option</td>
+     <td class="middl" align="center" colspan="2">not available before</td>
+   </tr>
+   <tr>
+     <td class="middl" align="left" rowspan="1"><tt>'Bott2'</tt></td>
+     <td>Bott 2nd order finite-volume scheme</td>
+     <td class="middl" align="center"><tt>.FALSE.</tt></td>
+     <td class="middl" align="center"><tt>'Bott_2'</tt></td>
+   </tr>
+   <tr>
+     <td class="middl" align="left" rowspan="1"><tt>'Bott2_Strang'</tt></td>
+     <td>Bott 2nd order finite-volume scheme, with Strang splitting ('z-y-2x-y-z')</td>
+     <td class="middl" align="center" colspan="2">not available before</td>
+   </tr>
+   <tr>
+     <td class="middl" align="left" rowspan="1"><tt>'Bott4'</tt></td>
+     <td>Bott 4th order finite-volume scheme</td>
+     <td class="middl" align="center"><tt>.FALSE.</tt></td>
+     <td class="middl" align="center"><tt>'Bott_4'</tt></td>
+   </tr>
+   <tr>
+     <td class="middl" align="left" rowspan="1"><tt>'Bott4_Strang'</tt></td>
+     <td>Bott 4th order finite-volume scheme, with Strang splitting ('z-y-2x-y-z')</td>
+     <td class="middl" align="center" colspan="2">not available before</td>
+   </tr>
+   <tr>
+     <td class="middl" align="left" rowspan="1"><tt>'vanLeer'</tt></td>
+     <td></td>
+     <td class="middl" align="center"><tt>.FALSE.</tt></td>
+     <td class="middl" align="center"><tt>'vanLeer'</tt></td>
+   </tr>
+   <tr>
+     <td class="middl" align="left" rowspan="1"><tt>'vanLeer_Strang'</tt></td>
+     <td></td>
+     <td class="middl" align="center" colspan="2">not available before</td>
+   </tr>
+   <tr>
+     <td class="middl" align="left" rowspan="1"><tt>'PPM'</tt></td>
+     <td></td>
+     <td class="middl" align="center"><tt>.FALSE.</tt></td>
+     <td class="middl" align="center"><tt>'PPM'</tt></td>
+   </tr>
+   <tr>
+     <td class="middl" align="left" rowspan="1"><tt>'PPM_Strang'</tt></td>
+     <td></td>
+     <td class="middl" align="center" colspan="2">not available before</td>
+   </tr>
+   <tr>
+     <td class="middl" align="left" rowspan="1"><tt>'MPDATA'</tt></td>
+     <td>not yet available, work at MeteoCH</td>
+     <td class="middl" align="center" colspan="2">not available before</td>
+   </tr>
+ </tbody>
+</table>
+</center>
+</p>
+
+NOTE: these strings are now case-insensitive (e.g. 'sl3_mF' or 'SL3_Mf' are both recognized)
+ </li>
+</ul>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+
+<p align="right"><a href="#content">Back to Contents</a>
+
+<hr>
+
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="chanrtt">3. Introduction of Interface for RTTOV9</a><br />(by Robin Faulwetter)</h3>
+
+<!---------------------------------------------------------------------------->
+
+<p>
+In addition to the module <tt>src_sat_tbs.f90</tt> (which is the interface
+to the RTTOV7 library) a new module <tt>src_sat_rttov.f90</tt> has been
+introduced as interface to the RTTOV9 library. The synthetic satellite images
+can now also be computed using the RTTOV9 library.
+</p>
+
+<p>
+In contrast to the RTTOV7 library, multiple-scattering effects are not computed
+explicitly, but are parametrised. Also, microphysical cloud properties are now taken
+into account better than before. For areas with a complex cloud coverage in the
+vertical there can be differences in the brightness temperatures up to some
+Kelvin. With low / high brightness temperatures (high / low clouds) the values
+will be lower / higher. The contrasts between lower and higher brightness 
+temperatures will be intensified.
+</p>
+
+<p>
+To choose between the libraries, a new Namelist parameter <tt>itype_rttov</tt>
+has been introduced in the group <tt>/SATCTL/</tt>:
+</p>
+
+<p>
+<center>
+<table border="1" cellspacing="3" class="namelist">
+ <tbody>
+   <tr>
+     <th>Name</th>
+     <th>Meaning</th>
+     <th align="center">Default</th>
+   </tr>
+   <tr>
+     <td><tt>itype_rttov</tt></td>
+     <td>to specify the RTTOV version that should be used
+
+       <table cellspacing="3" class="note">
+        <tbody>
+          <tr>
+            <td class="notes"><tt>7</tt></td>
+            <td class="notes">to use RTTOV7 library</td>
+          </tr>
+          <tr>
+            <td class="notes"><tt>9</tt></td>
+            <td class="notes">to use RTTOV9 library</td>
+          </tr>
+        </tbody>
+       </table></td>
+
+     <td align="center"><tt>7</tt></td>
+   </tr>
+ </tbody>
+</table>
+</center>
+</p>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+
+<p align="right"><a href="#content">Back to Contents</a>
+
+<hr>
+
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="chancon">4. Conditional Compilation</a></h3>
+
+<!---------------------------------------------------------------------------->
+
+<p>
+Conditional compilation has been introduced for Nudging, the
+synthetic satellite images and the use of the NetCDF library.
+Not all users of the COSMO-Model do use these components, but have
+to compile and link them together with the additional libraries needed.
+Up to now we were offering "dummy"-files, but now we introduced
+conditional compilation (using the <tt>#ifdef</tt> pragma) for switching 
+on / off these components during compilation time:
+</p>
+
+<p>
+<ul>
+ <li><tt>ifdef NUDGING</tt>:<br />
+     if <tt>-DNUDGING</tt> is defined for compilation, all source code for the
+     assimilation part of the COSMO-Model will be compiled and linked
+     with the binary.
+   </li>
+ <li><tt>if defined RTTOV7 || defined RTTOV9 || defined RTTOV10</tt>:<br />
+     if one of the above variables is defined for compilation,
+     (<tt>-DRTTOV7</tt>, <tt>-DRTTOV9</tt>) the source code for the corresponding
+     RTTOV-interfaces is compiled and the additional RTTOV-library
+     is linked.
+   </li>
+ <li><tt>ifdef NETCDF</tt>:<br />
+     if <tt>-DNETCDF</tt> is defined for compilation, all parts of the source 
+     code using NetCDF calls is compiled and linked with the binary and the
+     NetCDF library is linked.<br />
+       <p><table class="note">
+         <tr><td class="notes">Note:</td>
+         <td class="notes">
+           NetCDF can only be switched off, if also Nudging is switched off,
+           because the treatment of observations in the Nudging is done
+           with NetCDF and cannot be switched off then.
+         </td></tr>
+        </table></p>
+   </li>
+</ul>
+</p>
+
+<p>
+If the source code is NOT compiled with these extensions, but the
+corresponding component is initiated during a model run, the
+model will stop with an appropriate error message.
+</p>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+
+<p align="right"><a href="#content">Back to Contents</a>
+
+<hr>
+
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="chandfi">5. Changes in the Digital Filtering Initialization</a></h3>
+
+<!---------------------------------------------------------------------------->
+
+<p>
+Some technical adaptations were necessary to run the forward launching
+filter (<tt>ndfi=1</tt>), because the forecast then starts for <tt>nstart > 0</tt>, but
+some initializations (e.g. in the soil model) were done only for <tt>nstart = 0</tt>.
+</p>
+
+<p>
+For the forward launching (<tt>ndfi=1</tt>), the soil processes are now taken into account.
+The initial values of all soil variables are saved and after the filtering
+step, all soil variables are initialized again as mean values of the initially
+saved values and the newly computed ones.
+</p>
+
+<p><table class="note">
+  <tr><td class="notes">Note:</td>
+      <td class="notes">
+          The reproducibility problem for the backward-forward initialization 
+          (<tt>ndfi=2</tt>) still is not solved.
+      </td></tr>
+</table></p>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+
+<p align="right"><a href="#content">Back to Contents</a>
+
+<hr>
+
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="chanout">6. Changes to some diagnostic variables</a></h3>
+
+<!---------------------------------------------------------------------------->
+
+<p>
+There have been changes to few diagnostic variables:
+</p>
+
+<p>
+<ul>
+ <li>Modification of computation for snow fall limit (<tt>SNOWLMT</tt>) and 
+     0-degree height (<tt>HZEROCL</tt>) (by Guy DeMorsier, MeteoSwiss):<br />
+     The search algorithms for snow fall limit (1.3C) and 0-degree height are
+     now started from top of the model and not from the bottom as before.
+     Search from the bottom of the model could lead to a much too low snow fall
+     limit, if there is a bend in the temperature profile.
+   </li>
+ <li>Changes in the maximal wind gust:<br />
+     Up to now, the values on the western and southern boundaries of the
+     total domain were only copied from the first interior line. Now they
+     are also computed as the values in the interior.<br />
+     For the option <tt>itype_diag_gusts=2</tt>, a bug has been fixed.
+   </li>
+ <li>Shortwave diffuse upward flux in the radiation <tt>ASWDIFU_S</tt>:<br />
+     Introduced smoothing of this field after computation of radiation
+     on a coarse grid.
+   </li>
+ <li>Possibility to write instantaneous values of fluxes:<br />
+     The instantaneous values of the fluxes <tt>SHFL_S, LHFL_S, UMFL_S, VMFL_S</tt>
+     can now also be written.
+   </li>
+</ul>
+</p>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+
+<p align="right"><a href="#content">Back to Contents</a>
+
+<hr>
+
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="channcf">7. Extensions to NetCDF I/O</a><br />(by Anne Roches)</h3>
+
+<!---------------------------------------------------------------------------->
+
+<p>
+<ul>
+ <li><tt>data_io.f90</tt>:<br />
+      Introduced additional entries in <tt>idims_id_out</tt> for
+     <ul>
+       <li>sectors of the horizon (for 3D ext. parameter field skyview</li>
+       <li>number of products for synthetic satellite images</li>
+       <li>number of products used  for special MSG images</li>
+     </ul>
+    </li>
+ <li><tt>io_utilities.f90</tt>, <tt>src_input.f90</tt>, <tt>src_output.f90</tt>:<br />
+      Extensions to set the additional dimensions and write these variables.
+    </li>
+ <li><tt>src_setup_vartab.f90</tt>:
+      Only for NetCDF Output, 4 additional fields for the synthetic satellite
+      images have been introduced:
+      <ul>
+        <li><tt>MSG_TB</tt>    MSG brightness temperature</li>
+        <li><tt>MSG_TBC</tt>   MSG clear-sky brightness temperature</li>
+        <li><tt>MSG_RAD</tt>   MSG radiance</li>
+        <li><tt>MSG_RADC</tt>  MSG clear-sky radiance</li>
+      </ul>
+      Output of these fields does NOT work in Grib!
+    </li>
+</ul>
+</p>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+
+<p align="right"><a href="#content">Back to Contents</a>
+
+<hr>
+
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="chantec">8. Technical Changes</a></h3>
+
+<!---------------------------------------------------------------------------->
+
+<p>
+<ul>
+  <li>New Namelist variable in the <tt>/TUNING/</tt> list: <tt>thick_sc</tt> (by Martin K&ouml;hler<br />
+      <tt>thick_sc</tt> is the limit for convective clouds to be "shallow" (in Pa)
+       Default: 25000.0 Pa (was hard coded up to now in <tt>src_conv_shallow.f90</tt>)
+       <p>
+       This tuning parameter will be tested for COSMO-DE-EPS:<br />
+       Shallow convection parameterization becomes active only if cloud
+       thickness from cloud base to cloud top exceeds a threshold.  To evaluate
+       this condition a parcel is launched.  This threshold is typically set to
+       values between 20000.0 Pa and 30000.0 Pa with a COSMO_DE default of 25000.0 Pa.
+       (for comparison: IFS default is 20000.0 Pa set by Peter Bechtold).
+       Reasonable values are between 10000.0 and 45000.0 Pa.
+       </p>
+    </li>
+  <li>Changes in the output (by Uli Sch&auml;ttler)<br />
+       The namelist variable <tt>yform_write</tt> was moved from the group <tt>/IOCTL/</tt> to
+       the group(s) <tt>/GRIBOUT/</tt>. Now it is possible to specify a different output
+       format for every output group.
+    </li>
+  <li>For some modules the code owner has been changed (adapted to current situation).
+    </li>
+  <li>Idealized test cases (by Uli Blahak)<br />
+      There were several bug fixes and some extensions to the module <tt>src_artifdata.f90</tt>
+      One bug has been fixed in <tt>organize_data.f90</tt>, regarding restart runs in case of
+      idealized tests.
+    </li>
+  <li>There are 2 new subroutines in <tt>src_integrals.f90</tt> (by Michael Baldauf)<br />
+      <tt>check_qx_conservation</tt>, <tt>calc_cuboid_geometry</tt>
+    </li>
+</ul>
+</p>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+
+<p align="right"><a href="#content">Back to Contents</a>
+
+<hr>
+
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="chanbug">9. Bug Fixes</a></h3>
+
+<!---------------------------------------------------------------------------->
+
+<p>
+<ul>
+ <li><tt>src_output.f90</tt>:<br />
+     Settings of the product definition section (pds):
+     Some parameters of the pds (for the SLEVE coordinate) were not set,
+     when using the new reference atmosphere, but not the SLEVE coordinate.
+     This leads to problems, when decoding these grib data with grib_api.
+     The SLEVE parameters are now set to 0 in this case.
+     (by Uli Sch&auml;ttler)
+
+     <p>
+     In case of <tt>luvmasspoint=.TRUE.</tt> there were stripes from the processor
+     grid in the output of <tt>AUMFL_S</tt> and <tt>AVMFL_S</tt> because of the averaging to
+     the mass grid point. The boundaries of these variables must be exchanged
+     before computing the averaging.
+     </p>
+
+     <p>
+     Call to subroutine <tt>potential_vorticity_rho</tt>: variable <tt>zvarlev</tt> is now passed
+     within <tt>(1:ke)</tt> to this subroutine.  (by Jean-Marie Bettems)
+     </p>
+    </li>
+ <li><tt>numeric_utilities.f90</tt>:<br />
+     The interface of subroutine <tt>calc_Theta_Tppp</tt> expected reference temperature and
+     temperature deviation from the calling routine. But in the output, only
+     full temperature is available.
+     The interface has been modified to expect the full temperature now.
+      (by Jean-Marie Bettems)
+    </li>
+ <li><tt>pp_utilities.f90</tt>:<br />
+     A height query must be changed from "<=" to ">=" when computing
+     accumulation of <tt>CAPE</tt> and <tt>CIN</tt> in subroutine <tt>ascent</tt> 
+     (for cape3km) (by Daniel Leuenberger)
+    </li>
+ <li><tt>src_runge_kutta.f90</tt>:<br />
+     Subroutine <tt>coriolis</tt> is now called with the correct timelevels in the case
+     <tt>l_coriolis_every_RK_substep=.TRUE.</tt>   (by Michael Baldauf)
+    </li>
+ <li><tt>near_surface.f90</tt>:<br />
+     for <tt>itype_diag_gusts=2</tt> the values in 30m have to be used
+     (up to now the 10m values were used erroneously) (by Oli Fuhrer)
+    </li>
+ <li><tt>src_input.f90</tt>:<br />
+     There were some cases, in which the variable <tt>ydatchk</tt> has not been set.
+     This has been repaired (by Burkhardt Rockel et al.)
+    </li>
+ <li><tt>src_radiation.f90</tt>:<br />
+     Use local 2D array <tt>zskyview</tt> and use 1D slice of it (because global array is
+     allocated only for <tt>lradtopo=.TRUE.</tt>, but was used in SR interfaces)
+     Smoothing local field for <tt>swdifu_s</tt> after computation on coarse grid.
+
+     <p>
+     The computation of <tt>qc_rad</tt> and <tt>qi_rad</tt> was wrong, when using a coarser grid
+     for the radiation. This has been fixed.  (by Victor Venema, Uni Bonn)
+     </p>
+    </li>
+ <li><tt>organize_data.f90</tt>:<br />
+     Bug fix for restart runs with idealized cases. (by Uli Blahak)
+    </li>
+ <li><tt>dfi_initialization.f90</tt>:<br />
+     In case of <tt>ndfi=1</tt> (forward launching) the start events for meanvalues,
+     grid point output and computing synthetic satellite images has to be
+     adapted, because <tt>nstart > 0</tt> then.  (by Uli Sch&auml;ttler)
+    </li>
+</ul>
+</p>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+
+<p align="right"><a href="#content">Back to Contents</a>
+
+<hr>
+
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="namelis">10. Summary of Namelist Variables Changes</a></h3>
+
+<p>There were the following changes for the Namelist variables:</p>
+
+<center>
+<table border="1" cellspacing="3" class="namelist">
+ <tbody>
+   <tr>
+     <th>Group</th>
+     <th>Name</th>
+     <th>Meaning</th>
+     <th align="center", width="5%">Default</th>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td class="hilit" rowspan="3"><tt>/DYNCTL/</tt></td>
+     <td><tt>lsl_adv_qx</tt></td>
+     <td class="middl" rowspan="1">eliminated</td>
+     <td class="middl" align="center" rowspan="1"><tt>-</tt></td>
+   </tr>
+   <tr>
+     <td><tt>yef_adv_qx</tt></td>
+     <td class="middl" rowspan="1">eliminated</td>
+     <td class="middl" align="center" rowspan="1"><tt>-</tt></td>
+   </tr>
+   <tr>
+     <td><tt>y_scalar_advect</tt></td>
+     <td>string to specify the horizontal advection scheme for scalar variables 
+         in the Runge-Kutta dynamics. The string is case-insensitive, lower and upper
+         case letters are accepted.
+
+       <table cellspacing="3" class="note">
+        <tbody>
+         <tr>
+           <td class="notes" align="left" rowspan="1"><tt>'SL3_MF'</tt></td>
+           <td class="notes">SL-Advection with tricubic interpolation, multiplicative filling-option</td>
+         </tr>
+         <tr>
+           <td class="notes" align="left" rowspan="1"><tt>'SL3_SFD'</tt></td>
+           <td class="notes">SL-Advection with tricubic interpolation, selective filling diffusion-option</td>
+         </tr>
+         <tr>
+           <td class="notes" align="left" rowspan="1"><tt>'Bott2'</tt></td>
+           <td class="notes">Bott 2nd order finite-volume scheme</td>
+         </tr>
+         <tr>
+           <td class="notes" align="left" rowspan="1"><tt>'Bott2_Strang'</tt></td>
+           <td class="notes">Bott 2nd order finite-volume scheme, with Strang splitting ('z-y-2x-y-z')</td>
+         </tr>
+         <tr>
+           <td class="notes" align="left" rowspan="1"><tt>'Bott4'</tt></td>
+           <td class="notes">Bott 4th order finite-volume scheme</td>
+         </tr>
+         <tr>
+           <td class="notes" align="left" rowspan="1"><tt>'Bott4_Strang'</tt></td>
+           <td class="notes">Bott 4th order finite-volume scheme, with Strang splitting ('z-y-2x-y-z')</td>
+         </tr>
+         <tr>
+           <td class="notes" align="left" rowspan="1"><tt>'vanLeer'</tt></td>
+           <td class="notes"></td>
+         </tr>
+         <tr>
+           <td class="notes" align="left" rowspan="1"><tt>'vanLeer_Strang'</tt></td>
+           <td class="notes"></td>
+         </tr>
+         <tr>
+           <td class="notes" align="left" rowspan="1"><tt>'PPM'</tt></td>
+           <td class="notes"></td>
+         </tr>
+         <tr>
+           <td class="notes" align="left" rowspan="1"><tt>'PPM_Strang'</tt></td>
+           <td class="notes"></td>
+         </tr>
+         <tr>
+           <td class="notes" align="left" rowspan="1"><tt>'MPDATA'</tt></td>
+           <td class="notes">not yet available, work at MeteoCH</td>
+         </tr>
+       </tbody>
+      </table>
+       For a translation from <tt>lsl_adv_qx</tt>, <tt>yef_adv_qx</tt> to <tt>y_scalar_advect</tt>
+       please see above.
+     </td>
+     <td class="middl"><tt>'SL3_MF'</tt></td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td class="hilit" rowspan="1"><tt>/TUNING/</tt></td>
+     <td><tt>thick_sc</tt></td>
+     <td class="middl" rowspan="1">limit for convective clouds to be "shallow" (in Pa)<br />
+         Range:  10000.0 ... 45000.0</td>
+     <td class="middl" align="center"><tt>25000.0</tt></td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td class="hilit" rowspan="1"><tt>/IOCTL/</tt></td>
+     <td><tt>yform_write</tt></td>
+     <td class="middl" rowspan="1">eliminated</td>
+     <td class="middl" align="center"><tt>-</tt></td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td class="hilit" rowspan="1"><tt>/GRIBOUT/</tt></td>
+     <td><tt>yform_write</tt></td>
+     <td class="middl" rowspan="1">to specify output format for every output group
+         separately.</td>
+     <td class="middl" align="center"><tt>'grb1'</tt></td>
+   </tr>
+<!---------------------------------------------------------------------------->
+   <tr>
+     <td class="hilit" rowspan="7"><tt>/SATCTL/</tt></td>
+     <td><tt>itype_rttov</tt></td>
+     <td>to specify the RTTOV version that should be used
+
+       <table cellspacing="3" class="note">
+        <tbody>
+          <tr>
+            <td class="notes"><tt>7</tt></td>
+            <td class="notes">to use RTTOV7 library</td>
+          </tr>
+          <tr>
+            <td class="notes"><tt>9</tt></td>
+            <td class="notes">to use RTTOV9 library</td>
+          </tr>
+        </tbody>
+       </table></td>
+
+     <td align="center"><tt>7</tt></td>
+   </tr>
+   <tr>
+     <td colspan="3">the following namelist variables are new and are
+         only in effect for using RTTOV9</td>
+   </tr>
+   <tr>
+     <td><tt>sat_long_01</tt></td>
+     <td class="middl" rowspan="1">position of first satellite (longitude)</td>
+     <td class="middl" align="center"><tt>-999.0</tt></td>
+   </tr>
+   <tr>
+     <td><tt>sat_long_02</tt></td>
+     <td class="middl" rowspan="1">position of second satellite (longitude)</td>
+     <td class="middl" align="center"><tt>-999.0</tt></td>
+   </tr>
+   <tr>
+     <td><tt>extrp_type</tt></td>
+     <td class="middl" rowspan="1">Type of extrapolation above highest model level
+       <ol start="0">
+        <li>constant</li>
+        <li>linear</li>
+        <li>extrapolate towards a climatological value</li>
+       </ol></td>
+     <td class="middl" align="center"><tt>0</tt></td>
+   </tr>
+   <tr>
+     <td><tt>iceshape</tt></td>
+     <td class="middl" rowspan="1">To specify, whether ice particles are
+       <ol start="1">
+        <li>hexagonal</li>
+        <li>or ice aggregates</li>
+       </ol></td>
+     <td class="middl" align="center"><tt>1</tt></td>
+   </tr>
+   <tr>
+     <td><tt>iwc2effdiam</tt></td>
+     <td class="middl" rowspan="1">Type of conversion of ice water content to
+         effective diameter of ice particles
+       <ol start="1">
+        <li>Scheme by Ou and Liou, 1995, Atmos. Res., 35, 127-138.</li>
+        <li>Scheme by Wyser et al. (see McFarquhar et al. (2003))</li>
+        <li>Scheme by Boudala et al., 2002, Int. J. Climatol., 22, 1267-1284.</li>
+        <li>Scheme by McFarquhar et al. (2003)</li>
+       </ol>
+       CAUTION: only type 4 has been tested extensively.</td>
+     <td class="middl" align="center"><tt>4</tt></td>
+   </tr>
+<!---------------------------------------------------------------------------->
+ </tbody>
+</table>
+</center>
+
+<p align="right"><a href="#content">Back to Contents</a>
+<spacer type=vertical size=10>
+<hr>
+
+<!---------------------------------------------------------------------------->
+<spacer type=vertical size=30>
+<!---------------------------------------------------------------------------->
+
+<h3><a NAME="results">11. Changes of Results</a></h3>
+
+<p>
+The modifications are purely technical, so that the results do not change.
+Only few diagnostics are affected because of bug fixes / technical changes:
+    
+<table cellspacing="3" class="note">
+ <tbody>
+  <tr>
+   <td class="notes" align="left" rowspan="1"><tt>VMAX_10M</tt></td>
+   <td class="notes">because of computations on the boundaries;<br />
+                     more changes, if <tt>itype_diag_gusts=2</tt> is used, because of a bug fix.
+  </tr>
+  <tr>
+   <td class="notes" align="left" rowspan="1"><tt>HZEROCL</tt></td>
+   <td class="notes">changed search algorithm</td>
+  </tr>
+  <tr>
+   <td class="notes" align="left" rowspan="1"><tt>SNOWLMT</tt></td>
+   <td class="notes">changed search algorithm</td>
+  </tr>
+  <tr>
+   <td class="notes" align="left" rowspan="1"><tt>ASWDIFU_S</tt></td>
+   <td class="notes">introduced smoothing of this field after 
+                     computation of radiation on a coarse grid</td>
+  </tr>
+  <tr>
+   <td class="notes" align="left" rowspan="1"><tt>SYNMSG</tt></td>
+   <td class="notes">if RTTOV9 is used, the results will change</td>
+  </tr>
+  <tr>
+   <td class="notes" align="left" rowspan="1">z-levels</td>
+   <td class="notes">fields on z-levels do change, because the lower boundary
+              condition for the vertical interpolation has changed.</td>
+  </tr>
+ </tbody>
+</table>
+
+
+<p align="right"><a href="#content">Back to Contents</a>
+
+</body>
+</html>

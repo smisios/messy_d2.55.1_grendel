@@ -1,0 +1,279 @@
+! -*- f90 -*-
+
+&CPL
+L_GP       = T  ! EMISSIONS FOR GRIDPOINT TRACERS
+L_LG       = F  ! EMISSIONS FOR LAGRANGIAN TRACERS
+l_lg_tend  = F  ! LAGRANGIAN TRACER TENDENCY AS CHANNEL OBJECT ?
+! ### SYNTAX:
+!     (SPECIFIERS MUST BE UPPERCASE !)
+! ###         GP=    Gridpoint  Emission Method (0,1,2) (SURFACE ONLY)
+!                    1: 2D (SURFACE EM.) -> lowest layer
+!                       3D (VOLUME  EM.) -> emission ON
+!                       Nx2D (MULTI LEVEL EM.) -> internally converted to 3D
+!                    SURFACE EMISSIONS ONLY:
+!                    2: lower boundary condition for flux
+!
+! ###         LG=    Lagrangian Emission Method (0,1,2,3,4)
+!                    1: 2D (SURFACE EM.)       -> into CELLs in lowest layer
+!                       3D (VOLUME  EM.)       -> emission ON
+!                       Nx2D (MULTI LEVEL EM.) -> internally converted to 3D
+!                    SURFACE EMISSIONS ONLY:
+!                    2: into lowest CELLs within boundary layer
+!                    3: into all CELLs in boundary layer (vertical gradient)
+!                    4: into all CELLs in boundary layer (no vertical gradient)
+!
+!NOTEs:  (1) Surface emission fluxes (2D) must be in  molecules m-2 s-1.
+!        (2) Volume emissions (3D)        must be in  molecules m-3 s-1.
+!        (3) Multi level emissions (Nx2D) must be in  molecules m-2 s-1.
+!        (4) For volume emissions (3D), the corresponding channel object
+!            must be in the GP_3D_MID representation
+!        (5) The trigger for multi level emissions (Nx2D) is the presence
+!            of the channel object attribute heights
+!
+! EMISSION: 'TRACER[_SUBNAME][,scaling];...', CHANNEL NAME, CHANNEL OBJECT,
+!           EMISSION METHOD
+!
+! LOWER BOUNDARY CONDITIONS (SEE tnudge.nml)
+!
+! ###########################################
+! DIRECT EMISSIONS
+! ###########################################
+! ---------------
+! biomass burning
+! ---------------
+EMIS_IN(20)  =  'CO',        'import_grid','BB_CO',            'GP=1'
+EMIS_IN(21)  =  'NO',        'import_grid','BB_NO',            'GP=1'
+!EMIS_IN(22)  =  'N2O',       'import_grid','BB_N2O',           'GP=1'
+EMIS_IN(23)  =  'SO2',       'import_grid','BB_SO2',           'GP=1'
+!EMIS_IN(24)  =  'H2',        'import_grid','BB_H2',            'GP=1'
+!EMIS_IN(25)  =  'CO2',       'import_grid','BB_CO2',           'GP=1'
+!EMIS_IN(26)  =  'CH4',       'import_grid','BB_CH4',           'GP=1'
+EMIS_IN(25)  =  'C2H2',      'import_grid','BB_NMVOC_C2H2',    'GP=1'
+EMIS_IN(27)  =  'NH3',       'import_grid','BB_NH3',           'GP=1'
+!
+EMIS_IN(28)  =  'C2H4',      'import_grid','BB_NMHC_C2H4',     'GP=1'
+EMIS_IN(29)  =  'C2H6',      'import_grid','BB_NMHC_C2H6',     'GP=1'
+EMIS_IN(30)  =  'C3H6',      'import_grid','BB_NMHC_C3H6',     'GP=1'
+EMIS_IN(31)  =  'C3H8',      'import_grid','BB_NMHC_C3H8',     'GP=1'
+EMIS_IN(32)  =  'NC4H10',    'import_grid','BB_NMHC_NC4H10',   'GP=1'
+EMIS_IN(33)  =  'CH3CHO',    'import_grid','BB_NMHC_CH3CHO',   'GP=1'
+EMIS_IN(34)  =  'CH3COCH3',  'import_grid','BB_NMHC_CH3COCH3', 'GP=1'
+EMIS_IN(35)  =  'CH3CO2H',   'import_grid','BB_NMHC_CH3CO2H',  'GP=1'
+EMIS_IN(36)  =  'CH3OH',     'import_grid','BB_NMHC_CH3OH',    'GP=1'
+EMIS_IN(37)  =  'HCHO',      'import_grid','BB_NMHC_HCHO',     'GP=1'
+EMIS_IN(38)  =  'HCOOH',     'import_grid','BB_NMHC_HCOOH',    'GP=1'
+EMIS_IN(39)  =  'MEK',       'import_grid','BB_NMHC_MEK',      'GP=1'
+!
+! emission ratio estimate based on
+! https://agupubs.onlinelibrary.wiley.com/doi/pdf/10.1029/2002JD002897
+EMIS_IN(40)  =  'CH3CN,0.002', 'import_grid','BB_CO',          'GP=1'
+!------------------
+!
+! ---------------------------------------------------------
+! AR5-RCP8.5 ANTHROPOGENIC (2000), - excluding biomass burning and traffic)
+!                                  - agricultural waste burning extra
+! ---------------------------------------------------------
+! FOSSIL FUEL (NO TRAFFIC)
+EMIS_IN(41) = 'NO' ,     'import_grid','ANTHNT_NO',         'GP=1'
+EMIS_IN(42) = 'CO' ,     'import_grid','ANTHNT_CO',         'GP=1'
+EMIS_IN(43) = 'SO2' ,    'import_grid','ANTHNT_SO2',        'GP=1'
+EMIS_IN(44) = 'NH3' ,    'import_grid','ANTHNT_NH3',        'GP=1'
+!-----------------
+EMIS_IN(45) = 'C2H4' ,   'import_grid','ANTHNT_NMHC_C2H4',       'GP=1'
+EMIS_IN(46) = 'C2H6' ,   'import_grid','ANTHNT_NMHC_C2H6',       'GP=1'
+EMIS_IN(47) = 'C3H6' ,   'import_grid','ANTHNT_NMHC_C3H6',       'GP=1'
+EMIS_IN(48) = 'C3H8' ,   'import_grid','ANTHNT_NMHC_C3H8',       'GP=1'
+EMIS_IN(49) = 'NC4H10',  'import_grid','ANTHNT_NMHC_NC4H10',     'GP=1'
+!EMIS_IN(50) = 'CH3CHO', 'import_grid', 'ANTHNT_NMHC_CH3CHO',     'GP=1'
+EMIS_IN(51) = 'CH3COCH3','import_grid','ANTHNT_NMHC_CH3COCH3',   'GP=1'
+!EMIS_IN(52) = 'CH3CO2H', 'import_grid','ANTHNT_NMHC_CH3CO2H',    'GP=1'
+EMIS_IN(53) = 'CH3OH' ,  'import_grid','ANTHNT_NMHC_CH3OH',      'GP=1'
+EMIS_IN(54) = 'HCHO' ,   'import_grid','ANTHNT_NMHC_HCHO',       'GP=1'
+!EMIS_IN(55) = 'HCOOH' ,  'import_grid','ANTHNT_NMHC_HCOOH',      'GP=1'
+EMIS_IN(56) = 'MEK' ,    'import_grid','ANTHNT_NMHC_MEK',        'GP=1'
+!----------------
+EMIS_IN(57) = 'C2H2' ,   'import_grid','ANTHNT_NMVOC_C2H2', 'GP=1'
+!
+! AGRICULTUTAL WASTE BURNING (not included in GFED biomass burning)
+EMIS_IN(60) = 'NO',      'import_grid','AWB_NO',       'GP=1'
+EMIS_IN(61) = 'CO',      'import_grid','AWB_CO',       'GP=1'
+EMIS_IN(62) = 'SO2',     'import_grid','AWB_SO2',      'GP=1'
+EMIS_IN(63) = 'NH3',     'import_grid','AWB_NH3',      'GP=1'
+!-----------------
+EMIS_IN(64) = 'C2H4',    'import_grid','AWB_NMHC_C2H4',     'GP=1'
+EMIS_IN(65) = 'C2H6',    'import_grid','AWB_NMHC_C2H6',     'GP=1'
+EMIS_IN(66) = 'C3H6',    'import_grid','AWB_NMHC_C3H6',     'GP=1'
+EMIS_IN(67) = 'C3H8',    'import_grid','AWB_NMHC_C3H8',     'GP=1'
+EMIS_IN(68) = 'NC4H10',  'import_grid','AWB_NMHC_NC4H10',   'GP=1'
+EMIS_IN(69) = 'CH3CHO',  'import_grid','AWB_NMHC_CH3CHO',   'GP=1'
+EMIS_IN(70) = 'CH3COCH3','import_grid','AWB_NMHC_CH3COCH3', 'GP=1'
+EMIS_IN(71) = 'CH3CO2H', 'import_grid','AWB_NMHC_CH3CO2H',  'GP=1'
+EMIS_IN(72) = 'CH3OH',   'import_grid','AWB_NMHC_CH3OH',    'GP=1'
+EMIS_IN(73) = 'HCHO',    'import_grid','AWB_NMHC_HCHO',     'GP=1'
+EMIS_IN(74) = 'HCOOH',   'import_grid','AWB_NMHC_HCOOH',    'GP=1'
+EMIS_IN(75) = 'MEK',     'import_grid','AWB_NMHC_MEK',      'GP=1'
+!---------------
+EMIS_IN(76) = 'C2H2',    'import_grid','AWB_NMVOC_C2H2',    'GP=1'
+!
+! --------------------------------
+! BIOGEN (not via ONLEM or AIRSEA)
+!   C2H4;C2H6;C3H6;C3H8;CH3CO2H;CH3COCH3;CH3OH;CO;HCOOH;NC4H10;
+! --------------------------------
+!
+EMIS_IN(80)  =  'C2H4' ,   'import_grid','biogen_C2H4',      'GP=1'
+EMIS_IN(81)  =  'C2H6' ,   'import_grid','biogen_C2H6',      'GP=1'
+EMIS_IN(82)  =  'C3H6' ,   'import_grid','biogen_C3H6',      'GP=1'
+EMIS_IN(83)  =  'C3H8' ,   'import_grid','biogen_C3H8',      'GP=1'
+EMIS_IN(84)  =  'CH3CO2H', 'import_grid','biogen_CH3CO2H',   'GP=1'
+EMIS_IN(85)  =  'CH3COCH3','import_grid','biogen_CH3COCH3',  'GP=1'
+EMIS_IN(86)  =  'CH3OH' ,  'import_grid','biogen_CH3OH',     'GP=1'
+EMIS_IN(87)  =  'CO' ,     'import_grid','biogen_CO',        'GP=1'
+EMIS_IN(88)  =  'HCOOH' ,  'import_grid','biogen_HCOOH',     'GP=1'
+EMIS_IN(89)  =  'NC4H10' , 'import_grid','biogen_NC4H10',    'GP=1'
+!
+! ---------------
+! TRAFFIC EMISSIONS
+! ---------------
+!
+! AIRCRAFT (NOx); QUANTIFY; 3-D emission
+!
+!EMIS_IN(95) = 'NO' ,    'import_grid','airc_NOx_NO',               'GP=1'
+!
+! SHIP
+!
+EMIS_IN(96)  = 'NO' ,       'import_grid', 'SHIP_NO',       'GP=1'
+EMIS_IN(97)  = 'CO' ,       'import_grid', 'SHIP_CO',       'GP=1'
+EMIS_IN(98)  = 'SO2' ,      'import_grid', 'SHIP_SO2',      'GP=1'
+EMIS_IN(99)  = 'NH3' ,      'import_grid', 'SHIP_NH3',      'GP=1'
+!-------------
+EMIS_IN(100)  = 'C2H4' ,    'import_grid', 'SHIP_NMHC_C2H4',     'GP=1'
+EMIS_IN(101) = 'C2H6' ,     'import_grid', 'SHIP_NMHC_C2H6',     'GP=1'
+EMIS_IN(102) = 'C3H6' ,     'import_grid', 'SHIP_NMHC_C3H6',     'GP=1'
+EMIS_IN(103) = 'C3H8' ,     'import_grid', 'SHIP_NMHC_C3H8',     'GP=1'
+EMIS_IN(104) = 'NC4H10',    'import_grid', 'SHIP_NMHC_NC4H10',   'GP=1'
+EMIS_IN(105) = 'CH3COCH3',  'import_grid', 'SHIP_NMHC_CH3COCH3', 'GP=1'
+EMIS_IN(106) = 'CH3OH',     'import_grid', 'SHIP_NMHC_CH3OH',    'GP=1'
+EMIS_IN(107) = 'HCHO',      'import_grid', 'SHIP_NMHC_HCHO',     'GP=1'
+EMIS_IN(108) = 'MEK',       'import_grid', 'SHIP_NMHC_MEK',      'GP=1'
+!------------
+EMIS_IN(109)  = 'C2H2' ,     'import_grid', 'SHIP_NMVOC_C2H2',    'GP=1'
+!------------
+!
+! ROAD (LAND)
+!
+EMIS_IN(110) = 'NO' ,     'import_grid','ROAD_NO',      'GP=1'
+EMIS_IN(111) = 'CO' ,     'import_grid','ROAD_CO',      'GP=1'
+EMIS_IN(112) = 'SO2' ,    'import_grid','ROAD_SO2',     'GP=1'
+EMIS_IN(113) = 'NH3' ,    'import_grid','ROAD_NH3',     'GP=1'
+!----------------
+EMIS_IN(114) = 'C2H4' ,   'import_grid','ROAD_NMHC_C2H4',    'GP=1'
+EMIS_IN(115) = 'C2H6' ,   'import_grid','ROAD_NMHC_C2H6',    'GP=1'
+EMIS_IN(116) = 'C3H6' ,   'import_grid','ROAD_NMHC_C3H6',    'GP=1'
+EMIS_IN(117) = 'C3H8' ,   'import_grid','ROAD_NMHC_C3H8',    'GP=1'
+EMIS_IN(118) = 'NC4H10' , 'import_grid','ROAD_NMHC_NC4H10',  'GP=1'
+!EMIS_IN(119) = 'CH3CHO' , 'import_grid','ROAD_NMHC_CH3CHO',  'GP=1'
+EMIS_IN(120) = 'CH3COCH3','import_grid','ROAD_NMHC_CH3COCH3','GP=1'
+!EMIS_IN(121) = 'CH3CO2H', 'import_grid','ROAD_NMHC_CH3CO2H', 'GP=1'
+EMIS_IN(122) = 'CH3OH' ,  'import_grid','ROAD_NMHC_CH3OH',   'GP=1'
+EMIS_IN(123) = 'HCHO' ,   'import_grid','ROAD_NMHC_HCHO',    'GP=1'
+!EMIS_IN(124) = 'HCOOH' ,  'import_grid','ROAD_NMHC_HCOOH',   'GP=1'
+EMIS_IN(125) = 'MEK' ,    'import_grid','ROAD_NMHC_MEK',     'GP=1'
+!-----------------
+EMIS_IN(126) = 'C2H2' ,   'import_grid','ROAD_NMVOC_C2H2',   'GP=1'
+!
+! AIRCRAFT (NOx); QUANTIFY; 3-D emission
+!
+EMIS_IN(131) = 'NO' ,       'import_grid','airc_NO',         'GP=1'
+EMIS_IN(132) = 'CO' ,       'import_grid','airc_CO',         'GP=1'
+EMIS_IN(133) = 'SO2' ,      'import_grid','airc_SO2',        'GP=1'
+EMIS_IN(134) = 'NH3' ,      'import_grid','airc_NH3',        'GP=1'
+!-------------------
+EMIS_IN(135) = 'C2H4' ,     'import_grid','airc_C2H4',       'GP=1'
+EMIS_IN(136) = 'C2H6' ,     'import_grid','airc_C2H6',       'GP=1'
+EMIS_IN(137) = 'C3H6' ,     'import_grid','airc_C3H6',       'GP=1'
+EMIS_IN(138) = 'C3H8' ,     'import_grid','airc_C3H8',       'GP=1'
+EMIS_IN(139) = 'NC4H10' ,   'import_grid','airc_NC4H10',     'GP=1'
+EMIS_IN(140) = 'CH3COCH3' , 'import_grid','airc_CH3COCH3',   'GP=1'
+EMIS_IN(141) = 'CH3OH' ,    'import_grid','airc_CH3OH',      'GP=1'
+EMIS_IN(142) = 'HCHO' ,     'import_grid','airc_HCHO',       'GP=1'
+EMIS_IN(143) = 'MEK' ,      'import_grid','airc_MEK',        'GP=1'
+! ---------------
+! OTHER EMISSIONS
+! ---------------
+!
+! VOLCANIC SO2
+!
+EMIS_IN(150) = 'SO2' ,'import_grid','VOLCANIC_SO2_SO2',  'GP=1'
+!
+! TERRESTRIAL DMS
+!
+EMIS_IN(155) = 'DMS' ,'import_grid','TERR_DMS_DMS',      'GP=2'
+!
+! AMMONIA
+!
+EMIS_IN(160) = 'NH3' ,'import_grid','NH3l_NH3',           'GP=1'
+EMIS_IN(161) = 'NH3' ,'import_grid','NH3w_NH3',           'GP=1'
+!
+!
+! HALOCARBONS CHCl2Br;CHClBr2;CH2ClBr;CH2Br2;CHBr3
+!
+EMIS_IN(170) = 'CHBr3' ,  'import_grid','HALOCARBj_CHBr3',        'GP=2'
+EMIS_IN(171) = 'CH2Br2' , 'import_grid','HALOCARBj_CH2Br2',       'GP=2'
+EMIS_IN(172) = 'CH2ClBr' ,'import_grid','HALOCARBn_CH2ClBr',      'GP=2'
+EMIS_IN(173) = 'CHClBr2' ,'import_grid','HALOCARBn_CHClBr2',      'GP=2'
+EMIS_IN(174) = 'CHCl2Br' ,'import_grid','HALOCARBn_CHCl2Br',      'GP=2'
+!
+! CH3I
+!
+EMIS_IN(175) = 'CH3I' ,'import_grid','CH3I_CH3I',      'GP=2'
+!
+! MERCURY
+!
+!EMIS_IN(180) = 'Hg',      'import_grid','MERCURY_a_Hg',      'GP=2'
+!EMIS_IN(181) = 'HgO',     'import_grid','MERCURY_a_HgO',     'GP=2'
+!EMIS_IN(182) = 'RGM_cs',  'import_grid','MERCURY_a_RGM_cs',  'GP=2'
+!EMIS_IN(183) = 'Hg',      'import_grid','MERCURY_b_Hg',      'GP=2'
+!
+! CH4_fx
+!
+!EMIS_IN(190) = 'CH4_fx', 'import_grid', 'Mfx_an_CH4', 'GP=2',  ! anth.
+!EMIS_IN(191) = 'CH4_fx', 'import_grid', 'Mfx_oc_CH4', 'GP=2',
+!EMIS_IN(192) = 'CH4_fx', 'import_grid', 'Mfx_te_CH4', 'GP=2',
+!EMIS_IN(193) = 'CH4_fx', 'import_grid', 'Mfx_wl_CH4', 'GP=2',
+!EMIS_IN(194) = 'CH4_fx', 'import_grid', 'Mfx_wa_CH4', 'GP=2',
+!EMIS_IN(195) = 'CH4_fx', 'import_grid', 'BB_CH4',     'GP=2',  ! bb
+!EMIS_IN(196) = 'CH4_fx', 'import_grid', 'ANTHNT_CH4', 'GP=2',  ! anth.no traf
+!EMIS_IN(197) = 'CH4_fx', 'import_grid', 'AWB_CH4',    'GP=2',  ! awb
+!EMIS_IN(198) = 'CH4_fx', 'import_grid', 'SHIP_CH4',   'GP=2',  ! ship
+!EMIS_IN(199) = 'CH4_fx', 'import_grid', 'ROAD_CH4',   'GP=2',  ! road
+!
+! synthetic tracers
+!
+EMIS_IN(210) = 'AOA_NH',   'import_grid', 'SYNT1_vemis',     'GP=1',  ! 3D
+EMIS_IN(211) = 'AOA_CCMI', 'import_grid', 'SYNT1_vemis',     'GP=1',  ! 3D
+EMIS_IN(212) = 'CO_25',    'import_grid', 'SYNT2_CO_flux',   'GP=1',
+EMIS_IN(213) = 'CO_50',    'import_grid', 'SYNT2_CO_flux',   'GP=1',
+EMIS_IN(214) = 'SF6_CCMI', 'import_grid', 'SYNT3_SF6_flux',  'GP=1',
+!
+EMIS_IN(215) = 'SO2t',     'import_grid', 'ANTHNT_SO2',  'GP=1',
+EMIS_IN(216) = 'SO2t',     'import_grid', 'AWB_SO2',     'GP=1',
+EMIS_IN(217) = 'SO2t',     'import_grid', 'SHIP_SO2',    'GP=1',
+EMIS_IN(218) = 'SO2t',     'import_grid', 'ROAD_SO2',    'GP=1',
+EMIS_IN(219) = 'SO2t',     'import_grid', 'airc_SO2',    'GP=1',
+!
+!=============================================================
+! aerosols vertically distributed, but not associated to tracers
+!EMIS_IN(220) = '#',     'import_grid', 'AWB_AER_OC',       'GP=0',
+!EMIS_IN(221) = '#',     'import_grid', 'AWB_AER_BC',       'GP=0',
+!EMIS_IN(222) = '#',     'import_grid', 'BB_AER_OC',        'GP=0',
+!EMIS_IN(223) = '#',     'import_grid', 'BB_AER_BC',        'GP=0',
+!EMIS_IN(224) = '#',     'import_grid', 'ANTHNT_AER_OC',    'GP=0',
+!EMIS_IN(225) = '#',     'import_grid', 'ANTHNT_AER_BC',    'GP=0',
+!EMIS_IN(226) = '#',     'import_grid', 'SHIP_AER_OC',      'GP=0',
+!EMIS_IN(227) = '#',     'import_grid', 'SHIP_AER_BC',      'GP=0',
+!EMIS_IN(228) = '#',     'import_grid', 'ROAD_AER_OC',      'GP=0',
+!EMIS_IN(229) = '#',     'import_grid', 'ROAD_AER_BC',      'GP=0',
+!EMIS_IN(230) = '#',     'import_grid', 'AIR_AER_OC',      'GP=0',
+!EMIS_IN(231) = '#',     'import_grid', 'AIR_AER_BC',      'GP=0',
+!
+/

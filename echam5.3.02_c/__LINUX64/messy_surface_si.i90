@@ -1,0 +1,806 @@
+# 1 "../../messy/smil/messy_surface_si.f90"
+!******************************************************************************
+! SMIL INTERFACE TO 1 FOR SURFACE PROCESSES: former routines:
+!    surf.f90 lake.f90 icetemp.f90 soiltemp.f90 sicetemp.f90
+!
+! Authors: see subroutines
+!          Sabine Brinkop, 21.9.2012 modularization of surface routines
+!
+! *****************************************************************************
+MODULE messy_surface_si
+! *****************************************************************************
+
+
+ 
+! BMIL
+  USE messy_main_blather_bi,     ONLY: start_message_bi, end_message_bi &
+                                     , error_bi, warning_bi
+
+  USE messy_main_grid_def_mem_bi,ONLY: ngl
+  USE messy_main_data_bi,        ONLY: eps,            &
+                                       lcouple,        &
+                                       wsmx,ws,wl,     & 
+                                       tsl,tslm,tslm1, &
+# 25
+
+                                       u10, v10,       & 
+                                       snmel,snc,      &
+                                       sn,sni,snacl,   &
+                                       gld, runoff,    &
+                                       rogl, drain,    &
+                                       apmegl, orostd, &
+                                       rgcgn, grndcapc,&
+                                       grndhflx,       &
+                                       grndflux,       &
+                                       tsoil,          &
+                                       grndc, grndd,   &
+                                       sodif, glac,    &
+                                       ahfres, ahfcon, &
+                                       loland_2d,      &
+                                       loglac_2d,      &
+                                       cvsc,           &
+                                       evwsd
+  USE messy_main_timer,         ONLY: delta_time, lstart 
+! SMCL
+  USE messy_main_constants_mem, ONLY: dp
+  USE messy_main_channel,       ONLY: t_chaobj_cpl
+  USE messy_surface
+
+  IMPLICIT NONE
+  PRIVATE
+  SAVE
+
+  PUBLIC :: surface_initialize
+  PUBLIC :: surface_init_memory
+  PUBLIC :: surface_init_coupling
+  PUBLIC :: surface_global_start
+# 59
+
+  PUBLIC :: surface_radiation
+  PUBLIC :: surface_mixlo
+  PUBLIC :: surface_global_end
+!PRIVATE :: surface_read_nml_cpl
+
+
+  CHARACTER(LEN=*), PARAMETER :: basemod = 'ECHAM5'
+
+# 70
+
+
+! POINTERS To CHANNEL OBJECTS
+  REAL(dp), DIMENSION(:,:), POINTER :: slm       => NULL() ! land mask
+  REAL(dp), DIMENSION(:,:), POINTER :: slf       => NULL() ! land fraction
+  REAL(dp), DIMENSION(:,:), POINTER :: seaice    => NULL() ! seaice fraction rel to ocean
+  REAL(dp), DIMENSION(:,:), POINTER :: siced     => NULL() ! ice depth in m
+  REAL(dp), DIMENSION(:,:), POINTER :: icecov    => NULL() ! ice cover (fraction of grid box)
+  REAL(dp), DIMENSION(:,:), POINTER :: seacov    => NULL() ! sea cover (fraction of grid box)
+  REAL(dp), DIMENSION(:,:), POINTER :: landcov   => NULL() ! land cover (fraction of grid box)
+  REAL(dp), DIMENSION(:,:), POINTER :: tsi       => NULL() ! surface temperature of ice in K
+  REAL(dp), DIMENSION(:,:), POINTER :: tsw       => NULL() ! surface temperature of water in K
+  REAL(dp), DIMENSION(:,:), POINTER :: alake     => NULL() ! lake fraction of grid box
+  REAL(dp), DIMENSION(:,:), POINTER :: fluxres   => NULL() ! heat flux residual
+
+  REAL(dp), DIMENSION(:,:), POINTER :: ahflw     => NULL() ! latent heat flux over water in W m-2
+  REAL(dp), DIMENSION(:,:), POINTER :: ahfsw     => NULL() ! sensible heat flux over water in W m-2
+  REAL(dp), DIMENSION(:,:), POINTER :: ahfli     => NULL() ! latent heat flux over ice in W m-2
+  REAL(dp), DIMENSION(:,:), POINTER :: ahfsi     => NULL() ! sensible heat flux over ice in W m-2
+
+  REAL(dp), DIMENSION(:,:), POINTER :: trflw     => NULL() ! LW flux over water in W m-2
+  REAL(dp), DIMENSION(:,:), POINTER :: trfli     => NULL() ! LW flux over ice in W m-2
+  REAL(dp), DIMENSION(:,:), POINTER :: soflw     => NULL() ! SW flux over water in W m-2
+  REAL(dp), DIMENSION(:,:), POINTER :: sofli     => NULL() ! SW flux over ice in W m-2
+  REAL(dp), DIMENSION(:,:), POINTER :: ahfice    => NULL() ! conductive heat flux in W m-2
+  REAL(dp), DIMENSION(:,:), POINTER :: evapi     => NULL() ! evaporation over ice
+
+  REAL(dp), DIMENSION(:,:), POINTER :: cvsi      => NULL() ! snow cover over ice (fraction of grid box)
+  REAL(dp), DIMENSION(:,:), POINTER :: qres      => NULL() ! res. heat flux for melting sea ice in W m-2
+  REAL(dp), DIMENSION(:,:,:),POINTER :: aphm1_3d => NULL() !
+
+  REAL(dp), DIMENSION(:,:), POINTER :: cvs         => NULL() !
+  REAL(dp), DIMENSION(:,:), POINTER :: cvw         => NULL() !
+  REAL(dp), DIMENSION(:,:), POINTER :: rsfl_2d     => NULL() !
+  REAL(dp), DIMENSION(:,:), POINTER :: rsfc_2d     => NULL() !
+  REAL(dp), DIMENSION(:,:), POINTER :: ssfl_2d     => NULL() !
+  REAL(dp), DIMENSION(:,:), POINTER :: ssfc_2d     => NULL() !
+
+  REAL(dp), DIMENSION(:,:), POINTER :: evapl_2d    => NULL() !
+  REAL(dp), DIMENSION(:,:), POINTER :: evapot_2d   => NULL() !
+  REAL(dp), DIMENSION(:,:), POINTER :: aros_2d     => NULL() !
+  REAL(dp), DIMENSION(:,:), POINTER :: apmecal_2d  => NULL() !
+  REAL(dp), DIMENSION(:,:), POINTER :: adrain_2d   => NULL() !
+
+  REAL(dp), DIMENSION(:,:), POINTER :: tsurf_2d   => NULL() !
+
+  REAL(dp), POINTER, DIMENSION(:) :: pevwsd! local variable converted to pointer
+
+! own channel objects
+  REAL(dp), DIMENSION(:,:), POINTER :: wlmx        => NULL() ! ub_ak_20190206
+
+# 127
+
+
+! ub_ak_20190204+
+  TYPE(t_chaobj_cpl)                :: imp_lai
+  REAL(dp), POINTER, DIMENSION(:,:) :: lai => NULL() 
+! ub_ak_20190204-
+
+  LOGICAL :: L_LGMC = .FALSE.      ! submodel LGMC is ON
+  LOGICAL :: L_MLOCEAN = .FALSE.   ! submodel MLOCEAN is ON
+
+# 139
+
+
+CONTAINS
+
+! ****************************************************************************
+
+!---------------------------------------------------------------------------
+  SUBROUTINE surface_initialize
+
+! BMIL
+    USE messy_main_mpi_bi,         ONLY: p_parallel_io, p_io, p_bcast
+! SMCL
+    USE messy_main_tools,          ONLY: find_next_free_unit
+
+    IMPLICIT NONE
+
+! LOCAL
+    CHARACTER(LEN=*), PARAMETER :: substr = 'surface_initialize'
+    INTEGER                     :: iou    ! I/O unit
+    INTEGER                     :: status ! error status
+
+    CALL start_message_bi(modstr,'surface_initialize',substr)
+
+! INITIALIZE MAIN-CTRL
+    IF (p_parallel_io) THEN
+       iou = find_next_free_unit(100,200)
+       CALL surface_read_nml_ctrl(status, iou)
+       IF (status /= 0) CALL error_bi('error in surface_read_nml_ctrl', substr)
+    END IF
+
+    CALL p_bcast(lice,  p_io)
+
+! INITIALIZE CPL
+    IF (p_parallel_io) THEN
+       iou = find_next_free_unit(100,200)
+       CALL surface_read_nml_cpl(status, iou)
+       IF (status /= 0) CALL error_bi(' ',substr)
+    END IF
+    CALL p_bcast(imp_lai%CHA,    p_io)
+    CALL p_bcast(imp_lai%OBJ,    p_io)
+
+    CALL end_message_bi(modstr,'surface_initialize',substr)
+
+  END SUBROUTINE surface_initialize
+!---------------------------------------------------------------------------
+
+!---------------------------------------------------------------------------
+  SUBROUTINE surface_init_memory
+
+! BNIL
+    USE messy_main_channel_error_bi, ONLY: channel_halt
+    USE messy_main_channel_bi,       ONLY: GP_2D_HORIZONTAL
+! SMCL
+    USE messy_main_channel,          ONLY: new_channel, new_channel_object
+
+# 198
+
+
+    IMPLICIT NONE
+  
+! LOCAL
+    CHARACTER(LEN=*), PARAMETER :: substr = 'surface_init_memory'
+    INTEGER :: status
+
+    CALL start_message_bi(modstr,'CHANNEL DEFINITION',substr)
+
+    CALL new_channel(status, modstr)
+    CALL channel_halt(substr, status)
+
+    CALL new_channel_object(status, modstr, 'wlmx', p2=wlmx &
+         , reprid = GP_2D_HORIZONTAL, lrestreq=.TRUE. )
+
+    CALL end_message_bi(modstr,'CHANNEL DEFINITION',substr)
+
+# 219
+
+
+    END SUBROUTINE surface_init_memory
+!---------------------------------------------------------------------------
+
+!---------------------------------------------------------------------------
+  SUBROUTINE surface_init_coupling
+
+! BMIL
+    USE messy_main_channel_error_bi, ONLY: channel_halt
+! SMCL
+    USE messy_main_channel,          ONLY: get_channel_object, get_channel_info
+# 233
+
+
+    IMPLICIT NONE
+    INTRINSIC :: TRIM
+
+    INTEGER :: status
+    CHARACTER(LEN=*), PARAMETER :: substr='surface_init_coupling'
+    CHARACTER(LEN=12) :: radcha = ''
+    CHARACTER(LEN=12) :: vdicha = ''
+
+    CALL start_message_bi(modstr,'COUPLING INITIALIZATION',substr)
+
+
+
+    CALL get_channel_info(status, 'e5vdiff')
+    IF (status /= 0) THEN
+       CALL warning_bi( &
+            'channel e5vdiff not available, trying vertex ...' &
+            , substr)
+       CALL get_channel_info(status, 'vertex')
+       IF (status /= 0) THEN
+          CALL error_bi(' ... vertex also not available!', substr)
+       ELSE
+          vdicha = 'vertex'
+       ENDIF
+    ELSE
+       vdicha = 'e5vdiff'
+    ENDIF
+
+# 277
+
+    
+! can currently not be moved from g3b to here (ioinitial.f90)
+    CALL get_channel_object(status,basemod,'slm', p2=slm)
+    CALL channel_halt(substr, status)
+  
+    CALL get_channel_object(status,basemod,'slf', p2=slf)
+    CALL channel_halt(substr, status)
+  
+    CALL get_channel_object(status,basemod,'seaice', p2=seaice)
+    CALL channel_halt(substr, status)
+  
+    CALL get_channel_object(status,basemod,'siced', p2=siced)
+    CALL channel_halt(substr, status)
+  
+    CALL get_channel_object(status,basemod,'icecov', p2=icecov)
+    CALL channel_halt(substr, status)
+
+    CALL get_channel_object(status,basemod,'seacov', p2=seacov)
+    CALL channel_halt(substr, status)
+
+    CALL get_channel_object(status,basemod,'landcov', p2=landcov)
+    CALL channel_halt(substr, status)
+  
+    CALL get_channel_object(status,basemod,'tsi', p2=tsi)
+    CALL channel_halt(substr, status)
+  
+    CALL get_channel_object(status,basemod,'tsw', p2=tsw)
+    CALL channel_halt(substr, status)
+  
+
+! can currently not be moved from g3b to here (ioinitial.f90)
+    CALL get_channel_object(status,basemod,'alake', p2=alake)
+
+# 313
+
+    CALL channel_halt(substr, status)
+
+    CALL get_channel_object(status,basemod,'fluxres', p2=fluxres)
+    CALL channel_halt(substr, status)
+  
+    CALL get_channel_object(status,TRIM(vdicha),'ahflw', p2=ahflw)
+    CALL channel_halt(substr, status)
+  
+    CALL get_channel_object(status,TRIM(vdicha),'ahfsw', p2=ahfsw)
+    CALL channel_halt(substr, status)
+  
+    CALL get_channel_object(status,TRIM(vdicha),'ahfli', p2=ahfli)
+    CALL channel_halt(substr, status)
+  
+    CALL get_channel_object(status,TRIM(vdicha),'ahfsi', p2=ahfsi)
+    CALL channel_halt(substr, status)
+
+    CALL get_channel_info(status, 'rad01')
+    IF (status /=0) THEN
+       CALL warning_bi( &
+            'channel rad01 not available, trying old rad4all ...' &
+            , substr)
+       CALL get_channel_info(status, 'rad4all')
+       IF (status /= 0) THEN
+          CALL error_bi(' ... old rad4all also not available!', substr)
+       ELSE
+          radcha = 'rad4all'
+       ENDIF
+    ELSE
+       radcha = 'rad01'
+    ENDIF
+
+    CALL get_channel_object(status, TRIM(radcha), 'trflw', p2=trflw)
+    CALL channel_halt(substr, status)
+  
+    CALL get_channel_object(status, TRIM(radcha), 'trfli', p2=trfli)
+    CALL channel_halt(substr, status)
+  
+    CALL get_channel_object(status, TRIM(radcha), 'soflw', p2=soflw)
+    CALL channel_halt(substr, status)
+  
+    CALL get_channel_object(status, TRIM(radcha), 'sofli', p2=sofli)
+    CALL channel_halt(substr, status)
+!
+    CALL get_channel_object(status,basemod,'ahfice', p2=ahfice)
+    CALL channel_halt(substr, status)
+  
+    CALL get_channel_object(status,TRIM(vdicha),'evapi', p2=evapi)
+    CALL channel_halt(substr, status)
+  
+    CALL get_channel_object(status,basemod,'cvsi', p2=cvsi)
+    CALL channel_halt(substr, status)
+  
+    CALL get_channel_object(status,basemod,'qres', p2=qres)
+    CALL channel_halt(substr, status)
+
+    CALL get_channel_object(status,basemod,'pressi', p3=aphm1_3d)
+    CALL channel_halt(substr, status)
+  
+    CALL get_channel_object(status,basemod,'cvs', p2=cvs)
+    CALL channel_halt(substr, status)
+  
+    CALL get_channel_object(status,basemod,'cvw', p2=cvw)
+    CALL channel_halt(substr, status)
+  
+    CALL get_channel_object(status,TRIM(vdicha),'evapot_2d', p2=evapot_2d)
+    CALL channel_halt(substr, status)
+  
+    CALL get_channel_object(status,basemod,'rsfl_2d', p2=rsfl_2d)
+    CALL channel_halt(substr, status)
+  
+    CALL get_channel_object(status,basemod,'rsfc_2d', p2=rsfc_2d)
+    CALL channel_halt(substr, status)
+  
+    CALL get_channel_object(status,basemod,'ssfl_2d', p2=ssfl_2d)
+    CALL channel_halt(substr, status)
+  
+    CALL get_channel_object(status,basemod,'ssfc_2d', p2=ssfc_2d)
+    CALL channel_halt(substr, status)
+
+    CALL get_channel_object(status,TRIM(imp_lai%cha),TRIM(imp_lai%obj) &
+         , p2=lai)
+    CALL channel_halt(substr, status)
+
+    CALL get_channel_object(status,TRIM(vdicha),'evapl_2d', p2=evapl_2d)
+    CALL channel_halt(substr, status)
+  
+    CALL get_channel_object(status,basemod,'aros', p2=aros_2d)
+    CALL channel_halt(substr, status)
+  
+    CALL get_channel_object(status,basemod,'adrain', p2=adrain_2d)
+    CALL channel_halt(substr, status)
+  
+    CALL get_channel_object(status,basemod,'apmecal', p2=apmecal_2d)
+    CALL channel_halt(substr, status)
+
+    CALL get_channel_object(status,basemod,'tsurf', p2=tsurf_2d)
+    CALL channel_halt(substr, status)
+
+! if LGMC is running, MLOCEAN must be called in global_end instead of physc.
+    CALL get_channel_info(status, 'lgmc')
+    L_LGMC = (status == 0)
+    CALL get_channel_info(status, 'mlocean')
+    L_MLOCEAN = (status == 0)
+     
+# 432
+
+
+    CALL end_message_bi(modstr,'COUPLING INITIALIZATION',substr)    
+
+  END SUBROUTINE surface_init_coupling
+!---------------------------------------------------------------------------
+
+!---------------------------------------------------------------------------
+  SUBROUTINE surface_global_start
+# 575
+
+
+  END SUBROUTINE surface_global_start
+!---------------------------------------------------------------------------
+
+# 588
+
+
+!---------------------------------------------------------------------------
+  SUBROUTINE surface_radiation
+
+    USE messy_main_grid_def_mem_bi, ONLY: jrow, nproma
+    USE messy_main_data_bi,       ONLY: lcouple
+    USE messy_main_constants_mem, ONLY: tmelt, cwlmax
+
+    IMPLICIT NONE
+
+    INTEGER             :: jp
+    REAL(dp)            :: zsn_mm, zsigh
+    REAL(dp), PARAMETER :: zepsec  = 1.E-12_dp
+    REAL(dp), PARAMETER :: zsigfac = 0.15_dp
+    REAL(dp), PARAMETER :: cqsncr = 0.95_dp   
+
+!*        3.6   COMPUTE LOGICAL MASK FOR LAND AND GLACIER.
+!
+    loland_2d(:,jrow) = .FALSE.
+    loglac_2d(:,jrow) = .FALSE.
+    DO jp=1,nproma
+       loland_2d(jp,jrow) = slm(jp,jrow).GT.0._dp
+       loglac_2d(jp,jrow) = loland_2d(jp,jrow) .AND. glac(jp,jrow).GT.0._dp
+    END DO
+
+
+! CESM uses its own maps, therefore this block needs to be omitted
+
+!       3.7 Weighting factors for fractional surface coverage
+!           Accumulate ice portion for diagnostics
+!
+    DO jp=1,nproma
+       landcov(jp,jrow) = slm(jp,jrow)
+       seacov(jp,jrow)  = (1._dp-slm(jp,jrow))*(1._dp-seaice(jp,jrow))
+       icecov(jp,jrow)  = 1._dp-landcov(jp,jrow)-seacov(jp,jrow) 
+    END DO
+
+    IF (lcouple) THEN
+       DO jp=1,nproma
+          IF(slf(jp,jrow).GT.1.0_dp-zepsec) THEN
+             tsi(jp,jrow)=tmelt
+             tsw(jp,jrow)=tmelt
+          END IF
+       END DO
+    ENDIF
+# 638
+
+!
+!      3.8  Skin reservoir, wet skin fraction and snow cover
+!           (bare land, canopy, lake ice)
+!
+    wlmx(:,jrow) = 0._dp
+    DO jp=1,nproma
+       IF (.NOT.loglac_2d(jp,jrow)) THEN
+          wlmx(jp,jrow) = cwlmax*(1._dp+lai(jp,jrow))
+          cvw(jp,jrow)=MIN(wl(jp,jrow)/wlmx(jp,jrow),1.0_dp)
+          zsn_mm=1000._dp*sn(jp,jrow)
+          zsigh=SQRT(zsn_mm/(zsn_mm+zepsec+zsigfac*orostd(jp,jrow)))
+          cvs(jp,jrow)=cqsncr*TANH(zsn_mm/10._dp)*zsigh
+          cvsc(jp,jrow)=MIN(1._dp,snc(jp,jrow)/(wlmx(jp,jrow) &
+               - cwlmax+EPSILON(1._dp)))
+          IF (cvs(jp,jrow).LT.EPSILON(1._dp) .AND. &
+               cvsc(jp,jrow).GE.EPSILON(1._dp)) THEN
+             cvs(jp,jrow)=cvsc(jp,jrow)
+          END IF
+       ELSE
+          cvw(jp,jrow)=0._dp
+          cvs(jp,jrow)=1._dp
+          cvsc(jp,jrow)=0._dp
+       END IF
+       IF (.NOT. loland_2d(jp,jrow)) THEN
+          cvsi(jp,jrow)=TANH(sni(jp,jrow)*100._dp)
+       ELSE
+          cvsi(jp,jrow)=0._dp
+       END IF
+    END DO
+
+  END SUBROUTINE surface_radiation
+!---------------------------------------------------------------------------
+
+!---------------------------------------------------------------------------
+  SUBROUTINE surface_mixlo(flag)
+
+    USE messy_main_grid_def_mem_bi,       ONLY: nlev, npromz   &
+         ,nproma, ngpblks        & 
+         ,jrow 
+    USE messy_main_data_bi,       ONLY: tm1              &
+         ,qm1, aphm1             &
+         ,snc_surf, gld_surf     !op_re_20140904
+
+
+
+    USE messy_main_data_bi,       ONLY: tte_scb
+
+# 688
+
+
+
+# 695
+
+
+    IMPLICIT NONE
+
+! I/O
+    INTEGER, INTENT(IN) :: flag
+
+! LOCAL
+    INTEGER :: zproma
+    REAL(DP), DIMENSION(:,:), POINTER :: ztte
+
+# 708
+
+
+     REAL(dp), POINTER, DIMENSION(:) :: psnc_surf !new pointer for temp result
+     REAL(dp), POINTER, DIMENSION(:) :: pgld_surf !new pointer for temp result
+
+     psnc_surf => snc_surf(:,jrow)
+     pgld_surf => gld_surf(:,jrow)
+     pevwsd    => evwsd(:,jrow)
+
+      IF (L_LGMC) RETURN
+
+# 722
+
+
+
+     if ( jrow == ngpblks) then
+        zproma = npromz
+     else
+        zproma = nproma
+     endif
+
+# 733
+
+
+    SELECT CASE(flag)
+
+    CASE(1)
+
+       ALLOCATE(ztte(nproma,nlev))
+
+       ztte(:,:) = 0._dp
+
+! Temporary results needed for h2oiso
+       psnc_surf(:) = snc(:,jrow)!op_re_20140904
+       pgld_surf(:) = gld(:,jrow)!op_re_20140904
+
+# 750
+
+       CALL surface ( zproma,    nproma,            nlev              &
+            , ngl,               delta_time,        eps, lstart       &
+            , tsl(:,jrow),       tslm(:,jrow),      tslm1(:,jrow)     &  
+            , ws(:,jrow),        wl(:,jrow),        wsmx(:,jrow)      &  
+            , sn(:,jrow),        snmel(:,jrow),     gld(:,jrow)       &  
+            , snc(:,jrow),       u10(:,jrow),       v10(:,jrow)       &  
+            , runoff(:,jrow),    rogl(:,jrow),      drain(:,jrow)     &  
+            , apmegl(:,jrow),    snacl(:,jrow),     orostd(:,jrow)    &  
+            , rgcgn(:,jrow),     sodif(:,jrow),     slm(:,jrow)       &
+            , grndcapc(:,jrow),  grndhflx(:,jrow),  grndflux(:,jrow)  &
+            , tsoil(:,:,jrow),   grndd(:,:,jrow),   grndc(:,:,jrow)   &
+            , tm1(:,:,jrow),     qm1(:,:,jrow),     ztte(:,:)         &
+            , aphm1                                                   &
+            , cvs(:,jrow),       cvw(:,jrow),       wlmx(:,jrow)      & 
+            , evapl_2d(:,jrow),  evapot_2d(:,jrow)                    & 
+            , rsfl_2d(:,jrow),   rsfc_2d(:,jrow)                      & 
+            , ssfl_2d(:,jrow),   ssfc_2d(:,jrow)                      &
+            , aros_2d(:,jrow),   adrain_2d(:,jrow)                    & 
+            , apmecal_2d(:,jrow)                                      & 
+            , loland_2d(:,jrow), loglac_2d(:,jrow)                    &
+            , pevwsd(:)                                               )
+
+
+            tte_scb(1:zproma,:,jrow) = tte_scb(1:zproma,:,jrow) +     &
+                                       ztte(1:zproma,:)
+# 779
+
+
+       CALL lake ( zproma, delta_time                                    &
+            , seaice(:,jrow),    siced(:,jrow),    alake(:,jrow)      &
+            , tsi(:,jrow),       tsw(:,jrow)                          &
+            , ahflw(:,jrow),     ahfsw(:,jrow),    fluxres(:,jrow)    &
+            , trflw(:,jrow),     soflw(:,jrow)                        &
+            , evapi(:,jrow),     sni(:,jrow),      cvsi(:,jrow)       &
+            , ahfres(:,jrow),    icecov(:,jrow)           )
+
+       CALL licetemp ( zproma, delta_time                                &
+            , siced(:,jrow),     sni(:,jrow),      alake(:,jrow)      &
+            , tsi(:,jrow),       trfli(:,jrow),    sofli(:,jrow)      &
+            , ahfice(:,jrow),    fluxres(:,jrow)                      &
+            , ahfcon(:,jrow),    ahfres(:,jrow),   evapi(:,jrow)      &
+            , ssfl_2d(:,jrow),   ssfc_2d(:,jrow)                      &
+            , ahfsi(:,jrow),     ahfli(:,jrow),    cvsi(:,jrow)       &
+            , icecov(:,jrow)     )
+
+# 803
+
+! release space
+       DEALLOCATE(ztte) 
+
+    CASE (2)                      ! Tendenzen fehlen noch.
+
+# 812
+
+       CALL sicetemp ( zproma, delta_time, lcouple, L_MLOCEAN         &
+            , siced(:,jrow),     sni(:,jrow),      alake(:,jrow)      &
+            , slf(:,jrow)                                             &
+            , tsi(:,jrow),       trfli(:,jrow),    sofli(:,jrow)      &
+            , ahfice(:,jrow),    fluxres(:,jrow),  qres(:,jrow)       &
+            , ahfcon(:,jrow),    ahfres(:,jrow)                       &
+            , ahfsi(:,jrow),     ahfli(:,jrow)                        &
+            , icecov(:,jrow) )
+
+# 828
+
+       tsurf_2d(:,jrow) = landcov(:,jrow) * tslm1(:,jrow) &
+                        + icecov(:,jrow)  * tsi(:,jrow)   &
+                        + seacov(:,jrow)  * tsw(:,jrow)
+
+    END SELECT
+
+  END SUBROUTINE surface_mixlo
+!---------------------------------------------------------------------------
+
+!---------------------------------------------------------------------------
+  SUBROUTINE surface_global_end(flag)
+
+    USE messy_main_grid_def_mem_bi, ONLY:  npromz &
+                                        , nproma, nlev, ngpblks   &
+                                        , nlev
+    USE messy_main_data_bi,         ONLY: qm1, tm1
+
+
+    USE messy_main_data_bi,         ONLY:  tte_scb
+
+# 851
+
+
+
+# 859
+
+
+    IMPLICIT NONE
+
+! I/O
+    INTEGER, INTENT(IN) :: flag
+
+! LOCAL
+    INTEGER :: zproma, krow
+    REAL(DP), DIMENSION(:,:), POINTER :: ztte
+
+# 872
+
+
+    IF (.NOT. L_LGMC) RETURN
+
+# 879
+
+
+    SELECT CASE(flag)
+
+    CASE(1)
+
+       ALLOCATE(ztte(nproma,nlev))
+
+       ztte(:,:) = 0._dp
+
+       do  krow = 1, ngpblks 
+
+          if ( krow == ngpblks) then
+             zproma = npromz
+          else
+             zproma = nproma
+          endif
+
+# 899
+
+
+          CALL surface ( zproma,    nproma,            nlev              &
+               , ngl,               delta_time,        eps, lstart       &
+               , tsl(:,krow),       tslm(:,krow),      tslm1(:,krow)     &
+               , ws(:,krow),        wl(:,krow),        wsmx(:,krow)      &
+               , sn(:,krow),        snmel(:,krow),     gld(:,krow)       &
+               , snc(:,krow),       u10(:,krow),       v10(:,krow)       &
+               , runoff(:,krow),    rogl(:,krow),      drain(:,krow)     &
+               , apmegl(:,krow),    snacl(:,krow),     orostd(:,krow)    &
+               , rgcgn(:,krow),     sodif(:,krow),     slm(:,krow)       &
+               , grndcapc(:,krow),  grndhflx(:,krow),  grndflux(:,krow)  &
+               , tsoil(:,:,krow),   grndd(:,:,krow),   grndc(:,:,krow)   &
+               , tm1(:,:,krow),     qm1(:,:,krow),     ztte(:,:)         &
+               , aphm1_3d(:,:,krow)                                      &  
+               , cvs(:,krow),       cvw(:,krow),       wlmx(:,krow)      &
+               , evapl_2d(:,krow),  evapot_2d(:,krow)                    &
+               , rsfl_2d(:,krow),   rsfc_2d(:,krow)                      & 
+               , ssfl_2d(:,krow),   ssfc_2d(:,krow)                      &
+               , aros_2d(:,krow),   adrain_2d(:,krow)                    &
+               , apmecal_2d(:,krow)                                      &
+               , loland_2d(:,krow), loglac_2d(:,krow) &
+               , pevwsd(:)                                               )
+
+
+          tte_scb(1:zproma,:,krow) = tte_scb(1:zproma,:,krow) + ztte(1:zproma,:)
+# 928
+
+
+
+          CALL lake ( zproma, delta_time                                 &
+               , seaice(:,krow),    siced(:,krow),    alake(:,krow)      &
+               , tsi(:,krow),       tsw(:,krow)                          &
+               , ahflw(:,krow),     ahfsw(:,krow),    fluxres(:,krow)    &
+               , trflw(:,krow),     soflw(:,krow)                        &
+               , evapi(:,krow),     sni(:,krow),      cvsi(:,krow)       &
+               , ahfres(:,krow),    icecov(:,krow)           )
+
+          CALL licetemp ( zproma, delta_time                             &
+               , siced(:,krow),     sni(:,krow),      alake(:,krow)      &
+               , tsi(:,krow),       trfli(:,krow),    sofli(:,krow)      &
+               , ahfice(:,krow),    fluxres(:,krow)                      &
+               , ahfcon(:,krow),    ahfres(:,krow),   evapi(:,krow)      &
+               , ssfl_2d(:,krow),   ssfc_2d(:,krow)                      &
+               , ahfsi(:,krow),     ahfli(:,krow),    cvsi(:,krow)       &
+               , icecov(:,krow)                            )
+
+       ENDDO  ! krow loop
+
+! release space
+       DEALLOCATE(ztte)     
+
+    CASE (2)   
+
+       do krow = 1, ngpblks   
+
+          if ( krow == ngpblks) then
+             zproma = npromz
+          else
+             zproma = nproma
+          endif
+
+# 965
+
+
+          CALL sicetemp ( zproma, delta_time, lcouple, L_MLOCEAN         &
+               , siced(:,krow),     sni(:,krow),      alake(:,krow)      &
+               , slf(:,krow)                                             &
+               , tsi(:,krow),       trfli(:,krow),    sofli(:,krow)      &
+               , ahfice(:,krow),    fluxres(:,krow),  qres(:,krow)       &
+               , ahfcon(:,krow),    ahfres(:,krow)                       &
+               , ahfsi(:,krow),     ahfli(:,krow)                        &
+               , icecov(:,krow) )
+
+       ENDDO  ! krow loop
+
+    END SELECT
+
+  END SUBROUTINE surface_global_end
+!---------------------------------------------------------------------------
+
+!---------------------------------------------------------------------------
+  SUBROUTINE surface_read_nml_cpl(status, iou)
+   
+! read namelist for 'coupling'
+    
+! MESSy
+    USE messy_main_tools,         ONLY: read_nml_open, read_nml_check &
+                                      , read_nml_close
+
+    IMPLICIT NONE
+
+! I/O
+    INTEGER, INTENT(OUT) :: status     ! error status
+    INTEGER, INTENT(IN)  :: iou        ! I/O unit
+
+    NAMELIST /CPL/ imp_lai
+
+! LOCAL
+    CHARACTER(LEN=*), PARAMETER :: substr='surface_read_nml_cpl'
+    LOGICAL              :: lex      ! file exists ?
+    INTEGER              :: fstat    ! file status
+
+    status = 1
+
+    CALL read_nml_open(lex, substr, iou, 'CPL', modstr)
+    IF (.NOT.lex) RETURN    ! <modstr>.nml does not exist
+
+    READ(iou, NML=CPL, IOSTAT=fstat)
+    CALL read_nml_check(fstat, substr, iou, 'CPL', modstr)
+    IF (fstat /= 0) RETURN  ! error while reading namelist
+
+    CALL read_nml_close(substr, iou, modstr)
+    status = 0 ! NO ERROR
+
+  END SUBROUTINE surface_read_nml_cpl
+!---------------------------------------------------------------------------
+
+
+! 1 || CESM1
+
+! **********************************************************************
+END MODULE messy_surface_si
+! **********************************************************************
