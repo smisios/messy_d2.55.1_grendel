@@ -1,0 +1,69 @@
+! -*- f90 -*-
+
+&CTRL
+ bulk      = T,
+ seg_plume = F,
+ sc_trans  = 2,     ! interaction of transport and convective scavenging
+                    ! 1 = convective transport after scavenging
+                    ! 2 = convective transport splitted by scavenging
+                    !     first part until top level of rain production, 
+                    !     then scavenging, then second part
+                    ! 3 = as 2 but the second transport from bottom of 
+                    !     convection to top of convection (might overestimate
+                    !     the convective transport)
+                    ! 4 = as 1, but considering only a convective column 
+                    !     of approx. 5 % (determined by updraft strength), 
+                    !     also for scavenging if active
+                    ! 5 = as 2, but considering only a convective column 
+                    !     of approx. 5 % (determined by updraft strength), 
+                    !     also for scavenging if active
+ lcvt_gp = T,       ! transport of gridpoint tracers active
+ lcvt_lg = F,       ! transport of mapped lagrangian tracers active
+!
+!!$!! ######################################################################
+!!$!! ### alternative transport algorithm (Ouwersloot et al., GMD, 2015) ###
+!!$!! ######################################################################
+!!$!! Switch whether subcloud processes affect convective transport 
+!!$lcvt_sc = .FALSE.
+!!$!! Factor for transported species, equal to -xi_2 in Eq. (13) of 
+!!$!! Ouwersloot et al. (2013)
+!!$trans_fac = 1.23
+!!$!! Height (m) below which a cloud base is always assumed to be coupled to a
+!!$!! (convective) boundary layer
+!!$hlimit = 2500.
+!!$!! During every time step use the temporal mean concentration at cloud
+!!$!! base to calculate what's entering the plume
+!!$lmeanconc = .FALSE.
+!!$!! Enables (adaptive) intermediate time steps for convective transport
+!!$lintsteps = .FALSE.
+!!$!! Maximum fraction of grid box that is allowed to be emptied by upward 
+!!$!! mass-flux per intermediate time step
+!!$maxfrac   = 0.10,
+!!$!! ######################################################################
+!
+/
+
+&CPL
+ umass   = 'convect','massfu',
+ dmass   = 'convect','massfd',
+ entru   = 'convect','u_entr',
+ detru   = 'convect','u_detr',
+ entrd   = 'convect','d_entr',
+ detrd   = 'convect','d_detr',
+ raincv  = 'convect','cv_precflx',
+ snowcv  = 'convect','cv_snowflx',
+ covcv   = 'convect','cv_cover',
+ c_top   = 'convect','conv_top',
+ mass    = 'ECHAM5','grmass',
+ vol     = 'ECHAM5','grvol',
+ press   = 'ECHAM5','press',
+ pressi  = 'ECHAM5','pressi',
+!!$!! ######################################################################
+!!$!! ### alternative transport algorithm (Ouwersloot et al., GMD, 2015) ###
+!!$!! ######################################################################
+!!$!! select one option for planetary boundary layer height
+!!$pblh    = '', '',             ! use hlimit=const. from CTRL namelist
+!!$pblh    = 'tropop','pblh',    ! ECHAM5
+!!$pblh    = 'tropop','pblhRi',  ! COSMO
+!!$!! ######################################################################
+/

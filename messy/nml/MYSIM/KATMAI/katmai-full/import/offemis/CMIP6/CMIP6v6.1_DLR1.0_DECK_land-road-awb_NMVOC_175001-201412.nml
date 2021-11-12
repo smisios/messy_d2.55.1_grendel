@@ -1,0 +1,46 @@
+! -*- f90 -*-
+!
+! ###############################################################################
+!
+! NMHC SPECIATION (for CMIP6 use only C2H2 emission from this file;
+!                  other emissions stay with CCMI speciation,)
+!                  as the global mean carbon fluxes, derived from the)
+!                  CMIP6 individual species, do not fit to observed fluxes.)
+! In the NetCDF file the individual species and the total NMHC (NMVOC_flux) 
+! is provided, in units of [kg(species) m-2 s-1] or [kg(NMHC) m-2 s-1]. 
+! Conversion to kg(C) is done with an individual conversion factor for each
+! species FRAC_C = (MW(C)*#C(species))/MW(species). For lumped species the 
+! #C and MW are calculated from all individual species contained in the lumped
+! species.
+!
+! -------------------------------------------------------------------------------
+! | SPECIES  | FRAC_C  | FRAC                |  #C  | CONVERSION FACTOR         |
+! |          |         | [g(C) g-1(NMHC)]    |      | FRAC*1000*Navo/(MW(C)*#C) |
+! |          |         | [g(C) g-1(species)] |      | [molec kg-1(species)]     |
+! -------------------------------------------------------------------------------
+! | C2H2     | 0.92392 |             0.92392 | 2    |               2.31621e+25 |
+! | C2H4     | 0.85793 |             0.85793 | 2    |               2.15076e+25 |
+! | C2H6     | 0.80073 |             0.80073 | 2    |               2.00738e+25 |
+! | C3H6     | 0.85793 |             0.85793 | 3    |               1.43384e+25 |
+! | C3H8     | 0.81893 |             0.81893 | 3    |               1.36867e+25 |
+! | NC4H10   | 0.83121 |             0.83121 | 4    |               1.04189e+25 |
+! | CH3COCH3 | 0.84884 |             0.36925 | 5.72 |               3.23462e+24 |
+! | CH3OH    | 0.82142 |             0.07660 | 7.05 |               5.44926e+23 |
+! | HCHO     | 0.40037 |             0.40037 | 1    |               2.00738e+25 |
+! | MEK      | 0.57135 |             0.10988 | 3.12 |               1.76527e+24 |
+! ------------------------------------------------------------------------------
+! |   W. AVE = 0.7809
+! ------------------------------------------------------------------------------
+
+! ##############################################################################
+
+&regrid
+infile    = "$INPUTDIR_MESSY/offemis/CMIP6/CMIP6v6.1_DLR1.0_DECK_land-road-awb_NMVOC_175001-201412.nc",
+i_latm    = "lat",
+i_latr    = -90.0,90.0,
+i_lonm    = "lon",
+i_lonr    = -180.0,180.0,
+i_timem   = "time",
+var       = "C2H2=VOC09_ethyne_em_speciated_VOC_anthro_flux,2.31621e+25;"
+!!$ var       = "C2H2=VOC09_ethyne_em_speciated_VOC_anthro_flux,2.31621e+25;C2H4=VOC07_ethene_em_speciated_VOC_anthro_flux,2.15076e+25;C2H6=VOC02_ethane_em_speciated_VOC_anthro_flux,2.00738e+25;C3H6=VOC08_propene_em_speciated_VOC_anthro_flux,1.43384e+25;C3H8=VOC03_propane_em_speciated_VOC_anthro_flux,1.36867e+25;NC4H10=VOC04_butanes_em_speciated_VOC_anthro_flux,1.04189e+25;CH3COCH3=NMVOC_flux,3.23462e+24;CH3OH=NMVOC_flux,5.44926e+23;HCHO=VOC21_methanal_em_speciated_VOC_anthro_flux,2.00738e+25;MEK=NMVOC_flux,1.76527e+24;"
+/

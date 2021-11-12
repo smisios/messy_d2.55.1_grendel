@@ -1,0 +1,37 @@
+! -*- f90 -*-
+!
+! Created by Mattia Righi (DLR)
+!
+! #############################################################################
+!
+! UNIT CONVERSION
+! Species units in the NetCDF file are [kg(species) m-3 s-1]
+! Convert [kg m-3 s-1] to [molec m-3 s-1]: multiply by 1000*Navo/MW
+!
+! --------------------------------------------
+! | SPECIES  | MW        | CONVERSION FACTOR |
+! |          | [g mol-1] | [molec kg-1]      |
+! --------------------------------------------
+! | NOx (NO) |    30.010 |       2.00671e+25 |
+! | CO       |    28.010 |       2.15000e+25 |
+! | SO2      |    64.070 |       9.39932e+24 |
+! | NH3      |    17.030 |       3.53620e+25 |
+! --------------------------------------------
+!
+! AEROSOL SPECIES DERIVED FROM SO2 (see aerosol namelist)
+!
+!   SO2      = FAC_SO2 * UNIT_SO2                          = 9.164332e+24
+!   SO4_am   = FAC_SO4 * MODE_SO4 * UNIT_SO4               = 2.349801e+23
+!   N_SO4_am = FAC_SO4 * MODE_SO4 * M2N_acc_SO4 * UNIT_NUM = 9.666768e+39
+!
+! #############################################################################
+
+&regrid
+infile  = "$INPUTDIR_MESSY/offemis/CMIP6/CMIP6v6.1_DLR1.1_DECK_bb_MISC_175001-201512.nc",
+i_latm  = 'lat',
+i_latr  = -90.0,90.0,
+i_lonm  = 'lon',
+i_lonr  = -180.0,180.0,
+i_timem = 'time',
+var     = 'NO=NOx_flux,2.00671e+25;CO=CO_flux,2.15000e+25;NH3=NH3_flux,3.53620e+25;SO2=SO2_flux,9.164332e+24;SO4_am=SO2_flux,2.349801e+23;N_SO4_am=SO2_flux,9.666768e+39;',
+/

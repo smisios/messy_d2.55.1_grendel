@@ -1,0 +1,64 @@
+! -*- f90 -*-
+! #####################################################################
+! UNIT CONVERSION
+! Units in the netCDF file are kg(species)/(m2 s)
+! Convert [kg/m2/s] to [molec/m2/s], multiply by
+!   1000 * Navo / MW 
+! Navo = 6.02214e+23 molec/mol
+!
+! --------------------------------------------
+! | SPECIES  | MW      | CONVERSION FACTOR   |
+! |          | [g/mol] | [molec/kg]          |
+! --------------------------------------------
+! | CO       | 28.01   |  2.15000e+25        |
+! | NOx (NO) | 30.01   |  2.00671e+25        |
+! | SO2      | 64.07   |  9.39932e+24        |
+! | NH3      | 17.03   |  3.53620e+25        |
+! --------------------------------------------
+!
+! ######################################################################
+! NMHC SPECIATION
+! In the netCDF file only the total NMHC is provided, in units of
+! kg(NMHC)/m2/s. Conversion to kg(C) with the usual 161/210 factor.
+! To get the flux of a species X in molec/m2/s, then
+!
+!  flux(X) = TOTAL(NMHC) * 161/210 * FRAC * 1000 * Navo / (MW(C) * #C)
+!
+! Where FRAC is the C mass fraction of the given species
+!
+! ----------------------------------------------------------------------
+! | SPECIES  | 161/210 * FRAC | #C | CONVERSION FACTOR                 |
+! |          | [g(C)/g(NMHC)] |    | 161/210*FRAC*1000*Navo/(MW(C)*#C) |
+! |          |                |    | [molec/kg(NMHC)]                  |
+! ----------------------------------------------------------------------
+! | C2H4     | 0.02850        |  2 | 7.14474e+23                       |
+! | C2H6     | 0.04580        |  2 | 1.14817e+24                       |
+! | C3H6     | 0.01200        |  3 | 2.00554e+23                       |
+! | C3H8     | 0.07250        |  3 | 1.21168e+24                       |
+! | NC4H10   | 0.54847        |  4 | 6.87491e+24                       |
+! | CH3CHO   | 0.00000        |  2 |  ---                              |
+! | CH3COCH3 | 0.01820        |  3 | 3.04174e+23                       |
+! | CH3CO2H  | 0.00000        |  2 |  ---                              |
+! | CH3OH    | 0.01100        |  1 | 5.51524e+23                       |
+! | HCHO     | 0.00367        |  1 | 1.84009e+23                       |
+! | HCOOH    | 0.00000        |  1 |  ---                              |
+! | MEK      | 0.02640        |  4 | 3.30914e+23                       |
+! ----------------------------------------------------------------------
+! |      SUM = 0.76654 = 161/210 (= 0.766667)                           |
+! ----------------------------------------------------------------------
+! ########################################################################
+
+&regrid
+!infile    = "/export/pa_data02/users/mert_mr/edgar/edgar_4.2.3.1_201001-201012_MISC_anth_non_traffic.nc",
+!infile    = " $INPUTDIR_MESSY/offemis/EDGAR/4.3.1/edgar_4.2.3.1_201001-201012_MISC_anth_non_traffic_180.nc",    
+!infile =  "/work/bd1063/b309098/emissions/EDGAR-v4.3.1-EU_DLR1.0_X_land-road-awb_MISC_201001-201012.nc"
+infile    = " $INPUTDIR_MESSY/offemis/EDGAR/4.3.1/EDGAR-v4.3.1-EU_DLR1.0_X_land-road-awb_MISC_201001-201012.nc"
+i_latm    = 'lat',
+i_latr    = -90.0,90.0,
+i_lonm    = 'lon',
+i_lonr    = -180.0,180.0,
+i_timem   = 'time',
+!var       = 'NO=NOx_flux,2.00671e+25;CO=CO_flux,2.15000e+25;SO2=SO2_flux,9.39932e+24;NH3=NH3_flux,3.53620e+25;C2H4=NMVOC_flux,7.14474e+23;C2H6=NMVOC_flux,1.14817e+24;C3H6=NMVOC_flux,2.00554e+23;C3H8=NMVOC_flux,1.21168e+24;NC4H10=NMVOC_flux,6.87491e+24;CH3COCH3=NMVOC_flux,3.04174e+23;CH3OH=NMVOC_flux,5.51524e+23;HCHO=NMVOC_flux,1.84009e+23;MEK=NMVOC_flux,3.30914e+23',
+var       = 'C3H6=NMVOC_flux,2.00554e+23;C3H8=NMVOC_flux,1.21168e+24;NC4H10=NMVOC_flux,6.87491e+24;CH3COCH3=NMVOC_flux,3.04174e+23;CH3OH=NMVOC_flux,5.51524e+23;HCHO=NMVOC_flux,1.84009e+23;MEK=NMVOC_flux,3.30914e+23',
+
+/

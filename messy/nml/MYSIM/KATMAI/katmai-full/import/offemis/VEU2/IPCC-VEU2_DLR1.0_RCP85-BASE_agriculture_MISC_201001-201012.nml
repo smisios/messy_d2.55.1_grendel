@@ -1,0 +1,128 @@
+! -*- f90 -*-
+
+! Created by M. Righi (DLR), 2016
+
+! #############################################################################
+! MODE ASSIGNMENT AND MASS-TO-NUMBER CONVERSION OF AEROSOL EMISSIONS FOR MADE3
+! #############################################################################
+! AGRICULTURE SECTOR
+! #############################################################################
+! Based on the REF04 emissions setup described in Kaiser et al. (GMD, 2018).
+! Mass emission fluxes in input must have units of kg/m3/s or kg/m2/s.
+!
+! Mass and number emission are assigned to the MADE3 Aitken (k) and
+! accumulation (a) modes (no assignment to the coarse mode for this sector)
+! For each mode, emissions are further split into the three mixing states:
+! insoluble (i), mixed (m) and soluble (s), according to the table below.
+!
+! Number emissions are estimated from mass emissions based on an assumed
+! log-normal size distribution, requiring two parameters to be specified:
+! median diameter D (in meters) and standard deviation sigma (dimensionsless).
+! The conversion factor is calculated by:
+!
+!     M2N_i_j = sum (6/pi * M_j / rho_j / exp(4.5 ln^2(sigma_i)) / D_i^3
+!
+! where i = (akn, acc) is the aerosol mode and and j = (SO4, BC, POM); M is the
+! mass emission flux and rho is the aerosol specific density (1840, 1500, 1400
+! kg/m3 for SO4, BC and POM, respectively).
+!
+! #############################################################################
+!
+! MASS SPLITTING FACTORS MF
+!   Aitken:       MF_akn = 0.0
+!   Accumulation: MF_acc = 1.0
+!
+!
+! MODE ASSIGNMENT
+!            +--------------------------++--------------------------+
+!            |       AITKEN  MODE       ||    ACCUMULATION  MODE    |
+! +----------+-- ki --+-- km --+-- ks --++-- ai --+-- am --+-- as --+
+! | MODE_SO4 |  ----  |  ----  |  ----  ||  ----  |   1.0  |  ----  |
+! | MODE_BC  |  ----  |  ----  |  ----  ||   0.8  |   0.2  |  ----  |
+! | MODE_POM |  ----  |  ----  |  ----  ||   0.5  |   0.5  |  ----  |
+! +----------+--------+--------+--------++--------+--------+--------+
+!
+!
+! MASS-TO-NUMBER CONVERSION FACTOR
+!   Size parameters Aitken:       ---
+!   Size parameters accumulation: D = 80 nm; sigma = 1.80
+!     M2N_acc_SO4 = 4.282601e+17
+!     M2N_acc_BC  = 5.253324e+17
+!     M2N_acc_POM = 5.628561e+17
+!
+!
+! UNIT CONVERSION
+!   UNIT_NO2 (46.010 g/mol):   1.308877e+25
+!   UNIT_CO  (28.010 g/mol):   2.149997e+25
+!   UNIT_SO2 (64.070 g/mol):   9.399315e+24
+!   UNIT_NH3 (17.030 g/mol):   3.536196e+25
+!   UNIT_SO4 (96.060 g/mol):   6.269146e+24
+!   UNIT_BC  (12.011 g/mol):   5.013855e+25 
+!   UNIT_POM (180.000 g/mol):  3.345634e+24
+!   UNIT_NUM (--):             6.022141e+23 (= Avogadro)
+!
+!
+! ADDITIONAL FACTORS
+!   POM calculated as 1.4 of OC: FAC_POM = 1.4
+!
+!
+! NMHC SPECIATION
+! To get the flux of a species X in [molec m-2 s-1]:
+!
+!   flux(X) = TOTAL(C) * FRAC * 1000 * Navo / (MW(C) * #C)
+!
+! where FRAC is the C mass fraction provided by the given species.
+!
+! +----------+------------------+----+---------------------------+
+! | SPECIES  | FRAC             | #C | CONVERSION FACTOR         |
+! |          | [g(C) g-1(C)]    |    | FRAC*1000*Navo/(MW(C)*#C) |
+! |          |                  |    | [molec kg-1(C)]           |
+! +----------+------------------+----+---------------------------+
+! | C2H4     |          0.19043 |  2 |              4.774062e+24 |
+! | C2H6     |          0.10135 |  2 |              2.540716e+24 |
+! | C3H6     |          0.08491 |  3 |              1.419139e+24 |
+! | C3H8     |          0.03222 |  3 |              5.384446e+23 |
+! | NC4H10   |          0.04174 |  4 |              5.231850e+23 |
+! | CH3CHO   |          0.04839 |  2 |              1.213135e+24 |
+! | CH3COCH3 |          0.05009 |  3 |              8.370959e+23 |
+! | CH3CO2H  |          0.11361 |  2 |              2.848088e+24 |
+! | CH3OH    |          0.10748 |  1 |              5.388805e+24 |
+! | HCHO     |          0.06091 |  1 |              3.054092e+24 |
+! | HCOOH    |          0.04043 |  1 |              2.027342e+24 |
+! | MEK      |          0.12822 |  4 |              1.607158e+24 |
+! +----------+------------------+----+---------------------------+
+!
+!
+! #############################################################################
+!
+! OVERALL CONVERSION FACTORS
+!   NO       = UNIT_NO2                                    = 1.308877e+25
+!   CO       = UNIT_CO                                     = 2.149997e+25
+!   SO2      = UNIT_SO2                                    = 9.399316e+24
+!   NH3      = UNIT_NH3                                    = 3.536196e+25
+!   CH3OH    = NMVOC_CH3OH                                 = 5.388805e+24
+!   HCHO     = NMVOC_HCHO                                  = 3.054092e+24
+!   HCOOH    = NMVOC_HCOOH                                 = 2.027342e+24
+!   BC_ai    = MODE_BC * UNIT_BC                           = 4.011084e+25
+!   POM_ai   = FAC_POM * MODE_POM * UNIT_POM               = 2.341944e+24
+!   N_BC_ai  = MODE_BC * M2N_acc_BC * UNIT_NUM             = 2.530901e+41
+!   N_POM_ai = FAC_POM * MODE_POM * M2N_acc_POM * UNIT_NUM = 2.372719e+41
+!   SO4_am   = MODE_SO4 * UNIT_SO4                         = 6.269146e+24
+!   BC_am    = MODE_BC * UNITS_BC                          = 1.002771e+25
+!   POM_am   = FAC_POM * MODE_POM * UNITS_POM              = 2.341944e+24
+!   N_SO4_am = MODE_SO4 * M2N_acc_SO4 * UNIT_NUM           = 2.579043e+41
+!   N_BC_am  = MODE_BC * M2N_acc_BC * UNITS_NUM            = 6.327252e+40
+!   N_POM_am = FAC_POM * MODE_POM * M2N_acc_POM * UNIT_NUM = 2.372719e+41
+! 
+! #############################################################################
+
+&regrid
+infile  = "$INPUTDIR_MESSY/offemis/VEU2/IPCC-VEU2_DLR1.0_RCP85-BASE_agriculture_MISC_201001-201012.nc",
+i_latm  = 'lat',
+i_latr  = -90.0,90.0,
+i_lonm  = 'lon',
+i_lonr  = -180.0,180.0,
+i_timem = 'time',
+!var     = 'NO=NOx,1.308877e+25;CO=CO,2.149997e+25;SO2=SO2,9.399316e+24;NH3=NH3,3.536196e+25;CH3OH=NMVOC,5.388805e+24;HCHO=NMVOC,3.054092e+24;HCOOH=NMVOC,2.027342e+24;BC_ai=BC,4.011084e+25;POM_ai=OC,2.341944e+24;N_BC_ai=BC,2.530901e+41;N_POM_ai=OC,2.372719e+41;SO4_am=SO4,6.269146e+24;BC_am=BC,1.002771e+25;POM_am=OC,2.341944e+24;N_SO4_am=SO4,2.579043e+41;N_BC_am=BC,6.327252e+40;N_POM_am=OC,2.372719e+41;',
+var     = 'NO=NOx,1.308877e+25;CO=CO,2.149997e+25;SO2=SO2,9.399316e+24;NH3=NH3,3.536196e+25;C2H4=NMVOC,4.774062e+24;C2H6=NMVOC,2.540716e+24;C3H6=NMVOC,1.419139e+24;C3H8=NMVOC,5.384446e+23;NC4H10=NMVOC,5.231850e+23;CH3CHO=NMVOC,1.213135e+24;CH3COCH3=NMVOC,8.370959e+23;CH3CO2H=NMVOC,2.848088e+24;CH3OH=NMVOC,5.388805e+24;HCHO=NMVOC,3.054092e+24;HCOOH=NMVOC,2.027342e+24;MEK=NMVOC,1.607158e+24',
+/
