@@ -1,0 +1,51 @@
+! -*- f90 -*-
+
+&CPL
+! ### SYNTAX:
+! # CALC(.) = 'object-name', 'list-of-channel-objects', 'operation',when?,
+! # : when: 1: global_start, 2 (default): global_end, 3: both
+! # : list of channel objects = 'ch1:obj1%s1,obj2%s2,...;cha2:obj1%s1,...;'
+! # : s1, s1, ... optional scaling factors
+! # : operation = SUM
+!
+!
+! for TBUDGET ...
+!!$CALC(1) = 'LossBr', 'scav_gp:HBr_scte,Br2_scte%2.0,HOBr_scte,BrCl_scte', 'SUM', 2,
+!!$CALC(2) = 'LossCl', 'scav_gp:HCl_scte,Cl2_scte%2.0,HOCl_scte,BrCl_scte', 'SUM', 2,
+!
+! for RAD ... CFC11 equivalent
+! 
+! # after Meinshausen et al. 2016 GMDD
+!
+! # CFC-11 (CCl3F: 0.26W/m2/ppb)
+! # CFC-113 (CCl2FCClF2: 0.3W/m2/ppb) 
+! # HCFC-141b (CH3CFCl2: 0.16W/m2/ppb)
+! # CFC-115 (CClF2CF3: 0.2W/m2/ppb)
+! # CFC-114 (CClF2CClF2: 0.31W/m2/ppb)
+! # Chloroform (CHCl3: 0.08W/m2/ppb) 
+! # Methylene chloride (CH2Cl2: 0.03W/m2/ppb)
+! # HCFC-22 (CHClF2: 0.21W/m2/ppb)
+!
+CALC(3) = 'RCFC11','tracer_gp:CFCl3,CF2ClCFCl2%1.1538,CH3CFCl2%0.6154,CF3CF2Cl%0.7692,CF2ClCF2Cl%1.1923,CHCl3%0.3077,CH2Cl2%0.1154,CHF2Cl%0.8077','SUM', 1,
+!
+! for second RAD call with 4xCO2
+!
+CALC(4) = 'fourCO2','tracer_gp:CO2%4.','SUM', 1,
+!
+! ---------------------
+! for CMIP6 DataRequest
+! total precipitation
+!!$CALC(4) = 'pr','g3b:aprl,aprc','SUM',2,
+! from fraction to percent
+!!$CALC(5) = 'aclcacperc','g3b:aclcac%100.','SUM',2,
+!
+!!$CALC(6) = 'clt','g3b:aclcov%100.','SUM',2,
+!!$CALC(7) = 'hurs','ECHAM5:rh_2m%100.','SUM',2,
+!!$CALC(8) = 'snc', 'ECHAM5:cvs%100.','SUM',2,
+!!$CALC(9) = 'mc', 'convect:massfu,massfd','SUM',2,
+!----------------------------------------------
+!
+! MPIOM variables
+! ERROR:  Channel ',mpiom' in scalc.nml does not exist!
+! CALC(10) = 'tho2',',mpiom:tho,tho','MULT',2,
+/

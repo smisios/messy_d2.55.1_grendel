@@ -1,0 +1,82 @@
+! -*- f90 -*-
+&CTRL
+!-----------------------------------------------------------------------
+! Switch defines which parameterization should be used (see below)
+!-----------------------------------------------------------------------
+!
+nox_switch = 5
+!
+! 1: number density offline (Funke et al. 2016)   ! not recommended anymore, use 5 insted
+! 2: upper boundary flux offline (Funke et al. 2016)  ! has some special issues, only use if you know what you are doing
+! 3: Production rate by Holger Nieder
+! 4: number density multilevel offline (Funke et al. 2016)   ! not recommended anymore, use 5 insted
+! 5: Funke et al. 2016 online calculation (recommended)
+!    at the moment only number density is included
+!    flux still to come
+! Switches 1, 2 and 4 need precalculated values. Get the UBC program from here: http://solarisheppa.geomar.de/cmip6
+! For free running model and if you want to consider ESE (recommended!) use 3 or 5
+! -----------------------
+!
+top_levels = 3
+!
+! How many levels are used counting from top for nox_switch=5
+! For standard EMAC L90 the recommendation is 4
+! Recommendation: go down to ~0.1hPa
+!-----------------------------------------------------------------------
+!-----------------------------------------------------------------------
+! Detection of elevated stratopause events (ESE)
+!-----------------------------------------------------------------------
+! ese_switch = 0 ! off -> not recommended as ESEs have the largest effect
+! ese_switch = 1 ! suggestion by Bernd Funke (T(0-30deg)-T(70-90deg) @ 1 hPa > tempthresh)
+!                  based on MIPAS observations
+! ese_switch = 2 ! detection of stratopause altitude (H_strato > 70km -> ESE) to be implemented...
+!
+! tempthresh: Temperature threshold for detection of ESE
+! tempthresh = 45.     ! Threshold based on MIPAS observations
+! tempthresh = 53.     ! Threshold based on ERA-Interim nudged EMAC T42L90MA model run
+! tempthresh = 45.     ! Threshold based on free running T42L47MA model run by Markus Kunze
+!
+! For free running you carefully should test which value is best
+! Recipe:
+!  - use model run with same resolution an nudging parameters
+!  - calculate Bernd Funkes criteria offline for the complete time series
+!        (at the moment nearest neighbour for level is used)
+!  - check when the criteria is fullfilled and look at temperaure plots for this time period
+!  - if you think you include all ESEs and not to much of non-ESE events -> go with this value
+!     (remark: in one of our tests we did not find a threshold where all ESEs are included and
+!              no false-positives are included. We decided that it is better to include some
+!              false-positives because impact of including them should be smaller than missing
+!              some ESEs)
+!  - if you have a proper threshold -> distribute it to other users
+!-----------------------------------------------------------------------
+!
+ese_switch = 1
+tempthresh = 45.
+!
+!-----------------------------------------------------------------------
+hn_file = '$INPUTDIR_MESSY/ubcnox/noxdbtestnew2-1l_n3.nc'
+/
+!-----------------------------------------------------------------------
+!-----------------------------------------------------------------------
+&CPL
+! Needed for nox_switch 1,2,4
+!
+nox_channel='import_grid'
+nox_object='UBCNOX_amount'
+!nox_object='UBCNOX_flux'
+!
+! which variable should be changed; NOx for some reason was not working; at the moment only choose NO! NOx also will not work in a proper way within the code of this submodel
+target_species='NO'
+!
+! Needed for nox_switch 3
+!
+ubcnox_kp='import_ts','kp'
+ubcnox_f107='import_ts','flux107'
+!
+! Needed for nox_switch 5
+! In the parameterization Ap-Index last 250 days are required
+! see example file
+!
+ubcnox_ap='import_ts','ap'
+!
+/
