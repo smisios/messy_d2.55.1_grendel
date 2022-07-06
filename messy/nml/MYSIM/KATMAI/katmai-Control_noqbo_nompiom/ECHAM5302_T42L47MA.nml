@@ -1,11 +1,12 @@
 ! -*- f90 -*-
-
 &RUNCTL
 !# NOTES:
-!# 1. The following entries are meaningless, because they are overwritten
-!#    by TIMER (see timer.nml):
+!# 1. If configured with --enable-MESSYTIMER (default) the following entries
+!#    are meaningless, because they are overwritten by TIMER (see timer.nml):
 !#    DT_START, DT_STOP, NO_DAYS, NO_STEPS, LRESUME, NO_CYCLES, PUTRERUN,
 !#    LABORT 
+!#    In case of trouble, re-configure with --disable-MESSYTIMER,
+!#    recompile and report the problems. timer.nml must be present in any case!
 !# 2. PUTDATA is only meaningful, if you switch L_BM_ORIG_OUTPUT = T
 !#    in channel.nml; all output is controlled in channel.nml
 !#
@@ -19,7 +20,7 @@
   LNUDGE       = $LNUDGE             ! nudging 
   LNMI         = $LNMI               ! normal mode filtering for nudging
   LMIDATM      = $ECHAM5_LMIDATM     ! middle atmosphere setup
-  LCOUPLE      = $ECHAM5_LCOUPLE
+  LCOUPLE      = $ECHAM5_LCOUPLE     ! Coupling of ECHAM and MPIOM
 !-  DT_START     = $START_YEAR,$START_MONTH,$START_DAY,0,0,0
 !-  DT_STOP      = $STOP_YEAR,$STOP_MONTH,$STOP_DAY,0,0,0
 !-  PUTDATA      = 5,'hours','first',0
@@ -31,12 +32,10 @@
   NPROCA       = $NPROCA             ! change value in xmessy, not here
   NPROCB       = $NPROCB             ! change value in xmessy, not here
 /
-
 &DYNCTL
   VCHECK=235.             ! activate for L90MA
   SPDRAG=0.926E-4         ! activate for L90MA
 /
-
 &NMICTL
 /
 
@@ -44,18 +43,18 @@
 !
 DT_NUDG_START =${START_YEAR},${START_MONTH},${START_DAY},${START_HOUR},0,0
 DT_NUDG_STOP  =${STOP_YEAR},${STOP_MONTH},${STOP_DAY},${STOP_HOUR},0,0
-! for additional diagnostics
 LNUDGDBX      = F
+!LNUDGINI      = T
 LNUDGINI      = F
-!NUDGTRUN      = 0
-!for storing additional fields
+NUDGTRUN      = 0
 LNUDGWOBS     = F
-!LNUDGFRD      = F
+LNUDGFRD      = F
 !
-!inudgformat= 2
-nudgsmin =  0  ! skip global mean
-!nudgsmin = -1   ! incl. global mean
-
+NDG_FILE_VOR  = "$INPUTDIR_NUDGE/${FNAME_NUDGE}_vor"
+NDG_FILE_DIV  = "$INPUTDIR_NUDGE/${FNAME_NUDGE}_div"
+NDG_FILE_STP  = "$INPUTDIR_NUDGE/${FNAME_NUDGE}_stp"
+NDG_FILE_SST  = "$INPUTDIR_NUDGE/${FNAME_NUDGE}_sst"
+!
 !!# netCDF+
 !!# for usage of new nudging data in netCDF format
 !!# Notes: - SST/SIC usage from file <NDG_FILE_SST>.nc,
@@ -64,21 +63,20 @@ nudgsmin =  0  ! skip global mean
 !!#        - INUDGFORMAT set via xmessy_mmd (ECHAM5_NUDGING_DATA_FORMAT)
 !!#          (0: old IEEE, 1: not used, 2: netCDF)
 !!#
-NSSTINC     = 6
+!!!NSSTINC     = 0
 NDG_FILE_NC  = "$INPUTDIR_NUDGE/${FNAME_NUDGE}.nc"
-NDG_FILE_SST = "$INPUTDIR_NUDGE/${FNAME_NUDGE}_sst"
-INUDGFORMAT  = $ECHAM5_NUDGING_DATA_FORMAT
-
-! L47MA
-! Festgelegt aus interpolation "per Auge" der L90MA Nudgingkoeffizienten (K.Pankatz)
-NUDGD         = 21*0,0.0394,0.1186,0.2215,0.3811,16*0.5787,0.2894,0.1447,0.0723,3*0
-NUDGV         = 21*0,0.3156,0.9596,1.7724,3.0480,16*4.6296,2.3148,1.1574,0.5787,3*0
-NUDGT         = 21*0,0.0789,0.2541,0.4431,0.7620,16*1.1574,0.5787,0.2894,0.1447,3*0
+INUDGFORMAT  = $ECHAM5_NUDGING_DATA_FORMAT 
+!!# netCDF-
+!
+! nudging weights: 
+!
+! L47MA (maximum nudging at level 13, ~12 hPa)
+! Note: interpolated with "go cL90_to.jnl L47MA" (based on L90MA, 10hPa)
+!
+NUDGD         = 10*0,0.0935,0.3412,27*0.5787,0.3422,0.2245,0.1403,0.0935,0.0431,3*0
+NUDGV         = 10*0,0.7480,2.7290,27*4.6296,2.7380,1.7960,1.1220,0.7480,0.3450,3*0
+NUDGT         = 10*0,0.1870,0.6820,27*1.1574,0.6840,0.4490,0.2810,0.1870,0.086,3*0
 NUDGP         = 1.1574
-! L47 (817hPa-1.93 hPa)
-!NUDGD         = 1*0,0.0723,0.1023,0.1447,0.2046,0.2894,0.4093,34*0.5787,0.2894,0.1447,0.0723,3*0
-!NUDGV         = 1*0,0.5787,0.8184,1.1574,1.6368,2.3148,3.2736,34*4.6296,2.3148,1.1574,0.5787,3*0
-!NUDGT         = 1*0,0.1447,0.2046,0.2894,0.4092,0.5787,0.8184,34*1.1574,0.5787,0.2894,0.1447,3*0
-!NUDGP         = 1.1574
-
+!
+!
 /

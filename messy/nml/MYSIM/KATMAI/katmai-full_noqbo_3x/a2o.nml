@@ -1,0 +1,166 @@
+! -*- f90 -*-
+&CTRL
+l_verbose = F  ! scrip library verbose
+/
+&CPL
+!##############################################
+!###     EXCHANGE/COUPLING TIME_STEP        ###
+!##############################################
+!#TEST
+!trig_a2o = 1,'steps','first',0
+!trig_o2a = 1,'steps','first',0
+!#1-DAY
+!trig_a2o = 1,'days','first',0
+!trig_o2a = 1,'days','first',0
+!#T31L19/GR30L40
+trig_a2o = 2,'hours','first',0
+trig_o2a = 2,'hours','first',0
+!#T63L39/GR15L40
+!trig_a2o = 8,'steps','first',0
+!trig_o2a = 8,'steps','first',0
+!##############################################
+!###  GENERAL PARAMETER FOR INTERPOLATION   ###
+!##############################################
+num_neighbors =4
+!north_thresh = 2.00  !(radiant)
+north_thresh = 1.42  !(radiant)
+south_thresh = -2.00 ! (radiant)
+!##############################################
+!### ATMOSPHERE -> OCEAN  ! MAX 100 FIELDS! ###
+!##############################################
+!# SYNTAX:
+!# A2O(n) fields to be interpolated : 
+!#   'name', 'atmosphere_channel', 'atmosphere_object', column-method, 
+!#   time-method, mask with zeroes , min-value, max-value,
+!#   fill_flag, fill_value, 'ocean_fill_channel', 'ocean_fill_object'
+!#   source grid, destination grid, map_method, normalize_opt
+!# NOTES:
+!#   column-method:    1 SUM
+!#   (if applicable)   2 AVE        
+!#                     3 MAX
+!#                     4 LOWEST-LEVEL (default)
+!#                     5 HIGHEST-LEVEL
+!#   time-method:      1 SUM
+!#                     2 AVE        
+!# mask with zeroes needed only for conservative transformation
+!#  INTA2O(n) interpolation (SCRIP) method :
+!#    'source grid', 'destination grid', 'map_method', normalize_opt
+!#     luse_grid1_area, luse_grid2_area
+!# NOTES:
+!#   source/destination grids : 'atm', 'oces', 'oceu', 'ocev'
+!#   map_method : 'conservative', 'bilinear', 'bicubic', 'distwgt'
+!#   normalize_opt : 'none', 'frac', 'dest'
+!#############################
+! NEEDED FOR COUPLING ECHAM5 --> MPIOM
+A2O(1)  = 'AOFLTXWO', 'e5vdiff' , 'ustrw'  , 4, 2, T, -1.E+34, 1.E+34, 
+INTA2O(1)  = 'atm','oceu','conservative', 'frac'
+A2O(2)  = 'AOFLTYWO', 'e5vdiff' , 'vstrw'  , 4, 2, T, -1.E+34, 1.E+34, 
+INTA2O(2)  = 'atm','ocev','conservative', 'frac'
+A2O(3)  = 'AOFLTXIO', 'e5vdiff' , 'ustri'  , 4, 2, T, -1.E+34, 1.E+34, 
+INTA2O(3)  = 'atm','oceu','conservative', 'frac'
+A2O(4)  = 'AOFLTYIO', 'e5vdiff' , 'vstri'  , 4, 2, T, -1.E+34, 1.E+34, 
+INTA2O(4)  = 'atm','ocev','conservative', 'frac'
+A2O(5)  = 'AOFLFRIO', 'a2o' , 'aifre'  , 4, 2, T, -1.E+34, 1.E+34, 
+INTA2O(5)  = 'atm','oces','conservative', 'frac'
+A2O(6)  = 'AOFLFRWO', 'a2o' , 'awfre'  , 4, 2, T, -1.E+34, 1.E+34, 
+INTA2O(6)  = 'atm','oces','conservative', 'frac'
+A2O(7)  = 'AOFLRHIO', 'ECHAM5' , 'qres'  , 4, 2, T,    0.0, 1.E+34, 
+INTA2O(7)  = 'atm','oces','bilinear', 'none'
+A2O(8)  = 'AOFLCHIO', 'ECHAM5' , 'ahfice'  , 4, 2, T, -1.E+34, 1.E+34, 
+INTA2O(8)  = 'atm','oces','bilinear', 'none'
+A2O(9)  = 'AOFLNHWO', 'a2o' , 'awhea'  , 4, 2, T, -1.E+34, 1.E+34, 
+INTA2O(9)  = 'atm','oces','bilinear', 'none'
+A2O(10) = 'AOFLSHWO', 'rad01'  , 'soflwac', 4, 2, T,     0.0, 1.E+34, 
+INTA2O(10) = 'atm','oces','bilinear', 'none'
+A2O(11) = 'AOFLTHWO', 'rad01'  , 'trflwac', 4, 2, T,    -1.E+34, 1.E+34,
+INTA2O(11) = 'atm','oces','bilinear', 'none'
+A2O(12) = 'AOHFLW',   'e5vdiff', 'ahflw',   4, 2, T,    -1.E+34, 1.E+34,
+INTA2O(12) = 'atm','oces','bilinear', 'none'
+A2O(13) = 'AOHFSW',   'e5vdiff', 'ahfsw',   4, 2, T,    -1.E+34, 1.E+34,
+INTA2O(13) = 'atm','oces','bilinear', 'none'
+A2O(14) = 'AOFLWSVO', 'e5vdiff' , 'wind10w', 4, 2, T,     0.0, 1.E+34, 
+!A2O(14) = 'AOFLWSVO', 'vertex' , 'wind10w', 4, 2, T,     0.0, 1.E+34, 
+INTA2O(14) = 'atm','oces','bilinear', 'none'
+!OTPHYSC NEEDED
+!A2O(21) = 'O2_ao_flux',  'airsea_gp' , 'flux_O2',  4, 2, T,  -1.E+34, 1.E+34, 
+!INTA2O(21)  = 'atm','oces','conservative', 'frac'
+!A2O(22) = 'N2O_ao_flux', 'airsea_gp' , 'flux_N2O', 4, 2, T,  -1.E+34, 1.E+34, 
+!INTA2O(22)  = 'atm','oces','conservative', 'frac'
+!A2O(23) = 'N2_ao_flux',  'airsea_gp' , 'flux_N2',  4, 2, T,  -1.E+34, 1.E+34, 
+!INTA2O(23)  = 'atm','oces','conservative', 'frac'
+!A2O(24) = 'CO2_ao_flux', 'airsea_gp' , 'flux_CO2', 4, 2, T,  -1.E+34, 1.E+34, 
+!INTA2O(24)  = 'atm','oces','conservative', 'frac'
+!A2O(25) = 'SF6_ao_flux', 'airsea_gp' , 'flux_SF6', 4, 2, T,  -1.E+34, 1.E+34, 
+!INTA2O(25)  = 'atm','oces','conservative', 'frac'
+!A2O(26) = 'DMS_ao_flux', 'airsea_gp' , 'flux_DMS', 4, 2, T,  -1.E+34, 1.E+34, 
+!INTA2O(26)  = 'atm','oces','conservative', 'frac'
+!
+!#############################
+!# IN CASE OF VECTORS:
+!# SYNTAX:
+!#   'x-direction', 'y-direction'
+!# N.B.: both must be in a2o.nml
+!#############################
+! NEEDED FOR COUPLING ECHAM5 --> MPIOM
+VEC_A2O(1) = 'AOFLTXWO','AOFLTYWO',
+VEC_A2O(2) = 'AOFLTXIO','AOFLTYIO',
+!#############################################
+!### OCEAN -> ATMOSPHERE  ! MAX 100 FIELDS ###
+!#############################################
+!# SYNTAX:
+!#   'name', 'ocean_channel', 'ocean_object', column-method, 
+!#   time-method, flux correction ?, min-value, max-value,
+!#   fill_flag, fill_value, 'ocean_fill_channel', 'ocean_fill_object'
+!# NOTES:
+!#   column-method:    1 SUM
+!#                     2 AVE        
+!#                     3 MAX
+!#                     4 LOWEST-LEVEL 
+!#                     5 HIGHEST-LEVEL (default)
+!#   time-method:      1 SUM
+!#                     2 AVE        
+!# INTO2A(n) interpolation (SCRIP) method :
+!#    'source grid', 'destination grid', 'map_method', normalize_opt
+!# NOTES:
+!#   source/destination grids : 'atm', 'oces', 'oceu', 'ocev'
+!#   map_method : 'conservative', 'bilinear', 'bicubic', 'distwgt'
+!#   normalize_opt : 'none', 'frac', 'dest'
+!#############################
+O2A(1) = 'tho',    'mpiom', 'tho_K',  5, 2, T,     0.0, 1.E+34, 
+INTO2A(1)  = 'oces','atm','bilinear', 'none'
+O2A(2) = 'sictho', 'mpiom', 'sictho', 5, 2, T,     0.0, 1.E+34, 
+INTO2A(2)  = 'oces','atm','bilinear', 'none'
+O2A(3) = 'sicomo', 'mpiom', 'sicomo', 5, 2, T,     0.0, 1., 
+INTO2A(3)  = 'oces','atm','bilinear', 'none'
+O2A(4) = 'sicsno', 'mpiom', 'sicsno', 5, 2, T,     0.0, 1.E+34, 
+INTO2A(4)  = 'oces','atm','bilinear', 'none'
+O2A(5) = 'socu',   'mpiom', 'socu',   5, 2, T, -1.E+34, 1.E+34, 
+INTO2A(5)  = 'oces','atm','bilinear', 'none'
+O2A(6) = 'socv',   'mpiom', 'socv',   5, 2, T, -1.E+34, 1.E+34, 
+INTO2A(6)  = 'oces','atm','bilinear', 'none'
+!AIRSEA NEEDED
+O2A(20) = 'sao_wc', 'mpiom', 'sao',    5, 2, T, -1.E+34, 1.E+34,
+INTO2A(20)  = 'oces','atm','conservative', 'frac'
+!O2A(21) = 'O2_wc', 'tracer_om', 'O2',  5, 2, T, -1.E+34, 1.E+34,
+!INTO2A(21)  = 'oces','atm','conservative', 'frac'
+!O2A(22) = 'N2O_wc','tracer_om', 'N2O', 5, 2, T, -1.E+34, 1.E+34,
+!INTO2A(22)  = 'oces','atm','conservative', 'frac'
+!O2A(23) = 'N2_wc', 'tracer_om', 'N2',  5, 2, T, -1.E+34, 1.E+34,
+!INTO2A(23)  = 'oces','atm','conservative', 'frac'
+!O2A(24) = 'CO2_wc','hamocc', 'co2', 5, 2, F, -1.E+34, 1.E+34,
+!!O2A(24) = 'CO2_wc','tracer_om', 'CO2',5, 2, T, -1.E+34, 1.E+34,
+!INTO2A(24)  = 'oces','atm','conservative', 'frac'
+!!O2A(25) = 'SF6_wc', 'tracer_om', 'SF6',5, 2, T, -1.E+34, 1.E+34,
+!!INTO2A(25)  = 'oces','atm','conservative', 'frac'
+!O2A(26) = 'DMS_wc', 'tracer_om', 'DMS',5, 2, T, -1.E+34, 1.E+34,
+!INTO2A(26)  = 'oces','atm','conservative', 'frac'
+!
+!#############################
+!# IN CASE OF VECTORS:
+!# SYNTAX:
+!#   'x-direction', 'y-direction'
+!# N.B.: both must be in a2o.nml
+!#############################
+! NEEDED FOR COUPLING ECHAM5 --> MPIOM
+VEC_O2A(1) = 'socu','socv',
+/
